@@ -175,18 +175,21 @@ export function inLockedLook(slides: readonly Pick<Slide, 't'>[]): boolean {
   return slides.length > 0 && slides.every((s) => (LOCKED_SLIDES as readonly string[]).includes(s.t))
 }
 
+/** The older planner look's list slides: a list post drawn with them is drawn again in the locked look. */
+const OLDER_LIST_SLIDES: readonly Slide['t'][] = ['cover', 'night', 'end']
+
 /**
- * Why the lock keeps a piece from the plan and from publishing, or null when it may go: drawn wholly in the locked look,
- * and its first slide carrying a photograph (Lawal, 15 November 2026: "Never a text-only post"; every benchmark post leads
- * with one; out-8's Bendigo weekend post was its cover and its ask, in type alone).
+ * Why the lock keeps a piece from the plan and from publishing, or null when it may go. LAWAL'S A AND A (18 November 2026,
+ * 00:12, OPS-DIRECTIVE-LOCKED-18NOV.md): "Allow professionally designed EventLinqs posters and stories without
+ * photographs" and "Allow clean, branded EventLinqs designs for mixed-event slides"; "Remove all rules that incorrectly
+ * classify photo-free designs as invalid". So a poster, a story, the brand and organiser pieces, a post that leads in type
+ * and a day slide in the branded design are all admitted (the 15 November rules 'never a text-only post' and 'every day
+ * slide carries a photograph' are withdrawn). Only a list post in the older look is kept back, and the hourly run draws it
+ * again in the locked look. A photograph over a night it does not show is the publish gate's (piece-quality.ts), and the
+ * wordmark sits off every photograph by the renderer's own design (day-cards.ts).
  */
 export function lockRefusal(slides: readonly Slide[]): string | null {
-  if (!inLockedLook(slides)) return 'It is drawn in the older planner look, not the locked look of 15 November, so it is never approved or published.'
-  const first = slides[0]
-  if (!('photo' in first) || !first.photo) return "It does not lead with a photograph: Lawal's lock of 15 November allows no text-only post, and every post leads with one."
-  // The PM's 22:41 fix 1: every cover, day slide and venue slide carries its photograph band, as the benchmark's do.
-  const bare = slides.find((s) => (s.t === 'week_cover' || s.t === 'days' || s.t === 'venue') && !s.photo)
-  if (bare) return `Its ${bare.t === 'days' ? `${bare.day} slide` : bare.t === 'venue' ? 'venue slide' : 'cover'} carries no photograph, and every slide of the locked look carries one (the PM's 22:41).`
+  if (slides.some((s) => OLDER_LIST_SLIDES.includes(s.t))) return 'It is drawn in the older planner look (cover, night and end slides), so the hourly run draws it again in the locked look.'
   return null
 }
 
@@ -595,8 +598,14 @@ export function compositionFor(n: Pick<CampaignNight, 'categorySlug' | 'cta'>): 
   return 'general'
 }
 
+/**
+ * Where a night is, as a line names it: the venue and its city, or the venue alone when its own name already holds the
+ * city (the PM's 23:45 of 17 November 2026, fix (d): never 'Her Majesty's Theatre Ballarat, Ballarat').
+ */
 function metaOf(n: CampaignNight): string {
-  return n.venueName ? `${n.venueName}, ${n.cityName}` : n.cityName
+  if (!n.venueName) return n.cityName
+  const holdsCity = new RegExp(`\\b${n.cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(n.venueName)
+  return holdsCity ? n.venueName : `${n.venueName}, ${n.cityName}`
 }
 
 /**
@@ -606,7 +615,7 @@ function metaOf(n: CampaignNight): string {
  */
 export const HUNT_SUMMARY_LINE = /^[A-Z][^.]*? on a (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) (morning|afternoon|evening)(, free entry|, tickets through [^.]+)?\.$/
 
-function whyOf(n: CampaignNight): string | null {
+export function whyOf(n: CampaignNight): string | null {
   const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
   /* The PM's 15:45 of 15 November 2026, fix 4: the headline hunt's composed line ('An event on a Monday evening,
      tickets through ...') repeats what the slide already shows; with no summary of its own a night shows none. */
@@ -814,8 +823,8 @@ export type NightLabel = { time: string; day: string; first: string }
 /**
  * ONE NIGHT, ONE DATE LABEL (the PM's 18:45 fix 1: "a run reads the same on every slide"): the one function a post's cover,
  * day slides and ask read a night's dates from. A night over several days reads its first and last ("Fri 20 to Sun 22");
- * a show with sessions on several days names them ("Fri 20 & Sat 21", over three "Thu 19 to Sat 21"); its time is its
- * first session's.
+ * a show with sessions on several days names them ("Fri 20 & Sat 21", over three "Thu 19 to Sat 21"); its time is the
+ * night's own, as its caption prints it.
  */
 export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] = []): NightLabel {
   const all = [n, ...sessions.filter((x) => x.eventId !== n.eventId)].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
@@ -826,7 +835,9 @@ export function nightLabel(n: CampaignNight, sessions: readonly CampaignNight[] 
   const byDay = new Map<string, CampaignNight>()
   for (const x of all) if (!byDay.has(ymdOf(x.startDate, x.timezone))) byDay.set(ymdOf(x.startDate, x.timezone), x)
   const d = [...byDay.values()].map((x) => shortDay(x.startDate, x.timezone))
-  return { time: clockOf(first.startDate, first.timezone), day: d.length === 1 ? d[0] : d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}`, first: first.startDate }
+  // ONE TIME PER NIGHT (the PM's 23:45 of 17 November 2026, fix (a)): the time is this night's own, the one its caption
+  // prints; it was the first session's, so Alastair Campbell's 3 pm row read '11:30 am' beside a caption of 3pm.
+  return { time: clockOf(n.startDate, n.timezone), day: d.length === 1 ? d[0] : d.length === 2 ? `${d[0]} & ${d[1]}` : `${d[0]} to ${d[d.length - 1]}`, first: first.startDate }
 }
 
 /** A night as Lawal's gold timed card: its time over its date label, its title by rule, its place, and FREE. */
@@ -1201,12 +1212,34 @@ export function nightsWord(nights: readonly Pick<CampaignNight, 'startDate' | 't
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
 const countWord = (k: number): string => COUNT_WORDS[k] ?? String(k)
 
+/**
+ * A SPOTLIGHT HOLDS ONLY ITS KIND (the PM's 23:45 of 17 November 2026, fix (b)): a music spotlight takes music nights only
+ * (Melbourne's carried 'An Evening with Alastair Campbell', a talk filed as music), and a talk is spotlit only as a talk.
+ */
+const MUSIC_KINDS: readonly NightKind[] = ['gig', 'jazz', 'classical', 'festival', 'dance']
+export function spotlightFits(categorySlug: string, n: CampaignNight): boolean {
+  const kind = nightKind(n)
+  if (MUSIC_CATEGORIES.includes(categorySlug.toLowerCase())) return kind !== null && MUSIC_KINDS.includes(kind)
+  return kind !== 'talk' || /talk/i.test(categorySlug)
+}
+
+/** A spotlight's cover in natural words: '5 nights of / music in Melbourne / this week', or '5 music / events in ...'. */
+export function spotlightLines(name: string, nights: readonly CampaignNight[], cityName: string): [string, string, string] {
+  const evening = nightsWord(nights) === 'nights'
+  return evening
+    ? [`${nights.length} ${nights.length === 1 ? 'night' : 'nights'} of`, `${name.toLowerCase()} in ${cityName}`, 'this week']
+    : [`${nights.length} ${name.toLowerCase()}`, `${nights.length === 1 ? 'event' : 'events'} in ${cityName}`, 'this week']
+}
+
 /** One line a pick: the place pin for a free night, the ticket for a paid one (the 13:27 (6), kept by the 13:53). */
 export function pickLine(n: CampaignNight): string {
   const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '🎟' : '📍'
   const price = n.priceLine ? ` ${n.priceLine}.` : ''
   return `${mark} ${whenOf(n)}, ${n.title}, ${metaOf(n)}.${price}`
 }
+
+/** The extra hashtags the planner adds beside a city's own two; the publish gate's one list reads them from here. */
+export const EXTRA_TAGS = ['#thisweekend', '#victoriaevents'] as const
 
 export function tagsFor(city: CampaignCity, extra: string | null): string {
   return [`#${city.slug}`, `#${city.slug}events`, extra].filter(Boolean).slice(0, 3).join(' ')
@@ -1457,7 +1490,7 @@ export function planCampaign(input: {
 
     /* The Category Spotlight: the city's strongest category of the week, three nights or more, to its filtered view. */
     const byCategory = new Map<string, CampaignNight[]>()
-    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
+    for (const n of week) if (n.categorySlug && dayInWeek(n, weekStart) >= spotlightsFrom && spotlightFits(n.categorySlug, n)) byCategory.set(n.categorySlug, [...(byCategory.get(n.categorySlug) ?? []), n])
     const strongest = [...byCategory.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]
     if (strongest && strongest[1].filter((n) => !listed.has(n.eventId)).length >= SPOTLIGHT_MIN_NIGHTS) {
       const [slug, every] = strongest
@@ -1467,8 +1500,8 @@ export function planCampaign(input: {
       // Three different nights, after one night per title (out-7, 18:57: three sessions of one show drew "1 family nights").
       if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
-      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot)}.`
-      const spotSlides = lockedListSlides(spot, [`${spot.length} ${name.toLowerCase()}`, `${nightsWord(spot)} in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
+      const hook = `${name} in ${city.name} this week: ${countWord(spot.length).toLowerCase()} ${nightsWord(spot) === 'nights' ? 'nights' : 'events'}.`
+      const spotSlides = lockedListSlides(spot, spotlightLines(name, spot, city.name), origin, (n) => sessionsOf(n), weekPick)
       const body = [...pictured(spotSlides), ...spot.map(pickLine), '', creditsOf(spot)]
       pieces.push({
         kind: 'category_spotlight',

@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { pageViewKeyParts } from '@/lib/growth/page-view-key'
 import { channelForVisit } from './traffic-channel'
 import { getAllCities } from '@/lib/cities/data'
 import { bestOfWeek, figuresFor, lastWeeks, refundedOf, stateScorecard, type DemandRow, type Rows, type Week, type WeekFigures, type Best, type StateScorecard } from './weekly-math'
@@ -34,10 +35,14 @@ const VICTORIA: ReadonlySet<string> = new Set(getAllCities().filter((c) => c.sta
 const iso = (at: string): string => new Date(at).toISOString()
 const isoOrNull = (at: string | null): string | null => (at === null ? null : iso(at))
 
-/** A page view's occurrence key is `<event id>:<visitor>:<day>` (src/app/api/ledger/demand/route.ts). */
+/**
+ * A page view's event and visitor, through the one key reader (src/lib/growth/page-view-key.ts): the ledger stores the
+ * key as demand:page_view:<event>:<visitor>:<day>, and the split this replaced read 'demand' as the event and
+ * 'page_view' as the visitor (17 November 2026).
+ */
 function keyParts(occurrenceKey: string): { eventId: string; visitor: string } | null {
-  const parts = occurrenceKey.split(':')
-  return parts.length >= 3 && parts[0] !== '' && parts[1] !== '' ? { eventId: parts[0], visitor: parts[1] } : null
+  const k = pageViewKeyParts(occurrenceKey)
+  return k ? { eventId: k.eventId, visitor: k.visitor } : null
 }
 
 /** An embedded category, which the generated types give as a list and the API may answer as one row. */

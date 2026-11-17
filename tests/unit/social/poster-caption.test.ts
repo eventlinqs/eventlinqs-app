@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest'
+import { ctaFor } from '@/lib/events/cta'
+import { posterCaption, DAILY_POSTERS_IN_PLAN } from '@/lib/social/daily-posters'
+import type { CampaignNight } from '@/lib/social/campaign'
+
+/*
+ * A DAILY POSTER'S CAPTION, NATURAL AND OF ITS OWN KIND (Lawal, 18 November 2026, 00:12 and 00:17; the PM's 00:25 and
+ * 00:32): his Kate Ceberano caption is the QUALITY REFERENCE, never a template: an emoji led hook that fits the night, one
+ * line of experience, then place, date and time, then tickets and hashtags from our list. Two nights of different kinds
+ * never get the same sentence shape. Lawal's A (00:12) admits photo free posters, so the daily posters are in the plan.
+ */
+const night = (over: Partial<CampaignNight>): CampaignNight =>
+  ({
+    eventId: '00000000-0000-4000-9000-000000000001',
+    slug: 'a-night',
+    title: 'Kate Ceberano: Australian Made Tour 2026',
+    startDate: '2026-11-19T08:00:00Z',
+    endDate: '2026-11-19T11:00:00Z',
+    timezone: 'Australia/Melbourne',
+    citySlug: 'ballarat',
+    cityName: 'Ballarat',
+    venueName: "Her Majesty's Theatre Ballarat",
+    host: "Her Majesty's Theatre Ballarat",
+    categorySlug: 'music',
+    summary: 'Kate Ceberano sings the songs of a lifetime with a full band.',
+    approvedPhotoUrl: null,
+    photoCredit: null,
+    cta: ctaFor({ tiers: [{ price: 7900 }] }),
+    priceLine: 'From $79',
+    ...over,
+  }) as unknown as CampaignNight
+
+const city = { slug: 'ballarat', name: 'Ballarat' }
+const SITE = 'eventlinqs.com.au'
+const gig = posterCaption(night({}), city, SITE)
+const comedy = posterCaption(night({ eventId: 'b', slug: 'b', title: 'Laugh Lab', categorySlug: 'comedy', summary: 'Five comics, one room, new material.', venueName: 'Comedy Republic', host: 'Comedy Republic' }), { slug: 'melbourne', name: 'Melbourne' }, SITE)
+
+describe('posterCaption', () => {
+  it("follows Lawal's shape: hook, experience, place, date and time, tickets, hashtags", () => {
+    const lines = gig.split('\n').filter((l) => l.trim() !== '')
+    expect(lines[0]).toMatch(/^\p{Extended_Pictographic}/u)
+    expect(lines[0]).toContain('Kate Ceberano')
+    expect(gig).toContain('Kate Ceberano sings the songs of a lifetime with a full band.')
+    expect(gig).toContain("📍 Her Majesty's Theatre Ballarat")
+    expect(gig).not.toContain('Ballarat, Ballarat')
+    expect(gig).toMatch(/📅 Thursday 19 November · 7(:00)? ?pm/)
+    expect(gig).toContain('🎟 Event details and tickets:')
+    expect(gig).toContain(`${SITE}/events/a-night`)
+    expect(lines.at(-1)).toBe('#ballarat #ballaratevents')
+  })
+
+  it('never carries an exclamation mark or a long dash (the copy law)', () => {
+    for (const c of [gig, comedy]) expect(c).not.toMatch(/[!–—]/)
+  })
+
+  it('two nights of different kinds do not get the same sentence shape', () => {
+    const shape = (c: string, title: string, cityName: string) => c.split('\n')[0].replace(title, 'T').replace(cityName, 'C')
+    expect(shape(gig, 'Kate Ceberano: Australian Made Tour 2026', 'Ballarat')).not.toBe(shape(comedy, 'Laugh Lab', 'Melbourne'))
+  })
+
+  it("Lawal's A: the daily posters are in the week's plan", () => {
+    expect(DAILY_POSTERS_IN_PLAN).toBe(true)
+  })
+})

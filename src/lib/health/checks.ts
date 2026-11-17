@@ -12,6 +12,8 @@ import { githubActionsNames } from '@/lib/env/manifest.mjs'
 import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { overallStatus as rollUp, type HealthResult, type Severity } from '@/lib/health/result'
 import { checkOrderAttribution } from '@/lib/health/attribution-check'
+import { sharedRun } from '@/lib/health/shared-run'
+import { readBlotatoTargets } from '@/lib/social/blotato-targets'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -707,6 +709,21 @@ export type CheckId = (typeof CHECK_IDS)[number]
  * synthetic failure so the CRITICAL alert path can be proven without breaking
  * anything real - the deliberate break drill.
  */
+/**
+ * WHERE THE WEEK POSTS, READ ON PRODUCTION (the PM's 00:25 of 18 November 2026, item 3; Lawal's 00:12, section 11 step 7):
+ * the Facebook Page and the Instagram account the publisher would post to, read from Blotato with this deployment's own key
+ * through the one reader /admin/social uses. Read only; it never prints the key. Its line in the sentinel's run is the Page
+ * read, so no admin visit is needed.
+ */
+async function checkSocialDestinations(): Promise<HealthResult> {
+  const base = { id: 'social_destinations', label: 'Social destinations (Blotato: Facebook Page and Instagram)', severity: 'warning' as const }
+  const t = await readBlotatoTargets(process.env)
+  if (t.state === 'no-key') return { ...base, ok: true, skipped: true, detail: 'no BLOTATO_API_KEY in this deployment, so nothing posts' }
+  if (t.state === 'failed') return { ...base, ok: false, detail: `Blotato could not be read: ${t.words}` }
+  const detail = `Facebook Page ${t.postsTo.facebook ?? 'none the publisher would use'}; Instagram ${t.postsTo.instagram ?? 'none connected'}${t.refusal ? `. ${t.refusal}` : ''}`
+  return { ...base, ok: t.refusal === null, detail }
+}
+
 export async function runAllChecks(opts?: { drill?: string }): Promise<HealthResult[]> {
   const origin = getSiteUrl()
   const drill = opts?.drill
@@ -727,6 +744,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('manifest', () => checkEnvManifest()),
     timed('order_access', () => checkOrderAccess()),
     timed('image_pipeline', () => checkImagePipeline()),
+    timed('social_destinations', () => checkSocialDestinations()),
     // Lawal's order (the CONTROLLER's 15:35 of 7 November 2026): every paid order records where its buyer came from.
     timed('order_attribution', () => checkOrderAttribution(createAdminClient())),
   ])
@@ -743,5 +761,13 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     }
   })
 }
+
+/**
+ * The admin's one shared run of the whole battery (the PM's 21:38 of 17 November 2026, alert (g), item 3): /admin/today and
+ * /admin/health read a run at most ADMIN_CHECKS_FRESH_MS old, and renders that start together wait on the same run, so
+ * the sidebar's prefetches and quick visits cannot load the database for the whole site. The sentinel and the heartbeat
+ * call runAllChecks themselves, fresh every time.
+ */
+export const runAllChecksForAdmin = sharedRun(() => runAllChecks())
 
 

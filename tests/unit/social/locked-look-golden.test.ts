@@ -180,23 +180,21 @@ describe("the fixture is the locked look's own (Lawal's lock of 15 November 2026
     expect(JSON.stringify([cover, day, ask, feature, venue])).not.toMatch(/\.\.\.|…/)
   })
 
-  it('a planned week keeps only locked pieces that carry a photograph: the older look and text alone are refused', () => {
+  // Lawal's A and A (18 November 2026, 00:12; OPS-DIRECTIVE-LOCKED-18NOV.md): photo free posters, stories, the brand and
+  // organiser pieces and the branded mixed slide are admitted; only the older list look (cover, night, end) is drawn again.
+  it('a planned week keeps every piece the lock admits: photo free kinds are admitted, only the older list look is drawn again', () => {
     const { pieces } = planCampaign({ nights: [...gigs, ...comedy, own], cities: [{ slug: 'melbourne', name: 'Melbourne' }], weekStart: '2026-11-16', origin: ORIGIN })
     const kept = pieces.filter((p) => lockRefusal(p.slides) === null)
     const refused = pieces.filter((p) => lockRefusal(p.slides) !== null)
     expect(kept.length).toBeGreaterThan(0)
-    for (const p of kept) {
-      expect(inLockedLook(p.slides), p.kind).toBe(true)
-      expect(p.slides.some((s) => 'photo' in s && Boolean(s.photo)), p.kind).toBe(true)
-      expect(JSON.stringify(p.slides), p.kind).not.toMatch(/\.\.\.|…/)
-    }
-    // The older planner look's pieces are planned (law 13 keeps them) and refused, each with its reason.
+    for (const p of kept) expect(JSON.stringify(p.slides), p.kind).not.toMatch(/\.\.\.|…/)
+    for (const p of refused) expect(p.slides.some((s) => s.t === 'cover' || s.t === 'night' || s.t === 'end'), p.kind).toBe(true)
     for (const kind of ['organiser_campaign', 'brand_campaign', 'partner_kit']) {
-      const p = refused.find((x) => x.kind === kind)
-      if (p) expect(lockRefusal(p.slides), kind).toMatch(/older planner look/)
+      const p = pieces.find((x) => x.kind === kind)
+      if (p) expect(lockRefusal(p.slides), kind).toBeNull()
     }
-    expect(lockRefusal([ask])).toMatch(/lead with a photograph/)
-    expect(lockRefusal([ask, cover])).toMatch(/lead with a photograph/)
+    expect(lockRefusal([ask])).toBeNull()
+    expect(lockRefusal([ask, cover])).toBeNull()
   })
 })
 
