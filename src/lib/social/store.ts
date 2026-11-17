@@ -8,6 +8,7 @@ import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
+import { languageFaults, pieceQuality, type QualityNight } from './piece-quality'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
@@ -593,6 +594,31 @@ export function soldOutIssue(name: string, e: Record<string, unknown>): string |
  * its outside ticket page answers; every image on a slide is usable now (K2); the piece's own page answers and lists
  * every night it advertises. siteOrigin is the deployment being checked, so a TEST plan is checked against TEST's pages.
  */
+/**
+ * When a revision's slides were last DRAWN (P0 section 7): an edit copies the slides it was made from and changes only
+ * words, so its own time says nothing of the drawing; the newest revision not made by an edit does.
+ */
+async function drawnAtOf(db: Db, pieceId: string, rev: Revision): Promise<string> {
+  if (rev.madeBy !== 'edit') return rev.madeAt
+  const { data } = await db.from('social_piece_revisions').select('made_at').eq('piece_id', pieceId).neq('made_by', 'edit').order('version', { ascending: false }).limit(1).maybeSingle()
+  return (data?.made_at as string | undefined) ?? rev.madeAt
+}
+
+/** A night as the publish gate reads it, from the row pieceDependencies reads (NIGHT_COLUMNS). */
+function qualityNightOf(e: Record<string, unknown>): QualityNight {
+  return {
+    eventId: e.id as string,
+    title: String(e.title),
+    summary: (e.summary as string | null) ?? null,
+    venueName: (e.venue_name as string | null) ?? null,
+    host: (e.venue_name as string | null) ?? null,
+    categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
+    sourceTitle: null,
+    startDate: String(e.start_date),
+    timezone: (e.timezone as string | null) ?? null,
+  }
+}
+
 export async function pieceDependencies(
   db: Db,
   pieceId: string,
@@ -610,6 +636,18 @@ export async function pieceDependencies(
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
   const byId = new Map((events ?? []).map((e) => [e.id as string, e as Record<string, unknown>]))
+
+  /* LAW 22, THE PUBLISH GATE (the PM's 21:58 and 22:02 of 17 November 2026): the piece's own content by one rule set
+     (piece-quality.ts), here at approval and again at publishing, every platform's caption read; it carries Lawal's lock. */
+  issues.push(
+    ...pieceQuality({
+      slides: rev.slides,
+      caption: [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
+      madeAt: await drawnAtOf(db, pieceId, rev),
+      nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e)])),
+      now,
+    }),
+  )
 
   /* D3 (6): a night whose venue has since said no to our posts is refused; an unread answer refuses too. */
   try {
@@ -739,9 +777,7 @@ export async function pieceDependencies(
     if (ok !== true) issues.push("The cover's photograph has no approved, unexpired licence for its night.")
   }
 
-  /* Lawal's social lock of 15 November 2026: a piece in the older look is never approved or published (law 13 keeps it). */
-  const locked = OLDER_LOOK_IN_PLAN ? null : lockRefusal(rev.slides)
-  if (locked) issues.push(locked)
+  /* Lawal's social lock of 15 November 2026 is applied by the publish gate above (pieceQuality's [look]). */
 
   /* The directive's section 7: every slide, at every format it is made for, fits, reads and holds its contrast. */
   issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
@@ -1255,6 +1291,9 @@ export async function editPiece(db: Db, input: { readonly pieceId: string; reado
   if (!rev) return { state: 'refused', reason: 'The piece has no version to edit.' }
   const caption = input.caption.trim()
   if (/[!\u2013\u2014]/.test(caption)) return { state: 'refused', reason: 'The words carry an exclamation mark or a long dash.' }
+  // LAW 22's publish gate at draft save: the same language rules as approval and publishing (piece-quality.ts).
+  const wrong = languageFaults(caption.split('\n'))
+  if (wrong.length > 0) return { state: 'refused', reason: wrong.join(' ') }
   const versions = { ...rev.versions, [input.platform]: { ...rev.versions[input.platform], caption } }
   const plan = { eventIds: rev.eventIds, picks: rev.picks, mode: rev.mode, slides: rev.slides, caption: input.platform === 'instagram' ? caption : rev.caption, versions } as PiecePlan
   const { error } = await db.from('social_piece_revisions').insert(revisionRow(input.pieceId, rev.version + 1, plan, rev.message, 'edit', input.by, input.now))
@@ -1639,7 +1678,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
   const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
   const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
   const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
-  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date; eventIds: string[] }[] = []
+  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date; eventIds: string[]; rev: Revision }[] = []
   for (const a of approvals ?? []) {
     const pieceId = a.piece_id as string
     if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
@@ -1647,13 +1686,13 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
     if (!rev || rev.version !== (a.revision as number)) continue
     const { data: piece } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
     if (!piece) continue
-    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds })
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev })
   }
   if (due.length === 0) return { scheduled: [], held: [] }
 
   /* Each piece's window from its own nights, read now. */
   const ids = [...new Set(due.flatMap((d) => d.eventIds))]
-  const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select('id, title, start_date, end_date').in('id', ids) : { data: [], error: null }
+  const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)) }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
@@ -1689,6 +1728,21 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
     const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
     if (ierr) {
       held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
+      continue
+    }
+    /* LAW 22, THE PUBLISH GATE at scheduling: the approved version's own content, by the same rule set as approval and
+       publishing (piece-quality.ts), read against its nights as they are now. */
+    const quality = pieceQuality({
+      slides: d.rev.slides,
+      caption: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
+      madeAt: await drawnAtOf(db, d.id, d.rev),
+      nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>)])),
+      now,
+    })
+    if (quality.length > 0) {
+      const reason = `Not scheduled, held by the publish gate: ${quality.join(' ')}`
+      await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
+      held.push(`${d.id}: ${reason}`)
       continue
     }
     if (late) {
