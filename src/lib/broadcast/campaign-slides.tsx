@@ -20,7 +20,7 @@ import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
-import { standInOf } from '@/lib/social/stand-ins'
+import { standInCredit, standInOf } from '@/lib/social/stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN'S SLIDES (the release checklist of 28 October 2026, J7, S3; Lawal's final creative approval of
@@ -172,7 +172,23 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
 }
 
 /** One slide of a piece as its element: its measured layout, drawn; a locked slide in the 9.5 look. */
-export async function buildCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<React.ReactElement> {
+/**
+ * A STAND-IN IS MARKED ILLUSTRATIVE WHEN IT IS DRAWN, WHATEVER WORDS WERE STORED (17 November 2026, on Lawal's D1 and D2 of
+ * 16 November, 23:08: "stand-in images must never be presented as photographs of the actual event"). D1 and D2 word a
+ * stand-in's credit when a piece is planned (standInCredit), so a piece planned before them stored 'Photo: <name> / Pexels'
+ * and printed it so. The credit of any stand-in is taken from the photograph itself here, before every slide is built;
+ * a night's own photograph and a slide in type are returned as they are.
+ */
+export function withStandInCredit(slide: Slide): Slide {
+  if (!('photo' in slide) || !slide.photo) return slide
+  const standIn = standInOf(slide.photo)
+  if (!standIn) return slide
+  const credit = standInCredit(standIn)
+  return 'credit' in slide && slide.credit === credit ? slide : ({ ...slide, credit } as Slide)
+}
+
+export async function buildCampaignSlide(f: Format, given: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<React.ReactElement> {
+  const slide = withStandInCredit(given)
   if (isLocked(slide)) return (await lockedElement(f, slide, image, n, total, next)) as unknown as React.ReactElement
   return drawLayout(layoutOfSlide(f, slide, image, await treatmentMeasurers(), label ?? (total > 1 ? `${n}/${total}` : null)))
 }
