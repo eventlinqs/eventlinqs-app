@@ -208,7 +208,7 @@ export interface SchedulePiece {
   readonly approvedAt: Date
   /** The earliest it may go: a story goes on the day of its first night (dayStart), never days before it. */
   readonly notBefore?: Date | null
-  /** The latest it may go: the end of its earliest night, since a piece with a night that has ended is held whole. */
+  /** The latest it may go: the start of its earliest night (scheduleWindowOf), since no piece posts once its night has started. */
   readonly deadline?: Date | null
 }
 
@@ -219,6 +219,27 @@ export type WeekPlan = {
 }
 
 /** Midnight on the zone's clock of the day a moment falls on: the first moment a story about that day may go. */
+/**
+ * A PIECE GOES BEFORE ITS NIGHT STARTS (the PM's 22:08 of 17 November 2026, class 2: "No piece posts in a slot after its
+ * night starts"). An approved piece's window: its deadline the START of its earliest night (it was the end of its soonest
+ * ending night, so a daily poster took 9:25 pm on its own night, after the night began), and a story no earlier than its
+ * first night's day. No night with a start, no window. Pure.
+ */
+export function scheduleWindowOf(
+  format: SocialFormat,
+  nights: readonly { readonly title: string; readonly start: number; readonly end: number }[],
+  zone: string = SOCIAL_ZONE,
+): { deadline: Date | null; notBefore: Date | null; first: { title: string; start: Date } | null } {
+  const dated = nights.filter((n) => Number.isFinite(n.start))
+  if (dated.length === 0) return { deadline: null, notBefore: null, first: null }
+  const first = dated.reduce((a, b) => (b.start < a.start ? b : a))
+  return {
+    deadline: new Date(first.start),
+    notBefore: format === 'story' ? dayStart(new Date(first.start), zone) : null,
+    first: { title: first.title, start: new Date(first.start) },
+  }
+}
+
 export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' }).formatToParts(at)
   const n = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)

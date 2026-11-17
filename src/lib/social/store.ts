@@ -7,7 +7,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { dayStart, learn, planMoments, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, planMoments, scheduleWindowOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
@@ -1656,20 +1656,14 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select('id, title, start_date, end_date').in('id', ids) : { data: [], error: null }
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)) }]))
-  const firstEnding = new Map<string, { title: string; end: Date }>()
+  // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
+  const firstStarting = new Map<string, { title: string; start: Date }>()
   const pieces: SchedulePiece[] = due.map((d) => {
-    const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined && Number.isFinite(n.end))
-    if (own.length === 0) return { id: d.id, format: d.format, approvedAt: d.approvedAt }
-    const soonest = own.reduce((a, b) => (b.end < a.end ? b : a))
-    firstEnding.set(d.id, { title: soonest.title, end: new Date(soonest.end) })
-    const firstStart = Math.min(...own.map((n) => n.start))
-    return {
-      id: d.id,
-      format: d.format,
-      approvedAt: d.approvedAt,
-      deadline: new Date(soonest.end),
-      notBefore: d.format === 'story' && Number.isFinite(firstStart) ? dayStart(new Date(firstStart)) : null,
-    }
+    const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined)
+    const window = scheduleWindowOf(d.format, own)
+    if (window.first === null) return { id: d.id, format: d.format, approvedAt: d.approvedAt }
+    firstStarting.set(d.id, window.first)
+    return { id: d.id, format: d.format, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore }
   })
 
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).
@@ -1698,8 +1692,8 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
       continue
     }
     if (late) {
-      const night = firstEnding.get(d.id)
-      const reason = `Not scheduled: its next free band, ${dayTime(goAt, now)}, is after ${night?.title ?? 'its first night'} ends (${dayTime(late.deadline.toISOString(), now)}), and a piece with a night that has ended is held whole. Regenerate it without that night and approve it again.`
+      const night = firstStarting.get(d.id)
+      const reason = `Not scheduled: its next free band, ${dayTime(goAt, now)}, is after ${night?.title ?? 'its first night'} starts (${dayTime(late.deadline.toISOString(), now)}), and a piece never posts once its night has started. Regenerate it without that night and approve it again.`
       await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
       held.push(`${d.id}: ${reason}`)
       continue
