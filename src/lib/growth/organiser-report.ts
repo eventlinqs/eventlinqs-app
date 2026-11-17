@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { pageViewKeyParts } from '@/lib/ledger/page-view-key'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { readWalkInNumbers } from '@/lib/walk-in/organiser-numbers'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
@@ -62,7 +63,9 @@ export async function readNightViewers(eventId: string, admin: Admin = createAdm
       : await readEveryRow<{ occurrence_key: string }>('the night page views', (f, t) =>
           admin.from('ledger_entries').select('occurrence_key').in('slot_id', slotIds).eq('kind', 'demand').eq('demand_action', 'page_view').order('id', { ascending: true }).range(f, t),
         )
-  return new Set(viewRows.map((r) => r.occurrence_key.split(':')[1]).filter((v) => v !== undefined && v !== '')).size
+  // The visitor read through the one key reader: the stored key is demand:page_view:<event>:<visitor>:<day>, and a
+  // split of its own here took part 1, the word page_view, so every night counted at most one viewer (17 November).
+  return new Set(viewRows.flatMap((r) => { const k = pageViewKeyParts(r.occurrence_key); return k ? [k.visitor] : [] })).size
 }
 
 /** Everything one night's report keeps: item 20's own figures as it reads them, then what this adds. */
