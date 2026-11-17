@@ -51,9 +51,41 @@ export async function draftSegmentALetter(
   if (!inBusinessHours(input.scheduledFor, 'Australia/Melbourne')) {
     return { state: 'not drafted', why: 'outside a Melbourne business hour: drafted in the hour it goes, so its numbers are that hour' }
   }
+  // A segment A letter already held for this contact and step is not drafted again each hour (it waits, with its
+  // reasons, where Lawal sees it); checked before anything is read.
+  const mine = await db.from('outreach_touches').select('id, contact_id, outreach_templates(key)').eq('contact_id', input.contactId).eq('step', input.step).eq('state', 'held')
+  if (mine.error) return { state: 'not drafted', why: `their held messages could not be read: ${mine.error.message}` }
+  const keyOf = (t: unknown) => ((t as { outreach_templates: { key: string } | null }).outreach_templates?.key ?? '')
+  if ((mine.data ?? []).some((t) => keyOf(t).startsWith('segment_a_'))) {
+    return { state: 'not drafted', why: 'a segment A letter for this step is already held for them, with its reasons' }
+  }
   const landsOn = melbourneDayOf(input.scheduledFor.toISOString())
   const read = await readSegmentAFacts(db, { contactId: input.contactId, landsOn, now: input.now, origin: input.origin })
   if (read.state === 'not read') return { state: 'not drafted', why: read.why }
+
+  // THE DRAFTS THIS LETTER SUPERSEDES (the communication standard of 17 November 2026: "It supersedes the 'could I ask
+  // your advice?' first letter"): a first message of the twenty still held on any of the organiser's contacts is voided
+  // with why, never deleted, as the twenty itself retires an older version; the database keeps one conversation per
+  // organiser. Only for the first letter: a follow up belongs to a letter already sent.
+  if (input.step === 1) {
+    const theirs = await db.from('organiser_contacts').select('id').eq('organiser_id', read.organiserId)
+    if (theirs.error) return { state: 'not drafted', why: `their contacts could not be read: ${theirs.error.message}` }
+    const held = await db
+      .from('outreach_touches')
+      .select('id, contact_id, outreach_templates(key)')
+      .in('contact_id', (theirs.data ?? []).map((c) => c.id as string))
+      .eq('state', 'held')
+      .eq('purpose', 'cadence')
+    if (held.error) return { state: 'not drafted', why: `their held drafts could not be read: ${held.error.message}` }
+    for (const t of held.data ?? []) {
+      if (keyOf(t).startsWith('segment_a_')) continue
+      await db
+        .from('outreach_touches')
+        .update({ state: 'void', void_reason: "Superseded by the segment A letter (the communication standard of 17 November 2026; the PM's 02:00 of 18 November 2026)." })
+        .eq('id', (t as { id: string }).id)
+        .eq('state', 'held')
+    }
+  }
 
   const thread = input.first ? (input.first.subject ?? '').replace(/^(re:\s*)+/i, '').trim() || null : null
   const drafted = await draftFromTemplate(db, {

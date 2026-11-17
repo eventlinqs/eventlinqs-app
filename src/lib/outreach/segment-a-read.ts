@@ -27,7 +27,7 @@ import type { VoiceConsent } from './voice-gate'
 type Admin = SupabaseClient<Database>
 
 export type SegmentARead =
-  | { readonly state: 'read'; readonly facts: SegmentAFacts; readonly consent: VoiceConsent; readonly eventDate: string; readonly eventId: string }
+  | { readonly state: 'read'; readonly facts: SegmentAFacts; readonly consent: VoiceConsent; readonly eventDate: string; readonly eventId: string; readonly organiserId: string }
   | { readonly state: 'not read'; readonly why: string }
 
 const chunks = <T,>(list: readonly T[], size = 200): T[][] => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size))
@@ -122,6 +122,7 @@ export async function readSegmentAFacts(db: Admin, input: { readonly contactId: 
   const token = contact.data.unsubscribe_token as string | null
   return {
     state: 'read',
+    organiserId: org.data.id as string,
     eventId: next.eventId,
     eventDate: melbourneDayOf(next.startDate, next.timezone),
     consent: {

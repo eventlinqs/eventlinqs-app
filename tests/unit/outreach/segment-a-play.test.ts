@@ -32,16 +32,19 @@ vi.mock('@/lib/outreach/drafts', () => ({ draftFromTemplate: vi.fn(async () => d
 
 const { draftSegmentALetter } = await import('@/lib/outreach/segment-a-play')
 
-function fakeDb(body: string, opts: { refuseQueue?: string } = {}) {
+type Held = { id: string; contact_id: string; outreach_templates: { key: string } | null }
+function fakeDb(body: string, opts: { refuseQueue?: string; held?: Held[] } = {}) {
   const updates: { payload: Record<string, unknown>; filters: [string, unknown][] }[] = []
   const rendered = renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB)
   const db = {
     from: (table: string) => ({
       select: () => {
         const b: Record<string, unknown> = {}
-        b.eq = () => b
+        for (const m of ['eq', 'in']) b[m] = () => b
         b.single = async () =>
           table === 'outreach_touches' ? { data: { subject: rendered.subject, body }, error: null } : { data: { address: 'hermaj@hermaj.com' }, error: null }
+        b.then = (resolve: (v: unknown) => unknown) =>
+          resolve(table === 'organiser_contacts' ? { data: [{ id: 'c1' }, { id: 'c2' }], error: null } : { data: opts.held ?? [], error: null })
         return b
       },
       update: (payload: Record<string, unknown>) => {
@@ -64,7 +67,7 @@ const input = (scheduledFor = THU_10) => ({ play: { id: 'p1', name: 'Segment A' 
 
 describe('a segment A letter is queued only when it passes whole', () => {
   beforeEach(() => {
-    read.answer = { state: 'read', facts: IAN, consent: CONSENT, eventDate: '2026-11-28', eventId: 'e1' }
+    read.answer = { state: 'read', facts: IAN, consent: CONSENT, eventDate: '2026-11-28', eventId: 'e1', organiserId: 'o1' }
     drafted.answer = { state: 'done', value: { id: 't1', state: 'held', heldBecause: [] } }
   })
 
@@ -114,5 +117,50 @@ describe('a segment A letter is queued only when it passes whole', () => {
   it('a move the database refuses leaves it held, in the database words', async () => {
     const r = await draftSegmentALetter(fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body, { refuseQueue: 'the play has sent its 20 for today.' }).db, input())
     expect(r).toEqual({ state: 'held', touchId: 't1', why: ['the play has sent its 20 for today.'] })
+  })
+})
+
+describe('the drafts the segment A letter supersedes, and the ones it already made', () => {
+  beforeEach(() => {
+    read.answer = { state: 'read', facts: IAN, consent: CONSENT, eventDate: '2026-11-28', eventId: 'e1', organiserId: 'o1' }
+    drafted.answer = { state: 'done', value: { id: 't1', state: 'held', heldBecause: [] } }
+  })
+
+  it("an organiser's held twenty draft (the superseded advice or offer letter) is voided with why, then the letter is drafted", async () => {
+    const { db, updates } = fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body, {
+      held: [
+        { id: 'old-advice', contact_id: 'c2', outreach_templates: { key: 'twenty_advice' } },
+        { id: 'old-offer', contact_id: 'c1', outreach_templates: { key: 'twenty_offer' } },
+      ],
+    })
+    const r = await draftSegmentALetter(db, input())
+    expect(r.state).toBe('queued')
+    const voids = updates.filter((u) => u.payload.state === 'void')
+    expect(voids.map((u) => u.filters.find(([c]) => c === 'id')?.[1])).toEqual(['old-advice', 'old-offer'])
+    expect(String(voids[0].payload.void_reason)).toMatch(/superseded by the segment A letter/i)
+    expect(voids[0].filters).toContainEqual(['state', 'held'])
+  })
+
+  it('a contact with a segment A letter already held for this step is not drafted again, and nothing is read for it', async () => {
+    const { db, updates } = fakeDb('', { held: [{ id: 'a-held', contact_id: 'c1', outreach_templates: { key: 'segment_a_first' } }] })
+    read.answer = { state: 'not read', why: 'must not be read' }
+    const r = await draftSegmentALetter(db, input())
+    expect(r.state).toBe('not drafted')
+    expect((r as { why: string }).why).toMatch(/already held/)
+    expect(updates).toHaveLength(0)
+  })
+})
+
+describe("the planner's 'written to' for a segment A play", () => {
+  it('only a message queued, sending or sent counts; a held or void draft does not', async () => {
+    const { writtenContacts } = await import('@/lib/outreach/planner')
+    const touches = [
+      { contact_id: 'a', state: 'held' },
+      { contact_id: 'b', state: 'void' },
+      { contact_id: 'c', state: 'sent' },
+      { contact_id: 'd', state: 'queued' },
+    ]
+    expect([...writtenContacts(touches, true)].sort()).toEqual(['c', 'd'])
+    expect([...writtenContacts(touches, false)].sort()).toEqual(['a', 'b', 'c', 'd'])
   })
 })

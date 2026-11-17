@@ -122,6 +122,16 @@ export async function planDms(db: Admin, deps: { now: Date; origin: string; acti
   return report
 }
 
+/**
+ * Who a play's first letter treats as already written to. For a segment A play (./segment-a-play.ts) only a real message
+ * counts, one queued, sending or sent: a held or void draft is not a letter (on 18 November 2026 every organiser of the
+ * first segment A cohort held a never sent draft of the superseded twenty, and the rule as it stood would have passed
+ * them all by). For every other play, as before, any message at all.
+ */
+export function writtenContacts(touches: readonly { contact_id: string; state: string }[], segmentA: boolean): Set<string> {
+  return new Set(touches.filter((t) => !segmentA || ['queued', 'sending', 'sent'].includes(t.state)).map((t) => t.contact_id))
+}
+
 export async function planPlays(db: Admin, deps: { now: Date; origin: string; actingUser: string }): Promise<PlayReport[]> {
   const plays = await db.from('outreach_plays').select('id, name, cohort_rule, step1_template_id, step2_template_id, step3_template_id, variant_template_id, test_per_half').eq('state', 'approved')
   if (plays.error) throw new Error(`outreach_plays: ${plays.error.message}`)
@@ -211,8 +221,8 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       const found = await db.from('organiser_contacts').select('id, organiser_id, address, person_name').eq('channel', 'email').neq('basis', 'none').order('created_at').limit(500)
       const candidates = { data: [...(found.data ?? [])].sort((a, b) => addressRank(a.address, a.person_name) - addressRank(b.address, b.person_name)) }
       const ids = candidates.data.map((c) => c.id)
-      const touched = ids.length ? await db.from('outreach_touches').select('contact_id').in('contact_id', ids) : { data: [] as { contact_id: string }[] }
-      const written = new Set((touched.data ?? []).map((t) => t.contact_id))
+      const touched = ids.length ? await db.from('outreach_touches').select('contact_id, state').in('contact_id', ids) : { data: [] as { contact_id: string; state: string }[] }
+      const written = writtenContacts((touched.data ?? []) as { contact_id: string; state: string }[], segmentA)
       let allowed: Set<string> | null = null
       if (rule.cities && rule.cities.length > 0) {
         const venues = await db.from('venues').select('id').in('city_slug', rule.cities).is('removed_at', null)
