@@ -1,6 +1,8 @@
 import { lineProblems } from '@/lib/events/eventlinqs-listing-words'
 import { localDate } from '@/lib/walk-in/dates'
 import { seriesProblem, weekdayOf, type SeriesRule } from './occurrences'
+import { classify, type GuideCategory } from '@/lib/categories/classify'
+import { nightKind } from '@/lib/social/campaign'
 
 /**
  * WHAT ONE ROW OF A CHECKED LISTINGS FILE MAY BECOME (WI2 Part 1,
@@ -110,6 +112,9 @@ const PRICE = /^\d{1,5}(\.\d{2})?$/
  * "Organiser not named (stall bookings via Issimo Markets)". The host's name
  * is the project manager's to set, never this module's to guess.
  */
+/** The categories a talk or a stage production is never filed under (the PM's 04:38 of 18 November 2026). */
+export const KIND_CANNOT_BE: readonly string[] = ['music', 'arts-community']
+
 const HOST_IS_A_NOTE = /\bnot named\b|^(unknown|tbc|tba|n\/a)$/i
 
 export type ListingRow = {
@@ -324,6 +329,19 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   }
   if (v('freshness') !== 'CURRENT') refused.push(`freshness "${v('freshness')}" is not CURRENT`)
 
+  // THE FILE'S CATEGORY IS A REVIEWER'S CHOICE, NEVER WRITTEN AS GIVEN (the PM's 04:38 of 18 November 2026, read on
+  // production at 06:18: Cosi by the Geelong Repertory Theatre Company was written as Arts, and An Evening with Alastair
+  // Campbell, a talk, as Music, each with no category rule). The classifier refines a broad category the title makes
+  // precise (rule 2 of src/lib/categories/classify.ts: arts to theatre), and a row the one kind reader the posts use calls
+  // a talk or a stage production is refused under Music or Arts, naming where it belongs, so the project manager files it.
+  const refinedSlug = ctx.categorySlugs.has(category) ? classify({ reviewerChoice: category as GuideCategory, title: name }).primary : null
+  const filed = refinedSlug && ctx.categorySlugs.has(refinedSlug) ? refinedSlug : category
+  if (KIND_CANNOT_BE.includes(filed)) {
+    const kind = nightKind({ title: name, sourceTitle: name, summary, venueName: v('host'), host: v('host'), categorySlug: filed })
+    if (kind === 'talk') refused.push(`category "${filed}" is wrong for a talk ("${name}" reads as one): file it as education`)
+    if (kind === 'theatre') refused.push(`category "${filed}" is wrong for a stage production ("${name}" reads as one): file it as theatre`)
+  }
+
   if (refused.length) return { verdict: 'refused', reasons: refused }
   return {
     verdict: 'import',
@@ -337,7 +355,7 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
       host: v('host'),
       address: v('address'),
       suburb: v('suburb'),
-      categorySlug: category,
+      categorySlug: filed,
       ageRestrictionMin: AGE[ageKey] ?? null,
       summary,
       websiteUrl: website || null,
