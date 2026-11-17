@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PIECE_RULES_SINCE, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
+import { languageFaults, PIECE_RULES_SINCE, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
 import type { Slide } from '@/lib/social/campaign'
 
 /*
@@ -74,5 +74,12 @@ describe('pieceQuality, the drills', () => {
   it('a piece the locked look refuses is refused (class 3)', () => {
     const cover = { t: 'cover', composition: 'contents_cover', chip: 'x', headline: 'x', line: 'x', contents: [] } as unknown as Slide
     expect(pieceQuality({ ...base, slides: [cover, ask], nights: nightsOf() }).join(' ')).toMatch(/\[look\]/)
+  })
+})
+
+describe("hashtags come from one list (the PM's 23:45, fix (e))", () => {
+  it("'#geelongevent' (the s missing) is refused; '#geelong #geelongevents' and '#thisweekend' pass", () => {
+    expect(languageFaults(['#geelong #geelongevent'])).toEqual(['[language] "#geelongevent" is not one of our hashtags; use the city\'s own two.'])
+    expect(languageFaults(['#geelong #geelongevents', '#melbourne #melbourneevents #thisweekend', '#victoriaevents'])).toEqual([])
   })
 })

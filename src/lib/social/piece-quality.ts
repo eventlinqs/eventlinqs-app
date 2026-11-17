@@ -1,5 +1,6 @@
 import { HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
 import { standInOf } from './stand-ins'
+import { getAllCities } from '@/lib/cities/data'
 
 /**
  * LAW 22, THE PUBLISH GATE: ONE CHECK OF A PIECE'S OWN CONTENT (the PM's 21:58 and 22:02 of 17 November 2026; Lawal's P0
@@ -56,6 +57,17 @@ const LANGUAGE: readonly { readonly test: (s: string) => string | null }[] = [
   { test: (s) => (/\b([A-Z][a-z]{2,})\b[^,.\n]{0,60}?, \1\b/.exec(s)?.[0] ?? null) },
 ]
 
+/**
+ * OUR HASHTAGS, ONE LIST (the PM's 23:45 of 17 November 2026, fix (e)): a city's own two, as campaign.ts tagsFor writes them
+ * ('#geelong', '#geelongevents'), for every city the platform carries (src/lib/cities/data.ts), and the extras the planner
+ * adds. A tag typed by hand that is not on it ('#geelongevent') is refused.
+ */
+const EXTRA_TAGS = ['#thisweekend', '#victoriaevents'] as const
+const OUR_TAGS: ReadonlySet<string> = new Set([
+  ...EXTRA_TAGS,
+  ...getAllCities().flatMap((c) => [`#${c.slug}`, `#${c.slug}events`]),
+])
+
 /** Every wrong or robotic line among the given words (class 4), each said once. Used by the gate and by draft save. */
 export function languageFaults(texts: readonly string[]): string[] {
   const out: string[] = []
@@ -63,6 +75,12 @@ export function languageFaults(texts: readonly string[]): string[] {
   for (const t of texts) {
     const line = t.trim()
     if (!line) continue
+    for (const tag of line.match(/#[A-Za-z0-9_]+/g) ?? []) {
+      if (!OUR_TAGS.has(tag.toLowerCase()) && !seen.has(tag)) {
+        seen.add(tag)
+        out.push(`[language] "${tag}" is not one of our hashtags; use the city's own two.`)
+      }
+    }
     if (HUNT_SUMMARY_LINE.test(line) && !seen.has(line)) {
       seen.add(line)
       out.push(`[language] robotic line: "${line}"; say why to go, or nothing.`)
