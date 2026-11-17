@@ -33,9 +33,6 @@ cjs._resolveFilename = (request: string, ...rest: unknown[]) => (request === 'se
 const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
 const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody, COLLECT_AHEAD_DAYS } = pick((await import('@/lib/listings/collect')) as typeof import('@/lib/listings/collect'))
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof import('@/lib/listings/page-rules'))
-const { fold } = pick((await import('@/lib/listings/headline-hunt')) as typeof import('@/lib/listings/headline-hunt'))
-const { statedInWords, statedWeekly, statedSeasonal, statedByGates, statedInDatedList, statedEveryWeekday, statedDailyInRange, statedUnderName } = pick((await import('@/lib/listings/stated-words')) as typeof import('@/lib/listings/stated-words'))
-const { titleShare, SAME_TITLE_SHARE } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
 type Found = import('@/lib/listings/collect').FoundEvent
 const { judgeNight, sameMinute, sameTitle, timed, clock } = pick((await import('@/lib/listings/night-judge')) as typeof import('@/lib/listings/night-judge'))
 
