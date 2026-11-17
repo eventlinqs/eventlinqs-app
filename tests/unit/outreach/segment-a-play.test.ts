@@ -59,6 +59,7 @@ function fakeDb(body: string, opts: { refuseQueue?: string } = {}) {
   return { db: db as unknown as SupabaseClient<Database>, updates, rendered }
 }
 
+const heldWhy = (r: Awaited<ReturnType<typeof draftSegmentALetter>>): string[] => (r.state === 'held' ? [...r.why] : [])
 const input = (scheduledFor = THU_10) => ({ play: { id: 'p1', name: 'Segment A' }, contactId: 'c1', step: 1 as const, templateId: 'tpl1', scheduledFor, now: scheduledFor, origin: 'https://www.eventlinqs.com.au', actingUser: 'u1' })
 
 describe('a segment A letter is queued only when it passes whole', () => {
@@ -99,15 +100,15 @@ describe('a segment A letter is queued only when it passes whole', () => {
     const { db, updates } = fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body)
     const r = await draftSegmentALetter(db, input())
     expect(r.state).toBe('held')
-    expect((r as { why: string[] }).why.some((w) => w.startsWith('timing'))).toBe(true)
-    expect(updates.map((u) => u.payload)).toEqual([{ held_because: (r as { why: string[] }).why }])
+    expect(heldWhy(r).some((w) => w.startsWith('timing'))).toBe(true)
+    expect(updates.map((u) => u.payload)).toEqual([{ held_because: heldWhy(r) }])
   })
 
   it('a consent basis whose no refusal statement is not checked keeps it held', async () => {
     read.answer = { state: 'read', facts: IAN, consent: { ...CONSENT, noMarketingStatementChecked: false }, eventDate: '2026-11-28', eventId: 'e1' }
     const r = await draftSegmentALetter(fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body).db, input())
     expect(r.state).toBe('held')
-    expect((r as { why: string[] }).why.some((w) => w.includes('consent'))).toBe(true)
+    expect(heldWhy(r).some((w) => w.includes('consent'))).toBe(true)
   })
 
   it('a move the database refuses leaves it held, in the database words', async () => {
