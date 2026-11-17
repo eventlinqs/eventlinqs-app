@@ -70,7 +70,7 @@ export default async function AdminUnfulfilledOrdersPage() {
           processor can tell them apart.
         </p>
         <p className="mt-4">
-          <Link href="/admin/orders" className="text-sm text-[var(--brand-accent)] hover:underline">
+          <Link prefetch={false} href="/admin/orders" className="text-sm text-[var(--brand-accent)] hover:underline">
             Back to all orders
           </Link>
         </p>
@@ -130,7 +130,7 @@ export default async function AdminUnfulfilledOrdersPage() {
                     return (
                       <tr key={r.orderId} className={`${ADMIN_ROW} align-top`}>
                         <td className={ADMIN_CELL_NAME}>
-                          <Link
+                          <Link prefetch={false}
                             href={`/admin/orders/${r.orderId}`}
                             className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
                           >
@@ -148,7 +148,7 @@ export default async function AdminUnfulfilledOrdersPage() {
                         <td className={`${ADMIN_CELL} text-white/70`}>
                           <span className={ADMIN_CELL_LABEL}>Event</span>
                           {r.eventId && r.eventTitle ? (
-                            <Link href={`/admin/events/${r.eventId}`} className={`${ADMIN_ROW_CONTROL} hover:underline`}>
+                            <Link prefetch={false} href={`/admin/events/${r.eventId}`} className={`${ADMIN_ROW_CONTROL} hover:underline`}>
                               {r.eventTitle}
                             </Link>
                           ) : (

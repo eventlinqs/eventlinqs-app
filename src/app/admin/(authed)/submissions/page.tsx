@@ -62,7 +62,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
         eyebrow="Events"
         title="Submitted events"
         description="Events organisers sent from List your event, each with their permission and any photo they say they own. Most go live by themselves; these wait for you. Publish now puts one live at once with its photo, and its organiser is told."
-        action={<Link href="/submit-event" className={SECONDARY}>Open the form organisers use</Link>}
+        action={<Link prefetch={false} href="/submit-event" className={SECONDARY}>Open the form organisers use</Link>}
       />
 
       {notice && (

@@ -123,7 +123,7 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
                     {p.status === 'live' ? (
                       <>
                         {', '}
-                        <Link href={`/partners/${p.slug}`} className="underline underline-offset-2">
+                        <Link prefetch={false} href={`/partners/${p.slug}`} className="underline underline-offset-2">
                           its page
                         </Link>
                       </>

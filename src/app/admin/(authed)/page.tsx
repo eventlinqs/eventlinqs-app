@@ -132,7 +132,7 @@ async function RefundsTile() {
     return <AdminStatTile label="Pending refunds" value="-" hint="refunds table query failed" status="warn" />
   }
   return (
-    <Link
+    <Link prefetch={false}
       href="/admin/refunds"
       className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
     >
@@ -152,7 +152,7 @@ async function DisputesTile() {
     return <AdminStatTile label="Active disputes" value="-" hint="Stripe disputes unreachable" status="warn" />
   }
   return (
-    <Link
+    <Link prefetch={false}
       href="/admin/disputes"
       className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
     >
@@ -234,7 +234,7 @@ async function BookedproofReadsTile({ label, sinceMsAgo, when }: { label: string
   if (!totals) return <AdminStatTile label={label} value="-" hint="the audit log could not be read" status="warn" />
   const rows = totals.organisations + totals.events + totals.buyers + totals.ledger
   return (
-    <Link
+    <Link prefetch={false}
       href={`/admin/audit?action=${PLATFORM_READ_ACTION}`}
       className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
     >

@@ -155,7 +155,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
                   {fmtDate(s.lastLoginAt)}
                 </td>
                 <td className={ADMIN_CELL_ACTIONS}>
-                  <Link
+                  <Link prefetch={false}
                     href={`/admin/staff/${s.id}`}
                     className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white`}
                   >

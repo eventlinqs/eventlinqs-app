@@ -118,7 +118,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
           >
             Apply
           </button>
-          <Link
+          <Link prefetch={false}
             href="/admin/users"
             className="rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
           >
@@ -162,7 +162,7 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
   return (
     <tr className={`${ADMIN_ROW} align-middle`}>
       <td className={ADMIN_CELL_NAME}>
-        <Link
+        <Link prefetch={false}
           href={`/admin/users/${row.id}`}
           className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
         >
@@ -252,12 +252,12 @@ function Pager({
       <span className="text-xs uppercase tracking-[0.18em] text-white/40">Page {page}</span>
       <div className="flex gap-2">
         {prev ? (
-          <Link href={prev} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link prefetch={false} href={prev} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
             Newer
           </Link>
         ) : null}
         {next ? (
-          <Link href={next} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link prefetch={false} href={next} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
             Older
           </Link>
         ) : null}

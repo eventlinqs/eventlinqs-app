@@ -44,7 +44,7 @@ export default async function AdminVenuesPage() {
           untouched. Venue records themselves are unaffected and continue to
           power seating charts and event locations.
         </p>
-        <Link
+        <Link prefetch={false}
           href="/admin"
           className="mt-5 inline-flex rounded-md bg-white/90 px-4 py-2 text-sm font-semibold text-[#0A0F1A] hover:bg-white"
         >

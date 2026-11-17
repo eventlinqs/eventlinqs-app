@@ -135,7 +135,7 @@ export default async function AdminDisputesPage() {
                           )}
                         </td>
                         <td className={ADMIN_CELL_ACTIONS}>
-                          <Link
+                          <Link prefetch={false}
                             href={`/admin/disputes/${d.id}`}
                             className={`${ADMIN_ROW_CONTROL} text-[var(--brand-accent)] hover:underline`}
                           >

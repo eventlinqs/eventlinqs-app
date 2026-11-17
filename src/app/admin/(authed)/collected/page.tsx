@@ -251,7 +251,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                         {(c.kind === 'adds_links' || c.kind === 'changes_facts') && event ? (
                           <>
                             {c.kind === 'adds_links' ? 'Adds links to' : c.change === 'venue_changed' ? 'Venue changed on' : 'Time changed on'}{' '}
-                            <Link href={`/events/${event.slug}`} className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-white`}>
+                            <Link prefetch={false} href={`/events/${event.slug}`} className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-white`}>
                               {event.title}
                             </Link>
                           </>

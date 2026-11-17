@@ -70,7 +70,7 @@ export default async function AdminOpportunityPage() {
               {scored.map((r) => (
                 <tr key={r.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link href={`/events/${r.slug}`} className={`${ADMIN_ROW_CONTROL} text-white underline-offset-2 hover:underline`}>
+                    <Link prefetch={false} href={`/events/${r.slug}`} className={`${ADMIN_ROW_CONTROL} text-white underline-offset-2 hover:underline`}>
                       {r.title}
                     </Link>
                   </td>

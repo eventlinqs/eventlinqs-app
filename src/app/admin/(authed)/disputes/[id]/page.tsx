@@ -74,7 +74,7 @@ export default async function AdminDisputeDetailPage({
         <header className="mb-8">
           <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Disputes</p>
           <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Dispute</h1>
-          <Link href="/admin/disputes" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+          <Link prefetch={false} href="/admin/disputes" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
             Back to disputes
           </Link>
         </header>
@@ -107,7 +107,7 @@ export default async function AdminDisputeDetailPage({
         <p className="mt-2 text-sm text-white/60">
           {dispute.reason.replace(/_/g, ' ')} | raised {formatDate(dispute.createdAt)}
         </p>
-        <Link href="/admin/disputes" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+        <Link prefetch={false} href="/admin/disputes" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
           Back to disputes
         </Link>
       </header>
@@ -186,7 +186,7 @@ export default async function AdminDisputeDetailPage({
             </DetailRow>
             <DetailRow label="Related order">
               {dispute.relatedOrder ? (
-                <Link
+                <Link prefetch={false}
                   href={`/admin/orders/${dispute.relatedOrder.id}`}
                   className="text-[var(--brand-accent)] hover:underline"
                 >

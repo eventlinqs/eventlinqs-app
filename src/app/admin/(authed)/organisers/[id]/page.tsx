@@ -71,7 +71,7 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
           </span>
         </div>
         <p className="mt-2 text-sm text-white/60">{org.email ?? 'No contact email'} | joined {date(org.createdAt)}</p>
-        <Link href="/admin/organisers" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to organisers</Link>
+        <Link prefetch={false} href="/admin/organisers" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to organisers</Link>
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

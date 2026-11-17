@@ -85,7 +85,7 @@ export function AdminMobileNav({ items, groups }: { items: AdminNavLink[]; group
               <ul className="flex flex-col gap-1">
                 {items.map(i => (
                   <li key={i.href}>
-                    <Link
+                    <Link prefetch={false}
                       href={i.href}
                       onClick={() => setOpen(false)}
                       className="flex min-h-[44px] items-center rounded-md px-3 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"

@@ -200,7 +200,7 @@ export default async function AdminCampaignsPage({ searchParams }: Props) {
               What this campaign produced and the fee against it, every figure read from the order
               ledger and the attribution records rather than assembled by hand.
             </p>
-            <Link
+            <Link prefetch={false}
               href={`/admin/campaigns/${view.id}/proof`}
               className="mt-4 inline-flex min-h-[44px] items-center rounded-lg border border-white/20 px-5 text-sm font-semibold text-white transition hover:border-[var(--brand-accent)]"
             >

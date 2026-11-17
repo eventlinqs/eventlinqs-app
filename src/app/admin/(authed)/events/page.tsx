@@ -129,7 +129,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
           <button type="submit" className={PRIMARY}>
             Apply
           </button>
-          <Link href="/admin/events" className={SECONDARY}>
+          <Link prefetch={false} href="/admin/events" className={SECONDARY}>
             Reset
           </Link>
         </div>
@@ -171,7 +171,7 @@ function EventRow({ row }: { row: AdminEventRow }) {
       <td className={ADMIN_CELL_NAME}>
         {/* The name's line sits at the row's top with its organiser, status and date (the PM's 05:37 fix 3): the link keeps
             its 44 px target, its words at the top of it. */}
-        <Link href={`/admin/events/${row.id}`} className="inline-flex min-h-11 items-start font-medium text-white hover:underline">{row.title}</Link>
+        <Link prefetch={false} href={`/admin/events/${row.id}`} className="inline-flex min-h-11 items-start font-medium text-white hover:underline">{row.title}</Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
       </td>
       <td className={`${ADMIN_CELL} text-white/70`}>
@@ -190,7 +190,7 @@ function EventRow({ row }: { row: AdminEventRow }) {
           led with three reason boxes and a red Cancel each): every action lives on the event's own page, with its reason
           and its confirmation. */}
       <td className={ADMIN_CELL_ACTIONS}>
-        <Link href={`/admin/events/${row.id}`} className={QUIET} aria-label={`Manage ${row.title}`}>Manage</Link>
+        <Link prefetch={false} href={`/admin/events/${row.id}`} className={QUIET} aria-label={`Manage ${row.title}`}>Manage</Link>
       </td>
     </tr>
   )
@@ -245,12 +245,12 @@ function Pager({
       <span className="text-xs text-white/50">Page {page}</span>
       <div className="flex gap-2">
         {prev ? (
-          <Link href={prev} className={QUIET}>
+          <Link prefetch={false} href={prev} className={QUIET}>
             Newer
           </Link>
         ) : null}
         {next ? (
-          <Link href={next} className={QUIET}>
+          <Link prefetch={false} href={next} className={QUIET}>
             Older
           </Link>
         ) : null}

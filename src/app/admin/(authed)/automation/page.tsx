@@ -124,7 +124,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
           line.total > 0 || unread.length > 0 ? (
             <a href="#needs-you" className={PRIMARY}>Review what needs you ({line.total})</a>
           ) : (
-            <Link href="/admin/today" className={PRIMARY}>Open today</Link>
+            <Link prefetch={false} href="/admin/today" className={PRIMARY}>Open today</Link>
           )
         }
       />
@@ -156,7 +156,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
                     </div>
                     <p className="mt-1 text-sm text-white/70">{countOf(s.items.length, 'thing')}, the oldest first on Today</p>
                   </div>
-                  <Link href="/admin/today" className={SECONDARY}>Open today</Link>
+                  <Link prefetch={false} href="/admin/today" className={SECONDARY}>Open today</Link>
                 </li>
               ))}
               {unread.map((c) => (
@@ -168,7 +168,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
                     </div>
                     <p className="mt-1 text-sm text-white/70">{`Its figures could not be read: ${c.readFailed}`}</p>
                   </div>
-                  {c.link ? <Link href={c.link.href} className={SECONDARY}>{c.link.label}</Link> : null}
+                  {c.link ? <Link prefetch={false} href={c.link.href} className={SECONDARY}>{c.link.label}</Link> : null}
                 </li>
               ))}
             </ul>
@@ -211,7 +211,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
             <div className="mt-auto">
               <SwitchControl card={c} audit={audit} />
               {c.link ? (
-                <Link href={c.link.href} className="mt-3 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-2 hover:underline">{c.link.label}</Link>
+                <Link prefetch={false} href={c.link.href} className="mt-3 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-2 hover:underline">{c.link.label}</Link>
               ) : null}
             </div>
           </article>

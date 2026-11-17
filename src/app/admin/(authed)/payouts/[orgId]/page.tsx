@@ -70,7 +70,7 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
         <p className="mt-2 text-sm text-white/60">
           Payout status: {detail.payoutStatus} | Connected account: {detail.stripeAccountConnected ? 'yes' : 'no'}
         </p>
-        <Link href="/admin/payouts" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+        <Link prefetch={false} href="/admin/payouts" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
           Back to payouts
         </Link>
       </header>

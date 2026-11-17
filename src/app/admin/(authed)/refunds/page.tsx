@@ -94,7 +94,7 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
         {REFUND_STATUS_FILTERS.map(f => {
           const active = f === statusFilter
           return (
-            <Link
+            <Link prefetch={false}
               key={f}
               href={`/admin/refunds?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(f !== 'open' ? { status: f } : {}) }).toString()}`}
               className={`min-h-[44px] rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${
@@ -127,7 +127,7 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
         >
           Search
         </button>
-        <Link
+        <Link prefetch={false}
           href="/admin/refunds"
           className="min-h-[44px] rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
         >
@@ -161,7 +161,7 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
               rows.map(r => (
                 <tr key={r.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/orders/${r.orderId}`}
                       className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
                     >
@@ -208,12 +208,12 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
         <span>Page {page}</span>
         <div className="flex gap-2">
           {page > 1 ? (
-            <Link href={pageHref(page - 1)} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">
+            <Link prefetch={false} href={pageHref(page - 1)} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">
               Previous
             </Link>
           ) : null}
           {hasMore ? (
-            <Link href={pageHref(page + 1)} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">
+            <Link prefetch={false} href={pageHref(page + 1)} className="rounded-md border border-white/10 px-3 py-2 hover:bg-white/[0.06] hover:text-white">
               Next
             </Link>
           ) : null}

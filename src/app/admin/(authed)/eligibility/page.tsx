@@ -27,7 +27,7 @@ function Night({ e }: { e: JudgedEvent }) {
   const held = e.checks.filter((c) => !c.ok)
   return (
     <li className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <Link href={`/events/${e.slug}`} className="inline-flex min-h-[44px] items-center font-medium text-white underline underline-offset-2">
+      <Link prefetch={false} href={`/events/${e.slug}`} className="inline-flex min-h-[44px] items-center font-medium text-white underline underline-offset-2">
         {e.title}
       </Link>
       <p className="text-xs text-white/60">{e.level ?? 'No level'}</p>

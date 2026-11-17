@@ -38,7 +38,7 @@ export function AdminNavGroups({ groups, onFollow }: { groups: AdminNavGroupLink
                 const on = i.href === active
                 return (
                   <li key={i.href}>
-                    <Link
+                    <Link prefetch={false}
                       href={i.href}
                       onClick={onFollow}
                       aria-current={on ? 'page' : undefined}

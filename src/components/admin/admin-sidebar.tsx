@@ -14,7 +14,7 @@ export function AdminSidebar({ capabilities }: { capabilities: readonly string[]
   return (
     <aside className="hidden w-64 shrink-0 border-r border-white/[0.08] bg-[#0A0F1A] lg:block">
       <div className="px-6 py-7">
-        <Link href="/admin/today" className="block">
+        <Link prefetch={false} href="/admin/today" className="block">
           <span className="block font-display text-lg font-extrabold tracking-tight">
             EVENTLINQS<span className="text-[var(--brand-accent)]">.</span>
           </span>
