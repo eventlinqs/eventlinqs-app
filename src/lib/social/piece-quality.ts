@@ -1,4 +1,4 @@
-import { clockOf, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
+import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
 import { standInOf } from './stand-ins'
 import { getAllCities } from '@/lib/cities/data'
 
@@ -69,7 +69,7 @@ const LANGUAGE: readonly { readonly test: (s: string) => string | null }[] = [
  * ('#geelong', '#geelongevents'), for every city the platform carries (src/lib/cities/data.ts), and the extras the planner
  * adds. A tag typed by hand that is not on it ('#geelongevent') is refused.
  */
-const EXTRA_TAGS = ['#thisweekend', '#victoriaevents'] as const
+// The planner's own extra tags, from the one place it writes them (campaign.ts EXTRA_TAGS).
 const OUR_TAGS: ReadonlySet<string> = new Set([
   ...EXTRA_TAGS,
   ...getAllCities().flatMap((c) => [`#${c.slug}`, `#${c.slug}events`]),

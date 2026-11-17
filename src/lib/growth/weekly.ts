@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
-import { pageViewKeyParts } from '@/lib/ledger/page-view-key'
+import { pageViewKeyParts } from '@/lib/growth/page-view-key'
 import { channelForVisit } from './traffic-channel'
 import { getAllCities } from '@/lib/cities/data'
 import { bestOfWeek, figuresFor, lastWeeks, refundedOf, stateScorecard, type DemandRow, type Rows, type Week, type WeekFigures, type Best, type StateScorecard } from './weekly-math'
@@ -36,7 +36,7 @@ const iso = (at: string): string => new Date(at).toISOString()
 const isoOrNull = (at: string | null): string | null => (at === null ? null : iso(at))
 
 /**
- * A page view's event and visitor, through the one key reader (src/lib/ledger/page-view-key.ts): the ledger stores the
+ * A page view's event and visitor, through the one key reader (src/lib/growth/page-view-key.ts): the ledger stores the
  * key as demand:page_view:<event>:<visitor>:<day>, and the split this replaced read 'demand' as the event and
  * 'page_view' as the visitor (17 November 2026).
  */

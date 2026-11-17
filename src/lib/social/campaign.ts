@@ -1238,6 +1238,9 @@ export function pickLine(n: CampaignNight): string {
   return `${mark} ${whenOf(n)}, ${n.title}, ${metaOf(n)}.${price}`
 }
 
+/** The extra hashtags the planner adds beside a city's own two; the publish gate's one list reads them from here. */
+export const EXTRA_TAGS = ['#thisweekend', '#victoriaevents'] as const
+
 export function tagsFor(city: CampaignCity, extra: string | null): string {
   return [`#${city.slug}`, `#${city.slug}events`, extra].filter(Boolean).slice(0, 3).join(' ')
 }

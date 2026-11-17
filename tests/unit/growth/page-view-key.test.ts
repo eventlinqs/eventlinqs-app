@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { pageViewKeyParts } from '@/lib/ledger/page-view-key'
+import { pageViewKeyParts } from '@/lib/growth/page-view-key'
 
 /*
  * A PAGE VIEW'S KEY IS READ ONE WAY (WINDOW 5A, 17 November 2026, found reading the proof counts for the PM's 21:45).
@@ -41,7 +41,7 @@ describe('no reader splits a ledger occurrence key by hand', () => {
 
   it('every page view key is read through pageViewKeyParts', () => {
     const faults = files(join(process.cwd(), 'src'))
-      .filter((f) => !f.replace(/\\/g, '/').endsWith('src/lib/ledger/page-view-key.ts'))
+      .filter((f) => !f.replace(/\\/g, '/').endsWith('src/lib/growth/page-view-key.ts'))
       .filter((f) => /(occurrence_key|occurrenceKey)\s*\.split\(/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(process.cwd(), f).replace(/\\/g, '/'))
     expect(faults).toEqual([])
