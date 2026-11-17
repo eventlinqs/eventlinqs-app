@@ -143,9 +143,9 @@ describe('(6) a weekend line goes on a Thursday or a Friday only', () => {
     expect(weekendDaysOf('Say yes to this weekend.', 0)).toEqual([4, 5])
     expect(weekendDaysOf('Say yes to this weekend.', 2)).toBeNull()
     expect(weekendDaysOf('Run regular nights in Victoria?', 0)).toBeNull()
-    const daily = (h: number[]) => Array.from({ length: 7 }, (_, d) => h.map((x) => d * 24 + x)).flat()
-    const rules: Record<'feed' | 'story', CadenceRule> = { feed: { version: 1, gapHours: 12, slots: daily([9, 21]), basis: 'starting', learnedFrom: 0 }, story: { version: 1, gapHours: 4, slots: daily([18]), basis: 'starting', learnedFrom: 0 } }
     const monday = new Date('2026-11-23T10:00:00Z') // Monday 23 November, 9 pm in Melbourne
+    const daily = (h: number[]) => Array.from({ length: 7 }, (_, d) => h.map((x) => d * 24 + x)).flat()
+    const rules: Record<'feed' | 'story', CadenceRule> = { feed: { version: 1, gapHours: 12, slots: daily([9, 21]), basis: 'starting', learnedFrom: 0, floorPosts: 12, settleHours: 48, setAt: monday }, story: { version: 1, gapHours: 4, slots: daily([18]), basis: 'starting', learnedFrom: 0, floorPosts: 12, settleHours: 48, setAt: monday } }
     const plan = planMoments([{ id: 'brand', format: 'feed', approvedAt: monday, days: [4, 5] }], rules, { feed: [], story: [] }, monday)
     const at = plan.moments.get('brand')!
     const day = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long' }).format(at)
