@@ -181,6 +181,22 @@ export async function runOutreachSender(
       report.outsideHours++
       continue
     }
+    // ONE SEND PATH, NO DOUBLES (the PM's 09:15 of 18 November 2026, item 2): a first letter to a contact who already has a
+    // sent message (Lawal's own, recorded from hello@'s Sent Items by ./sent-sync.ts, or an earlier send) is never sent.
+    if (t.outreach_templates?.key === 'segment_a_first') {
+      const already = await db.from('outreach_touches').select('id, sent_at').eq('contact_id', t.contact_id).eq('state', 'sent').neq('id', t.id).limit(1)
+      if (already.error) {
+        report.refused.push({ id: t.id, reason: `whether they were already written could not be read: ${already.error.message}` })
+        continue
+      }
+      const prior = (already.data ?? [])[0] as { id: string; sent_at: string | null } | undefined
+      if (prior) {
+        const why = `already written: a message to this contact went ${prior.sent_at ?? 'earlier'}, so no first letter goes again`
+        await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')
+        report.refused.push({ id: t.id, reason: why })
+        continue
+      }
+    }
     const tooClose = await segmentATooClose(db, t, deps.now)
     if (tooClose) {
       await db.from('outreach_touches').update({ state: 'void', void_reason: tooClose }).eq('id', t.id).eq('state', 'queued')

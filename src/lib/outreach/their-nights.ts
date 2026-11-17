@@ -102,6 +102,38 @@ export async function readTheirNights(
     for (let i = 0; i < list.length; i += 200) await take('id', list.slice(i, i + 200))
   }
 
+  // 5. A night they publish on their own page (organiser_page_events: read on their own page, recorded with the day it was
+  //    read), matched to a public listing by its title, its local day and its place: how a presenter's nights at a shared
+  //    venue (an arts centre, a theatre) are theirs without a venue link, which would claim every other presenter's
+  //    nights there (the PM's 09:15 of 18 November 2026: tomorrow's 20 from the listed events' organisers).
+  const pages = await db.from('organiser_page_events').select('title, starts_on, ends_on, place').eq('organiser_id', organiser.id).limit(200)
+  if (pages.error) throw new Error(`the nights on their own page could not be read: ${pages.error.message}`)
+  const fold = (s: unknown) => String(s ?? '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim()
+  const within = (a: string, b: string) => a !== '' && b !== '' && (a.includes(b) || b.includes(a))
+  const localDay = (iso: string, tz: string | null) => new Intl.DateTimeFormat('en-CA', { timeZone: tz ?? 'Australia/Melbourne' }).format(new Date(iso))
+  const shift = (day: string, by: number) => new Date(Date.parse(`${day}T00:00:00Z`) + by * 86_400_000).toISOString().slice(0, 10)
+  const onTheirPage = new Set<string>()
+  for (const p of pages.data ?? []) {
+    const first = String(p.starts_on)
+    const last = String(p.ends_on ?? p.starts_on)
+    const near = await plain
+      .from('events')
+      .select('id, title, venue_name, start_date, timezone')
+      .gte('start_date', `${shift(first, -1)}T00:00:00Z`)
+      .lte('start_date', `${shift(last, 1)}T23:59:59Z`)
+      .limit(500)
+    if (near.error) throw new Error(`the listings near a night on their own page could not be read: ${near.error.message}`)
+    for (const e of (near.data ?? []) as { id: string; title: string; venue_name: string | null; start_date: string; timezone: string | null }[]) {
+      const day = localDay(e.start_date, e.timezone)
+      if (day < first || day > last) continue
+      if (!within(fold(e.title), fold(p.title))) continue
+      if (p.place && !within(fold(e.venue_name), fold(p.place))) continue
+      onTheirPage.add(e.id)
+    }
+  }
+  const pageIds = [...onTheirPage]
+  for (let i = 0; i < pageIds.length; i += 200) await take('id', pageIds.slice(i, i + 200))
+
   const seen = new Set<string>()
   return rows
     .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))

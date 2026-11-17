@@ -77,8 +77,12 @@ const dayKey = (iso: string, tz: string | null) => parts(iso, tz, { year: 'numer
  * repeats the venue's name or is the town, state and postcode the line already ends with.
  */
 export function streetOf(address: string | null, venueName: string | null = null, city: string | null = null): string | null {
-  const first = (address ?? '').split(',')[0]?.trim() ?? ''
-  if (!first) return null
+  const whole = (address ?? '').split(',')[0]?.trim() ?? ''
+  if (!whole) return null
+  // A postcode never prints in the street (the pack of 18 November 2026: '31 Sturt St Southbank 3006'): a trailing code,
+  // with or without its state, is dropped from a first part that has a street number; one with none prints nothing below.
+  const trimmed = whole.replace(/\s+(?:(?:VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\s+)?\d{4}$/i, '').trim()
+  const first = /\d/.test(trimmed) ? trimmed : whole
   const same = (a: string | null) => Boolean(a) && first.toLowerCase() === (a as string).trim().toLowerCase()
   if (same(venueName) || same(city)) return null
   if (/\b(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\b\s*\d{4}$/i.test(first) || (city && first.toLowerCase().startsWith(city.toLowerCase()))) return null

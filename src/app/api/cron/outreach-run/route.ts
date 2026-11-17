@@ -80,6 +80,23 @@ export async function GET(request: NextRequest) {
       partners = 'not drafted: the sender is on hold'
     }
 
+    // LAWAL'S SENT ITEMS (Release 2, item 5): what he sent from the outreach mailbox, recorded on each organiser's
+    // timeline (src/lib/outreach/sent-sync.ts). Reading only, so it runs while the sender is on hold too, once Graph can
+    // read the mailbox; nothing sends. Read BEFORE the sender (the PM's 09:15 of 18 November 2026, item 2: one send path,
+    // no doubles), so a draft he sent himself is recorded before the sender asks whether that contact was written. A
+    // failure is reported and logged and never stops the run.
+    let sentItems: unknown = 'not synced: no Graph credentials'
+    if (graph) {
+      try {
+        sentItems = await syncSentItems(db, graph, { sinceIso: new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString() })
+        console.log(`[cron/outreach-run] sent items: ${JSON.stringify(sentItems)}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[cron/outreach-run] sent items not synced:', message)
+        sentItems = { error: message }
+      }
+    }
+
     const sent = await runOutreachSender(db, { now, origin, graph })
     console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
 
@@ -136,20 +153,6 @@ export async function GET(request: NextRequest) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[cron/outreach-run] the follow ups not drafted:', message)
         followUps = { error: message }
-      }
-    }
-    // LAWAL'S SENT ITEMS (Release 2, item 5): what he sent from the outreach mailbox, recorded on each organiser's
-    // timeline (src/lib/outreach/sent-sync.ts). Reading only, so it runs while the sender is on hold too, once Graph can
-    // read the mailbox; nothing sends. A failure is reported and logged and never stops the run above.
-    let sentItems: unknown = 'not synced: no Graph credentials'
-    if (graph) {
-      try {
-        sentItems = await syncSentItems(db, graph, { sinceIso: new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString() })
-        console.log(`[cron/outreach-run] sent items: ${JSON.stringify(sentItems)}`)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        console.error('[cron/outreach-run] sent items not synced:', message)
-        sentItems = { error: message }
       }
     }
     // THE TWENTY'S POOL GROWS BY ITSELF (src/lib/outreach/basis-pool.ts; Lawal's 10:42 of 13 November 2026): once a night,
