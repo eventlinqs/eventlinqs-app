@@ -729,8 +729,14 @@ export function postTitle(title: string, venue: string | null): string {
   if (parts.length >= 2) t = `${parts[0].trim()}: ${parts[1].trim()}`
   // A plural's possessive takes its apostrophe on every surface ('Mens T20I' reads "Men's T20I"), as cardTitle writes a row.
   t = t.replace(/\b(Men|Women|Children)s\b/g, (_m: string, who: string) => `${who}'s`)
+  // Capitals take title case (the PM's 03:10 of 18 November 2026, class 3): a word of six or more capitals is a word set in
+  // capitals ('PROFESSIONAL COMEDIANS', 'SHOWTIME'); a shorter one is a name ('LANY', 'MESS'), and a few acronyms stay.
+  t = t.replace(/\b[A-Z]{6,}\b/g, (w: string) => (KEEP_CAPITALS.has(w) ? w : `${w.charAt(0)}${w.slice(1).toLowerCase()}`))
   return cleanTitle(t)
 }
+
+/** Acronyms of six or more capitals that are names, never words set in capitals. */
+const KEEP_CAPITALS: ReadonlySet<string> = new Set(['NAIDOC', 'UNESCO', 'NASDAQ'])
 
 /**
  * A TITLE SHORTENED BY RULE (the PM's 17:10 of 15 November 2026: "titles shortened by rule from the event's own words,
@@ -1239,6 +1245,20 @@ export function spotlightLines(name: string, nights: readonly CampaignNight[], c
     : [`${nights.length} ${name.toLowerCase()}`, `${nights.length === 1 ? 'event' : 'events'} in ${cityName}`, 'this week']
 }
 
+/**
+ * A VENUE'S NIGHTS, THE VENUE NAMED ONCE (the PM's 03:10 of 18 November 2026, class 9: 'Melbourne Recital Centre' five
+ * times): each line the day, the time and the title, and where every night sells in one place, that once at the end.
+ */
+export function venueSpotlightLines(nights: readonly CampaignNight[]): string[] {
+  const sellers = [...new Set(nights.map((n) => n.priceLine ?? ''))]
+  const one = sellers.length === 1 && sellers[0] !== ''
+  const lines = nights.map((n) => {
+    const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '\u{1F39F}' : '\u{1F4CD}'
+    return `${mark} ${whenOf(n)}, ${n.title}.${!one && n.priceLine ? ` ${n.priceLine}.` : ''}`
+  })
+  return one ? [...lines, `${sellers[0]}.`] : lines
+}
+
 /** One line a pick: the place pin for a free night, the ticket for a paid one (the 13:27 (6), kept by the 13:53). */
 export function pickLine(n: CampaignNight): string {
   const mark = n.cta.state === 'paid_native' || n.cta.state === 'paid_external' ? '🎟' : '📍'
@@ -1584,7 +1604,8 @@ export function planCampaign(input: {
     const first = nights[0]
     const city = input.cities.find((c) => c.slug === first.citySlug) ?? { slug: first.citySlug, name: first.cityName }
     const hook = `${name} this week.`
-    const body = [...nights.slice(0, 4).map(pickLine), '', creditsOf(nights)]
+    // The venue once, in the headline (the PM's 03:10, class 9): the lines carry the day, the time and the title.
+    const body = [...venueSpotlightLines(nights.slice(0, 4)), '', creditsOf(nights)]
     pieces.push({
       kind: 'venue_spotlight',
       city: city.slug,

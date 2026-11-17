@@ -210,6 +210,24 @@ export interface SchedulePiece {
   readonly notBefore?: Date | null
   /** The latest it may go: the start of its earliest night (scheduleWindowOf), since no piece posts once its night has started. */
   readonly deadline?: Date | null
+  /** The weekdays it may go on, on the zone's clock (0 is Sunday); none named, any day (weekendDaysOf). */
+  readonly days?: readonly number[] | null
+}
+
+/**
+ * A WEEKEND LINE GOES THURSDAY OR FRIDAY ONLY (the PM's 03:10 of 18 November 2026, class 6: 'Say yes to this weekend.' was
+ * set for Monday 23 at 9 pm). A piece whose words name the weekend and that advertises no night of its own (a night's own
+ * deadline already places it) may go only on a Thursday or a Friday. Null means any day.
+ */
+export const WEEKEND_WORDS = /\b(this|the) weekend\b/i
+
+export function weekendDaysOf(words: string, nights: number): readonly number[] | null {
+  return nights === 0 && WEEKEND_WORDS.test(words) ? [4, 5] : null
+}
+
+function weekdayOf(at: Date, zone: string): number {
+  const name = new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short' }).format(at)
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(name)
 }
 
 export type WeekPlan = {
@@ -275,8 +293,16 @@ export function planMoments(
     let at = nextSlot(rule, new Date(Math.max(now.getTime(), p.approvedAt.getTime(), p.notBefore?.getTime() ?? 0)), zone)
     for (let tries = 0; tries < 2000; tries += 1) {
       const clash = busy[p.format].find((t) => Math.abs(t - at.getTime()) < gap)
-      if (clash === undefined) break
-      at = nextSlot(rule, new Date(clash + gap), zone)
+      if (clash !== undefined) {
+        at = nextSlot(rule, new Date(clash + gap), zone)
+        continue
+      }
+      // Its own weekdays only (weekendDaysOf): the next band on one of them.
+      if (p.days && p.days.length > 0 && !p.days.includes(weekdayOf(at, zone))) {
+        at = nextSlot(rule, new Date(dayStart(at, zone).getTime() + 86_400_000), zone)
+        continue
+      }
+      break
     }
     if (p.deadline && at.getTime() > p.deadline.getTime()) {
       late.push({ id: p.id, firstFree: at, deadline: p.deadline })

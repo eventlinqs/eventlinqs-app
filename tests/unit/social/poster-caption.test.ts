@@ -45,7 +45,10 @@ describe('posterCaption', () => {
     expect(gig).not.toContain('Ballarat, Ballarat')
     expect(gig).toMatch(/📅 Thursday 19 November · 7(:00)? ?pm/)
     expect(gig).toContain('🎟 Event details and tickets:')
-    expect(gig).toContain(`${SITE}/events/a-night`)
+    // Instagram takes the link in bio (a caption link is not tappable there); Facebook carries the whole link (the PM's
+    // 03:10 of 18 November 2026: the posted versions ARE this caption).
+    expect(gig).toContain('At the link in our bio.')
+    expect(posterCaption(night({}), city, SITE, { platform: 'facebook', link: 'https://www.eventlinqs.com.au/events/a-night' })).toContain('https://www.eventlinqs.com.au/events/a-night')
     expect(lines.at(-1)).toBe('#ballarat #ballaratevents')
   })
 
@@ -74,7 +77,7 @@ describe("a daily poster's hook names the city once", () => {
     const all = JSON.stringify(pieces)
     expect(pieces.length).toBe(2)
     expect(all).not.toContain('Racecourse, Geelong')
-    expect(all).toContain('at Geelong Racecourse.')
-    expect(all).toContain('at Costa Hall, Geelong.')
+    expect(all).toContain('\u{1F4CD} Geelong Racecourse\\n')
+    expect(all).toContain('\u{1F4CD} Costa Hall, Geelong\\n')
   })
 })
