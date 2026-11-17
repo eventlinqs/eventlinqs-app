@@ -21,9 +21,9 @@ import { getAllCities } from '@/lib/cities/data'
  */
 
 /** The moment the rules below came into force: a revision drawn before it is stale. Moved forward with every rule change. */
-// Moved forward with every rule change; last on 18 November 2026, 03:30 Melbourne (the post title's possessive, a row's
-// days at its own time, the poster's city named once): a piece drawn before that is drawn again by the code in force.
-export const PIECE_RULES_SINCE = '2026-11-17T16:30:00.000Z'
+// Moved forward with every rule change; last to just after #295 went live on 18 November 2026 (05:02:54 Melbourne), so a
+// piece drawn by any code before it is drawn again by the code in force (the pack of 05:43: two posters drawn at 04:40).
+export const PIECE_RULES_SINCE = '2026-11-17T18:05:00.000Z'
 
 export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'>
 

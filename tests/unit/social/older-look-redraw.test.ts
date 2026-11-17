@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine } from '@/lib/events/cta'
 import { lockRefusal, planCampaign, type CampaignCity, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { isOlderLookDraft, olderLookRedraws, refusedOnceSwept } from '@/lib/social/store'
+import { PIECE_RULES_SINCE } from '@/lib/social/piece-quality'
 
 /*
  * THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026): production's 29 pieces of that week were
@@ -135,5 +136,17 @@ describe('the hourly redraw never loops (the sweep loop of 17 November, #291, ne
     const { redraw, kept } = olderLookRedraws([same], [plan])
     expect(redraw).toEqual([])
     expect(kept.join(' ')).toMatch(/would be the same/)
+  })
+})
+
+describe('the hourly redraw reads what posts (the pack of 18 November 2026, 05:43)', () => {
+  it("a piece whose fault is only in a platform's posted version is drawn again", () => {
+    const base = fresh.find((p) => p.kind === 'week_ahead')!
+    const posted = { ...base.versions, instagram: { ...base.versions.instagram, caption: 'Geelong Caravanning and Adventure Leisurefest, at Geelong Racecourse, Geelong.' } }
+    const p = { ...row({ id: 'v', kind: 'week_ahead', slides: base.slides }), revision: { slides: base.slides, version: 4, message: null, caption: base.caption, versions: posted, madeAt: '2026-11-18T03:00:00.000Z', madeBy: 'sweep' as const } }
+    expect(isOlderLookDraft(p)).toBe(true)
+  })
+  it('the rules moment is after #295 went live (05:02:54, 18 November 2026), so every drawing by older code is drawn again', () => {
+    expect(Date.parse(PIECE_RULES_SINCE)).toBeGreaterThanOrEqual(Date.parse('2026-11-17T18:02:54Z'))
   })
 })
