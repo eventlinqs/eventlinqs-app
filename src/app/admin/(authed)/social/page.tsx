@@ -594,7 +594,7 @@ function TargetsSection({ targets }: { targets: BlotatoTargets }) {
         </p>
       ) : (
         <>
-          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+          <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
             <dt className="text-white/60">Facebook Page</dt>
             <dd data-posts-to="facebook" className="font-semibold text-white">
               {targets.postsTo.facebook ?? 'None the publisher would use'}
