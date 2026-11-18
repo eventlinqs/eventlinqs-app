@@ -10229,32 +10229,41 @@ export type Database = {
       social_piece_figures: {
         Row: {
           entered_at: string
-          entered_by: string
+          entered_by: string | null
           id: string
           metric: string
           piece_id: string
           platform: string
+          platform_post_id: string | null
+          post_url: string | null
           read_at: string
+          source: string
           value: number
         }
         Insert: {
           entered_at?: string
-          entered_by: string
+          entered_by?: string | null
           id?: string
           metric: string
           piece_id: string
           platform: string
+          platform_post_id?: string | null
+          post_url?: string | null
           read_at: string
+          source?: string
           value: number
         }
         Update: {
           entered_at?: string
-          entered_by?: string
+          entered_by?: string | null
           id?: string
           metric?: string
           piece_id?: string
           platform?: string
+          platform_post_id?: string | null
+          post_url?: string | null
           read_at?: string
+          source?: string
           value?: number
         }
         Relationships: [

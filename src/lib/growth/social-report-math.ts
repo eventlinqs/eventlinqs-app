@@ -28,6 +28,87 @@ export type PlatformMetric = 'reach' | 'watch_time_seconds' | 'saves' | 'shares'
 export const PLATFORMS: readonly Platform[] = ['instagram', 'facebook']
 export const PLATFORM_METRICS: readonly PlatformMetric[] = ['reach', 'watch_time_seconds', 'saves', 'shares']
 
+/**
+ * CAR C, MEASURE (the PM's 21:00 and 23:09 of 18 November 2026; migration 20261118230001): a platform's figures for a
+ * piece that went are also read once a day from Blotato's published analytics, as the platform reported them (ENTERED,
+ * never added to a counted figure: K14). Blotato's metric names and the figure each becomes.
+ */
+export type FigureMetric = PlatformMetric | 'impressions' | 'views' | 'likes' | 'comments' | 'clicks'
+export const BLOTATO_METRICS: Readonly<Record<string, FigureMetric>> = {
+  reachCount: 'reach',
+  impressionsCount: 'impressions',
+  viewsCount: 'views',
+  likesCount: 'likes',
+  commentsCount: 'comments',
+  savesCount: 'saves',
+  sharesCount: 'shares',
+  clicksCount: 'clicks',
+}
+
+/** A piece's post that went on a platform: by the hourly run (published), or accepted by Blotato while held. */
+export type WentPost = { readonly pieceId: string; readonly platform: Platform; readonly postUrl: string | null; readonly wentAt: string; readonly captions: readonly string[] }
+/** A post as Blotato's analytics list reads it (src/lib/social/blotato-publisher.ts BlotatoAnalyticsItem). */
+export type ReadPost = { readonly id: string; readonly platform: string; readonly content: string; readonly postUrl: string | null; readonly fetchedAt: string | null; readonly metrics: Readonly<Record<string, number>> }
+export type BlotatoFigureRow = { readonly pieceId: string; readonly platform: Platform; readonly metric: FigureMetric; readonly value: number; readonly readAt: string; readonly platformPostId: string; readonly postUrl: string | null }
+export type Matched = { readonly rows: readonly BlotatoFigureRow[]; readonly matched: readonly { pieceId: string; platform: Platform; postUrl: string | null; how: 'url' | 'caption' }[]; readonly unmatched: readonly { id: string; platform: string; postUrl: string | null; why: string }[] }
+
+/** A post's address as one key: no scheme, no www, no query or fragment, no trailing slash, lower case. */
+export function postKey(url: string | null): string | null {
+  if (!url) return null
+  const m = url.trim().match(/^https?:\/\/(?:www\.)?([^/?#]+)([^?#]*)/i)
+  return m ? `${m[1].toLowerCase()}${m[2].replace(/\/+$/, '')}` : null
+}
+
+/**
+ * EACH BLOTATO POST TO THE PIECE THAT WENT, NEVER GUESSED (the PM's 23:09): by its URL first; else by its exact caption,
+ * only when exactly one piece on that platform carries it; otherwise it stays unmatched and is named (a wrong match would
+ * credit the wrong family and teach the planner the wrong lesson). A figure is read when Blotato fetched it, never before
+ * its post went. Pure.
+ */
+export function matchBlotatoPosts(posts: readonly ReadPost[], went: readonly WentPost[], now: Date): Matched {
+  const rows: BlotatoFigureRow[] = []
+  const matched: { pieceId: string; platform: Platform; postUrl: string | null; how: 'url' | 'caption' }[] = []
+  const unmatched: { id: string; platform: string; postUrl: string | null; why: string }[] = []
+  const taken = new Set<string>()
+  for (const post of posts) {
+    const platform = post.platform as Platform
+    if (!PLATFORMS.includes(platform)) {
+      unmatched.push({ id: post.id, platform: post.platform, postUrl: post.postUrl, why: 'not an Instagram or Facebook post' })
+      continue
+    }
+    const mine = went.filter((w) => w.platform === platform && !taken.has(`${w.pieceId}|${w.platform}`))
+    const key = postKey(post.postUrl)
+    const byUrl = key ? mine.filter((w) => postKey(w.postUrl) === key) : []
+    let hit: WentPost | null = byUrl.length === 1 ? byUrl[0] : null
+    let how: 'url' | 'caption' = 'url'
+    if (!hit) {
+      const text = post.content.trim()
+      const byCaption = text ? [...new Set(mine.filter((w) => w.captions.some((c) => c.trim() === text)).map((w) => w.pieceId))] : []
+      if (byCaption.length === 1) {
+        hit = mine.find((w) => w.pieceId === byCaption[0]) ?? null
+        how = 'caption'
+      } else {
+        unmatched.push({ id: post.id, platform, postUrl: post.postUrl, why: byCaption.length === 0 ? 'no piece that went carries its address or its caption' : `${byCaption.length} pieces carry its caption, so none is guessed` })
+        continue
+      }
+    }
+    if (!hit) continue
+    const readAt = post.fetchedAt && !Number.isNaN(Date.parse(post.fetchedAt)) ? new Date(Math.min(Date.parse(post.fetchedAt), now.getTime())).toISOString() : now.toISOString()
+    if (Date.parse(readAt) < Date.parse(hit.wentAt)) {
+      unmatched.push({ id: post.id, platform, postUrl: post.postUrl, why: 'its figures were read before its post went' })
+      continue
+    }
+    taken.add(`${hit.pieceId}|${hit.platform}`)
+    matched.push({ pieceId: hit.pieceId, platform, postUrl: post.postUrl, how })
+    for (const [name, metric] of Object.entries(BLOTATO_METRICS)) {
+      const value = post.metrics[name]
+      if (value === undefined) continue
+      rows.push({ pieceId: hit.pieceId, platform, metric, value, readAt, platformPostId: post.id, postUrl: post.postUrl })
+    }
+  }
+  return { rows, matched, unmatched }
+}
+
 /** At most this many changes a week (the 13:54 order: "up to three recommendations with their data"). */
 export const MAX_RECOMMENDATIONS = 3
 /** Earlier campaigns shown beside this one. */
