@@ -26,7 +26,7 @@ export const WRITTEN_BEFORE: ReadonlySet<string> = new Set([
   'f2a51438febcc6fc7b53', 'f5348ae521430fb7b80a', 'f6b82e56ea1565981192',
 ])
 
-const FREE_MAIL: ReadonlySet<string> = new Set(['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.com.au', 'bigpond.com', 'bigpond.net.au', 'icloud.com', 'live.com', 'live.com.au', 'optusnet.com.au'])
+export const FREE_MAIL: ReadonlySet<string> = new Set(['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'yahoo.com.au', 'bigpond.com', 'bigpond.net.au', 'icloud.com', 'live.com', 'live.com.au', 'optusnet.com.au'])
 
 const hashOf = (text: string): string => createHash('sha256').update(text).digest('hex').slice(0, 20)
 

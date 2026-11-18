@@ -50,3 +50,23 @@ describe('who a page names as the organiser', () => {
     expect(isListingsOrganisation('amcf')).toBe(false)
   })
 })
+
+/**
+ * THE HOST WHEN IT IS NOT THE VENUE (the PM's 09:45 of 19 November 2026; looked at on production at 10:02): Asia Oasis'
+ * festival moved to its true venue, Alexandra Gardens, and the page read 'Organised by Alexandra Gardens'.
+ */
+describe('a listing whose night records its host', () => {
+  const listings = { name: 'EventLinqs Listings', slug: LISTINGS_ORGANISATION_SLUG }
+  it('names the host the night records, never the garden it is held in', () => {
+    const night = { listing_source: 'eventlinqs', venue_name: 'Alexandra Gardens', metadata: { host_name: 'Asia Oasis', host_source: 'the organiser, 19 November 2026' } }
+    expect(shownOrganiser(night, listings).name).toBe('Asia Oasis')
+  })
+  it('DRILL: without the recorded host the page names the venue, which is what went wrong at 10:02', () => {
+    expect(shownOrganiser({ listing_source: 'eventlinqs', venue_name: 'Alexandra Gardens', metadata: {} }, listings).name).toBe('Alexandra Gardens')
+  })
+  it('an empty or malformed host falls back to the venue, and an organiser own event is untouched', () => {
+    expect(shownOrganiser({ listing_source: 'eventlinqs', venue_name: 'The Croxton', metadata: { host_name: '  ' } }, listings).name).toBe('The Croxton')
+    expect(shownOrganiser({ listing_source: 'eventlinqs', venue_name: 'The Croxton', metadata: ['Asia Oasis'] }, listings).name).toBe('The Croxton')
+    expect(shownOrganiser({ listing_source: null, venue_name: 'Hall', metadata: { host_name: 'Someone' } }, { name: 'AMCF', slug: 'amcf' }).name).toBe('AMCF')
+  })
+})

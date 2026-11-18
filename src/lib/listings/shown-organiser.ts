@@ -40,8 +40,23 @@ export type ShownOrganiser = {
   followable: boolean
 }
 
+/**
+ * THE HOST WHEN IT IS NOT THE VENUE (the PM's 09:45 of 19 November 2026, item 1 (b), and what looking found at 10:02).
+ * A listing names its host, the venue whose night it is; but an organiser's festival in a public garden is not the
+ * garden's night. Asia Oasis' Colours of Asia used to read venue 'Asia Oasis, 3 Boathouse Drive' so that the page named
+ * the host; once its venue was corrected to Alexandra Gardens (Aria's own words), the page read 'Organised by Alexandra
+ * Gardens'. The night now records its host in its own metadata (host_name, with host_source saying where that came
+ * from), and a listing names it before the venue.
+ */
+export function listingHost(event: { venue_name?: string | null; metadata?: unknown }): string | null {
+  const meta = event.metadata
+  const host = meta && typeof meta === 'object' && !Array.isArray(meta) ? (meta as Record<string, unknown>).host_name : null
+  if (typeof host === 'string' && host.trim() !== '') return host.trim()
+  return event.venue_name?.trim() || null
+}
+
 export function shownOrganiser(
-  event: { listing_source?: string | null; venue_name?: string | null },
+  event: { listing_source?: string | null; venue_name?: string | null; metadata?: unknown },
   organisation: {
     name?: string | null
     slug?: string | null
@@ -52,7 +67,7 @@ export function shownOrganiser(
 ): ShownOrganiser {
   if (isEventLinqsListing(event) || isListingsOrganisation(organisation?.slug)) {
     return {
-      name: event.venue_name?.trim() || 'The venue',
+      name: listingHost(event) || 'The venue',
       slug: null,
       shortName: null,
       website: null,

@@ -93,6 +93,25 @@ export const MIN_COVER_WIDTH = 1000
 export const RECOMMENDED_COVER_WIDTH = 2160
 
 /**
+ * THE EVENT PAGE'S PHOTO BOX AT ITS WIDEST, for an ORGANISER'S OWN PHOTO sent through the photo page (the PM's 09:45 of
+ * 19 November 2026, item 1 (c)). The event page draws its photograph whole (law 15, `fit="contain"`) in a box of
+ * `lg:aspect-[16/7]` inside the 1400px container (src/components/events/walk-in/walk-in-event-page.tsx), read on
+ * production at 1440 on 19 November 2026 as 1336 x 585. Drawn whole, a photo is enlarged there only when it is BOTH
+ * narrower than 1336 AND shorter than 585; at least as tall as the box, or as wide, it is never enlarged.
+ *
+ * Why the photo page judges by the box and not by MIN_COVER_WIDTH: Asia Oasis' three festival photographs (973 x 695,
+ * 1000 x 714, 916 x 654) are drawn on production at 819 x 585 and less, never enlarged, and look right at 390 and 1440
+ * (looked at 10:02 on 19 November); the 1000px width floor refused two of them on 18 November at 23:50 and the organiser
+ * gave up. The wizard's own cover upload keeps MIN_COVER_WIDTH.
+ */
+export const EVENT_PHOTO_BOX = { width: 1336, height: 585 } as const
+
+/** Whether a photo of this size is drawn in the event page's photo box without being enlarged. */
+export function fitsEventPhotoBox(width: number, height: number): boolean {
+  return width >= EVENT_PHOTO_BOX.width || height >= EVENT_PHOTO_BOX.height
+}
+
+/**
  * ORGANISER LOGO. A different object from a photograph and it needs different
  * rules, so it gets its own constants rather than borrowing the cover ones.
  *
