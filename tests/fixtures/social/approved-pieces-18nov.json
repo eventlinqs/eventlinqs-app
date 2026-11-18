@@ -1,0 +1,864 @@
+{
+ "feature_flags": [
+  {
+   "flag": "social_auto_publish",
+   "enabled": true
+  }
+ ],
+ "social_piece_schedules": [
+  {
+   "id": "e43dc8e0-355e-4d7f-a546-cf8219971cb6",
+   "piece_id": "0b38b351-a43f-5487-a9a9-36902e230b28",
+   "approval_id": "807a41f8-ae83-5d3d-a837-110304f47585",
+   "platform": "facebook",
+   "go_at": "2026-11-18T04:12:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "ab8abdc7-e442-4dc3-8ddb-447e8d63243e",
+   "piece_id": "3e851208-599a-50b3-9c4e-aeebab9d97a5",
+   "approval_id": "ee731a47-930b-5e19-b462-bcc9a813f09a",
+   "platform": "instagram",
+   "go_at": "2026-11-18T04:12:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "7d660e3d-a3d2-45f3-bca9-38f0ed15e3e8",
+   "piece_id": "1d44c5cd-9cbd-5794-bb5f-dd8f515dbc6f",
+   "approval_id": "a7f97c42-f42d-561c-9736-502dc6af7eb1",
+   "platform": "instagram",
+   "go_at": "2026-11-18T04:22:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "649488cc-48b9-4d37-9622-fbc5970d3719",
+   "piece_id": "31d92f7e-6c0c-5419-9bf8-4ece1eff23c2",
+   "approval_id": "220b68ab-0a66-551c-a1b2-e8eca5e1f7f8",
+   "platform": "facebook",
+   "go_at": "2026-11-18T04:32:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "dde4e255-8f45-4f17-83af-e1032657f571",
+   "piece_id": "51555d61-433b-5f25-a300-7a0a53f6f046",
+   "approval_id": "1df8b95b-e55d-51a3-a96d-d65715bcfa82",
+   "platform": "instagram",
+   "go_at": "2026-11-18T04:32:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "3dec003d-1519-4b21-a472-d73511ad0e58",
+   "piece_id": "c126bbf0-6ff8-50e8-8193-51c1d2243e44",
+   "approval_id": "9777e876-f3b3-5dcb-b443-86f6cf1014e5",
+   "platform": "facebook",
+   "go_at": "2026-11-18T04:42:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "92350d47-243a-472b-a6c1-f9428312f082",
+   "piece_id": "96df26c7-df49-5c2a-b65c-95ced0c0583e",
+   "approval_id": "7a87af6e-fa77-5ee9-91e4-ad78cf85a590",
+   "platform": "instagram",
+   "go_at": "2026-11-18T04:42:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "d041a009-8296-45fe-b8cd-5e96f4e7b11c",
+   "piece_id": "0efa924d-9eec-5a7e-9fa1-cd410e1dab52",
+   "approval_id": "915ea918-0b9b-51f5-9242-501c28137772",
+   "platform": "facebook",
+   "go_at": "2026-11-18T04:52:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "360937fe-6856-47fd-95cc-e7f2c678c043",
+   "piece_id": "455f80a9-c68e-5eb8-a93a-46cb953762c4",
+   "approval_id": "afe96ba9-54ab-5f6f-8e8c-f683fa52083a",
+   "platform": "instagram",
+   "go_at": "2026-11-18T04:52:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "4e5145b9-97a7-4147-99b4-732ad226c042",
+   "piece_id": "a2314a73-9ac5-508c-83c3-075b676de3c3",
+   "approval_id": "c42af886-4d18-5776-8445-c43045e2664a",
+   "platform": "instagram",
+   "go_at": "2026-11-18T05:02:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "95547ef0-297f-4720-b6c4-8e5060bf19cc",
+   "piece_id": "cf161bdc-ea0c-56e9-a41b-95c1c8fd3810",
+   "approval_id": "7115685d-fee1-510d-a75f-cbe52565c906",
+   "platform": "instagram",
+   "go_at": "2026-11-18T05:02:50.993618+00:00",
+   "state": "scheduled"
+  },
+  {
+   "id": "457bdf08-5b17-42d1-8689-0f91ce13547c",
+   "piece_id": "9de7e7c6-b041-599c-83f7-193aad1e543e",
+   "approval_id": "9f90a746-b3b9-5aa6-bbf2-9f10ae854c35",
+   "platform": "instagram",
+   "go_at": "2026-11-18T05:02:50.993618+00:00",
+   "state": "scheduled"
+  }
+ ],
+ "social_pieces": [
+  {
+   "id": "3e851208-599a-50b3-9c4e-aeebab9d97a5",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18",
+   "format": "feed",
+   "partner_name": "Approved post 11, LANY"
+  },
+  {
+   "id": "0b38b351-a43f-5487-a9a9-36902e230b28",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=12-lany-facebook",
+   "format": "feed",
+   "partner_name": "Approved post 12, LANY Facebook"
+  },
+  {
+   "id": "455f80a9-c68e-5eb8-a93a-46cb953762c4",
+   "kind": "organiser_campaign",
+   "city": "victoria",
+   "link": "https://www.eventlinqs.com.au/organisers",
+   "format": "feed",
+   "partner_name": "Approved post 13, organisers"
+  },
+  {
+   "id": "9de7e7c6-b041-599c-83f7-193aad1e543e",
+   "kind": "organiser_campaign",
+   "city": "victoria",
+   "link": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+   "format": "story",
+   "partner_name": "Approved post 14, organisers story"
+  },
+  {
+   "id": "0efa924d-9eec-5a7e-9fa1-cd410e1dab52",
+   "kind": "organiser_campaign",
+   "city": "victoria",
+   "link": "https://www.eventlinqs.com.au/organisers?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=15-organisers-facebook",
+   "format": "feed",
+   "partner_name": "Approved post 15, organisers Facebook"
+  },
+  {
+   "id": "1d44c5cd-9cbd-5794-bb5f-dd8f515dbc6f",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+   "format": "story",
+   "partner_name": "Approved post 16, LANY story"
+  },
+  {
+   "id": "51555d61-433b-5f25-a300-7a0a53f6f046",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24",
+   "format": "feed",
+   "partner_name": "Approved post 17, GroovyTown"
+  },
+  {
+   "id": "a2314a73-9ac5-508c-83c3-075b676de3c3",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+   "format": "story",
+   "partner_name": "Approved post 18, GroovyTown story"
+  },
+  {
+   "id": "31d92f7e-6c0c-5419-9bf8-4ece1eff23c2",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=19-groovytown-facebook",
+   "format": "feed",
+   "partner_name": "Approved post 19, GroovyTown Facebook"
+  },
+  {
+   "id": "96df26c7-df49-5c2a-b65c-95ced0c0583e",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/amcf-2026",
+   "format": "feed",
+   "partner_name": "Approved post 20, AMCF"
+  },
+  {
+   "id": "c126bbf0-6ff8-50e8-8193-51c1d2243e44",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=21-amcf-facebook",
+   "format": "feed",
+   "partner_name": "Approved post 21, AMCF Facebook"
+  },
+  {
+   "id": "cf161bdc-ea0c-56e9-a41b-95c1c8fd3810",
+   "kind": "coming_up",
+   "city": "melbourne",
+   "link": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+   "format": "story",
+   "partner_name": "Approved post 22, AMCF story"
+  }
+ ],
+ "social_piece_revisions": [
+  {
+   "piece_id": "0b38b351-a43f-5487-a9a9-36902e230b28",
+   "version": 1,
+   "event_ids": [
+    "fa853d15-7808-4fc3-981c-d088cc28ec66"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/11-lany-feed.jpg",
+     "format": "feed",
+     "eventId": "fa853d15-7808-4fc3-981c-d088cc28ec66",
+     "startDate": "2026-11-18T09:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=12-lany-facebook\n\n#LANY #Melbourne #JohnCainArena",
+   "versions": {
+    "facebook": {
+     "cta": "#LANY #Melbourne #JohnCainArena",
+     "crop": "4:5",
+     "hook": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.",
+     "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=12-lany-facebook\n\n#LANY #Melbourne #JohnCainArena"
+    },
+    "instagram": {
+     "cta": "#LANY #Melbourne #JohnCainArena",
+     "crop": "4:5",
+     "hook": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.",
+     "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=12-lany-facebook\n\n#LANY #Melbourne #JohnCainArena"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "0efa924d-9eec-5a7e-9fa1-cd410e1dab52",
+   "version": 1,
+   "event_ids": [],
+   "picks": [],
+   "mode": "graphic_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/15-organisers-square.jpg",
+     "format": "feed",
+     "eventId": null,
+     "startDate": null,
+     "composition": "close"
+    }
+   ],
+   "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. https://www.eventlinqs.com.au/organisers?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=15-organisers-facebook\n\n#EventOrganisers #Melbourne #EventTicketing",
+   "versions": {
+    "facebook": {
+     "cta": "#EventOrganisers #Melbourne #EventTicketing",
+     "crop": "4:5",
+     "hook": "Reach people beyond your own followers.",
+     "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. https://www.eventlinqs.com.au/organisers?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=15-organisers-facebook\n\n#EventOrganisers #Melbourne #EventTicketing"
+    },
+    "instagram": {
+     "cta": "#EventOrganisers #Melbourne #EventTicketing",
+     "crop": "4:5",
+     "hook": "Reach people beyond your own followers.",
+     "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. https://www.eventlinqs.com.au/organisers?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=15-organisers-facebook\n\n#EventOrganisers #Melbourne #EventTicketing"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "1d44c5cd-9cbd-5794-bb5f-dd8f515dbc6f",
+   "version": 1,
+   "event_ids": [
+    "fa853d15-7808-4fc3-981c-d088cc28ec66"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/16-lany-story.jpg",
+     "format": "story",
+     "eventId": "fa853d15-7808-4fc3-981c-d088cc28ec66",
+     "startDate": "2026-11-18T09:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+   "versions": {
+    "facebook": {
+     "cta": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+     "caption": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story"
+    },
+    "instagram": {
+     "cta": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story",
+     "caption": "https://www.eventlinqs.com.au/events/lany-john-cain-arena-2026-11-18?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=16-lany-story"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "31d92f7e-6c0c-5419-9bf8-4ece1eff23c2",
+   "version": 1,
+   "event_ids": [
+    "22e609e1-4d19-442a-a3c8-356d7a67e72e"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/17-groovytown-feed.jpg",
+     "format": "feed",
+     "eventId": "22e609e1-4d19-442a-a3c8-356d7a67e72e",
+     "startDate": "2026-11-24T08:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=19-groovytown-facebook\n\n#Melbourne #Thornbury #Wellbeing",
+   "versions": {
+    "facebook": {
+     "cta": "#Melbourne #Thornbury #Wellbeing",
+     "crop": "4:5",
+     "hook": "An evening off, from GroovyTown Wellbeing.",
+     "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=19-groovytown-facebook\n\n#Melbourne #Thornbury #Wellbeing"
+    },
+    "instagram": {
+     "cta": "#Melbourne #Thornbury #Wellbeing",
+     "crop": "4:5",
+     "hook": "An evening off, from GroovyTown Wellbeing.",
+     "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=19-groovytown-facebook\n\n#Melbourne #Thornbury #Wellbeing"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "3e851208-599a-50b3-9c4e-aeebab9d97a5",
+   "version": 1,
+   "event_ids": [
+    "fa853d15-7808-4fc3-981c-d088cc28ec66"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/lany-feed-ig45.jpg",
+     "format": "feed",
+     "eventId": "fa853d15-7808-4fc3-981c-d088cc28ec66",
+     "startDate": "2026-11-18T09:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. Link in bio.\n\n#LANY #Melbourne #JohnCainArena",
+   "versions": {
+    "facebook": {
+     "cta": "#LANY #Melbourne #JohnCainArena",
+     "crop": "4:5",
+     "hook": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.",
+     "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. Link in bio.\n\n#LANY #Melbourne #JohnCainArena"
+    },
+    "instagram": {
+     "cta": "#LANY #Melbourne #JohnCainArena",
+     "crop": "4:5",
+     "hook": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.",
+     "caption": "LANY plays John Cain Arena this Wednesday, 18 November, at 8:00 pm.\nPictured: a concert crowd, a photograph from Pexels, not this night.\nTickets at AXS. Link in bio.\n\n#LANY #Melbourne #JohnCainArena"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "455f80a9-c68e-5eb8-a93a-46cb953762c4",
+   "version": 1,
+   "event_ids": [],
+   "picks": [],
+   "mode": "graphic_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/organisers-feed-ig45.jpg",
+     "format": "feed",
+     "eventId": null,
+     "startDate": null,
+     "composition": "close"
+    }
+   ],
+   "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. Link in bio.\n\n#EventOrganisers #Melbourne #EventTicketing",
+   "versions": {
+    "facebook": {
+     "cta": "#EventOrganisers #Melbourne #EventTicketing",
+     "crop": "4:5",
+     "hook": "Reach people beyond your own followers.",
+     "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. Link in bio.\n\n#EventOrganisers #Melbourne #EventTicketing"
+    },
+    "instagram": {
+     "cta": "#EventOrganisers #Melbourne #EventTicketing",
+     "crop": "4:5",
+     "hook": "Reach people beyond your own followers.",
+     "caption": "Reach people beyond your own followers.\nList your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours. Free events stay free; paid tickets 3.5% + AUD 0.99 each.\nSend this to an organiser you know. Link in bio.\n\n#EventOrganisers #Melbourne #EventTicketing"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "51555d61-433b-5f25-a300-7a0a53f6f046",
+   "version": 1,
+   "event_ids": [
+    "22e609e1-4d19-442a-a3c8-356d7a67e72e"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/groovytown-feed-ig45.jpg",
+     "format": "feed",
+     "eventId": "22e609e1-4d19-442a-a3c8-356d7a67e72e",
+     "startDate": "2026-11-24T08:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. Link in bio.\n\n#Melbourne #Thornbury #Wellbeing",
+   "versions": {
+    "facebook": {
+     "cta": "#Melbourne #Thornbury #Wellbeing",
+     "crop": "4:5",
+     "hook": "An evening off, from GroovyTown Wellbeing.",
+     "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. Link in bio.\n\n#Melbourne #Thornbury #Wellbeing"
+    },
+    "instagram": {
+     "cta": "#Melbourne #Thornbury #Wellbeing",
+     "crop": "4:5",
+     "hook": "An evening off, from GroovyTown Wellbeing.",
+     "caption": "An evening off, from GroovyTown Wellbeing.\nA Moment of Sanity: a gentle evening to pause, breathe and come back to yourself. Tuesday 24 November, 7:00 to 9:00 pm, Thornbury Apothecary.\nSend this to a friend who needs an evening off. Link in bio.\n\n#Melbourne #Thornbury #Wellbeing"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "96df26c7-df49-5c2a-b65c-95ced0c0583e",
+   "version": 1,
+   "event_ids": [
+    "5d664060-a175-4b07-9c07-5e3c4a934c69"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/amcf-feed-ig45.jpg",
+     "format": "feed",
+     "eventId": "5d664060-a175-4b07-9c07-5e3c4a934c69",
+     "startDate": "2026-11-20T00:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. Link in bio.\n\n#Melbourne #FedSquare #AfricanMusic",
+   "versions": {
+    "facebook": {
+     "cta": "#Melbourne #FedSquare #AfricanMusic",
+     "crop": "4:5",
+     "hook": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.",
+     "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. Link in bio.\n\n#Melbourne #FedSquare #AfricanMusic"
+    },
+    "instagram": {
+     "cta": "#Melbourne #FedSquare #AfricanMusic",
+     "crop": "4:5",
+     "hook": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.",
+     "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. Link in bio.\n\n#Melbourne #FedSquare #AfricanMusic"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "9de7e7c6-b041-599c-83f7-193aad1e543e",
+   "version": 1,
+   "event_ids": [],
+   "picks": [],
+   "mode": "graphic_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/14-organisers-story.jpg",
+     "format": "story",
+     "eventId": null,
+     "startDate": null,
+     "composition": "close"
+    }
+   ],
+   "caption": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+   "versions": {
+    "facebook": {
+     "cta": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+     "caption": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story"
+    },
+    "instagram": {
+     "cta": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story",
+     "caption": "https://www.eventlinqs.com.au/organisers?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=14-organisers-story"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "a2314a73-9ac5-508c-83c3-075b676de3c3",
+   "version": 1,
+   "event_ids": [
+    "22e609e1-4d19-442a-a3c8-356d7a67e72e"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/18-groovytown-story.jpg",
+     "format": "story",
+     "eventId": "22e609e1-4d19-442a-a3c8-356d7a67e72e",
+     "startDate": "2026-11-24T08:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+   "versions": {
+    "facebook": {
+     "cta": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+     "caption": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story"
+    },
+    "instagram": {
+     "cta": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story",
+     "caption": "https://www.eventlinqs.com.au/events/a-moment-of-sanity-thornbury-apothecary-2026-11-24?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=18-groovytown-story"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "c126bbf0-6ff8-50e8-8193-51c1d2243e44",
+   "version": 1,
+   "event_ids": [
+    "5d664060-a175-4b07-9c07-5e3c4a934c69"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/21-amcf-square.jpg",
+     "format": "feed",
+     "eventId": "5d664060-a175-4b07-9c07-5e3c4a934c69",
+     "startDate": "2026-11-20T00:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. https://www.eventlinqs.com.au/events/amcf-2026?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=21-amcf-facebook\n\n#Melbourne #FedSquare #AfricanMusic",
+   "versions": {
+    "facebook": {
+     "cta": "#Melbourne #FedSquare #AfricanMusic",
+     "crop": "4:5",
+     "hook": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.",
+     "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. https://www.eventlinqs.com.au/events/amcf-2026?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=21-amcf-facebook\n\n#Melbourne #FedSquare #AfricanMusic"
+    },
+    "instagram": {
+     "cta": "#Melbourne #FedSquare #AfricanMusic",
+     "crop": "4:5",
+     "hook": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.",
+     "caption": "Three days, free, at Fed Square: the African Music and Cultural Festival, Friday 20 to Sunday 22 November.\nPictured: the festival at Fed Square in 2024, AMCF's own photograph.\nSend this to who you're going with. https://www.eventlinqs.com.au/events/amcf-2026?utm_source=facebook&utm_medium=social&utm_campaign=week_16_nov&utm_content=21-amcf-facebook\n\n#Melbourne #FedSquare #AfricanMusic"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "piece_id": "cf161bdc-ea0c-56e9-a41b-95c1c8fd3810",
+   "version": 1,
+   "event_ids": [
+    "5d664060-a175-4b07-9c07-5e3c4a934c69"
+   ],
+   "picks": [],
+   "mode": "photo_led",
+   "slides": [
+    {
+     "t": "file",
+     "url": "https://www.eventlinqs.com.au/social/approved/22-amcf-story.jpg",
+     "format": "story",
+     "eventId": "5d664060-a175-4b07-9c07-5e3c4a934c69",
+     "startDate": "2026-11-20T00:00:00Z",
+     "composition": "close"
+    }
+   ],
+   "caption": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+   "versions": {
+    "facebook": {
+     "cta": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+     "caption": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story"
+    },
+    "instagram": {
+     "cta": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+     "crop": "9:16",
+     "hook": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story",
+     "caption": "https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story&utm_campaign=week_16_nov&utm_content=22-amcf-story"
+    }
+   },
+   "message": "Lawal approved this exact file and caption at 11:55 on 18 November 2026",
+   "made_by": "edit",
+   "made_at": "2026-11-18T04:10:50.993618+00:00"
+  }
+ ],
+ "social_piece_approvals": [
+  {
+   "id": "807a41f8-ae83-5d3d-a837-110304f47585",
+   "piece_id": "0b38b351-a43f-5487-a9a9-36902e230b28",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "915ea918-0b9b-51f5-9242-501c28137772",
+   "piece_id": "0efa924d-9eec-5a7e-9fa1-cd410e1dab52",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "a7f97c42-f42d-561c-9736-502dc6af7eb1",
+   "piece_id": "1d44c5cd-9cbd-5794-bb5f-dd8f515dbc6f",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "220b68ab-0a66-551c-a1b2-e8eca5e1f7f8",
+   "piece_id": "31d92f7e-6c0c-5419-9bf8-4ece1eff23c2",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "ee731a47-930b-5e19-b462-bcc9a813f09a",
+   "piece_id": "3e851208-599a-50b3-9c4e-aeebab9d97a5",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "afe96ba9-54ab-5f6f-8e8c-f683fa52083a",
+   "piece_id": "455f80a9-c68e-5eb8-a93a-46cb953762c4",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "1df8b95b-e55d-51a3-a96d-d65715bcfa82",
+   "piece_id": "51555d61-433b-5f25-a300-7a0a53f6f046",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "7a87af6e-fa77-5ee9-91e4-ad78cf85a590",
+   "piece_id": "96df26c7-df49-5c2a-b65c-95ced0c0583e",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "9f90a746-b3b9-5aa6-bbf2-9f10ae854c35",
+   "piece_id": "9de7e7c6-b041-599c-83f7-193aad1e543e",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "c42af886-4d18-5776-8445-c43045e2664a",
+   "piece_id": "a2314a73-9ac5-508c-83c3-075b676de3c3",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "9777e876-f3b3-5dcb-b443-86f6cf1014e5",
+   "piece_id": "c126bbf0-6ff8-50e8-8193-51c1d2243e44",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  },
+  {
+   "id": "7115685d-fee1-510d-a75f-cbe52565c906",
+   "piece_id": "cf161bdc-ea0c-56e9-a41b-95c1c8fd3810",
+   "revision": 1,
+   "approved_at": "2026-11-18T04:10:50.993618+00:00"
+  }
+ ],
+ "events": [
+  {
+   "id": "fa853d15-7808-4fc3-981c-d088cc28ec66",
+   "slug": "lany-john-cain-arena-2026-11-18",
+   "title": "LANY",
+   "start_date": "2026-11-18T09:00:00+00:00",
+   "end_date": "2026-11-18T13:00:00+00:00",
+   "timezone": "Australia/Melbourne",
+   "status": "published",
+   "visibility": "public",
+   "venue_name": "John Cain Arena",
+   "venue_address": "Olympic Boulevard, Melbourne, VIC, 3001",
+   "venue_city": "Melbourne",
+   "venue_id": "e35d5809-2842-4625-ad80-f179c6787795",
+   "is_age_restricted": false,
+   "age_restriction_min": null,
+   "cover_image_url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/generated-covers/fa853d15-7808-4fc3-981c-d088cc28ec66/1793852122564.jpg",
+   "summary": "An event on a Wednesday evening, tickets through AXS.",
+   "is_free": false,
+   "entry_mode": "tickets",
+   "external_ticket_url": "https://www.axs.com/au/events/1511305/lany-tickets",
+   "listing_source": "eventlinqs",
+   "category": {
+    "slug": "music"
+   },
+   "organisation": {
+    "name": "EventLinqs listings",
+    "slug": "eventlinqs-listings"
+   },
+   "ticket_tiers": [],
+   "event_booking_links": [
+    {
+     "availability": "on_sale"
+    }
+   ],
+   "venue_row": {
+    "name": "John Cain Arena"
+   }
+  },
+  {
+   "id": "5d664060-a175-4b07-9c07-5e3c4a934c69",
+   "slug": "amcf-2026",
+   "title": "African Music and Cultural Festival 2026",
+   "start_date": "2026-11-20T00:00:00+00:00",
+   "end_date": "2026-11-22T09:00:00+00:00",
+   "timezone": "Australia/Melbourne",
+   "status": "published",
+   "visibility": "public",
+   "venue_name": "Fed Square",
+   "venue_address": "Corner of Swanston and Flinders Streets",
+   "venue_city": "Melbourne",
+   "venue_id": "0d7a0801-e265-4920-96e1-94838ae52e7e",
+   "is_age_restricted": false,
+   "age_restriction_min": null,
+   "cover_image_url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/organiser-supplied/amcf-2026/amcf-2024-0980-whole.jpg",
+   "summary": "Three days of African music, food and culture in the heart of Melbourne. A free, family-friendly event open to all.",
+   "is_free": true,
+   "entry_mode": "walk_in",
+   "external_ticket_url": null,
+   "listing_source": "organiser",
+   "category": {
+    "slug": "festival"
+   },
+   "organisation": {
+    "name": "African Music and Cultural Festival",
+    "slug": "amcf"
+   },
+   "ticket_tiers": [],
+   "event_booking_links": [],
+   "venue_row": {
+    "name": "Federation Square"
+   }
+  },
+  {
+   "id": "22e609e1-4d19-442a-a3c8-356d7a67e72e",
+   "slug": "a-moment-of-sanity-thornbury-apothecary-2026-11-24",
+   "title": "A Moment of Sanity",
+   "start_date": "2026-11-24T08:00:00+00:00",
+   "end_date": "2026-11-24T10:00:00+00:00",
+   "timezone": "Australia/Melbourne",
+   "status": "published",
+   "visibility": "public",
+   "venue_name": "Thornbury Apothecary",
+   "venue_address": "800 High Street, Thornbury",
+   "venue_city": "Melbourne",
+   "venue_id": "a91732f3-e817-4ebb-bbfb-8bc9fd9fd805",
+   "is_age_restricted": false,
+   "age_restriction_min": null,
+   "cover_image_url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/submissions/760aa04a-dd8d-4617-a031-ab4cb5b15290/cover.jpg",
+   "summary": "A gentle two-hour evening for women, hosted by Berenice Franklin of GroovyTown Wellbeing, with gentle movement, breathwork, reflection and a Full Moon Women's Circle. No experience needed. The room is upstairs, with no lift.",
+   "is_free": false,
+   "entry_mode": "tickets",
+   "external_ticket_url": "https://groovytown.com.au/amomentofsanity",
+   "listing_source": "eventlinqs",
+   "category": {
+    "slug": "health-wellness"
+   },
+   "organisation": {
+    "name": "EventLinqs listings",
+    "slug": "eventlinqs-listings"
+   },
+   "ticket_tiers": [],
+   "event_booking_links": [
+    {
+     "availability": "on_sale"
+    }
+   ],
+   "venue_row": {
+    "name": "Thornbury Apothecary"
+   }
+  }
+ ],
+ "booking_links": [
+  {
+   "event_id": "22e609e1-4d19-442a-a3c8-356d7a67e72e",
+   "id": "199d402b-2d18-4f3d-8106-d58183426e73",
+   "provider": "other",
+   "url": "https://groovytown.com.au/amomentofsanity",
+   "kind": "tickets",
+   "availability": "on_sale",
+   "price_from_cents": 5400,
+   "price_checked_at": "2026-11-08T00:00:00+00:00",
+   "is_primary": false,
+   "set_by": "curated",
+   "pointed_to_by_organiser": false,
+   "position": 0,
+   "created_at": "2026-11-07T21:11:35.302275+00:00"
+  },
+  {
+   "event_id": "fa853d15-7808-4fc3-981c-d088cc28ec66",
+   "id": "c10388a0-8047-4ee1-a178-dbc682384ae8",
+   "provider": "other",
+   "url": "https://www.axs.com/au/events/1511305/lany-tickets",
+   "kind": "tickets",
+   "availability": "on_sale",
+   "price_from_cents": null,
+   "price_checked_at": null,
+   "is_primary": false,
+   "set_by": "curated",
+   "pointed_to_by_organiser": false,
+   "position": 0,
+   "created_at": "2026-11-05T04:15:22.115655+00:00"
+  }
+ ],
+ "venue_distribution_off": [],
+ "read_at": "2026-11-18T04:42:31.605174+00:00"
+}
