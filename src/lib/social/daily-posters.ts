@@ -330,8 +330,8 @@ export function posterLook(n: CampaignNight, city: CampaignCity, sessions: reado
   const tz = n.timezone ?? 'Australia/Melbourne'
   const day = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: tz, ...o }).format(new Date(iso)).replace(/,/g, '')
   const title = plainWords(postTitle(n.title, n.venueName))
-  // The name as the master writes it: its first part, its year left off ('African Music and Cultural Festival 2026' reads
-  // 'African Music and Cultural Festival', as master 20 does).
+  // The name as the master writes it: its first part, its year left off (AMCF's title with '2026' after it reads without
+  // the year, as master 20 does).
   const who = splitTitle(title)[0].replace(/\s+(?:19|20)\d{2}$/, '')
   const kind = nightKind(n) ?? 'other'
   const days =[...new Set([n, ...sessions].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((x) => day(x.startDate, { weekday: 'long' })))]
