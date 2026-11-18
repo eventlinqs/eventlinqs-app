@@ -77,7 +77,8 @@ describe('a segment A letter is queued only when it passes whole', () => {
     const r = await draftSegmentALetter(db, input())
     expect(r).toEqual({ state: 'queued', touchId: 't1' })
     expect(updates).toHaveLength(1)
-    expect(updates[0].payload).toEqual({ state: 'queued', scheduled_for: THU_10.toISOString() })
+    // A queued letter names its one transport, so its sent record is whole (outreach_touches_sent_is_whole; 18 November 2026).
+    expect(updates[0].payload).toEqual({ state: 'queued', scheduled_for: THU_10.toISOString(), provider: 'graph' })
     expect(updates[0].filters).toContainEqual(['state', 'held'])
   })
 

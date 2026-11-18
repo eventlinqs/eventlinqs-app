@@ -237,7 +237,10 @@ export async function runOutreachSender(
     }
     const done = await db
       .from('outreach_touches')
-      .update({ state: 'sent', sent_at: new Date().toISOString(), internet_message_id: messageId, in_reply_to: inReplyTo })
+      // provider names the transport that sent it: outreach_touches_sent_is_whole refuses a sent record without one, and
+      // until 18 November 2026 this write left it out, so every send was delivered and then left 'sending' (the first
+      // two approved ACQ letters, 14:00 and 14:15; recorded by hand from Sent Items, go/acq-provider-DRY-RUN.sql).
+      .update({ state: 'sent', sent_at: new Date().toISOString(), internet_message_id: messageId, in_reply_to: inReplyTo, ...(transport.kind === 'graph' ? { provider: 'graph' as const } : {}) })
       .eq('id', t.id)
       .eq('state', 'sending')
       .select('id')
