@@ -84,6 +84,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       // Lawal's home screen as employee one (his 13:55 of 15 November 2026).
       { label: 'Automation', href: '/admin/automation', capability: 'admin.dashboard.view' },
+      // One row per automation from its own records (the operating model's A4 and A5, 19 November 2026).
+      { label: 'Engine', href: '/admin/engine', capability: 'admin.dashboard.view' },
       { label: 'Feature flags', href: '/admin/flags', capability: 'admin.flags.manage' },
     ],
   },

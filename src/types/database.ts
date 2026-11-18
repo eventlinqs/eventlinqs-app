@@ -7379,6 +7379,30 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_sender_mode_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_mode: string
+          id: number
+          to_mode: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_mode: string
+          id?: never
+          to_mode: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_mode?: string
+          id?: never
+          to_mode?: string
+        }
+        Relationships: []
+      }
       outreach_templates: {
         Row: {
           body: string

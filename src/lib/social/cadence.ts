@@ -1,3 +1,5 @@
+import { midnightIn } from '@/lib/dates/zone-midnight'
+
 /**
  * HOW OFTEN AND WHEN EVENTLINQS POSTS, LEARNED FROM ITS OWN POSTS AGAINST TICKETS SOLD (item 11, the social engine;
  * docs/SOCIAL-ENGINE.md). Ported from Bookedproof's src/lib/social/cadence.ts (bp-int-pf1, read only, 27 October 2026).
@@ -263,9 +265,8 @@ export function scheduleWindowOf(
 }
 
 export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
-  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' }).formatToParts(at)
-  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
-  return new Date(Math.floor(at.getTime() / 1000) * 1000 - ((n('hour') % 24) * 3600 + n('minute') * 60 + n('second')) * 1000)
+  // True on a daylight saving day too (src/lib/dates/zone-midnight.ts; car D, 19 November 2026).
+  return midnightIn(at, zone)
 }
 
 /**

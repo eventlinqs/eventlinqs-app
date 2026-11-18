@@ -27,7 +27,7 @@ export const LISTINGS_ORG_SLUG = 'eventlinqs-listings'
 export const PASSED_BEFORE_REVIEW = 'the night passed before review'
 
 /** The source types a partner's own feed comes in by (D5's paths 1 and 3). */
-const PARTNER_TYPES = new Set(['organiser_submission', 'venue_partnership'])
+export const PARTNER_TYPES = new Set(['organiser_submission', 'venue_partnership'])
 
 /**
  * WHAT A NIGHT LANDS WITH WHEN THE DATABASE DOES NOT YET ALLOW ONE OF ITS HOLDS (listing_candidates_reasons_known):

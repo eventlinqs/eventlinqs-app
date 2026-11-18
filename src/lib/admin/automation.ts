@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { midnightIn } from '@/lib/dates/zone-midnight'
 import { cardState, nextRun, threeNumbers, type CardState, type ThreeNumbers } from './automation-math'
 import { SCHEDULES, type Schedule } from './automation-schedules'
 import { agrees, countOf } from '@/lib/text/plural'
@@ -43,10 +44,8 @@ export type AutomationCard = {
 
 /** The start of today in Melbourne, as an instant. */
 function melbourneDayStart(now: Date): Date {
-  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(now)
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
-  const sinceMidnightMs = ((get('hour') % 24) * 3600 + get('minute') * 60 + get('second')) * 1000 + now.getUTCMilliseconds()
-  return new Date(now.getTime() - sinceMidnightMs)
+  // True on a daylight saving day too (src/lib/dates/zone-midnight.ts; car D, 19 November 2026).
+  return midnightIn(now, 'Australia/Melbourne')
 }
 
 function melbourneMonthStart(now: Date, monthsBack: number): Date {
