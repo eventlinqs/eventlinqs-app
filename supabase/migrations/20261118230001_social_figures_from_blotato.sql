@@ -16,9 +16,12 @@
 --    its reference (read on production at 23:07:12: the five of 18 November, held with the published_ref_check's
 --    refusal, none with a published sibling). The rest of the rule is as it was.
 --
--- Additive: three columns and one check added, one check widened, one function changed in place; no row changes (the
--- table held 0 rows on production at 23:04:38 on 18 November). Reversal: drop the three columns and the source check,
--- restore the metric check to its four, and replace the one fragment back.
+-- 5. Each day's read is kept (social_measure_runs): what it kept, matched and could not match, for the results card.
+--
+-- Additive: three columns and three checks added, one check widened, one function changed in place, one table created
+-- with its grants; no row changes (the figures table held 0 rows on production at 23:04:38 on 18 November). Reversal:
+-- drop social_measure_runs, the three columns and the added checks, restore the metric check to its four, and replace the
+-- one fragment back.
 
 -- 1 and 3: where a figure came from, and a Blotato figure's post
 alter table public.social_piece_figures add column if not exists source text not null default 'person';
@@ -72,6 +75,23 @@ begin
 end
 $migrate$;
 
+-- 5: each day's read, so it runs once a day even when no post is matched, and the posts it could not match are named on
+-- the results card (the PM's 23:09: never guessed). Staff only, through the service role, added to and never rewritten
+-- (the 21 October grant rule).
+create table if not exists public.social_measure_runs (
+  id uuid primary key default gen_random_uuid(),
+  ran_at timestamptz not null default now(),
+  kept integer not null check (kept >= 0),
+  matched jsonb not null check (jsonb_typeof(matched) = 'array'),
+  unmatched jsonb not null check (jsonb_typeof(unmatched) = 'array')
+);
+create index if not exists social_measure_runs_by_time on public.social_measure_runs (ran_at desc);
+comment on table public.social_measure_runs is
+  'Car C: each day''s read of Blotato''s figures: how many were kept, the posts matched to a piece (by address or by a caption only one piece carries), and the posts left unmatched and why; read by the results card.';
+alter table public.social_measure_runs enable row level security;
+revoke all on public.social_measure_runs from public, anon, authenticated, service_role;
+grant select, insert on public.social_measure_runs to service_role;
+
 comment on column public.social_piece_figures.source is
   'Where the figure came from: person (typed from the app''s insights, with entered_by) or blotato (read by the daily run from GET /v2/analytics, with the post''s own id).';
 
@@ -97,6 +117,13 @@ begin
   end if;
   if has_table_privilege('anon', 'public.social_piece_figures', 'SELECT') or has_table_privilege('authenticated', 'public.social_piece_figures', 'SELECT') then
     v_missing := v_missing || ' grants.still_staff_only';
+  end if;
+  if not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = 'social_measure_runs' and c.relrowsecurity) then
+    v_missing := v_missing || ' social_measure_runs.rls';
+  end if;
+  if has_table_privilege('anon', 'public.social_measure_runs', 'SELECT') or has_table_privilege('authenticated', 'public.social_measure_runs', 'SELECT')
+     or not has_table_privilege('service_role', 'public.social_measure_runs', 'INSERT') or has_table_privilege('service_role', 'public.social_measure_runs', 'UPDATE') then
+    v_missing := v_missing || ' social_measure_runs.grants';
   end if;
   if v_missing <> '' then
     raise exception 'Social figures from Blotato migration post-condition failed:%', v_missing;

@@ -7,8 +7,11 @@ import { readGrowthRows } from './weekly'
 import { figuresFor, weekOf, type Rows, type Week } from './weekly-math'
 import {
   buildSocialReport,
+  LEARN_DAYS,
+  learnFromFigures,
   matchBlotatoPosts,
   PLATFORM_METRICS,
+  type LearnFigure,
   PLATFORMS,
   type Matched,
   type ReadPost,
@@ -334,8 +337,9 @@ export async function recordBlotatoFigures(
   // The day's start in Melbourne, from the offset Melbourne's clock shows now.
   const local = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute))
   const dayStart = new Date(now.getTime() - (local - Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))) - (now.getTime() % 60_000))
-  const { data: today, error: terr } = await db.from('social_piece_figures').select('id').eq('source', 'blotato').gte('entered_at', dayStart.toISOString()).limit(1)
-  if (terr) throw new Error(`the day's Blotato figures: ${terr.message}`)
+  // Once a day, kept in the day's run (social_measure_runs), so a day with no post matched is read once too.
+  const { data: today, error: terr } = await db.from('social_measure_runs').select('id').gte('ran_at', dayStart.toISOString()).limit(1)
+  if (terr) throw new Error(`the day's read of the figures: ${terr.message}`)
   if ((today ?? []).length > 0) return { state: 'not_today', written: 0, matched: [], unmatched: [], why: 'read already today' }
 
   const since = new Date(now.getTime() - 30 * 86_400_000).toISOString()
@@ -371,7 +375,30 @@ export async function recordBlotatoFigures(
     )
     if (error) throw new Error(`the day's figures could not be kept: ${refusal(error.message)}`)
   }
+  const { error: runErr } = await db.from('social_measure_runs').insert({ ran_at: now.toISOString(), kept: m.rows.length, matched: m.matched, unmatched: m.unmatched })
+  if (runErr) throw new Error(`the day's read could not be kept: ${refusal(runErr.message)}`)
   return { state: 'read', written: m.rows.length, matched: m.matched, unmatched: m.unmatched }
+}
+
+/**
+ * WHAT WORKED, FOR THE RESULTS CARD (car C, learn): the line learnFromFigures writes from the platforms' own figures of the
+ * last 14 days, and the newest day's posts left unmatched, named (the PM's 23:09: never guessed).
+ */
+export async function readSocialLearning(db: Db, now: Date): Promise<{ line: string; ranAt: string | null; unmatched: Matched['unmatched'] }> {
+  const since = new Date(now.getTime() - LEARN_DAYS * 86_400_000).toISOString()
+  const { data: figs, error } = await db.from('social_piece_figures').select('piece_id, platform, metric, value, read_at, social_pieces(kind)').gte('read_at', since).limit(5000)
+  if (error) throw new Error(`the platforms' figures: ${error.message}`)
+  const figures: LearnFigure[] = (figs ?? []).map((f) => ({
+    pieceId: f.piece_id as string,
+    kind: String(((f.social_pieces ?? {}) as { kind?: string }).kind ?? 'unknown'),
+    platform: f.platform as Platform,
+    metric: f.metric as string,
+    value: Number(f.value),
+    readAt: f.read_at as string,
+  }))
+  const { data: runs } = await db.from('social_measure_runs').select('ran_at, unmatched').order('ran_at', { ascending: false }).limit(1)
+  const run = (runs ?? [])[0] as { ran_at: string; unmatched: Matched['unmatched'] } | undefined
+  return { line: learnFromFigures(figures, now).line, ranAt: run?.ran_at ?? null, unmatched: run?.unmatched ?? [] }
 }
 
 /** G4: a person's answer to one recommendation of a campaign's report, with the words and evidence shown now. */

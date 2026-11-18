@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import { blotatoCounts, makeBlotatoAnalytics } from '@/lib/social/blotato-publisher'
-import { matchBlotatoPosts, postKey, type ReadPost, type WentPost } from '@/lib/growth/social-report-math'
+import { learnFromFigures, matchBlotatoPosts, postKey, type LearnFigure, type ReadPost, type WentPost } from '@/lib/growth/social-report-math'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 
 /*
@@ -75,6 +75,28 @@ describe('each post matched to the piece that went, never guessed (the PM 23:09)
   })
 })
 
+describe('what worked: families ranked by the platforms own clicks per reach over 14 days (car C, learn)', () => {
+  const fig = (pieceId: string, kind: string, metric: string, value: number, readAt = '2026-11-18T20:00:00Z', platform: 'instagram' | 'facebook' = 'facebook'): LearnFigure => ({ pieceId, kind, platform, metric, value, readAt })
+  const three = (kind: string, clicks: number, reach: number) => [1, 2, 3].flatMap((i) => [fig(`${kind}${i}`, kind, 'clicks', clicks), fig(`${kind}${i}`, kind, 'reach', reach)])
+  it('the family with the higher median of clicks per reach leads, over three posts or more', () => {
+    const out = learnFromFigures([...three('daily_poster', 6, 200), ...three('week_ahead', 2, 200)], now)
+    expect(out.best).toEqual({ kind: 'daily_poster', perHundred: 3, posts: 3 })
+    expect(out.line).toBe("Over the last 14 days the single event poster led: 3 clicks for every 100 people reached, over 3 posts (the platforms' own figures).")
+  })
+  it('too few posts are said plainly, never a winner named from one lucky post', () => {
+    const out = learnFromFigures([fig('a', 'daily_poster', 'clicks', 50), fig('a', 'daily_poster', 'reach', 60)], now)
+    expect(out.best).toBeNull()
+    expect(out.line).toBe('Not enough measured posts yet: 1 with a reach in the last 14 days; a family is compared over 3 posts or more.')
+  })
+  it("each post's newest figure only, and nothing older than 14 days", () => {
+    const old = [fig('x1', 'week_ahead', 'clicks', 90, '2026-10-01T00:00:00Z'), fig('x1', 'week_ahead', 'reach', 100, '2026-10-01T00:00:00Z')]
+    const twice = [fig('d1', 'daily_poster', 'reach', 100, '2026-11-17T20:00:00Z'), fig('d1', 'daily_poster', 'reach', 400, '2026-11-18T20:00:00Z'), fig('d1', 'daily_poster', 'clicks', 4)]
+    const out = learnFromFigures([...old, ...twice, ...three('coming_up', 1, 100).map((f) => ({ ...f, pieceId: `c${f.pieceId}` }))], now)
+    expect(out.measured).toBe(4)
+    expect(out.best?.kind).toBe('coming_up')
+  })
+})
+
 /** A database answering the chains recordBlotatoFigures makes, and keeping what it inserts. */
 function fakeDb(tables: Record<string, Record<string, unknown>[]>) {
   const inserted: Record<string, unknown>[] = []
@@ -86,7 +108,7 @@ function fakeDb(tables: Record<string, Record<string, unknown>[]>) {
       gte: (k: string, v: string) => (tests.push((r) => String(r[k]) >= v), q),
       in: (k: string, vs: unknown[]) => (tests.push((r) => vs.includes(r[k])), q),
       limit: () => q,
-      insert: async (rows: Record<string, unknown>[]) => (inserted.push(...rows), { error: null }),
+      insert: async (rows: Record<string, unknown>[] | Record<string, unknown>) => (inserted.push(...(Array.isArray(rows) ? rows : [{ ...rows, table }])), { error: null }),
       then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: (tables[table] ?? []).filter((r) => tests.every((t) => t(r))), error: null }).then(ok),
     }
     return q
@@ -114,10 +136,14 @@ describe("the day's read, kept by the report's one writer", () => {
     const out = await recordBlotatoFigures(db, list, now)
     expect(out.state).toBe('read')
     expect(out.matched).toEqual([{ pieceId: 'a', platform: 'instagram', postUrl: null, how: 'caption' }])
-    expect(inserted.map((r) => [r.piece_id, r.metric, r.value, r.source, r.platform_post_id])).toEqual([['a', 'reach', 120, 'blotato', 'p1'], ['a', 'likes', 9, 'blotato', 'p1']])
+    const figures = inserted.filter((r) => !('table' in r))
+    expect(figures.map((r) => [r.piece_id, r.metric, r.value, r.source, r.platform_post_id])).toEqual([['a', 'reach', 120, 'blotato', 'p1'], ['a', 'likes', 9, 'blotato', 'p1']])
+    // The day's read is kept, with what it matched and what it could not, for the results card.
+    const run = inserted.find((r) => r.table === 'social_measure_runs')
+    expect(run).toMatchObject({ kept: 2, matched: [{ pieceId: 'a', how: 'caption' }], unmatched: [] })
   })
-  it('read already today: nothing more is kept', async () => {
-    const { db, inserted } = fakeDb({ ...tables, social_piece_figures: [{ id: 'x', source: 'blotato', entered_at: '2026-11-18T23:00:00Z' }] })
+  it('read already today (a run kept since midnight in Melbourne): nothing more is kept', async () => {
+    const { db, inserted } = fakeDb({ ...tables, social_measure_runs: [{ id: 'x', ran_at: '2026-11-18T20:00:00Z' }] })
     expect((await recordBlotatoFigures(db, list, now)).state).toBe('not_today')
     expect(inserted).toEqual([])
   })

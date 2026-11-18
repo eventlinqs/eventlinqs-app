@@ -10156,6 +10156,30 @@ export type Database = {
           },
         ]
       }
+      social_measure_runs: {
+        Row: {
+          id: string
+          kept: number
+          matched: Json
+          ran_at: string
+          unmatched: Json
+        }
+        Insert: {
+          id?: string
+          kept: number
+          matched: Json
+          ran_at?: string
+          unmatched: Json
+        }
+        Update: {
+          id?: string
+          kept?: number
+          matched?: Json
+          ran_at?: string
+          unmatched?: Json
+        }
+        Relationships: []
+      }
       social_piece_approvals: {
         Row: {
           approved_at: string

@@ -52,6 +52,63 @@ export type ReadPost = { readonly id: string; readonly platform: string; readonl
 export type BlotatoFigureRow = { readonly pieceId: string; readonly platform: Platform; readonly metric: FigureMetric; readonly value: number; readonly readAt: string; readonly platformPostId: string; readonly postUrl: string | null }
 export type Matched = { readonly rows: readonly BlotatoFigureRow[]; readonly matched: readonly { pieceId: string; platform: Platform; postUrl: string | null; how: 'url' | 'caption' }[]; readonly unmatched: readonly { id: string; platform: string; postUrl: string | null; why: string }[] }
 
+/** The names a family is said by on the results card. */
+export const FAMILY_NAMES: Readonly<Record<string, string>> = {
+  week_ahead: "the week's carousel",
+  weekend_carousel: 'the weekend list',
+  tonight_tomorrow: 'Friday and Saturday',
+  coming_up: 'coming up',
+  category_spotlight: 'the category spotlight',
+  discovery_reel: 'the week as stories',
+  venue_spotlight: "a venue's week",
+  daily_poster: 'the single event poster',
+  organiser_campaign: 'the organiser offer',
+  brand_campaign: 'the brand post',
+}
+/** Learning reads this many days back (the PM's 21:00: 'rank by clicks per reach over 14 days'). */
+export const LEARN_DAYS = 14
+
+/** One figure a platform reported, with its piece's family. */
+export type LearnFigure = { readonly pieceId: string; readonly kind: string; readonly platform: Platform; readonly metric: string; readonly value: number; readonly readAt: string }
+
+/**
+ * WHAT WORKED (car C, learn; the PM's 21:00 of 18 November 2026; law 29, section 8): each family's median of the platforms'
+ * own clicks per reach over the last 14 days, each post's newest figures only, a family compared only over
+ * MIN_PIECES_PER_KIND posts or more. Platform figures only: an EventLinqs count is never divided by a platform's (K14).
+ * Pure; the line is shown, and the day's mix that leans on it is car D's.
+ */
+export function learnFromFigures(figures: readonly LearnFigure[], now: Date): { line: string; best: { kind: string; perHundred: number; posts: number } | null; measured: number } {
+  const from = now.getTime() - LEARN_DAYS * 86_400_000
+  const newest = new Map<string, LearnFigure>()
+  for (const f of figures) {
+    if (Date.parse(f.readAt) < from) continue
+    const key = `${f.pieceId}|${f.platform}|${f.metric}`
+    const had = newest.get(key)
+    if (!had || Date.parse(f.readAt) > Date.parse(had.readAt)) newest.set(key, f)
+  }
+  const perPiece = new Map<string, { kind: string; clicks: number; reach: number }>()
+  for (const f of newest.values()) {
+    const p = perPiece.get(f.pieceId) ?? { kind: f.kind, clicks: 0, reach: 0 }
+    if (f.metric === 'clicks') p.clicks += f.value
+    if (f.metric === 'reach') p.reach += f.value
+    perPiece.set(f.pieceId, p)
+  }
+  const byKind = new Map<string, number[]>()
+  for (const p of perPiece.values()) if (p.reach > 0) byKind.set(p.kind, [...(byKind.get(p.kind) ?? []), p.clicks / p.reach])
+  const measured = [...byKind.values()].reduce((n, v) => n + v.length, 0)
+  const ranked = [...byKind.entries()].filter(([, v]) => v.length >= MIN_PIECES_PER_KIND).map(([kind, v]) => ({ kind, rate: median(v), posts: v.length })).sort((a, b) => b.rate - a.rate)
+  if (ranked.length === 0) {
+    return { line: `Not enough measured posts yet: ${measured} with a reach in the last ${LEARN_DAYS} days; a family is compared over ${MIN_PIECES_PER_KIND} posts or more.`, best: null, measured }
+  }
+  const top = ranked[0]
+  const perHundred = Math.round(top.rate * 1000) / 10
+  return {
+    line: `Over the last ${LEARN_DAYS} days ${FAMILY_NAMES[top.kind] ?? top.kind} led: ${perHundred} clicks for every 100 people reached, over ${top.posts} posts (the platforms' own figures).`,
+    best: { kind: top.kind, perHundred, posts: top.posts },
+    measured,
+  }
+}
+
 /** A post's address as one key: no scheme, no www, no query or fragment, no trailing slash, lower case. */
 export function postKey(url: string | null): string | null {
   if (!url) return null
