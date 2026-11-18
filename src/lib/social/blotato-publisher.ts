@@ -87,11 +87,44 @@ export function makeBlotatoPublisher(deps: BlotatoPublisherDeps): Publisher {
     for (let i = 0; i < STATUS_CHECKS; i += 1) {
       const s = await call('GET', `/posts/${encodeURIComponent(submission)}`)
       const status = String(s.status ?? '').toLowerCase()
-      if (status === 'published') return { ref: typeof s.publicUrl === 'string' ? s.publicUrl : `blotato:${submission}` }
+      if (status === 'published') return { ref: typeof s.publicUrl === 'string' ? s.publicUrl : `blotato:${submission}`, submission }
       if (status === 'failed') throw new BlotatoRefusal(`Blotato could not publish: ${typeof s.errorMessage === 'string' ? s.errorMessage : 'no reason given'}`)
       await sleep(STATUS_WAIT_MS)
     }
     // Accepted and still being published by Blotato: recorded by its submission, so the run never sends it twice.
-    return { ref: `blotato:${submission}` }
+    return { ref: `blotato:${submission}`, submission }
+  }
+}
+
+/**
+ * BLOTATO'S OWN WORD ON A POST IT ACCEPTED (the PM's 18:40 of 18 November 2026, item 1 (a)): GET /v2/posts/{postSubmissionId},
+ * the same reference as above, answers the post's status and, once Blotato has published it, its public URL. A read only;
+ * it sends nothing. The social run reads back every post recorded by its submission until its URL is known.
+ */
+export type BlotatoPostReader = (submission: string) => Promise<{ readonly status: string; readonly publicUrl: string | null }>
+
+/**
+ * BLOTATO'S OWN LIST OF PUBLISHED POSTS (GET /v2/published-posts, backend.blotato.com/openapi.json, read 18 November 2026:
+ * 'Search published posts', items of { id, content, postUrl, platform, createdAt }, filtered by platform and limit). A read
+ * only: it finds a post Blotato published whose submission was never kept.
+ */
+export type BlotatoPublishedSearch = (platform: string) => Promise<readonly { readonly content: string; readonly postUrl: string | null; readonly createdAt: string }[]>
+
+export function makeBlotatoSearch(config: BlotatoConfig, fetchImpl: typeof fetch = fetch): BlotatoPublishedSearch {
+  return async (platform) => {
+    const res = await fetchImpl(`${BLOTATO_BASE}/published-posts?platform=${encodeURIComponent(platform)}&limit=50`, { method: 'GET', headers: { 'blotato-api-key': config.apiKey } })
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    if (!res.ok) throw new BlotatoRefusal(`Blotato refused GET /published-posts: ${typeof json.message === 'string' ? json.message : `HTTP ${res.status}`}`)
+    const items = Array.isArray(json.items) ? (json.items as Array<Record<string, unknown>>) : []
+    return items.map((i) => ({ content: String(i.content ?? ''), postUrl: typeof i.postUrl === 'string' ? i.postUrl : null, createdAt: String(i.createdAt ?? '') }))
+  }
+}
+
+export function makeBlotatoReader(config: BlotatoConfig, fetchImpl: typeof fetch = fetch): BlotatoPostReader {
+  return async (submission) => {
+    const res = await fetchImpl(`${BLOTATO_BASE}/posts/${encodeURIComponent(submission)}`, { method: 'GET', headers: { 'blotato-api-key': config.apiKey } })
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    if (!res.ok) throw new BlotatoRefusal(`Blotato refused GET /posts/${submission}: ${typeof json.message === 'string' ? json.message : `HTTP ${res.status}`}`)
+    return { status: String(json.status ?? '').toLowerCase(), publicUrl: typeof json.publicUrl === 'string' ? json.publicUrl : null }
   }
 }

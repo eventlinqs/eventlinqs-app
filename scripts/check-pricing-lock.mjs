@@ -66,6 +66,19 @@ for (const w of result.warnings ?? []) {
  */
 if (result.ok) {
   process.exitCode = 0
+} else if (result.kind === 'read_failed') {
+  // A FAILED READ IS NEVER CALLED DRIFT (the PM's 13:38 of 18 November 2026): no rate was read, so the drift advice
+  // below would be false. Its own words, and its own exit code (2) where it blocks, so a gate can tell the two apart.
+  const words =
+    `\n[pricing-lock] ${PRICING_LOCK_RULE.name} READ FAILED.\n    ${result.reason}\n` +
+    `    Nothing here says a rate changed. Read the database again; if it answers, this check passes on its own.\n`
+  if (blocks && !bypass) {
+    console.error(`${words}\n[pricing-lock] BUILD BLOCKED (read failed, exit 2).\n`)
+    process.exitCode = 2
+  } else {
+    console.warn(`${words}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING_DRIFT=1 is set' : `${scope} build`}); this WOULD block on Vercel and in CI.\n`)
+    process.exitCode = 0
+  }
 } else {
 const message =
   `\n[pricing-lock] ${PRICING_LOCK_RULE.name} FAILED.\n    ${result.reason}\n\n` +

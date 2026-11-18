@@ -10380,6 +10380,7 @@ export type Database = {
           published_at: string | null
           published_ref: string | null
           state: string
+          submission_ref: string | null
         }
         Insert: {
           approval_id: string
@@ -10392,6 +10393,7 @@ export type Database = {
           published_at?: string | null
           published_ref?: string | null
           state?: string
+          submission_ref?: string | null
         }
         Update: {
           approval_id?: string
@@ -10404,6 +10406,7 @@ export type Database = {
           published_at?: string | null
           published_ref?: string | null
           state?: string
+          submission_ref?: string | null
         }
         Relationships: [
           {

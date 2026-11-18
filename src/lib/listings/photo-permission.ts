@@ -4,10 +4,10 @@ import type { Database } from '@/types/database'
 import { proofMatches } from '@/lib/outreach/photo-link'
 import { readTheirNights } from '@/lib/outreach/their-nights'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
-import { addAsset } from '@/lib/social/store'
+import { addAsset, decideAsset, pendingAssetId } from '@/lib/social/store'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { storeImage, type MediaDeps } from './organiser-media'
-import { grantWording, permittedUsesWords, type PhotoUses } from './photo-permission-math'
+import { grantWording, nightNamedBy, permittedUsesWords, type PhotoUses } from './photo-permission-math'
 
 /**
  * AN ORGANISER'S PHOTOS, GIVEN THROUGH THEIR SECURE LINK (Lawal, 12 November 2026, 12:01, item 2; the Growth OS order's
@@ -25,8 +25,11 @@ import { grantWording, permittedUsesWords, type PhotoUses } from './photo-permis
  *   2. each image is re-encoded and stored by the organiser media pipeline (organiser-media.ts storeImage: magic bytes,
  *      orientation and metadata stripped, never a photo already locked to another night);
  *   3. each is entered in the asset register through its one writer (social/store.ts addAsset) as organiser authorised,
- *      PENDING: it carries the yes (the register's trigger takes it), the uses chosen and the day it came, and nothing
- *      carries it until Lawal approves it under Images and their rights. A refusal removes the stored file.
+ *      carrying the yes (the register's trigger takes it), the uses chosen and the day it came. A refusal removes the
+ *      stored file;
+ *   4. each is then APPLIED AUTOMATICALLY (18 November 2026, 13:46): approved by the register's one decider
+ *      (decideAsset), scoped to the ticked uses and that night only, and, where the event page was ticked and the night
+ *      shows no photo of the organiser's own, the first becomes its cover. An admin can still withdraw any of them.
  * The founder account is named as the one who logged it (the yes's logged_by), as it is for every drafted message.
  */
 
@@ -45,7 +48,7 @@ export interface PhotoNight {
 }
 
 export type PhotoPage =
-  | { readonly state: 'found'; readonly contactId: string; readonly organiserName: string; readonly greeting: string; readonly nights: readonly PhotoNight[] }
+  | { readonly state: 'found'; readonly contactId: string; readonly organiserName: string; readonly greeting: string; readonly nights: readonly PhotoNight[]; readonly preselect: string | null }
   | { readonly state: 'not found' }
 
 /** The contact's page, only when the proof is theirs; their own public nights ahead, soonest first. */
@@ -64,14 +67,18 @@ export async function readPhotoPage(db: Db, contactId: string, proof: string, no
     venueName: n.venueName,
   }))
   const first = ((c.data.person_name as string | null) ?? '').trim().split(/\s+/)[0] ?? ''
-  return { state: 'found', contactId, organiserName: org.name, greeting: first || `${org.name} team`, nights }
+  // The night the letter names opens already chosen (the PM's 13:50 item 1 (d)): read from the newest letters sent to
+  // this contact, whose subject names the night; the 14 letters need no change.
+  const { data: sent } = await db.from('outreach_touches').select('subject').eq('contact_id', contactId).eq('state', 'sent').order('sent_at', { ascending: false }).limit(5)
+  const preselect = (sent ?? []).map((t) => nightNamedBy(t.subject as string | null, nights)).find((id): id is string => id !== null) ?? null
+  return { state: 'found', contactId, organiserName: org.name, greeting: first || `${org.name} team`, nights, preselect }
 }
 
 export type GiveAnswer =
-  | { readonly state: 'done'; readonly added: number; readonly refused: readonly string[] }
+  | { readonly state: 'done'; readonly added: number; readonly refused: readonly string[]; readonly applied: number; readonly coverSet: boolean; readonly slug: string }
   | { readonly state: 'refused'; readonly reason: string }
 
-/** Records the yes for the chosen night, then stores and registers each image, pending Lawal's approval. */
+/** Records the yes for the chosen night, then stores, registers and applies each image (13:46 of 18 November 2026). */
 export async function givePhotos(
   db: Db,
   input: {
@@ -86,7 +93,7 @@ export async function givePhotos(
 ): Promise<GiveAnswer> {
   const night = input.page.nights.find((n) => n.eventId === input.eventId)
   if (!night) return { state: 'refused', reason: 'Choose one of your nights.' }
-  if (!night.venueName) return { state: 'refused', reason: 'That night has no venue on its listing yet, so a photo cannot be kept for it. Reply to Lawal and he will set it up.' }
+  if (!night.venueName) return { state: 'refused', reason: 'That night has no venue on its listing yet, so a photo cannot be kept for it. Reply to our email and the EventLinqs team will set it up.' }
   const files = input.files.filter((f) => f instanceof File && f.size > 0)
   if (files.length === 0) return { state: 'refused', reason: 'Choose at least one photo or artwork.' }
   if (files.length > MAX_PHOTOS) return { state: 'refused', reason: `Choose up to ${MAX_PHOTOS} at a time.` }
@@ -110,10 +117,19 @@ export async function givePhotos(
   const receivedOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(input.now)
   const refused: string[] = []
   let added = 0
+  const applied: string[] = []
   for (const file of files) {
     const stored = await storeImage(`photos/${night.eventId}`, file, night.eventId, deps)
     if ('refused' in stored) {
       refused.push(`${file.name || 'An image'}: ${stored.refused}`)
+      continue
+    }
+    // THE DESTINATION FIT (the PM's 13:42 class, law 4): a photo for our posts is at least Meta's minimum width
+    // (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media:
+    // "Minimum width: 320"); the event page shows any photo whole (law 15), so it asks nothing more.
+    if (input.uses !== 'site' && stored.width !== undefined && stored.width < POSTS_MIN_WIDTH) {
+      await deps.remove([stored.path])
+      refused.push(`${file.name || 'An image'}: it is ${stored.width} pixels wide; a photo for posts needs at least ${POSTS_MIN_WIDTH}.`)
       continue
     }
     const done = await addAsset(db, {
@@ -145,6 +161,32 @@ export async function givePhotos(
       continue
     }
     added += 1
+    // APPLIED AUTOMATICALLY (Lawal, 18 November 2026, 13:46: "If they ticked it, if they approve it, good"; the PM's
+    // 13:50 item 1 (c)): the organiser's own photo, through their own private link, for their own night, with the
+    // permission ticked and the uses chosen, has passed every check above, so it is approved now, scoped exactly to the
+    // ticked uses and that night (the register row carries both). No founder review. An admin can still withdraw it.
+    const assetId = await pendingAssetId(db as never, night.eventId, stored.url)
+    if (assetId) {
+      const ok = await decideAsset(db as never, { id: assetId, decision: 'approved', by: founder.id, now: input.now })
+      if (ok.state === 'done') applied.push(stored.url)
+    }
   }
-  return { state: 'done', added, refused }
+
+  // ON THE EVENT PAGE, when the organiser ticked it: the first applied photo becomes the night's cover unless the night
+  // already shows a photo of the organiser's own (event_image_rights reads organiser_authorised or separately_licensed
+  // for its cover); the database records its rights from the approved register row (event_image_right).
+  let coverSet = false
+  if (input.uses !== 'social' && applied.length > 0) {
+    const { data: rights } = await db.from('event_image_rights').select('rights_state').eq('event_id', night.eventId).eq('image_role', 'cover').maybeSingle()
+    if (!OWN_PHOTO_RIGHTS.has(String(rights?.rights_state ?? ''))) {
+      const { error } = await db.from('events').update({ cover_image_url: applied[0] }).eq('id', night.eventId)
+      coverSet = !error
+    }
+  }
+  return { state: 'done', added, refused, applied: applied.length, coverSet, slug: night.slug }
 }
+
+/** Meta's minimum width for an image it publishes (IG User Media, Image Specifications). */
+export const POSTS_MIN_WIDTH = 320
+/** A cover that is already the organiser's own, or licensed, is never replaced by a new upload. */
+const OWN_PHOTO_RIGHTS = new Set(['organiser_authorised', 'separately_licensed'])

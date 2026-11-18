@@ -32,7 +32,8 @@ export type MediaAnswer = { readonly state: 'done'; readonly id: string } | { re
 
 export type MediaDeps = {
   /** The image pipeline; throws on anything it cannot read as an image. */
-  process(bytes: ArrayBuffer): Promise<{ buffer: Buffer; extension: string; contentType: string }>
+  /** The image made clean for storage; its size where the processor reads it (optional, so a stand-in may leave it out). */
+  process(bytes: ArrayBuffer): Promise<{ buffer: Buffer; extension: string; contentType: string; width?: number; height?: number }>
   /** The image's fingerprint from the bytes chosen (src/lib/images/photo-hash.ts). */
   hash(bytes: ArrayBuffer): Promise<PhotoHashes>
   /** Stores the re-encoded file at path in the organiser-media bucket and returns its public address. */
@@ -62,7 +63,7 @@ export async function storeImage(
   file: File | null,
   eventId: string | null,
   deps: MediaDeps,
-): Promise<{ url: string; path: string; hashes: PhotoHashes } | { refused: string }> {
+): Promise<{ url: string; path: string; hashes: PhotoHashes; width?: number; height?: number } | { refused: string }> {
   if (!chosen(file)) return { refused: 'Choose a photo or artwork to add.' }
   if (file.size > MAX_IMAGE_BYTES) return { refused: 'The image must be under 10MB.' }
   let image
@@ -76,7 +77,7 @@ export async function storeImage(
   }
   if (await photoLockedElsewhere(hashes, eventId, deps)) return { refused: PHOTO_ALREADY_USED }
   const path = `${folder}/${randomUUID()}.${image.extension}`
-  return { url: await deps.store(path, image), path, hashes }
+  return { url: await deps.store(path, image), path, hashes, width: image.width, height: image.height }
 }
 
 async function register(path: string, call: () => ReturnType<MediaDeps['rpc']>, deps: MediaDeps): Promise<{ data: unknown } | MediaAnswer> {
@@ -172,7 +173,7 @@ export function mediaDeps(): MediaDeps {
     async process(bytes) {
       const result = await processEventImage(bytes, { role: 'cover' })
       if (!result.ok) throw new Error(result.error)
-      return { buffer: result.image.buffer, extension: result.image.ext, contentType: result.image.contentType }
+      return { buffer: result.image.buffer, extension: result.image.ext, contentType: result.image.contentType, width: result.image.width, height: result.image.height }
     },
     async store(path, image) {
       const { error } = await admin.storage.from(ORGANISER_MEDIA_BUCKET).upload(path, image.buffer, { upsert: false, contentType: image.contentType })

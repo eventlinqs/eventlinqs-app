@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import { isApprovedFileUrl, type Slide } from './campaign'
 import { graphCaller, makeMetaPublisher, metaConfigFrom } from './meta-publisher'
-import { blotatoConfigFrom, makeBlotatoPublisher } from './blotato-publisher'
+import { blotatoConfigFrom, makeBlotatoPublisher, makeBlotatoReader, makeBlotatoSearch, type BlotatoPostReader, type BlotatoPublishedSearch } from './blotato-publisher'
 import { slideImagesNow, type Publisher } from './store'
 
 type Db = SupabaseClient
@@ -63,4 +63,16 @@ export function blotatoPublisherFromEnv(db: Db, now: Date): Publisher | null {
  */
 export function socialPublisherFromEnv(db: Db, now: Date): Publisher | null {
   return metaPublisherFromEnv(db, now) ?? blotatoPublisherFromEnv(db, now)
+}
+
+/** Blotato's read of a post it accepted, when its key is set (route B); null on the Meta route or with no key. */
+export function socialPostReaderFromEnv(): BlotatoPostReader | null {
+  const config = blotatoConfigFrom(process.env)
+  return config === null ? null : makeBlotatoReader(config)
+}
+
+/** Blotato's list of published posts, when its key is set (route B); null otherwise. */
+export function socialPublishedSearchFromEnv(): BlotatoPublishedSearch | null {
+  const config = blotatoConfigFrom(process.env)
+  return config === null ? null : makeBlotatoSearch(config)
 }

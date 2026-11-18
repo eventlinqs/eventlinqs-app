@@ -133,7 +133,9 @@ export async function draftSegmentALetter(
   }
   const queued = await db
     .from('outreach_touches')
-    .update({ state: 'queued', scheduled_for: input.scheduledFor.toISOString() })
+    // A queued message names its one transport (outreach_touches_queued_is_scheduled; a NULL provider slipped through
+    // that check until 18 November 2026), so the sender's 'sent' record is whole.
+    .update({ state: 'queued', scheduled_for: input.scheduledFor.toISOString(), provider: 'graph' })
     .eq('id', drafted.value.id)
     .eq('state', 'held')
     .select('id')

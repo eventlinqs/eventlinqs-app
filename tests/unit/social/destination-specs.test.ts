@@ -38,12 +38,15 @@ describe('the destination table', () => {
     expect(facts('21-amcf-square.jpg')).toMatchObject({ kind: 'jpeg', width: 1080, height: 1080 })
   })
 
-  it('refuses a 3:4 file for the Instagram feed, and takes the 4:5 files, the stories and the squares where they go', () => {
+  it('refuses a 3:4 file for both feeds (Lawal, 20:08 on 18 November: Facebook as professional as Instagram), and takes the 4:5 files, the stories and the squares where they go', () => {
     for (const f of ['11-lany-feed.jpg', '13-organisers-feed.jpg', '17-groovytown-feed.jpg', '20-amcf-feed.jpg']) {
       expect(misfitOf('instagram_feed', facts(f)), f).toMatch(/ratio 0\.750, outside instagram feed's 0\.800 to 1\.910/)
+      expect(misfitOf('facebook_feed', facts(f)), f).toMatch(/ratio 0\.750, outside facebook feed's 0\.800 to 1\.910 \(Lawal's ruling of 18 November 2026, 20:08/)
+    }
+    for (const f of ['lany-feed-ig45.jpg', 'organisers-feed-ig45.jpg', 'groovytown-feed-ig45.jpg', 'amcf-feed-ig45.jpg']) {
+      expect(misfitOf('instagram_feed', facts(f)), f).toBeNull()
       expect(misfitOf('facebook_feed', facts(f)), f).toBeNull()
     }
-    for (const f of ['lany-feed-ig45.jpg', 'organisers-feed-ig45.jpg', 'groovytown-feed-ig45.jpg', 'amcf-feed-ig45.jpg']) expect(misfitOf('instagram_feed', facts(f)), f).toBeNull()
     for (const f of ['14-organisers-story.jpg', '16-lany-story.jpg', '18-groovytown-story.jpg', '22-amcf-story.jpg']) expect(misfitOf('instagram_story', facts(f)), f).toBeNull()
     for (const f of ['15-organisers-square.jpg', '21-amcf-square.jpg']) expect(misfitOf('facebook_feed', facts(f)), f).toBeNull()
     expect(misfitOf('instagram_story', facts('21-amcf-square.jpg'))).toMatch(/outside instagram story/)
@@ -70,9 +73,10 @@ describe('the destination table', () => {
 })
 
 describe('the check the publish run makes before any publisher is called', () => {
-  it('holds an Instagram feed post on a 3:4 file, and lets the same file go to Facebook', async () => {
+  it('holds a feed post on a 3:4 file on Instagram and on Facebook alike, and lets the 4:5 file go to both', async () => {
     expect(await slidesMisfit([file('11-lany-feed.jpg')], 'instagram', serve)).toMatch(/slide 1 does not fit instagram: it is 1440x1920, ratio 0\.750/)
-    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'facebook', serve)).toBeNull()
+    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'facebook', serve)).toMatch(/slide 1 does not fit facebook: it is 1440x1920, ratio 0\.750/)
+    expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'facebook', serve)).toBeNull()
     expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'instagram', serve)).toBeNull()
     expect(await slidesMisfit([file('16-lany-story.jpg', 'story')], 'instagram', serve)).toBeNull()
   })

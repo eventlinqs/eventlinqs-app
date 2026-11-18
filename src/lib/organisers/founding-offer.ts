@@ -83,8 +83,10 @@ export const FOUNDING_OFFER: FoundingOffer = {
   ],
   ctaLabel: 'Create your organiser account',
   ctaHref: '/organisers/signup',
-  founderCtaLabel: 'Set up my event with Lawal',
-  founderCtaNote: 'I set up the first events myself, on a 20 minute call. Lawal Adams, founder.',
+  // No founder's name in public text (Lawal, 18 November 2026, 13:46: "I don't put my name out there ... The last thing
+  // you can ever say is EventLinqs team"; scripts/guards/no-founder-name-public.mjs).
+  founderCtaLabel: 'Set up my event with the EventLinqs team',
+  founderCtaNote: 'The EventLinqs team sets up your first events with you, on a 20 minute call.',
   founderCtaSubject: FOUNDING_BADGE_NAME,
   note: `Start free today: you can build, publish and sell straight away, wherever in ${FOUNDING_OFFER_SCOPE} you are. Your ${FOUNDING_INITIAL_MONTHS_WORD} months begin the day you register and are applied to your account before your first on-sale.`,
 }

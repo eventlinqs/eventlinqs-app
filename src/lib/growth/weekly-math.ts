@@ -188,7 +188,7 @@ export interface WeekFigures {
 }
 
 /** Orders that count as sold, as the GMV screen counts them (src/lib/admin/analytics.ts). */
-const SOLD = new Set(['confirmed', 'partially_refunded', 'refunded'])
+export const SOLD = new Set(['confirmed', 'partially_refunded', 'refunded'])
 
 export function figuresFor(rows: Rows, w: Week): WeekFigures {
   const real = rows.listings.filter((l) => !l.isSeed)

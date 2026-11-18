@@ -51,10 +51,27 @@ describe('the page and its press', () => {
     expect(action.indexOf("POLICIES['photo-permission']")).toBeLessThan(action.indexOf('readPhotoPage('))
     expect(action.indexOf('readPhotoPage(')).toBeLessThan(action.indexOf('givePhotos('))
   })
-  it("every image goes through the register's one writer, pending, after the yes", () => {
+  it("every image goes through the register's one writer after the yes, and is applied by the register's one decider", () => {
     expect(lib).toMatch(/await addAsset\(db, \{/)
     expect(lib).not.toMatch(/from\('social_assets'\)/)
     expect(lib.indexOf("db.rpc('social_log_organiser_yes'")).toBeLessThan(lib.indexOf('await addAsset('))
     expect(lib).toMatch(/await deps\.remove\(\[stored\.path\]\)/)
+    // Lawal, 18 November 2026, 13:46: "If they ticked it, if they approve it, good": approved at once, no review queue.
+    expect(lib.indexOf('await addAsset(')).toBeLessThan(lib.indexOf('await decideAsset('))
+    expect(lib).toMatch(/decision: 'approved'/)
+  })
+
+  it('the page names no person and promises no review (Lawal, 13:46)', () => {
+    for (const text of [page, action, lib]) {
+      expect(text).not.toMatch(/Lawal (looks|has looked|and he)|until Lawal|Reply to Lawal/)
+    }
+    expect(page).toContain('subtitle="You choose where EventLinqs may use them."')
+    expect(action).toContain('now on your event, only where you chose.')
+  })
+
+  it('a photo for the event page becomes the cover only where the night has no photo of the organiser\'s own', () => {
+    expect(lib).toMatch(/OWN_PHOTO_RIGHTS = new Set\(\['organiser_authorised', 'separately_licensed'\]\)/)
+    expect(lib).toMatch(/if \(input\.uses !== 'social' && applied\.length > 0\)/)
+    expect(lib).toMatch(/stored\.width < POSTS_MIN_WIDTH/)
   })
 })

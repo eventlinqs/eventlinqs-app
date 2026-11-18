@@ -21,6 +21,7 @@ import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
+import type { BlotatoPostReader, BlotatoPublishedSearch } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -1581,6 +1582,12 @@ export async function addSelfListedPhoto(
   return { state: 'done' }
 }
 
+/** The register's id of a pending image for a night, by its stored address; null when there is none. */
+export async function pendingAssetId(db: Db, eventId: string, assetUrl: string): Promise<string | null> {
+  const { data } = await db.from('social_assets').select('id').eq('event_id', eventId).eq('asset_url', assetUrl).eq('approval_status', 'pending').maybeSingle()
+  return (data?.id as string | undefined) ?? null
+}
+
 /** A person approves or refuses a pending asset; the register takes no other change. */
 export async function decideAsset(db: Db, input: { readonly id: string; readonly decision: 'approved' | 'refused'; readonly by: string; readonly now: Date }): Promise<Done> {
   const { data, error } = await db
@@ -1896,7 +1903,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
 }
 
 /** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
-export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string }>
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
 
 export type Published = {
   readonly switchOn: boolean
@@ -1965,9 +1972,17 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
       // 18 November 2026, item 1), set at the moment it posts.
-      const { ref } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: onItsDay(rev?.versions[platform].caption ?? '', rev?.slides ?? [], now) })
+      const { ref, submission } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: onItsDay(rev?.versions[platform].caption ?? '', rev?.slides ?? [], now) })
+      // THE OUTSIDE ID FIRST, WHERE ONLY ITS OWN SHAPE IS CHECKED (the PM's 18:40 of 18 November 2026, item 1 (a)): Blotato's
+      // submission goes to its own column while the row still reads scheduled, so a refusal of the reference below can
+      // never lose it. On 18 November five accepted posts lost theirs: the only record was the refused update.
+      if (submission) {
+        const { error: serr } = await db.from('social_piece_schedules').update({ submission_ref: `blotato:${submission}` }).eq('id', id).eq('state', 'scheduled')
+        if (serr) console.error('[social] the submission could not be written to its own column', { id, submission, error: serr.message })
+      }
       const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: ref, published_at: now.toISOString() }).eq('id', id).eq('state', 'scheduled')
-      if (uerr) await hold(id, refusalOf(uerr.message) ?? uerr.message)
+      // A reference the database refuses is kept FIRST in the held reason, so the post it names can always be read back.
+      if (uerr) await hold(id, `Sent as ${ref}; the database refused that reference: ${refusalOf(uerr.message) ?? uerr.message}`)
       else published.push(`${pieceId} on ${platform}: ${ref}`)
     } catch (e) {
       await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
@@ -1977,6 +1992,69 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
 }
 
 /** Each piece's schedules, for /admin/social. */
+/** A public post's own address, as the database's published_ref check reads it (20261118190001). */
+export const PUBLIC_POST_URL = /^https:\/\/(www\.)?(instagram\.com|facebook\.com|fb\.com)\/\S+$/i
+
+/**
+ * EVERY POST BLOTATO ACCEPTED, READ BACK UNTIL ITS PUBLIC URL IS KNOWN (the PM's 18:40 of 18 November 2026, item 1 (a)): a
+ * row published under a 'blotato:<id>' reference is read from Blotato's own post status, and once Blotato gives its public
+ * URL that URL takes the reference's place (the database lets a published row change that and nothing else,
+ * supabase/migrations/20261118190001_social_blotato_reference.sql). A read towards Blotato; nothing is sent again.
+ */
+export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | null): Promise<{ readonly read: number; readonly filled: string[]; readonly pending: string[] }> {
+  if (read === null) return { read: 0, filled: [], pending: [] }
+  // Every reference that begins 'blotato:' sorts at or after 'blotato:' and before 'blotato;' (';' follows ':'), and no URL does.
+  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').gte('published_ref', 'blotato:').lt('published_ref', 'blotato;').order('go_at').limit(20)
+  if (error) throw new Error(`the posts waiting for their URL could not be read: ${error.message}`)
+  const filled: string[] = []
+  const pending: string[] = []
+  for (const r of data ?? []) {
+    const ref = String(r.published_ref)
+    let answer: { readonly status: string; readonly publicUrl: string | null }
+    try {
+      answer = await read(ref.slice('blotato:'.length))
+    } catch (e) {
+      pending.push(`${ref}: ${e instanceof Error ? e.message : String(e)}`)
+      continue
+    }
+    if (answer.status === 'published' && answer.publicUrl !== null && PUBLIC_POST_URL.test(answer.publicUrl)) {
+      const { error: uerr } = await db.from('social_piece_schedules').update({ published_ref: answer.publicUrl }).eq('id', r.id as string).eq('published_ref', ref)
+      if (uerr) pending.push(`${ref}: ${refusalOf(uerr.message) ?? uerr.message}`)
+      else filled.push(`${ref} is ${answer.publicUrl}`)
+    } else {
+      pending.push(`${ref}: ${answer.status || 'no status yet'}`)
+    }
+  }
+  return { read: (data ?? []).length, filled, pending }
+}
+
+/**
+ * A POST BLOTATO ACCEPTED BUT WHOSE ID WAS NEVER KEPT, FOUND IN BLOTATO'S OWN LIST (the PM's 18:40 of 18 November 2026,
+ * item 2): a held row whose reason is the database's refusal of its reference, or begins 'Sent as blotato:', is looked
+ * for among Blotato's published posts on its platform by the exact words its piece sent (that platform's caption,
+ * spaces evened). A held row stays as it is, so each one found is said, never written. Read only towards Blotato.
+ */
+export async function findHeldPostsOnBlotato(db: Db, search: BlotatoPublishedSearch | null): Promise<{ readonly found: string[]; readonly missing: string[] }> {
+  if (search === null) return { found: [], missing: [] }
+  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, platform, held_reason').eq('state', 'held').order('go_at', { ascending: false }).limit(60)
+  if (error) throw new Error(`the held posts could not be read: ${error.message}`)
+  const sent = (data ?? []).filter((r) => /social_piece_schedules_published_ref_check|^Sent as blotato:/.test(String(r.held_reason ?? '')))
+  const even = (t: string) => t.replace(/\s+/g, ' ').trim()
+  const lists = new Map<string, readonly { readonly content: string; readonly postUrl: string | null }[]>()
+  const found: string[] = []
+  const missing: string[] = []
+  for (const r of sent) {
+    const platform = String(r.platform)
+    if (!lists.has(platform)) lists.set(platform, await search(platform))
+    const rev = await newestRevision(db, String(r.piece_id))
+    const words = even(rev?.versions[platform as SocialPlatform]?.caption ?? '')
+    const match = words ? lists.get(platform)!.find((i) => even(i.content) === words && i.postUrl !== null && PUBLIC_POST_URL.test(i.postUrl)) : undefined
+    if (match) found.push(`${String(r.piece_id)} on ${platform}: ${match.postUrl}`)
+    else missing.push(`${String(r.piece_id)} on ${platform}: not in Blotato's published list by its words`)
+  }
+  return { found, missing }
+}
+
 export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>> {
   const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>()
   if (pieceIds.length === 0) return out

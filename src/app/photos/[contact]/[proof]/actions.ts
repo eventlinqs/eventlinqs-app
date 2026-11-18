@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { mediaDeps } from '@/lib/listings/organiser-media'
 import { givePhotos, readPhotoPage } from '@/lib/listings/photo-permission'
@@ -13,8 +14,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * THE PHOTO PAGE'S ONE PRESS (src/lib/listings/photo-permission.ts): the link is checked again, the press is limited by
- * the visitor's address (policies.ts photo-permission), the choices are read, and the yes and the images are recorded,
- * every image pending Lawal's approval. It answers on the same page. Nothing here is published.
+ * the visitor's address (policies.ts photo-permission), the choices are read, and the yes and the images are recorded
+ * and applied automatically for the ticked uses and that night only (Lawal, 18 November 2026, 13:46; photo-permission.ts).
+ * It answers on the same page.
  */
 export async function givePhotosAction(formData: FormData): Promise<void> {
   const contact = String(formData.get('contact') ?? '')
@@ -48,5 +50,16 @@ export async function givePhotosAction(formData: FormData): Promise<void> {
   if (done.state === 'refused') back('problem', done.reason)
   const d = done as Extract<typeof done, { state: 'done' }>
   if (d.added === 0) back('problem', d.refused.join(' '))
-  back('sent', `${d.added === 1 ? 'Your photo is' : `Your ${d.added} photos are`} with us. Lawal looks at each one before it is used, only where you chose.${d.refused.length > 0 ? ` Not added: ${d.refused.join(' ')}` : ''}`)
+  if (d.coverSet) revalidatePath(`/events/${d.slug}`)
+  // The words say only what is true (Lawal, 13:46: no person named, no review promised): applied to the event page, or
+  // ready for posts only, or (if an approval could not be written) kept, never 'now on your event' when it is not.
+  const what = d.added === 1 ? 'photo is' : 'photos are'
+  const said = d.applied === 0
+    ? `Thank you. Your ${what} with us, only where you chose.`
+    : uses === 'social'
+      ? `Thank you. Your ${what} ready for posts about your event, only where you chose.`
+      : d.coverSet
+        ? `Thank you. Your ${what} now on your event, only where you chose.`
+        : `Thank you. Your ${what} now with your event, only where you chose.`
+  back('sent', `${said}${d.refused.length > 0 ? ` Not added: ${d.refused.join(' ')}` : ''}`)
 }
