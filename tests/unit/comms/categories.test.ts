@@ -23,7 +23,9 @@ function migrationTemplateMap(): Record<string, string> {
 }
 
 /** Every template key on production, read at 10:33 on 18 November 2026 (C:/dev/EVIDENCE/EL-16NOV/market-ready/q/law24-purposes.json). */
+// acq_first: the ACQ-FIRST template the ACQ go of 18 November inserts (C:/dev/EVIDENCE/EL-18NOV/go/acq-17-DRY-RUN.sql).
 const PRODUCTION_KEYS = [
+  'acq_first',
   'after_your_night', 'anything_coming_up', 'day10_close', 'day4_dm', 'day4_follow_up', 'dm_on_yes', 'featured', 'first_dm', 'first_invitation',
   'first_invitation_referred', 'reply_change', 'reply_cost', 'reply_existing_ticketing', 'reply_not_now', 'reply_stop', 'reply_take_down',
   'reply_who_are_you', 'reply_why_listed', 'segment_a_day10', 'segment_a_day4', 'segment_a_first', 'thank_you', 'twenty_advice', 'twenty_day10',
@@ -67,7 +69,7 @@ describe('the seven communication categories (Law 24)', () => {
 
   it('the 20 a business day counts an acquisition first letter only', () => {
     const counted = Object.entries(TEMPLATE_CLASS).filter(([, c]) => countsTowardTheTwenty(c)).map(([k]) => k).sort()
-    expect(counted).toEqual(['first_dm', 'first_invitation', 'first_invitation_referred', 'twenty_advice', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events'])
+    expect(counted).toEqual(['acq_first', 'first_dm', 'first_invitation', 'first_invitation_referred', 'twenty_advice', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events'])
     expect(countsTowardTheTwenty({ category: 'ACQ', subtype: 'ACQ-FOLLOWUP' })).toBe(false)
   })
 

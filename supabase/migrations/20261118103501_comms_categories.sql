@@ -25,6 +25,7 @@ immutable
 set search_path = public, pg_temp
 as $map$
   select m.subtype from (values
+    ('acq_first', 'ACQ-FIRST'),
     ('twenty_advice', 'ACQ-FIRST'),
     ('twenty_offer', 'ACQ-FIRST'),
     ('twenty_own_page', 'ACQ-FIRST'),

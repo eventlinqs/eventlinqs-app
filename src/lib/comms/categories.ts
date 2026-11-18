@@ -39,6 +39,7 @@ export function isCommsPair(category: string, subtype: string): boolean {
  * - the confirmation of a stop is SYS (an operational and legal notice, never marketing).
  */
 export const TEMPLATE_CLASS: Readonly<Record<string, CommsClass>> = {
+  acq_first: { category: 'ACQ', subtype: 'ACQ-FIRST' },
   twenty_advice: { category: 'ACQ', subtype: 'ACQ-FIRST' },
   twenty_offer: { category: 'ACQ', subtype: 'ACQ-FIRST' },
   twenty_own_page: { category: 'ACQ', subtype: 'ACQ-FIRST' },
