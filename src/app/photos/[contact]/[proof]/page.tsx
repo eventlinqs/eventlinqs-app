@@ -42,7 +42,7 @@ export default async function PhotoPage({
   if (page.state !== 'found') notFound()
   return (
     <PageShell>
-      <PageHero eyebrow="YOUR PHOTOS" title="Add photos of your night" subtitle="You choose where EventLinqs may use them. Nothing is used until Lawal has looked at it." />
+      <PageHero eyebrow="YOUR PHOTOS" title="Add photos of your night" subtitle="You choose where EventLinqs may use them." />
       <ContentSection surface="base" width="wide" id="photos">
         <div className="max-w-xl">
           <p className="text-sm text-[var(--text-secondary)]">
@@ -55,7 +55,7 @@ export default async function PhotoPage({
           ) : null}
           {page.nights.length === 0 ? (
             <p className="mt-6 text-sm text-[var(--text-primary)]">
-              No nights of yours are listed ahead right now. Reply to Lawal&apos;s email with your next date and he will add it, then this page will show it.
+              No nights of yours are listed ahead right now. Reply to our email with your next date and the EventLinqs team will add it, then this page will show it.
             </p>
           ) : (
             <form action={givePhotosAction} className="mt-6 space-y-5" data-photo-permission>
@@ -70,7 +70,7 @@ export default async function PhotoPage({
                 <label htmlFor="ph-night" className={LABEL}>
                   Which night
                 </label>
-                <select id="ph-night" name="night" required className={SELECT} defaultValue={page.nights[0]?.eventId}>
+                <select id="ph-night" name="night" required className={SELECT} defaultValue={page.preselect ?? page.nights[0]?.eventId}>
                   {page.nights.map((n) => (
                     <option key={n.eventId} value={n.eventId}>
                       {n.title}, {dayWords(n.startDate, n.timezone)}

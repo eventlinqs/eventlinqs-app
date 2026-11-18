@@ -1581,6 +1581,12 @@ export async function addSelfListedPhoto(
   return { state: 'done' }
 }
 
+/** The register's id of a pending image for a night, by its stored address; null when there is none. */
+export async function pendingAssetId(db: Db, eventId: string, assetUrl: string): Promise<string | null> {
+  const { data } = await db.from('social_assets').select('id').eq('event_id', eventId).eq('asset_url', assetUrl).eq('approval_status', 'pending').maybeSingle()
+  return (data?.id as string | undefined) ?? null
+}
+
 /** A person approves or refuses a pending asset; the register takes no other change. */
 export async function decideAsset(db: Db, input: { readonly id: string; readonly decision: 'approved' | 'refused'; readonly by: string; readonly now: Date }): Promise<Done> {
   const { data, error } = await db

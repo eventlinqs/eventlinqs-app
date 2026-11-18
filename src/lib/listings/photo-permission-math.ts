@@ -30,3 +30,27 @@ export function grantWording(input: { readonly givenBy: string; readonly organis
   const images = input.count === 1 ? 'the image' : `the ${input.count} images`
   return `${input.givenBy.trim()}, for ${input.organiserName.trim()}: I took ${images} I added for ${input.nightTitle.trim()}, or have the right to share ${input.count === 1 ? 'it' : 'them'}, and EventLinqs may use ${input.count === 1 ? 'it' : 'them'} ${USE_WORDS[input.uses]}.`
 }
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * THE NIGHT THE LETTER NAMES, PRESELECTED (the PM's 13:50 of 18 November 2026, item 1 (d)). The Event Photo Permissions
+ * letter's subject is fixed: "Helping more people find <night> on <day> <month>" (comms-gateway standard.json,
+ * offer_subjects). The night whose title is that title, on that day in its own time zone, opens already chosen; a title
+ * alone chooses only when exactly one of their nights carries it. Null when the subject names none of their nights.
+ */
+export function nightNamedBy(
+  subject: string | null,
+  nights: readonly { readonly eventId: string; readonly title: string; readonly startDate: string; readonly timezone: string | null }[],
+): string | null {
+  const m = /^Helping more people find (.+) on (\d{1,2}) ([A-Z][a-z]+)$/.exec((subject ?? '').trim())
+  if (!m || !MONTHS.includes(m[3])) return null
+  const title = m[1].trim().toLowerCase()
+  const same = nights.filter((n) => n.title.trim().toLowerCase() === title)
+  const onDay = same.filter((n) => {
+    const parts = new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? 'Australia/Melbourne', day: 'numeric', month: 'long' }).formatToParts(new Date(n.startDate))
+    return Number(parts.find((p) => p.type === 'day')?.value) === Number(m[2]) && parts.find((p) => p.type === 'month')?.value === m[3]
+  })
+  if (onDay.length > 0) return onDay[0].eventId
+  return same.length === 1 ? same[0].eventId : null
+}
