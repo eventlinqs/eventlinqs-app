@@ -1912,7 +1912,22 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
       continue
     }
-    const issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
+    // A CHECK THAT FAILS HOLDS ITS OWN PIECE, NEVER THE RUN (law 23: one failed post never stops unrelated operations).
+    // On 18 November 2026 at 15:13 a check threw on the first of Lawal's twelve approved posts and the whole run stopped
+    // with every one of them still due; now that piece is held with the reason and the next is read.
+    let issues: string[]
+    let rev: Revision | null
+    let misfit: string | null
+    try {
+      issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
+      rev = issues.length > 0 || opts.publisher === null ? null : await newestRevision(db, pieceId)
+      // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
+      // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
+      misfit = rev === null ? null : await slidesMisfit(rev.slides, platform, opts.fetcher ?? fetch)
+    } catch (e) {
+      await hold(id, `Not published: the checks before publishing could not finish (${e instanceof Error ? e.message : String(e)}).`)
+      continue
+    }
     if (issues.length > 0) {
       await hold(id, `Not published: ${issues.join(' ')}`)
       continue
@@ -1921,10 +1936,6 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       await hold(id, 'Not published: no publisher is connected (neither our own Meta app nor Blotato).')
       continue
     }
-    const rev = await newestRevision(db, pieceId)
-    // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
-    // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
-    const misfit = await slidesMisfit(rev?.slides ?? [], platform, opts.fetcher ?? fetch)
     if (misfit) {
       await hold(id, `Not published: ${misfit}`)
       continue
