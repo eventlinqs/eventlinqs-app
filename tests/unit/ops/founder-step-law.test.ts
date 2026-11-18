@@ -105,6 +105,31 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(r.faults.join('\n')).toContain('line 4: an open step with no READ BACK')
     expect(r.faults.join('\n')).toContain('no --expect')
   })
+  // Law 14 (ii), Lawal's word of 19 November 2026: no database migration is ever his step again; the pipeline applies it.
+  it('DRILL: an open step that names a migration is refused; the record of what he approved and the Removed history are not', () => {
+    const list = [
+      '| # | Click |', '|---|---|',
+      '| 37 | Apply the post figures migration to production | `npm run migrate:production -- --expect a.sql` READ BACK 02:23 |',
+      '| 40 | Run supabase db push from wt-x | READ BACK 09:00 |',
+      '| 39 | Open the ASIC notice | READ BACK 03:38 |',
+      '| Database migrations | No longer yours: the pipeline applies them |',
+      '## Removed, with evidence',
+      '| 36 | Apply the Blotato reference migration | done |',
+    ].join('\n')
+    const faults = judgeList(list).faults.filter((f) => /law 14 \(ii\)/.test(f))
+    expect(faults).toHaveLength(2)
+    expect(faults[0]).toMatch(/^line 3:/)
+    expect(faults[1]).toMatch(/^line 4:/)
+  })
+  it("Lawal's list as it stands names no migration in an open step", () => {
+    let text = ''
+    try {
+      text = readFileSync('C:/dev/START-16OCT/EL-LAWAL-LIST-8NOV.md', 'utf8')
+    } catch {
+      return // the founder's files live on the build machine only; CI judges the rule above
+    }
+    expect(judgeList(text).faults.filter((f) => /law 14 \(ii\)/.test(f))).toEqual([])
+  })
   it('a loader given to --import is not the step script; the script it loads is (13 November 2026)', () => {
     const npm = {
       'seo2:verify-property': 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/src-alias-loader.mjs scripts/ops/search-console-verify.mjs',

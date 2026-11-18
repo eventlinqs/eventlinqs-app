@@ -68,6 +68,15 @@ export function asksForAGivenValue(line) {
   return ASKS.some((re) => re.test(line)) && !/\bNEW VALUE\b/.test(line)
 }
 
+/**
+ * Rule 6 (law 14 (ii); Lawal, 19 November 2026, relayed by the PM at 04:42: "no more migrations for him ... get it all
+ * done internally"): an open step on his list that names a database migration or the migrate:production command. The
+ * pipeline (the 'migrate production' job in .github/workflows/ci.yml) applies every migration; none is ever his step again.
+ */
+export function namesAMigration(line) {
+  return /\bmigrate:production\b|\bsupabase\s+db\s+push\b|\bmigrations?\b/i.test(line)
+}
+
 /** A script that prompts for a hidden value (a key typed with the typing hidden). */
 export function promptsForASecret(src) {
   return /\bsetRawMode\s*\(\s*true|\baskHidden\s*\(|Read-Host\b[^\n]*-AsSecureString/.test(src)
@@ -133,6 +142,7 @@ export function judgeList(text) {
     if (!/\bREAD BACK\b/.test(line)) faults.push(`line ${i + 1}: an open step with no READ BACK: ${line.slice(0, 110)}`)
     if (asksForAGivenValue(line)) faults.push(`line ${i + 1}: an open step asks Lawal to type a key, token, password or secret; a stored value is read where it is stored, and a value only he can mint says NEW VALUE (law 14 (hh)): ${line.slice(0, 110)}`)
     if (/npm run migrate:production/.test(line) && !/--expect\s+\S/.test(line)) faults.push(`line ${i + 1}: npm run migrate:production with no --expect`)
+    if (namesAMigration(line)) faults.push(`line ${i + 1}: an open step names a database migration; migrations are applied by the pipeline, never put on Lawal's list (law 14 (ii), his word of 19 November 2026)`)
   }
   return { faults, steps }
 }

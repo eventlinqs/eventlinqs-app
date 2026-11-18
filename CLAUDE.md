@@ -688,11 +688,14 @@ leaves one stale and produces a `28P01` from a script somebody runs days later.
    by trusting its own API call. `scripts/ops/copy-spine-category-objects.mjs`
    and `scripts/ops/rotate-db-password.mjs` are the reference shape.
 
-**WHAT IS RESERVED, and stays reserved.** Applying a migration to production is
-the founder's, by his ruling of 26 August 2026, restated: a production schema
-change is the one thing he wants to press himself. That is a decision about
-authority, not capability, and Law 10 does not touch it. See Verification and
-gates, Migrations.
+**WHAT WAS RESERVED, AND IS NO LONGER (founder ruling, 19 November 2026).**
+Applying a migration to production was the founder's by his ruling of 26 August
+2026. On 19 November 2026 he withdrew it himself: "I'm not doing all of this now,
+and there's no rule, no having me approve anything ... get tired of all this
+migration. Get it all done internally." Every migration is now applied by the
+pipeline (the `migrate production` job in `.github/workflows/ci.yml`), with the test database
+first, a backup before anything destructive, and a WARNING on any failure. See
+Verification and gates, Migrations.
 
 [[OPS RULES 25SEP START]]
 
@@ -1148,10 +1151,28 @@ the relevant surface section before reworking it.
 
 **Migrations**
 
-- Write the migration file only. Lawal applies it with `supabase db push
-  --linked` in PowerShell. Never the Dashboard SQL editor, never the Supabase
-  MCP. Verify applied migrations by a direct database query, not the cached
-  client (its schema cache lags).
+- **The pipeline applies every migration (founder ruling, 19 November 2026: "Get
+  it all done internally").** The `migrate production` job in
+  `.github/workflows/ci.yml` runs when a pull request of this repository is
+  ready, BEFORE its merge (production parity, which waits for it, and the
+  production build refuse a tree whose migrations production lacks: 6 September
+  2026), and again on every push to main as the safety net: the plan
+  from production's ledger, each migration classified from its own SQL
+  (`scripts/ops/pipeline-migrations.mjs`); the test database first, and
+  production is never touched if it refuses; a backup of every table a
+  destructive migration names, copied inside production to `migration_backups`
+  (never an artifact: the repository is public); then production, its ledger read
+  back with nothing pending; on main any failure reaches the outage email "CI is
+  RED on main", which names the migrations, and on a pull request production
+  parity refuses the merge. A
+  delete, truncate or table drop on the records law 19 (d) preserves (orders,
+  tickets, payments, payouts, refunds, disputes, the money ledger, events and
+  their listing checks) is refused and never applied. The rules are held by
+  `tests/unit/ops/pipeline-migrations.test.ts`, each with its drill. No migration
+  is ever put on Lawal's list again (`scripts/guards/lib/founder-steps.mjs`, rule
+  6). Never the Dashboard SQL editor, never the Supabase MCP. Verify applied
+  migrations by a direct database query, not the cached client (its schema cache
+  lags).
 - **A migration that creates a public table grants it (founder ruling,
   21 October 2026).** From 30 October 2026 Supabase stops granting new public
   tables to anon, authenticated and service_role: "New tables in the public
