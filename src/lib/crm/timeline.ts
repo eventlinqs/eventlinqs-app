@@ -56,7 +56,7 @@ export async function readOrganiserRecord(db: Admin, organiserId: string, now: D
 
   const nightFilter = [venueIds.length ? `venue_id.in.(${venueIds.join(',')})` : null, organisationId ? `organisation_id.eq.${organisationId}` : null].filter(Boolean).join(',')
   const [touches, replies, unsubscribes, venueNames, nights] = await Promise.all([
-    contactIds.length ? rows<Sources['touches'][number]>('messages', db.from('outreach_touches').select('id, contact_id, step, state, subject, drafted_at, sent_at, void_reason, held_because, failed_reason').in('contact_id', contactIds)) : Promise.resolve([]),
+    contactIds.length ? rows<Sources['touches'][number]>('messages', db.from('outreach_touches').select('id, contact_id, step, state, subject, drafted_at, sent_at, void_reason, held_because, failed_reason, comms_category, comms_subtype').in('contact_id', contactIds)) : Promise.resolve([]),
     contactIds.length ? rows<Sources['replies'][number]>('replies', db.from('outreach_replies').select('id, contact_id, received_at, outcome, needs_lawal').in('contact_id', contactIds)) : Promise.resolve([]),
     emails.length ? rows<Sources['unsubscribes'][number]>('unsubscribes', db.from('outreach_unsubscribes').select('email, created_at, reason').in('email', emails)) : Promise.resolve([]),
     venueIds.length ? rows<{ id: string; name: string }>('venues', db.from('venues').select('id, name').in('id', venueIds)) : Promise.resolve([]),

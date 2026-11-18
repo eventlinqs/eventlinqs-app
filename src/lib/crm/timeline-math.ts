@@ -8,6 +8,7 @@
  *
  * Pure.
  */
+import { COMMS_CATEGORIES } from '@/lib/comms/categories'
 import type { AcquisitionState } from '@/lib/outreach/acquisition-states'
 import { crmStageOf, NEXT_ACTION, type CrmStage, type TicketingFacts } from './stages'
 
@@ -15,7 +16,7 @@ export interface Sources {
   readonly organiser: { id: string; name: string; created_at: string; acquisition_state: AcquisitionState; found_on: string | null }
   readonly contacts: readonly { id: string; channel: string; address: string; role: string; basis: string; basis_recorded_at: string | null; created_at: string }[]
   readonly transitions: readonly { from_state: string | null; to_state: string; proved_by: string | null; at: string }[]
-  readonly touches: readonly { id: string; contact_id: string; step: number; state: string; subject: string | null; drafted_at: string; sent_at: string | null; void_reason: string | null; held_because: string[] | string | null; failed_reason: string | null }[]
+  readonly touches: readonly { id: string; contact_id: string; step: number; state: string; subject: string | null; drafted_at: string; sent_at: string | null; void_reason: string | null; held_because: string[] | string | null; comms_category?: string | null; comms_subtype?: string | null; failed_reason: string | null }[]
   readonly replies: readonly { id: string; contact_id: string; received_at: string; outcome: string | null; needs_lawal: boolean | null }[]
   readonly unsubscribes: readonly { email: string | null; created_at: string; reason: string | null }[]
   readonly venues: readonly { venue_id: string; name: string; linked_at: string }[]
@@ -53,6 +54,8 @@ export interface OrganiserRecord {
   readonly pending: readonly Pending[]
   /** No message may reach them: every email address unsubscribed, or their stage is Opted out. */
   readonly mayWrite: boolean
+  /** Every message drafted to them, by its one communication category (Law 24), in the directive's order; kept apart from the stage. */
+  readonly byCategory: readonly { category: string; messages: number }[]
 }
 
 const MESSAGE_STEP_WORDS: Readonly<Record<number, string>> = { 1: 'First message', 2: 'Follow up (day 4)', 3: 'Follow up (day 10)' }
@@ -75,8 +78,8 @@ export function recordOf(s: Sources): OrganiserRecord {
   for (const t of s.touches) {
     const to = contactOf.get(t.contact_id)?.address ?? 'a contact'
     const what = MESSAGE_STEP_WORDS[t.step] ?? `Message step ${t.step}`
-    add(t.drafted_at, 'message', `${what} drafted to ${to}${t.subject ? `: "${t.subject}"` : ''}`, '/admin/acquisition')
-    if (t.sent_at) add(t.sent_at, 'message', `${what} sent to ${to}`, '/admin/acquisition')
+    add(t.drafted_at, 'message', `${t.comms_subtype ? `${t.comms_subtype}: ` : ''}${what} drafted to ${to}${t.subject ? `: "${t.subject}"` : ''}`, '/admin/acquisition')
+    if (t.sent_at) add(t.sent_at, 'message', `${t.comms_subtype ? `${t.comms_subtype}: ` : ''}${what} sent to ${to}`, '/admin/acquisition')
   }
   for (const r of s.replies) add(r.received_at, 'reply', `Reply from ${contactOf.get(r.contact_id)?.address ?? 'a contact'}${r.outcome ? `: ${r.outcome.replace(/_/g, ' ')}` : ''}`, '/admin/today')
   for (const u of s.unsubscribes) add(u.created_at, 'unsubscribe', `Unsubscribed${u.email ? `: ${u.email}` : ''}${u.reason ? ` (${u.reason})` : ''}`)
@@ -116,5 +119,9 @@ export function recordOf(s: Sources): OrganiserRecord {
   const everyEmailGone = emails.length > 0 && emails.every((e) => gone.has(e))
   const mayWrite = !everyEmailGone && s.organiser.acquisition_state !== 'suppressed' && s.organiser.acquisition_state !== 'withdrawn'
 
-  return { stage, nextAction: pending.length ? `${NEXT_ACTION[stage]} (first: ${pending[0].words})` : NEXT_ACTION[stage], lines, pending, mayWrite }
+  const counted = new Map<string, number>()
+  for (const t of s.touches) if (t.state !== 'void' && t.comms_category) counted.set(t.comms_category, (counted.get(t.comms_category) ?? 0) + 1)
+  const byCategory = (Object.keys(COMMS_CATEGORIES) as string[]).filter((c) => counted.has(c)).map((category) => ({ category, messages: counted.get(category) ?? 0 }))
+
+  return { stage, nextAction: pending.length ? `${NEXT_ACTION[stage]} (first: ${pending[0].words})` : NEXT_ACTION[stage], lines, pending, mayWrite, byCategory }
 }

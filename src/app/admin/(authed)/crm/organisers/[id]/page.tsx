@@ -54,6 +54,11 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
         <span className="rounded-md bg-white/10 px-2 py-0.5 font-semibold">{CRM_STAGE_WORDS[r.stage]}</span>
         <span className="ml-2 text-white/60">{r.mayWrite ? 'May be written to' : 'No message may reach them'}</span>
       </p>
+      <p data-by-category className="mt-2 text-sm text-white/60">
+        {r.byCategory.length
+          ? `Messages by category: ${r.byCategory.map((c) => `${c.category} ${c.messages}`).join(', ')}`
+          : 'No message drafted to them yet'}
+      </p>
 
       <section aria-label="Next action" className="mt-5 rounded-xl border border-white/15 p-4">
         <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Next action</h2>
