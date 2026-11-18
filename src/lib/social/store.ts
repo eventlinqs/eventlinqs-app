@@ -547,6 +547,28 @@ async function answers(fetcher: Fetcher, url: string): Promise<{ ok: boolean; st
   }
 }
 
+/**
+ * AN OUTSIDE TICKET PAGE, READ AS THE DAILY LINK CHECK READS IT (the PM's 12:35 item 2 of 16 November 2026: "a seller
+ * refusing a robot is never read as dead"; src/lib/events/link-check-run.ts). A 403 or 429 is the seller's wall against
+ * robots, not a dead page: on 18 November 2026 AXS answered every server read with its 'AXS Access Info' page, and the gate
+ * held LANY's approved posts for it. Then the night's own booking link for that page stands as its record holds it, and
+ * only a link that reads dead, or no link of the night for that page, holds the piece. Any other failure (404, 410, a
+ * server error, no answer) holds it as before. Null when the page may be posted to.
+ */
+async function ticketPageIssue(fetcher: Fetcher, name: string, e: Record<string, unknown>): Promise<string | null> {
+  const url = String(e.external_ticket_url)
+  const outside = await answers(fetcher, url)
+  if (outside.ok) return null
+  if (outside.status === 403 || outside.status === 429) {
+    const link = (await readBookingLinks(e.id as string)).find((l) => l.url === url)
+    if (link && link.availability !== 'dead') return null
+    return link
+      ? `${name}: its ticket page refuses our reader (${outside.status}) and its booking link reads dead.`
+      : `${name}: its ticket page refuses our reader (${outside.status}) and no booking link of the night stands for it.`
+  }
+  return `${name}: its ticket page answers ${outside.status ?? 'nothing'}.`
+}
+
 type Revision = {
   version: number
   eventIds: string[]
@@ -704,8 +726,8 @@ export async function pieceDependencies(
       const { cta } = await admissionOf(e, now)
       if (row && row.free !== (cta.state === 'free_open' || cta.state === 'free_registration')) issues.push(`${name}: its card says ${row.free ? 'free' : 'not free'}, and the night no longer does.`)
       if (cta.state === 'paid_external') {
-        const outside = await answers(fetcher, String(e.external_ticket_url))
-        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+        const ticket = await ticketPageIssue(fetcher, name, e)
+        if (ticket) issues.push(ticket)
       }
       if (found?.t === 'feature' && found.photo) {
         const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
@@ -728,8 +750,8 @@ export async function pieceDependencies(
       }
       const { cta } = await admissionOf(e, now)
       if (cta.state === 'paid_external') {
-        const outside = await answers(fetcher, String(e.external_ticket_url))
-        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+        const ticket = await ticketPageIssue(fetcher, name, e)
+        if (ticket) issues.push(ticket)
       }
       continue
     }
@@ -768,8 +790,8 @@ export async function pieceDependencies(
     const { cta } = await admissionOf(e, now)
     if (slide.t === 'night' && (cta.chip ?? null) !== (slide.chip ?? null)) issues.push(`${name}: its admission now reads "${cta.chip ?? 'no price'}", not "${slide.chip ?? 'no price'}".`)
     if (cta.state === 'paid_external') {
-      const outside = await answers(fetcher, String(e.external_ticket_url))
-      if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+      const ticket = await ticketPageIssue(fetcher, name, e)
+      if (ticket) issues.push(ticket)
     }
     if (slide.photo) {
       const { data: ok } = await db.rpc('social_asset_usable', { p_url: slide.photo, p_event: id, p_at: now.toISOString() })

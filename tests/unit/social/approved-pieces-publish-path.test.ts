@@ -93,11 +93,47 @@ function fixtureDb(tables: Record<string, Row[]>) {
 
 const onDisk = (url: string) => new Uint8Array(readFileSync(join(root, 'public', 'social', 'approved', url.slice(APPROVED_FILE_PREFIX.length))))
 const nightPages = (fixture.events ?? []).map((e) => `<a href="/events/${String(e.slug)}">${String(e.title)}</a>`).join('')
-async function served(url: string): Promise<Response> {
-  if (url.startsWith(APPROVED_FILE_PREFIX)) return new Response(onDisk(url))
-  if (new URL(url).hostname === 'www.eventlinqs.com.au') return new Response(`<html><body>${nightPages}</body></html>`, { status: 200 })
-  return new Response('<html><body>tickets</body></html>', { status: 200 })
+// Each seller's ticket page answers as it was measured from this machine with the gate's own agent (the fixture's
+// ticket_page_answers, read 18 November 2026 at 17:07: AXS 403 behind its robot wall, GroovyTown 200), never assumed.
+const measured = (fixture as unknown as { ticket_page_answers?: Record<string, number> }).ticket_page_answers ?? {}
+function servedWith(answers: Record<string, number>) {
+  return async (url: string): Promise<Response> => {
+    if (url.startsWith(APPROVED_FILE_PREFIX)) return new Response(onDisk(url))
+    if (new URL(url).hostname === 'www.eventlinqs.com.au') return new Response(`<html><body>${nightPages}</body></html>`, { status: 200 })
+    const status = answers[url]
+    if (status === undefined) throw new Error(`no measured answer for ${url}: read it from this machine and record it in the fixture`)
+    return new Response(status < 400 ? '<html><body>tickets</body></html>' : '<html><head><title>AXS Access Info</title></head></html>', { status })
+  }
 }
+const served = servedWith(measured)
+
+/** publishDuePieces itself over the fixture's rows, with a recording publisher; each row starts 'scheduled'. */
+async function runPath(fetcher: ((url: string) => Promise<Response>) | undefined) {
+  const { publishDuePieces } = await import('@/lib/social/store')
+  const tables: Record<string, Row[]> = {
+    feature_flags: fixture.feature_flags ?? [],
+    social_piece_schedules: (fixture.social_piece_schedules ?? []).map((s) => ({ ...s, state: 'scheduled' })),
+    social_pieces: fixture.social_pieces ?? [],
+    social_piece_revisions: fixture.social_piece_revisions ?? [],
+    social_piece_approvals: fixture.social_piece_approvals ?? [],
+    events: fixture.events ?? [],
+    venue_distribution_off: (fixture.venue_distribution_off ?? []) as Row[],
+  }
+  const { db } = fixtureDb(tables)
+  const schedules = tables.social_piece_schedules
+  const lastDue = Math.max(...schedules.map((s) => Date.parse(String(s.go_at))))
+  const now = LIVE ? new Date() : new Date(lastDue + 60_000)
+  const given: { readonly pieceId: string; readonly platform: string }[] = []
+  const publisher = vi.fn(async (p: { readonly pieceId: string; readonly platform: string; readonly slides: readonly unknown[]; readonly caption: string }) => {
+    given.push(p)
+    return { ref: `https://www.instagram.com/p/fixture-${p.pieceId.slice(0, 8)}-${p.platform}` }
+  })
+  const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher })
+  return { out, given, schedules }
+}
+const LANY = (fixture.events ?? []).find((e) => String(e.title) === 'LANY')
+const AXS = String(LANY?.external_ticket_url)
+const lanyPieces = new Set((fixture.social_piece_revisions ?? []).filter((r) => (r.event_ids as string[]).includes(String(LANY?.id))).map((r) => String(r.piece_id)))
 
 describe('the whole publish path on every approved piece', () => {
   it(`reaches the publisher with every piece exactly as approved, holding none${LIVE ? ' (live network)' : ''}`, async () => {
@@ -143,5 +179,32 @@ describe('the whole publish path on every approved piece', () => {
     // Each schedule is recorded published, once.
     const published = writes.filter((w) => w.table === 'social_piece_schedules' && w.payload.state === 'published')
     expect(published.length).toBe(schedules.length)
+  }, 120_000)
+
+  it.skipIf(LIVE)("a seller's robot wall (403) stands on the night's booking link; a link that reads dead still holds the night", async () => {
+    expect(measured[AXS]).toBe(403)
+    const link = hoisted.links.find((l) => l.url === AXS)
+    expect(link?.availability).toBe('on_sale')
+    const before = link!.availability
+    // The night still sells through a second, live link, so it reads as selling elsewhere and its ticket page is read;
+    // only the link for the page that answers 403 reads dead.
+    const second = { ...link!, id: 'second-live-link', url: 'https://example.com/lany-second-seller', position: Number(link!.position) + 1, availability: 'on_sale' }
+    link!.availability = 'dead'
+    hoisted.links.push(second)
+    try {
+      const { out, given } = await runPath(servedWith({ ...measured, [second.url]: 200 }))
+      expect(given.some((g) => lanyPieces.has(g.pieceId))).toBe(false)
+      expect(out.held.filter((h) => h.includes('its ticket page refuses our reader (403) and its booking link reads dead')).length).toBe(3)
+      expect(given.length).toBe((fixture.social_piece_schedules ?? []).length - 3)
+    } finally {
+      link!.availability = before
+      hoisted.links.splice(hoisted.links.indexOf(second), 1)
+    }
+  }, 120_000)
+
+  it.skipIf(LIVE)('a ticket page that answers 404 still holds its night, whatever its link says', async () => {
+    const { out, given } = await runPath(servedWith({ ...measured, [AXS]: 404 }))
+    expect(given.some((g) => lanyPieces.has(g.pieceId))).toBe(false)
+    expect(out.held.filter((h) => h.includes('LANY: its ticket page answers 404.')).length).toBe(3)
   }, 120_000)
 })

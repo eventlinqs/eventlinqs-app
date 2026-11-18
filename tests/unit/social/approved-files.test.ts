@@ -57,8 +57,13 @@ describe('an approved file slide', () => {
   it('the publish gate reads its night again, and the admin shows the file itself', () => {
     const store = read('src/lib/social/store.ts')
     const gate = store.slice(store.indexOf("if (found?.t === 'file') {"), store.indexOf("if (found?.t === 'poster') {"))
-    for (const words of ['it is no longer published and public', 'it has ended', 'not what its approved file shows', 'its ticket page answers']) {
+    for (const words of ['it is no longer published and public', 'it has ended', 'not what its approved file shows', 'ticketPageIssue(fetcher, name, e)']) {
       expect(gate, words).toContain(words)
+    }
+    // The ticket page is read by the one reader every night uses (a seller's robot wall stands on the night's link).
+    const reader = store.slice(store.indexOf('async function ticketPageIssue('), store.indexOf('type Revision = {'))
+    for (const words of ['its ticket page answers', 'refuses our reader', 'outside.status === 403 || outside.status === 429']) {
+      expect(reader, words).toContain(words)
     }
     expect(read('src/app/admin/(authed)/social/piece/[pieceId]/[n]/route.ts')).toContain("if (fileSlide.t === 'file') return NextResponse.redirect(fileSlide.url, 307)")
   })
