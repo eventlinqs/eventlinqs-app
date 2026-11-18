@@ -149,9 +149,21 @@ describe('AUTH-03: an un-enrolled admin reaches enrolment and nothing else', () 
     expect(String(thrown?.digest ?? '')).toContain('/admin/enrol-2fa')
   })
 
-  it('requireAdminSession still throws, not redirects, for no proof at all', async () => {
+  /*
+   * THE P0 OF 18 NOVEMBER 2026 (production's runtime log, 11:41:16 and 11:41:17): Lawal's second factor proof had
+   * lapsed; /admin/social answered 200 three times with 'Error [AdminUnauthorisedError]: admin session required' thrown
+   * by the page, and once 307, because the layout's redirect and the page's throw raced in one streamed render. He saw
+   * an error, not the sign in. With no session, or no proof, every admin page now sends him to sign in.
+   */
+  it('requireAdminSession REDIRECTS to /admin/login with no proof at all, never to an error', async () => {
     cookieValue = undefined
-    await expect(requireAdminSession()).rejects.toThrow('admin session required')
+    const thrown = await requireAdminSession().then(
+      () => null,
+      (e: unknown) => e as { digest?: string; message?: string },
+    )
+    expect(String(thrown?.digest ?? '')).toContain('NEXT_REDIRECT')
+    expect(String(thrown?.digest ?? '')).toContain('/admin/login')
+    expect(String(thrown?.message ?? '')).not.toContain('admin session required')
   })
 
   it('ALLOWS the same admin on the enrolment path, and only when asked for by name', async () => {
