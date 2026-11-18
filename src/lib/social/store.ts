@@ -7,7 +7,8 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
@@ -1815,7 +1816,12 @@ async function lastGone(db: Db, format: SocialFormat): Promise<Date | null> {
   return times.length === 0 ? null : new Date(Math.max(...times))
 }
 
-export type Scheduled = { readonly scheduled: readonly { readonly pieceId: string; readonly goAt: string }[]; readonly held: readonly string[] }
+export type Scheduled = {
+  readonly scheduled: readonly { readonly pieceId: string; readonly goAt: string }[]
+  readonly held: readonly string[]
+  /** The operating model's A1: each of the next seven days with no feed post or no story, named (daily-rhythm.ts). */
+  readonly floor: readonly string[]
+}
 
 /** Every moment still waiting on a format: one per schedule (its Instagram row; Facebook's carries the same moment). */
 async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
@@ -1841,7 +1847,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
   const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
   const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
   const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
-  const due: { id: string; approvalId: string; format: SocialFormat; approvedAt: Date; eventIds: string[]; rev: Revision }[] = []
+  const due: { id: string; approvalId: string; format: SocialFormat; kind: string; approvedAt: Date; eventIds: string[]; rev: Revision }[] = []
   for (const a of approvals ?? []) {
     const pieceId = a.piece_id as string
     if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
@@ -1852,9 +1858,9 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     // A PARTNER KIT IS NEVER POSTED ON OUR ACCOUNT (the PM's 23:09 of 18 November 2026; law 26 names the plain kit): it is
     // a story card and a message for the partner to share from their own, recorded as sent, never given a slot here.
     if (String(piece.kind) === 'partner_kit') continue
-    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev })
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, kind: String(piece.kind), approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev })
   }
-  if (due.length === 0) return { scheduled: [], held: [] }
+  if (due.length === 0) return { scheduled: [], held: [], floor: [] }
 
   /* Each piece's window from its own nights, read now. */
   const ids = [...new Set(due.flatMap((d) => d.eventIds))]
@@ -1863,13 +1869,15 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)) }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
   const firstStarting = new Map<string, { title: string; start: Date }>()
-  const pieces: SchedulePiece[] = due.map((d) => {
+  // The operating model's A2 (the PM's 01:39 of 19 November 2026): each family leans to its day of the week, only where
+  // that day falls inside its own window (rhythmDays), so law 18's tiers always win and the lean never makes it late.
+  const pieces: FloorPiece[] = due.map((d) => {
     const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined)
     const window = scheduleWindowOf(d.format, own, undefined, { onNow: ON_NOW.test(d.rev.caption) })
     // A weekend line with no night of its own goes on a Thursday or a Friday (the PM's 03:10, class 6).
-    if (window.first === null) return { id: d.id, format: d.format, approvedAt: d.approvedAt, days: weekendDaysOf(d.rev.caption, own.length) }
+    if (window.first === null) return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, days: weekendDaysOf(d.rev.caption, own.length) ?? rhythmDays(d.kind, {}, now) }
     firstStarting.set(d.id, window.first)
-    return { id: d.id, format: d.format, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore }
+    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
   })
 
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).
@@ -1882,7 +1890,8 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     const last = await lastGone(db, format)
     if (last) taken[format].push(last)
   }
-  const plan = planMoments(pieces, rules, taken, now)
+  // A1, the daily floor: a thin day takes a discovery family piece from a day that has two; a day nothing can fill is named.
+  const plan = applyDailyFloor({ pieces, plan: planMoments(pieces, rules, taken, now), rules, taken, now })
   const lateOf = new Map(plan.late.map((l) => [l.id, l]))
   const scheduled: { pieceId: string; goAt: string }[] = []
   const held: string[] = []
@@ -1941,7 +1950,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     }
     if (fits > 0) scheduled.push({ pieceId: d.id, goAt })
   }
-  return { scheduled, held }
+  return { scheduled, held, floor: plan.report }
 }
 
 /** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */

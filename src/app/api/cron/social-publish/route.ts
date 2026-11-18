@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
     )
     for (const h of [...scheduled.held, ...published.held]) console.log(`[cron/social-publish] held: ${h}`)
+    // The operating model's A1: a day with nothing to post is named, never faked (the 08:00 report reads these).
+    for (const f of scheduled.floor) console.log(`[cron/social-publish] floor: ${f}`)
     // Every post Blotato accepted is read back until its public URL is known; a failed read never stops the run.
     try {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
