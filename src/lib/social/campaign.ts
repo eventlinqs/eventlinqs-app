@@ -156,6 +156,13 @@ export type Slide =
   | { t: 'feature'; composition: Composition; eventId: string; startDate: string; eyebrow: string; title: string; accent: string | null; chip: string | null; photo: string | null; credit: string | null }
   /** Lawal's ask on gold, with the three to start with. */
   | { t: 'ask'; composition: 'close'; count: number; three: DayRow[] }
+  /**
+   * AN APPROVED FILE, POSTED AS IT IS (Lawal, 18 November 2026, 11:55: "You can post this. You have my approval now",
+   * of the SOCIAL-READY-15NOV posts; the PM's 12:20): a finished image Lawal approved, never drawn again. `url` is its
+   * address under /social/approved/ on www (isApprovedFileUrl); `eventId` and `startDate` are the night it shows, read
+   * again at publishing, or null for a piece naming no night; `format` says whether it is a story.
+   */
+  | { t: 'file'; composition: 'close'; url: string; format: 'feed' | 'story'; eventId: string | null; startDate: string | null }
   /** Family E, a venue's week: its name, its nights as gold timed cards (each with its entry line), a photograph of their kind or none, the ask. */
   | { t: 'venue'; composition: 'venue_spotlight'; venue: string; eyebrow: string; accent: string; rows: DayRow[]; photo: string | null; credit: string | null }
 
@@ -167,7 +174,15 @@ export type Slide =
  * week's plan and refused before approval and before publishing. The older look is kept behind OLDER_LOOK_IN_PLAN, never
  * deleted (law 13); it goes back on only when Lawal says so.
  */
-export const LOCKED_SLIDES = ['week_cover', 'days', 'feature', 'ask', 'venue'] as const
+export const LOCKED_SLIDES = ['week_cover', 'days', 'feature', 'ask', 'venue', 'file'] as const
+
+/** Where an approved file lives: our own site, under /social/approved/, a plain name and .jpg, nothing else. */
+export const APPROVED_FILE_PREFIX = 'https://www.eventlinqs.com.au/social/approved/'
+
+/** True only for an approved file's own address on www. Pure. */
+export function isApprovedFileUrl(url: string): boolean {
+  return url.startsWith(APPROVED_FILE_PREFIX) && /^[0-9a-z-]+\.jpg$/.test(url.slice(APPROVED_FILE_PREFIX.length))
+}
 export const OLDER_LOOK_IN_PLAN = false
 
 /** True when every slide of a piece is drawn in the locked look. */

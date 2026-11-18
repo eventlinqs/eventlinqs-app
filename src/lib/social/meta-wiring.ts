@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
-import type { Slide } from './campaign'
+import { isApprovedFileUrl, type Slide } from './campaign'
 import { graphCaller, makeMetaPublisher, metaConfigFrom } from './meta-publisher'
 import { blotatoConfigFrom, makeBlotatoPublisher } from './blotato-publisher'
 import { slideImagesNow, type Publisher } from './store'
@@ -26,6 +26,13 @@ function slideUrlsFor(db: Db, now: Date, route: string) {
       const stamp = now.getTime()
       const urls: string[] = []
       for (let i = 0; i < slides.length; i += 1) {
+        const s = slides[i]
+        // An approved file is posted as it is, from its own address on www, never drawn again (Lawal's 11:55 approval).
+        if (s.t === 'file') {
+          if (!isApprovedFileUrl(s.url)) throw new Error(`slide ${i + 1} is not an approved file's own address on www: ${s.url}`)
+          urls.push(s.url)
+          continue
+        }
         const bytes = await renderCampaignSlide(format, slides[i], i + 1, slides.length, null, images.get(i) ?? null, slides[i + 1] ?? null)
         const path = `social/${pieceId}/${stamp}-${String(i + 1).padStart(2, '0')}-${format}.jpg`
         const bucket = db.storage.from('event-images')

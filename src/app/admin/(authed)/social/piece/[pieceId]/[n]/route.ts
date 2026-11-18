@@ -35,6 +35,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ piec
   const format = (asked ?? allowed[0]) as Format
   if (!allowed.includes(format)) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
+  // An approved file is shown as it is, from its own address on www (Lawal's 11:55 approval); it is never drawn here.
+  const fileSlide = piece.slides[index - 1]
+  if (fileSlide.t === 'file') return NextResponse.redirect(fileSlide.url, 307)
+
   try {
     const image = (await slideImagesNow(db, piece.slides, new Date())).get(index - 1) ?? null
     const bytes = await renderCampaignSlide(format, piece.slides[index - 1], index, piece.slides.length, null, image, piece.slides[index] ?? null)

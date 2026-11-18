@@ -712,6 +712,26 @@ export async function pieceDependencies(
       }
       continue
     }
+    /* An approved file prints its night's date and time in its own pixels, so the night is read again, never the file
+       changed: a night gone, no longer public, ended, moved, or whose ticket page no longer answers holds the post. */
+    if (found?.t === 'file') {
+      const name = e ? String(e.title) : id
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      if (found.startDate && Date.parse(String(e.start_date)) !== Date.parse(found.startDate)) {
+        issues.push(`${name}: its date or time is now ${whenOf({ startDate: String(e.start_date), timezone: (e.timezone as string | null) ?? null } as CampaignNight)}, not what its approved file shows.`)
+      }
+      const { cta } = await admissionOf(e, now)
+      if (cta.state === 'paid_external') {
+        const outside = await answers(fetcher, String(e.external_ticket_url))
+        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
+      }
+      continue
+    }
     /* Family F: a daily poster prints the night's facts from its own record, so each is read again from the night. */
     if (found?.t === 'poster') {
       const facts = found.night
