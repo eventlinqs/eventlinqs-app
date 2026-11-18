@@ -88,6 +88,18 @@ describe('the week', () => {
 describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
   const { pieces, imageRequests } = plan()
 
+  // Caption standard version 2 for the brand post too (read on production at 02:42 on 19 November 2026: it was the one
+  // caption still drawn with blank lines after #304).
+  it('the brand post takes caption standard version 2: no blank line, its ticket link line, hashtags last', () => {
+    const [brand] = of(pieces, 'brand_campaign')
+    for (const c of [brand.caption, brand.versions.instagram.caption, brand.versions.facebook.caption]) {
+      expect(c).not.toMatch(/\n\s*\n/)
+      expect(c.trim().split('\n').at(-1)).toBe('#VictoriaEvents #EventLinqs')
+    }
+    expect(brand.versions.instagram.caption).toContain("\u{1F39F} What's on: link in our bio")
+    expect(brand.versions.facebook.caption).toContain(`\u{1F39F} What's on:\n${ORIGIN}/events`)
+  })
+
   it('Monday: the week ahead per city with two or more nights, to /city/<city>', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     expect(ahead.link).toBe(`${ORIGIN}/city/geelong`)

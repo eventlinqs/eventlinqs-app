@@ -225,6 +225,10 @@ const OLDER_LIST_SLIDES: readonly Slide['t'][] = ['cover', 'night', 'end']
  */
 export function lockRefusal(slides: readonly Slide[]): string | null {
   if (slides.some((s) => OLDER_LIST_SLIDES.includes(s.t))) return 'It is drawn in the older planner look (cover, night and end slides), so the hourly run draws it again in the locked look.'
+  // LAW 26 NAMES THE PLAIN DAILY POSTER (read on production at 02:43 on 19 November 2026: every daily poster of the week was
+  // still the older planner poster after #304, none redrawn, because a poster slide with no family D look passed here): a
+  // daily poster drawn without its look never posts, and the hourly run draws it again in family D.
+  if (slides.some((s) => s.t === 'poster' && !s.look)) return 'It is the older planner daily poster (law 26: it never posts), so the hourly run draws it again in family D.'
   return null
 }
 
@@ -1974,7 +1978,11 @@ export function planCampaign(input: {
     const line = `Gigs, festivals, markets and free nights across ${input.cities.map((c) => c.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, in one place.`
     const photo = input.brandPhoto ?? null
     const brandCredit = photo ? creditLine(photo.credit) : null
-    const body = [line, ...(brandCredit ? ['', brandCredit] : [])]
+    // Caption standard version 2 (read on production at 02:42 on 19 November 2026: the brand post was the one caption still
+    // drawn with blank lines after #304): no blank line, the link line led by its ticket, hashtags last on both platforms.
+    const body = [line, ...(brandCredit ? [brandCredit] : [])]
+    const head = `\u{1F389} ${hook}`
+    const tags = '#VictoriaEvents #EventLinqs'
     pieces.push({
       kind: 'brand_campaign',
       city: 'victoria',
@@ -1989,8 +1997,11 @@ export function planCampaign(input: {
       picks: [],
       mode: photo ? 'photo_led' : 'graphic_led',
       slides: [{ t: 'brand', composition: 'close', headline: hook, line, action: "See what's on", photo: photo?.url ?? null, credit: photo?.credit ?? null }],
-      caption: join([`\u{1F389} ${hook}`, '', ...body, '', `\u{1F39F} What's on: ${site}/events`, '', '#VictoriaEvents #EventLinqs']),
-      versions: versionsOf(`\u{1F389} ${hook}`, body, `${origin}/events`, "\u{1F39F} What's on: link in our bio", "\u{1F39F} What's on:", '4:5', '#VictoriaEvents #EventLinqs'),
+      caption: join([head, ...body, `\u{1F39F} What's on: ${site}/events`, tags]),
+      versions: {
+        instagram: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on: link in our bio", tags]), crop: '4:5', cta: 'link in our bio' },
+        facebook: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on:", `${origin}/events`, tags]), crop: '4:5', cta: `${origin}/events` },
+      },
       partnerName: null,
       partnerEventId: null,
       message: null,
