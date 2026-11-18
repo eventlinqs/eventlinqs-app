@@ -64,6 +64,8 @@ export const FAMILY_NAMES: Readonly<Record<string, string>> = {
   daily_poster: 'the single event poster',
   organiser_campaign: 'the organiser offer',
   brand_campaign: 'the brand post',
+  free_week: 'free this week',
+  tonight: 'the Tonight story',
 }
 /** Learning reads this many days back (the PM's 21:00: 'rank by clicks per reach over 14 days'). */
 export const LEARN_DAYS = 14

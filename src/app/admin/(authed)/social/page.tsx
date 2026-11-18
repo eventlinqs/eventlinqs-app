@@ -149,6 +149,8 @@ const KIND_NAME: Record<PieceRow['kind'], string> = {
   category_spotlight: 'Category Spotlight',
   coming_up: 'Sunday · Coming up',
   daily_poster: 'Daily poster',
+  free_week: 'Wednesday and Sunday · Free this week',
+  tonight: 'Tonight · a story on its own evening',
 }
 const AUDIENCE_NAME: Record<PieceRow['audience'], string> = { attendees: 'Attendees', organisers: 'Organisers and promoters', venues: 'Venues', partners: 'Community partners' }
 const OBJECTIVE_NAME: Record<PieceRow['objective'], string> = { audience_growth: 'Audience growth', organiser_growth: 'Organiser growth' }
