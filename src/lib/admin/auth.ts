@@ -94,7 +94,10 @@ export async function requireAdminSession(options: AdminSessionOptions = {}): Pr
     // AUTH-03: an admin refused only for having no enrolled second factor is sent to finish enrolment, not shown an
     // error page (car 14's TEST preview, 30 October 2026). Anyone else is refused as before.
     if (!options.forEnrolment && (await getAdminSession({ forEnrolment: true }))) redirect('/admin/enrol-2fa')
-    throw new AdminUnauthorisedError()
+    // THE P0 OF 18 NOVEMBER 2026: no session, or a second factor proof that has lapsed, is sent to sign in, as the
+    // layout sends it. A throw here raced the layout's redirect in one streamed render and showed Lawal an error page
+    // three times in four (production's runtime log, 11:41:16 and 11:41:17: 'admin session required').
+    redirect('/admin/login')
   }
   return session
 }
