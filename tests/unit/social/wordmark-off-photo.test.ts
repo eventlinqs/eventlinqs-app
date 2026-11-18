@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import { ctaFor, ctaPriceLine } from '@/lib/events/cta'
 import { featureSlideOf, lockedListSlides, venueSlideOf, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { renderCampaignSlide, type SlideImage } from '@/lib/broadcast/campaign-slides'
+import { dailyPosterPieces } from '@/lib/social/daily-posters'
 
 /*
  * THE WORDMARK NEVER SITS OVER A PHOTOGRAPH (Lawal's D3, 16 November 2026, 23:08: "Keep the approved EventLinqs wordmark
@@ -73,6 +74,8 @@ const CASES: { name: string; slide: Slide; n: number; total: number; next: Slide
   { name: 'day over a stand-in', slide: list.find((s) => s.t === 'days')!, n: 2, total: list.length, next: list[2] ?? null },
   { name: 'venue over a stand-in', slide: venueSlideOf('Comedy Republic', comedy, ORIGIN), n: 1, total: 1, next: null },
   { name: "a night's own photograph", slide: featureSlideOf(own), n: 1, total: 1, next: null },
+  // Family D's daily poster (law 26; the master's 11 LANY), a stand-in of its kind across its top, and with a night's own.
+  ...dailyPosterPieces({ nights: [gigs[0], own], cities: [{ slug: 'melbourne', name: 'Melbourne' }], weekStart: '2026-11-16', origin: ORIGIN }).map((p) => ({ name: `family D's daily poster, ${p.eventIds[0] === own.eventId ? "a night's own photograph" : 'a stand-in'}`, slide: p.slides[0], n: 1, total: 1, next: null })),
 ]
 
 /** The rows near the top holding the wordmark's white letters, and how many photograph pixels those rows hold. */

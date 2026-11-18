@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { checkExpected, parseExpect } from '../../../scripts/ops/apply-production-migrations.mjs'
-import { EFFECTIVE, isFounderStep, judgeList, judgeNotes, judgeScripts, printsWhere, scriptsNamed, stampOf } from '../../../scripts/guards/lib/founder-steps.mjs'
+import { asksForAGivenValue, EFFECTIVE, isFounderStep, judgeList, judgeNotes, judgeScripts, printsWhere, promptsForASecret, scriptsNamed, stampOf } from '../../../scripts/guards/lib/founder-steps.mjs'
 
 /*
  * THE FOUNDER STEP LAW (Lawal, 12 November 2026, 01:16): "Fix this error in every other place ... make sure it doesn't
@@ -127,5 +127,39 @@ describe('the guard: no founder step reaches Lawal unread', () => {
     expect(printsWhere("import { sayWhere } from '../lib/founder-where.mjs'\n")).toBe(false)
     const real = (rel: string) => { try { return readFileSync(join(process.cwd(), rel), 'utf8') } catch { return null } }
     expect(judgeScripts([step], npm, real).faults).toEqual([])
+  })
+})
+
+/*
+ * LAW 14 (hh) (the PM's 21:22 of 18 November 2026): no step asks Lawal for a key, token, password or secret he has already
+ * given. The case: a script of 17 November asked him for the Blotato key he had stored, and on 18 November he had it open
+ * again; and the list's Resend step asked him to set RESEND_API_KEY, which production already holds.
+ */
+describe('law 14 (hh): no founder step asks Lawal for a value he has already given', () => {
+  const resend = "| 6 | Register Resend's delivery webhook | In PowerShell: `cd C:\\dev\\EventLinqs\\wt-design-full` then `$env:RESEND_API_KEY = '<your key from Resend, API Keys>'` then `node scripts/ops/register-resend-webhook.mjs --apply` | ... READ BACK 01:27 |"
+  const blotato = 'EL | 18 Nov 2026 21:30 | LAWAL, ONE MINUTE: node scripts/ops/blotato-read.mjs, pasting the same key from Blotato, typing hidden. READ BACK 21:29'
+  it('the Resend row and a Blotato key prompt are refused, red', () => {
+    expect(asksForAGivenValue(resend)).toBe(true)
+    expect(asksForAGivenValue(blotato)).toBe(true)
+    expect(judgeList(`${resend}\n## Removed\n`).faults.some((f) => f.includes('law 14 (hh)'))).toBe(true)
+    expect(judgeNotes(blotato).faults.some((f) => f.includes('law 14 (hh)'))).toBe(true)
+  })
+  it('a value only he can mint passes when the step says NEW VALUE; a step with no secret to type passes', () => {
+    expect(asksForAGivenValue(`${resend.replace('|  ...', '| NEW VALUE: ...')} NEW VALUE`)).toBe(false)
+    expect(asksForAGivenValue('| 31 | If a line reads 502, paste that line in the chat | READ BACK |')).toBe(false)
+    expect(asksForAGivenValue('| 23 | Run lane1-approve-2.py, read them, then type APPROVE | READ BACK |')).toBe(false)
+    expect(asksForAGivenValue("| 1 | You choose your own password from the link, sign in | READ BACK |")).toBe(false)
+  })
+  it('a note before the law is history; a list row is judged whatever its date', () => {
+    expect(judgeNotes(blotato.replace('18 Nov 2026 21:30', '17 Nov 2026 20:25')).faults.some((f) => f.includes('law 14 (hh)'))).toBe(false)
+  })
+  it('a script a step names may prompt for a hidden value only where that step says NEW VALUE', () => {
+    const npm = {}
+    const hidden = "import { sayWhere } from '../lib/founder-where.mjs'\nsayWhere(TAG)\nprocess.stdin.setRawMode(true)"
+    expect(promptsForASecret(hidden)).toBe(true)
+    expect(promptsForASecret("import { sayWhere } from '../lib/founder-where.mjs'\nsayWhere(TAG)")).toBe(false)
+    const step = 'LAWAL: node scripts/ops/store-token.mjs and paste the token when it asks. READ BACK 21:31'
+    expect(judgeScripts([step], npm, () => hidden).faults[0]).toContain('law 14 (hh)')
+    expect(judgeScripts([`${step} NEW VALUE: GitHub shows it once`], npm, () => hidden).faults).toEqual([])
   })
 })

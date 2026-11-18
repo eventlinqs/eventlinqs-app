@@ -90,6 +90,15 @@ describe("hashtags come from one list (the PM's 23:45, fix (e))", () => {
     expect(languageFaults(['#geelong #geelongevent'])).toEqual(['[language] "#geelongevent" is not one of our hashtags; use the city\'s own two.'])
     expect(languageFaults(['#geelong #geelongevents', '#melbourne #melbourneevents #thisweekend', '#victoriaevents'])).toEqual([])
   })
+  // Caption standard version 2 (Lawal's model: '#BallaratEvents #KateCeberano #EventLinqs'): ours, the city's events in any
+  // case, and a tag made from words the piece itself prints; a tag of words it does not print is still refused.
+  it("version 2's tags pass: #EventLinqs, the city's events, and the night's own name the piece prints", () => {
+    const kate = ['🎶 Kate Ceberano is coming to Ballarat!', "📍 Her Majesty's Theatre, Ballarat"]
+    expect(languageFaults([...kate, '#BallaratEvents #KateCeberano #EventLinqs'])).toEqual([])
+    expect(languageFaults([...kate, '#HerMajestysTheatre #GoldCoastEvents'])).toEqual([])
+    expect(languageFaults([...kate, '#KateCeberanos'])).toEqual(['[language] "#KateCeberanos" is not one of our hashtags; use the city\'s own two.'])
+    expect(languageFaults(['#BallaratEvents #KimWilde'])).toEqual(['[language] "#KimWilde" is not one of our hashtags; use the city\'s own two.'])
+  })
 })
 
 describe("words for the day it posts (the PM's 23:45, fix (c))", () => {

@@ -14,6 +14,11 @@
  *   3. Every open row of Lawal's list (a numbered table row above '## Removed') carries READ BACK.
  *   4. A script that an open founder step names (directly, or through package.json's npm script) prints where it runs:
  *      it imports scripts/lib/founder-where.mjs.
+ *   5. NO STEP ASKS LAWAL FOR A VALUE HE HAS ALREADY GIVEN (law 14 (hh), the PM's 21:22 of 18 November 2026): an open
+ *      founder step that asks him to type or paste a key, token, password or secret (or sets one for him to fill,
+ *      $env:NAME_KEY = '<...>') is refused unless it says NEW VALUE: a value only he can mint, never one already stored.
+ *      A stored value is read where it is stored, by the app on production. The case behind it: a window's script of 17
+ *      November asked him for the Blotato key he had stored that evening, and on 18 November he had it open again.
  * Pure: the guard reads the files and hands their text here.
  *
  * ONLY EVENTLINQS' OWN NOTES ARE JUDGED (the PM's 13:08 of 13 November 2026): a line in EventLinqs' mark, 'EL | ', as
@@ -46,6 +51,26 @@ const RUNS = /npm run [\w:.-]+|\bcd [A-Za-z]:\\|\.ps1\b|\bnode scripts[\\/]|\bnp
  */
 export function saysReadBack(line) {
   return /\bread back\b/i.test(line) && !/\b(?:not|never|no)\s+(?:yet\s+)?read back\b|\bunread\b/i.test(line)
+}
+
+/** Law 14 (hh)'s moment: a note written before it is history; every open row of the list is judged whatever its date. */
+export const KEY_LAW = '2026-11-18 21:22'
+
+const SECRET = String.raw`\b(?:api key|key|token|password|secret)s?\b`
+const ASKS = [
+  new RegExp(String.raw`\$env:\w*(?:KEY|TOKEN|SECRET|PASSWORD)\w*\s*=\s*['"]<`, 'i'),
+  new RegExp(String.raw`\b(?:past(?:e|ing)|typ(?:e|ing)|enter(?:ing)?)\b[^|;]{0,80}` + SECRET, 'i'),
+  new RegExp(SECRET + String.raw`[^|;]{0,80}(?:\bpast(?:e|ing)\b|\btyping (?:is )?hidden\b|\bhidden typing\b)`, 'i'),
+]
+
+/** Rule 5: a step that asks Lawal to type or paste a key, token, password or secret, and does not say NEW VALUE. */
+export function asksForAGivenValue(line) {
+  return ASKS.some((re) => re.test(line)) && !/\bNEW VALUE\b/.test(line)
+}
+
+/** A script that prompts for a hidden value (a key typed with the typing hidden). */
+export function promptsForASecret(src) {
+  return /\bsetRawMode\s*\(\s*true|\baskHidden\s*\(|Read-Host\b[^\n]*-AsSecureString/.test(src)
 }
 
 /** A line that hands Lawal something to run. */
@@ -83,6 +108,7 @@ export function judgeNotes(text, effective = EFFECTIVE) {
     if (isFounderStep(line)) {
       steps.push(line)
       if (!saysReadBack(line)) faults.push(`line ${i + 1} (${at}): a founder step with no READ BACK beside it: ${line.slice(0, 110)}`)
+      if (at >= KEY_LAW && asksForAGivenValue(line)) faults.push(`line ${i + 1} (${at}): a founder step asks Lawal to type a key, token, password or secret; a stored value is read where it is stored, and a value only he can mint says NEW VALUE (law 14 (hh)): ${line.slice(0, 110)}`)
     }
     if (/npm run migrate:production/.test(line) && !/--expect\s+\S/.test(line)) {
       faults.push(`line ${i + 1} (${at}): names npm run migrate:production with no --expect: ${line.slice(0, 110)}`)
@@ -105,6 +131,7 @@ export function judgeList(text) {
     if (!/^\|\s*\d+\s*\|/.test(line)) continue
     steps.push(line)
     if (!/\bREAD BACK\b/.test(line)) faults.push(`line ${i + 1}: an open step with no READ BACK: ${line.slice(0, 110)}`)
+    if (asksForAGivenValue(line)) faults.push(`line ${i + 1}: an open step asks Lawal to type a key, token, password or secret; a stored value is read where it is stored, and a value only he can mint says NEW VALUE (law 14 (hh)): ${line.slice(0, 110)}`)
     if (/npm run migrate:production/.test(line) && !/--expect\s+\S/.test(line)) faults.push(`line ${i + 1}: npm run migrate:production with no --expect`)
   }
   return { faults, steps }
@@ -138,6 +165,10 @@ export function judgeScripts(steps, npmScripts, read) {
       const src = read(rel)
       if (src === null) faults.push(`${rel}, named by a founder step, is not in this tree`)
       else if (!printsWhere(src)) faults.push(`${rel}, named by a founder step, does not print where it runs (import scripts/lib/founder-where.mjs and call sayWhere first)`)
+      // Rule 5 (law 14 (hh)): a script a step names prompts for a hidden value only where that step says NEW VALUE.
+      else if (promptsForASecret(src) && !steps.some((l) => scriptsNamed(l, npmScripts).includes(rel) && /\bNEW VALUE\b/.test(l))) {
+        faults.push(`${rel}, named by a founder step, prompts for a hidden value; a stored value is read where it is stored, and a step for a value only he can mint says NEW VALUE (law 14 (hh))`)
+      }
     }
   }
   return { faults, judged: seen.size }

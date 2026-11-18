@@ -35,30 +35,94 @@ const SITE = 'eventlinqs.com.au'
 const gig = posterCaption(night({}), city, SITE)
 const comedy = posterCaption(night({ eventId: 'b', slug: 'b', title: 'Laugh Lab', categorySlug: 'comedy', summary: 'Five comics, one room, new material.', venueName: 'Comedy Republic', host: 'Comedy Republic' }), { slug: 'melbourne', name: 'Melbourne' }, SITE)
 
-describe('posterCaption', () => {
-  it("follows Lawal's shape: hook, experience, place, date and time, tickets, hashtags", () => {
-    const lines = gig.split('\n').filter((l) => l.trim() !== '')
-    expect(lines[0]).toMatch(/^\p{Extended_Pictographic}/u)
-    expect(lines[0]).toContain('Kate Ceberano')
-    expect(gig).toContain('Kate Ceberano sings the songs of a lifetime with a full band.')
-    expect(gig).toContain("📍 Her Majesty's Theatre Ballarat")
-    expect(gig).not.toContain('Ballarat, Ballarat')
-    expect(gig).toMatch(/📅 Thursday 19 November · 7(:00)? ?pm/)
-    expect(gig).toContain('🎟 Event details and tickets:')
-    // Instagram takes the link in bio (a caption link is not tappable there); Facebook carries the whole link (the PM's
-    // 03:10 of 18 November 2026: the posted versions ARE this caption).
-    expect(gig).toContain('At the link in our bio.')
-    expect(posterCaption(night({}), city, SITE, { platform: 'facebook', link: 'https://www.eventlinqs.com.au/events/a-night' })).toContain('https://www.eventlinqs.com.au/events/a-night')
-    expect(lines.at(-1)).toBe('#ballarat #ballaratevents')
+const FB = 'https://www.eventlinqs.com.au/events/a-night'
+const gigFb = posterCaption(night({}), city, SITE, { platform: 'facebook', link: FB })
+const free = posterCaption(night({ eventId: 'f', slug: 'f', title: 'Lakeside Picnic Concert', summary: null, cta: ctaFor({ tiers: [], isFree: true } as never), priceLine: null }), city, SITE)
+const emojiIn = (t: string) => [...t.matchAll(/\p{Extended_Pictographic}/gu)].length
+
+/*
+ * CAPTION STANDARD VERSION 2 (C:/dev/GROWTH/CAPTION-STANDARD-18NOV.md; Lawal's 20:44 approval of 18 November 2026 for every
+ * new caption, through the PM's 20:50; the rules of the PM's 20:45). One test per rule; Kate Ceberano's caption, Lawal's own
+ * model of 00:12, is the golden case.
+ */
+describe('posterCaption, caption standard version 2', () => {
+  // Lawal's own caption, word for word, is held in caption-golden.test.ts (the PM's 21:40). Here, the same night with words
+  // of its own and a price: the tour goes into the hook and its words under it, as caption standard version 2's third
+  // sample has it, and the price brings its share line.
+  it("Kate Ceberano with words of her own and a price, in version 2's third sample's shape, Instagram and Facebook", () => {
+    expect(gig).toBe(
+      [
+        '🎶 Kate Ceberano is bringing the Australian Made Tour to Ballarat!',
+        'Kate Ceberano sings the songs of a lifetime with a full band.',
+        "📍 Her Majesty's Theatre Ballarat",
+        '📅 Thursday 19 November · 7 pm',
+        '💲 Tickets from $79',
+        '🎟 Event details and tickets: link in our bio',
+        'Bring the friend who knows every word.',
+        '#BallaratEvents #KateCeberano #EventLinqs',
+      ].join('\n'),
+    )
+    expect(gigFb).toContain(['🎟 Event details and tickets:', FB].join('\n'))
+    expect(gigFb.split('\n').at(-1)).toBe('#BallaratEvents #KateCeberano #EventLinqs')
   })
 
-  it('never carries an exclamation mark or a long dash (the copy law)', () => {
-    for (const c of [gig, comedy]) expect(c).not.toMatch(/[!–—]/)
+  it('1. THE HOOK: the kind’s emoji, then who or what, and where, in a shape of its own kind', () => {
+    expect(gig.split('\n')[0]).toBe('🎶 Kate Ceberano is bringing the Australian Made Tour to Ballarat!')
+    expect(posterCaption(night({ summary: null }), city, SITE).split('\n')[0]).toBe('🎶 Kate Ceberano is coming to Ballarat!')
+    expect(comedy.split('\n')[0]).toBe('😂 Laugh Lab brings the laughs to Melbourne!')
+  })
+
+  it('2. ONE LINE ON THE EXPERIENCE: the night’s own words, or what its title’s second part names', () => {
+    expect(gig.split('\n')[1]).toBe('Kate Ceberano sings the songs of a lifetime with a full band.')
+    const noWords = posterCaption(night({ summary: null }), city, SITE)
+    expect(noWords.split('\n')[1]).toBe("Experience the Australian Made Tour at Her Majesty's Theatre Ballarat this Thursday, 19 November, at 7 pm.")
+  })
+
+  it('3. THE SIGNPOSTS, one emoji each: the place, the date and time, the price or free entry', () => {
+    expect(gig).toContain("📍 Her Majesty's Theatre Ballarat\n📅 Thursday 19 November · 7 pm\n💲 Tickets from $79")
+    // No blank lines (the golden cases stand without them).
+    for (const c of [gig, gigFb, comedy, free]) expect(c).not.toMatch(/\n\n/)
+    expect(gig).not.toContain('Ballarat, Ballarat')
+    expect(free).toContain('💲 Free entry')
+    expect(free).toContain('🎟 Event details: link in our bio')
+  })
+
+  it('4. THE LINK LINE: Instagram, the link in our bio; Facebook, the event page itself on its own line', () => {
+    expect(gig).toContain('🎟 Event details and tickets: link in our bio')
+    expect(gig).not.toContain('https://')
+    expect(gigFb).toContain(`🎟 Event details and tickets:\n${FB}`)
+  })
+
+  it('5. A SHARE LINE of the night’s kind, with no emoji', () => {
+    const share = gig.split('\n').find((l) => l === 'Bring the friend who knows every word.')
+    expect(share).toBeDefined()
+    expect(comedy).toContain('Tag the friend who needs a laugh.')
+  })
+
+  it('6. HASHTAGS LAST on both platforms: the city’s events, the night, #EventLinqs', () => {
+    for (const c of [gig, gigFb]) expect(c.split('\n').at(-1)).toBe('#BallaratEvents #KateCeberano #EventLinqs')
+    expect(comedy.split('\n').at(-1)).toBe('#MelbourneEvents #LaughLab #EventLinqs')
+  })
+
+  it('AT MOST FIVE EMOJI, never two in a row, never inside a name or a title', () => {
+    for (const c of [gig, gigFb, comedy, free]) {
+      expect(emojiIn(c)).toBeLessThanOrEqual(5)
+      expect(c).not.toMatch(/\p{Extended_Pictographic}\uFE0F?\s*\p{Extended_Pictographic}/u)
+    }
+    expect(emojiIn('Kate Ceberano: Australian Made Tour 2026')).toBe(0)
+  })
+
+  it('AT MOST ONE EXCLAMATION MARK, in the hook only; never a long dash', () => {
+    for (const c of [gig, gigFb, comedy, free]) {
+      expect((c.match(/!/g) ?? []).length).toBeLessThanOrEqual(1)
+      for (const line of c.split('\n').slice(1)) expect(line).not.toContain('!')
+      expect(c).not.toMatch(/[–—]/)
+    }
   })
 
   it('two nights of different kinds do not get the same sentence shape', () => {
     const shape = (c: string, title: string, cityName: string) => c.split('\n')[0].replace(title, 'T').replace(cityName, 'C')
-    expect(shape(gig, 'Kate Ceberano: Australian Made Tour 2026', 'Ballarat')).not.toBe(shape(comedy, 'Laugh Lab', 'Melbourne'))
+    expect(shape(gig, 'Kate Ceberano', 'Ballarat')).not.toBe(shape(comedy, 'Laugh Lab', 'Melbourne'))
   })
 
   it("Lawal's A: the daily posters are in the week's plan", () => {

@@ -17,7 +17,7 @@ import {
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
-import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
+import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, nameCardElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, isApprovedFileUrl, type Composition, type LOCKED_SLIDES, type Slide } from '@/lib/social/campaign'
 import { standInCredit, standInOf } from '@/lib/social/stand-ins'
@@ -142,6 +142,13 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
   const faults: string[] = []
   for (const f of formatsOf(pieceFormat)) {
     for (const [i, slide] of slides.entries()) {
+      // A daily poster in family D is drawn in the locked look, and read as one (law 26).
+      if (slide.t === 'poster' && slide.look) {
+        const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
+        const el = await posterLockedElement(f, slide, images.get(i) ?? null)
+        for (const fault of await lockedSlideFaults(el, f)) faults.push(`${where}: ${fault}.`)
+        continue
+      }
       if (!isLocked(slide)) continue
       // An approved file is never drawn, so nothing here can measure it: its fit is read from its own bytes against its
       // destination before any publisher is called (slidesMisfit, src/lib/social/destination-check.ts).
@@ -153,7 +160,7 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
       for (const fault of await lockedSlideFaults(el, f)) faults.push(`${where}: ${fault}.`)
     }
     slides.forEach((slide, i) => {
-      if (isLocked(slide)) return
+      if (isLocked(slide) || (slide.t === 'poster' && slide.look)) return
       const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
       let layout: Layout
       try {
@@ -193,6 +200,7 @@ export function withStandInCredit(slide: Slide): Slide {
 export async function buildCampaignSlide(f: Format, given: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<React.ReactElement> {
   const slide = withStandInCredit(given)
   if (isLocked(slide)) return (await lockedElement(f, slide, image, n, total, next)) as unknown as React.ReactElement
+  if (slide.t === 'poster' && slide.look) return (await posterLockedElement(f, slide, image)) as unknown as React.ReactElement
   return drawLayout(layoutOfSlide(f, slide, image, await treatmentMeasurers(), label ?? (total > 1 ? `${n}/${total}` : null)))
 }
 
@@ -267,6 +275,32 @@ export function tapWords(next: Slide | null): string | null {
   }
   if (next.t === 'ask') return 'Tap for where to start'
   return 'Tap for the next'
+}
+
+/**
+ * A DAILY POSTER IN FAMILY D (law 26; the master set's 11 LANY and 20 AMCF): a night's own photograph whole, the night
+ * beneath it and the send ask (featureElement as a post of its own); a stand-in of its kind across the top with the name
+ * in gold and one cream timed card (nameCardElement). The photograph is used only as the register holds it now (image).
+ */
+async function posterLockedElement(f: Format, slide: Extract<Slide, { t: 'poster' }>, image: SlideImage | null): Promise<El> {
+  const look = slide.look!
+  const url = image && slide.photo && slide.photo === image.url ? image.url : null
+  const stand = standInOf(url)
+  if (url && !stand) {
+    const photo = await wholePhoto(url, f, 'feature')
+    return featureElement(f, { eyebrow: look.eyebrow, title: look.name, accent: look.accent, chip: look.chip, credit: photo ? slide.credit : null }, photo, null, true)
+  }
+  const words = { eyebrow: look.eyebrow, name: look.name, accent: look.accent, row: look.row, credit: url ? (slide.credit ?? null) : null }
+  if (!url) return nameCardElement(f, words, null)
+  // The band ends where the words begin (the PM's 17:40 fix 2 of 15 November, as a day slide's does): just above the gold
+  // eyebrow, read from satori's own layout, so the eyebrow never sits on the photograph and no bare navy is left above it;
+  // never under the photograph's floor below the wordmark's strip.
+  const marker = (look.eyebrow.split(' ')[0] ?? '').toUpperCase().replace(/[^\p{L}\p{N}]+$/u, '')
+  const at = marker ? await wordTop(nameCardElement(f, words, BLANK(f, sizeOf(f).h), sizeOf(f).h), f, marker, 30 * scaleOf(f)) : null
+  const floor = bandTop(f, 'days') + Math.round(sizeOf(f).h * 0.18)
+  const bh = Math.max(floor, at === null ? Math.round(sizeOf(f).h * (f === 'square' ? 0.42 : 0.46)) : Math.round(at - 8 * scaleOf(f)))
+  const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'days')), image?.focal ?? stand?.focal ?? null)
+  return nameCardElement(f, { ...words, credit: photo ? words.credit : null }, photo, bh)
 }
 
 /** A locked slide's element, its photograph fetched and sized for the format: a stand-in across the top, a night's own whole. */

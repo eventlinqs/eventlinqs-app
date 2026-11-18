@@ -20,6 +20,8 @@ export type DayFormat = 'feed' | 'square' | 'story'
 export type DaysWords = { day: string; date: string; rows: readonly DayRow[]; credit: string | null }
 export type WeekCoverWords = { range: string; lines: readonly [string, string, string]; draws: string | null; line: string; credit: string | null; lead?: readonly DayRow[] }
 export type FeatureWords = { eyebrow: string; title: string; accent: string | null; chip: string | null; credit: string | null }
+/** Family D's name card (the master's 11 LANY): the eyebrow, the name in gold, the accent, one cream timed card. */
+export type NameCardWords = { eyebrow: string; name: string; accent: string; row: DayRow; credit: string | null }
 export type AskWords = { count: number; three: readonly DayRow[] }
 
 /** A photograph ready for satori: a data URI and its drawn size. */
@@ -33,6 +35,8 @@ type Kid = El | string | null | false
 
 const NAVY = '#0A1628'
 const NAVY_CARD = '#111F38'
+/** The cream of Lawal's light timed card (the master's nameCard, locked-look-4.ts). */
+const CREAM = '#FBF4DC'
 const GOLD = '#E8B738'
 const WHITE = '#FFFFFF'
 const MIST = '#D9D9D6'
@@ -136,15 +140,16 @@ export function emWidth(s: string): number {
   for (const ch of s) em += /[A-Z0-9]/.test(ch) ? 0.68 : /[a-z]/.test(ch) ? 0.53 : /\s/.test(ch) ? 0.27 : 0.36
   return em
 }
-const timedCard = (k: number, r: DayRow, width = 1024 * k) =>
-  h('div', { alignItems: 'center', background: NAVY_CARD, border: `${3 * k}px solid ${GOLD}`, borderRadius: 22 * k, padding: `${24 * k}px ${30 * k}px`, width: '100%', flexShrink: 0 },
+// `light`: the master's cream card (nameCard's 'light' style), navy words, no border; the default is the gold timed card.
+const timedCard = (k: number, r: DayRow, width = 1024 * k, light = false) =>
+  h('div', { alignItems: 'center', background: light ? CREAM : NAVY_CARD, border: light ? 'none' : `${3 * k}px solid ${GOLD}`, borderRadius: 22 * k, padding: `${24 * k}px ${30 * k}px`, width: '100%', flexShrink: 0 },
     h('div', { flexDirection: 'column', width: 252 * k, flexShrink: 0 },
-      text(r.when.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: 72 * k, color: GOLD, lineHeight: 0.95, whiteSpace: 'nowrap' }),
-      r.sub ? wrap(keepDate(r.sub.toUpperCase()), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 27 * k, letterSpacing: 1 * k, color: MIST, marginTop: 6 * k, lineHeight: 1.2 }) : null),
+      text(r.when.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: 72 * k, color: light ? INK : GOLD, lineHeight: 0.95, whiteSpace: 'nowrap' }),
+      r.sub ? wrap(keepDate(r.sub.toUpperCase()), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 27 * k, letterSpacing: 1 * k, color: light ? INK : MIST, marginTop: 6 * k, lineHeight: 1.2 }) : null),
     h('div', { width: 3 * k, alignSelf: 'stretch', background: GOLD, marginRight: 26 * k, flexShrink: 0 }),
     h('div', { flexDirection: 'column', flexGrow: 1, flexShrink: 1 },
-      wrap(keepTogether(r.title, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 39 * k, color: WHITE, lineHeight: 1.16 }),
-      wrap(keepTogether(r.place, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 500, fontSize: 31 * k, color: MIST, lineHeight: 1.25, marginTop: 6 * k })),
+      wrap(keepTogether(r.title, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 39 * k, color: light ? INK : WHITE, lineHeight: 1.16 }),
+      wrap(keepTogether(r.place, titleRoom(k, width, r.free)), { fontFamily: 'Hanken Grotesk', fontWeight: 500, fontSize: 31 * k, color: light ? INK : MIST, lineHeight: 1.25, marginTop: 6 * k })),
     r.free ? h('div', { marginLeft: 18 * k, flexShrink: 0 }, pill(k, 'FREE', GOLD, NAVY)) : null)
 
 /** "Swipe → n/N" on a carousel; a story is tapped, so it names its next ("Tap for Wednesday"). */
@@ -337,8 +342,12 @@ export function twoLines(name: string): string[] {
   return [words.slice(0, split).join(' '), words.slice(split).join(' ')]
 }
 
+/** The send ask beside its paper plane. */
+const askLine = (k: number, color: string) =>
+  h('div', { alignItems: 'center', gap: 18 * k, flexShrink: 1 }, plane(k, GOLD), wrap("Send this to who you're going with", { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 48 * k, color, lineHeight: 1.05, flexShrink: 1 }))
+
 /** A night with its own permitted photograph: the photograph whole, the night beneath it (photo system A1). */
-export function featureElement(f: DayFormat, words: FeatureWords, photo: DrawnPhoto | null, foot: Foot): El {
+export function featureElement(f: DayFormat, words: FeatureWords, photo: DrawnPhoto | null, foot: Foot, ownPost = false): El {
   const { w, h: H, k } = SIZE[f]
   const { pad, css } = padOf(f, k)
   const lines = twoLines(words.title)
@@ -354,14 +363,46 @@ export function featureElement(f: DayFormat, words: FeatureWords, photo: DrawnPh
       eyebrow(k, words.eyebrow, GOLD),
       h('div', { flexDirection: 'column', marginTop: 12 * k }, ...lines.map((l) => text(l.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: titleSize, color: WHITE, lineHeight: 0.92, whiteSpace: 'nowrap' }))),
       words.accent ? wrap(words.accent, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: (f === 'square' ? 42 : 56) * k, color: GOLD, lineHeight: 1.05, marginTop: 16 * k }) : null),
-    h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot)))
+    // A post of its own (family D's daily poster, ownPost) ends as the master's ownPhotoPiece does: the send ask and the way
+    // out (20 AMCF). A feature slide in a carousel keeps its foot, as its golden holds it.
+    !ownPost
+      ? h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot))
+      : f === 'story'
+        ? h('div', { flexDirection: 'column', alignItems: 'center', width: '100%', gap: 26 * k }, askLine(k, WHITE), exit(k, f, GOLD))
+        : h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 24 * k }, askLine(k, WHITE), exit(k, f, GOLD)))
+}
+
+/**
+ * FAMILY D, THE NAME CARD (the master set's 11 LANY, 15 November 2026; WINDOW 6's nameCard in locked-look-4.ts): a
+ * photograph of the night's kind across the top, its credit at the band's edge; the eyebrow in gold; the night's name
+ * filling the width in gold; the accent in white; one cream timed card; the send ask and the way out. The wordmark sits
+ * on the navy strip above the photograph, never over it (Lawal's D3 of 16 November 2026, as every locked slide). `bandH`
+ * is where the band ends. Every word is the planner's own (daily-posters.ts posterLook).
+ */
+export function nameCardElement(f: DayFormat, words: NameCardWords, photo: DrawnPhoto | null, bandH: number = Math.round(SIZE[f].h * (f === 'square' ? 0.42 : 0.46))): El {
+  const { w, h: H, k } = SIZE[f]
+  const { pad, css } = padOf(f, k, 0.8)
+  const top = bandTop(f, 'days')
+  // A short name fills the width on one line (the master's 'LANY'); a longer one takes two, each as large as it fits, as the
+  // feature slide's title does, so no long name is drawn small over a bare run of navy.
+  const lines = words.name.length > 12 ? twoLines(words.name) : [words.name]
+  const nameSize = Math.min(...lines.map((l) => fitLine(l, f === 'square' ? 300 : 440, (w - 2 * pad) / k, true))) * k
+  return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
+    photo ? band(w, bandH, photo, top) : null,
+    h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', padding: css },
+      wordmark(k, WHITE),
+      h('div', { flexGrow: 1 }),
+      photo && words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginBottom: 12 * k }, creditMark(k, words.credit)) : null,
+      eyebrow(k, words.eyebrow, GOLD),
+      h('div', { flexDirection: 'column', marginTop: 10 * k }, ...lines.map((l) => text(l.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: nameSize, color: GOLD, lineHeight: 0.9, whiteSpace: 'nowrap' }))),
+      wrap(words.accent, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 56 * k, color: WHITE, marginTop: 14 * k, lineHeight: 1.05 }),
+      h('div', { marginTop: 30 * k, width: '100%' }, timedCard(k * (f === 'story' ? 1.3 : 1.1), words.row, w - 2 * pad, true)),
+      f === 'story'
+        ? h('div', { flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: 40 * k, gap: 30 * k }, askLine(k, WHITE), exit(k, f, GOLD))
+        : h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 40 * k, gap: 24 * k }, askLine(k, WHITE), exit(k, f, GOLD))))
 }
 
 export type VenueWords = { venue: string; eyebrow: string; accent: string; rows: readonly DayRow[]; credit: string | null }
-
-/** The send ask beside its paper plane. */
-const askLine = (k: number, color: string) =>
-  h('div', { alignItems: 'center', gap: 18 * k, flexShrink: 1 }, plane(k, GOLD), wrap("Send this to who you're going with", { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 48 * k, color, lineHeight: 1.05, flexShrink: 1 }))
 
 /**
  * Family E, a venue's week (WINDOW 6's venuePiece): a photograph of its nights' kind across the top (or none), the VENUE

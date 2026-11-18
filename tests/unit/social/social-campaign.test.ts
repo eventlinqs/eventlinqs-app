@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
 import { compositionFor, creativeRefusals, dayInWeek, hostOf, pieceRefusal, venueOf, planCampaign, selectNights, weekStartOf, type CampaignCity, type CampaignNight, type PiecePlan } from '@/lib/social/campaign'
+import { captionMarkFaults } from '@/lib/social/caption-marks'
 
 /*
  * THE WEEKLY CAMPAIGN (the release checklist of 28 October 2026: A1, B2, C1 to C9, J1 to J5, J10, J11, J13; Lawal's
@@ -92,9 +93,11 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(ahead.link).toBe(`${ORIGIN}/city/geelong`)
     expect(ahead.eventIds).toHaveLength(5)
     // The 9.5 locked look (the PM's 17:10 of 15 November 2026): the week's cover first, Lawal's ask last.
-    expect(ahead.slides[0]).toMatchObject({ t: 'week_cover', composition: 'contents_cover', lines: ['5 things on', 'in Geelong', 'this week'] })
+    // Caption standard version 2 (Lawal's 20:44 of 18 November 2026): the count is drawn from the rows, never 'things'.
+    expect(ahead.slides[0]).toMatchObject({ t: 'week_cover', composition: 'contents_cover', lines: ['5 events on', 'in Geelong', 'this week'] })
     expect(ahead.slides.at(-1)).toMatchObject({ t: 'ask', composition: 'close', count: 5 })
-    expect(ahead.versions.instagram.hook).toBe('Five things on in Geelong this week.')
+    expect(ahead.versions.instagram.hook).toMatch(/^\p{Extended_Pictographic}\uFE0F? Five events in Geelong this week\.$/u)
+    expect(JSON.stringify(ahead)).not.toMatch(/\bthings\b/)
     expect(of(pieces, 'week_ahead', 'ballarat')).toHaveLength(0)
     expect(ahead.eventIds).not.toContain(outside[0].eventId)
   })
@@ -224,12 +227,20 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(ahead.versions.instagram.hook).toBe(ahead.versions.facebook.hook)
   })
 
-  it('captions: one line a pick with the pin or the ticket, at most three tags, no exclamation', () => {
+  // Caption standard version 2: a row a night with no emoji (the signposts are said once), at most five emoji, the link
+  // line led by its ticket, three tags last, no exclamation mark outside the hook, no long dash.
+  it('captions: one row a night with no emoji, the marks of version 2, three tags last', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
-    const picks = ahead.caption.split('\n').filter((l) => l.startsWith('📍') || l.startsWith('🎟'))
-    expect(picks).toHaveLength(5)
-    expect((ahead.caption.match(/#\w+/g) ?? []).length).toBeLessThanOrEqual(3)
-    expect(ahead.caption).not.toMatch(/[!–—]/)
+    for (const c of [ahead.versions.instagram.caption, ahead.versions.facebook.caption]) {
+      const rows = c.split('\n').filter((l) => /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}, /.test(l))
+      expect(rows).toHaveLength(5)
+      for (const r of rows) expect(r).not.toMatch(/\p{Extended_Pictographic}/u)
+      expect(captionMarkFaults(c)).toEqual([])
+      expect((c.match(/#\w+/g) ?? []).length).toBe(3)
+      expect(c.split('\n').at(-1)).toMatch(/^#GeelongEvents #\w+ #EventLinqs$/)
+    }
+    expect(ahead.versions.instagram.caption).toContain('\u{1F39F} Times and tickets for all five: link in our bio')
+    expect(ahead.versions.facebook.caption).toContain(`\u{1F39F} Times and tickets for all five:\n${ORIGIN}/city/geelong`)
   })
 })
 
@@ -277,7 +288,11 @@ describe('a piece that is not whole is refused (C2, J10, J11)', () => {
     ['no call to action', { nextStep: '' }],
     ['no outcome', { outcome: '' }],
     ['no real page', { link: '/city/geelong' }],
-    ['an exclamation', { caption: 'Big night!' }],
+    // Caption standard version 2: one exclamation mark at most, in the hook only; an emoji always (the PM's 21:00).
+    ['an exclamation outside the hook', { caption: '\u{1F389} Big night.\nBe there!' }],
+    ['two exclamation marks', { caption: '\u{1F389} Big night! Be there!' }],
+    ['no emoji', { caption: 'Big night.' }],
+    ['six emoji', { caption: '\u{1F389} Big night.\n\u{1F4CD} A\n\u{1F4C5} B\n\u{1F4B2} C\n\u{1F39F} D\n\u{1F3B6} E' }],
     ['an organiser campaign advertising a night', { kind: 'organiser_campaign' as const }],
   ])('%s', (_name, over) => {
     expect(pieceRefusal({ ...p, ...over })).not.toBeNull()
@@ -295,7 +310,7 @@ describe('the creative checks before approval (K10, K12)', () => {
       slides: ahead.slides.map((s) => (s.t === 'days' ? { ...s, rows: s.rows.map((r) => ({ ...r, place: 'Somewhere Else' })) } : s)),
       versions: {
         instagram: { ...ahead.versions.instagram, caption: `${ahead.versions.instagram.caption} #a #b #c #d`, cta: '' },
-        facebook: { ...ahead.versions.facebook, caption: `${'x'.repeat(2300)}!` },
+        facebook: { ...ahead.versions.facebook, caption: `\u{1F389} ${'x'.repeat(2300)}\nBe there!` },
       },
     }
     const said = creativeRefusals(bad, nights).join(' ')

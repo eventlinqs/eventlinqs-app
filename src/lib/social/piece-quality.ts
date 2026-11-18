@@ -1,5 +1,6 @@
 import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
 import { standInOf } from './stand-ins'
+import { captionMarkFaults } from './caption-marks'
 import { getAllCities } from '@/lib/cities/data'
 
 /**
@@ -74,22 +75,50 @@ const LANGUAGE: readonly { readonly test: (s: string) => string | null }[] = [
  * OUR HASHTAGS, ONE LIST (the PM's 23:45 of 17 November 2026, fix (e)): a city's own two, as campaign.ts tagsFor writes them
  * ('#geelong', '#geelongevents'), for every city the platform carries (src/lib/cities/data.ts), and the extras the planner
  * adds. A tag typed by hand that is not on it ('#geelongevent') is refused.
+ * CAPTION STANDARD VERSION 2 (Lawal's model, '#BallaratEvents #KateCeberano #EventLinqs'; his 20:44 of 18 November 2026)
+ * adds #EventLinqs and the post's own tag: a tag made from words the piece itself prints, a night's, a venue's or a
+ * category's name, as campaign.ts tagWord writes them (tagMadeFromItsWords). Case is never judged.
  */
 // The planner's own extra tags, from the one place it writes them (campaign.ts EXTRA_TAGS).
 const OUR_TAGS: ReadonlySet<string> = new Set([
   ...EXTRA_TAGS,
-  ...getAllCities().flatMap((c) => [`#${c.slug}`, `#${c.slug}events`]),
+  '#eventlinqs',
+  ...getAllCities().flatMap((c) => [`#${c.slug}`, `#${c.slug}events`, `#${c.slug.replace(/-/g, '')}`, `#${c.slug.replace(/-/g, '')}events`]),
 ])
+
+/** Every run of up to eight words a piece prints, joined and lower case ('Melbourne Recital Centre' gives 'melbournerecitalcentre'). */
+function wordRuns(texts: readonly string[]): Set<string> {
+  const runs = new Set<string>()
+  for (const t of texts) {
+    const words = t
+      .replace(/#[A-Za-z0-9_]+/g, ' ')
+      .normalize('NFKD')
+      .replace(/['\u2019]/g, '')
+      .split(/[^A-Za-z0-9]+/)
+      .filter(Boolean)
+      .map((w) => w.toLowerCase())
+    for (let i = 0; i < words.length; i++) {
+      let run = ''
+      for (let j = i; j < Math.min(words.length, i + 8); j++) {
+        run += words[j]
+        runs.add(run)
+      }
+    }
+  }
+  return runs
+}
 
 /** Every wrong or robotic line among the given words (class 4), each said once. Used by the gate and by draft save. */
 export function languageFaults(texts: readonly string[]): string[] {
   const out: string[] = []
   const seen = new Set<string>()
+  const runs = wordRuns(texts)
   for (const t of texts) {
     const line = t.trim()
     if (!line) continue
     for (const tag of line.match(/#[A-Za-z0-9_]+/g) ?? []) {
-      if (!OUR_TAGS.has(tag.toLowerCase()) && !seen.has(tag)) {
+      const own = runs.has(tag.slice(1).toLowerCase())
+      if (!OUR_TAGS.has(tag.toLowerCase()) && !own && !seen.has(tag)) {
         seen.add(tag)
         out.push(`[language] "${tag}" is not one of our hashtags; use the city's own two.`)
       }
@@ -200,7 +229,7 @@ export function pieceQuality(input: QualityInput): string[] {
  * What the hourly run corrects by drawing the piece again (Lawal's 00:12: never a hold, never a question to him): a
  * drawing made before the rules in force, the older list look, and wrong or robotic words.
  */
-export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' | 'madeAt'>): string[] {
+export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' | 'madeAt'> & { readonly captions?: readonly string[] }): string[] {
   const out: string[] = []
   if (!(Date.parse(input.madeAt) >= Date.parse(PIECE_RULES_SINCE))) {
     out.push(`[stale] It was drawn at ${input.madeAt}, before the rules in force since ${PIECE_RULES_SINCE}: drawn again.`)
@@ -208,5 +237,8 @@ export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' 
   const locked = OLDER_LOOK_IN_PLAN ? null : lockRefusal(input.slides)
   if (locked) out.push(`[look] ${locked}`)
   out.push(...languageFaults([...input.slides.flatMap(wordsOf), ...input.caption.split('\n')]))
+  // Caption standard version 2's marks (caption-marks.ts): a drawing without them is drawn again by the code in force. Each
+  // platform's caption is judged on its own (captions), never the joined words, whose hooks would count three times over.
+  for (const c of input.captions ?? [input.caption]) if (c.trim()) out.push(...captionMarkFaults(c))
   return out
 }

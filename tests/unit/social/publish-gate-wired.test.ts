@@ -34,7 +34,25 @@ describe('the publish gate is on every route', () => {
 
   it('scheduling and draft save carry the same rules', () => {
     expect(bodyOf(store, 'export async function scheduleApprovedPieces(')).toMatch(/pieceQuality\(/)
+    // Destination first, before a slot is kept (law 28 (d); the PM's 20:50 item 2): each platform's fit, as publishing reads it.
+    const schedule = bodyOf(store, 'export async function scheduleApprovedPieces(')
+    expect(schedule).toMatch(/slidesMisfit\(d\.rev\.slides, platform/)
+    expect(schedule.indexOf('slidesMisfit(')).toBeLessThan(schedule.indexOf('scheduled.push('))
+    expect(schedule).toMatch(/\.eq\('platform', platform\)/)
     expect(bodyOf(store, 'export async function editPiece(')).toMatch(/languageFaults\(/)
+  })
+
+  // Caption standard version 2's marks, one rule (caption-marks.ts; the emoji gate of the PM's 21:00 of 18 November 2026):
+  // drawing, the founder's edit and the hourly corrections read every mark; approval and publishing read the two that were
+  // holds before (law 22 as amended keeps the gate to essential protection).
+  it('every place a caption is judged reads caption standard version 2 marks', () => {
+    const campaign = read('src/lib/social/campaign.ts')
+    expect(bodyOf(campaign, 'export function pieceRefusal(')).toMatch(/captionMarkFaults\(/)
+    expect(bodyOf(campaign, 'export function creativeRefusals(')).toMatch(/captionMarkFaults\([^)]*\)\.filter\(holdsAtPublishing\)/)
+    expect(bodyOf(store, 'export async function editPiece(')).toMatch(/captionMarkFaults\(/)
+    expect(bodyOf(read('src/lib/social/piece-quality.ts'), 'export function pieceCorrections(')).toMatch(/captionMarkFaults\(/)
+    // No route keeps its own exclamation rule beside the one rule.
+    for (const f of ['src/lib/social/campaign.ts', 'src/lib/social/store.ts']) expect(read(f)).not.toMatch(/\/\[!\\u2013\\u2014\]\//)
   })
 
   it('the publisher is made only in meta-wiring.ts and run only by publishDuePieces', () => {
