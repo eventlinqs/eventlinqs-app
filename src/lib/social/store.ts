@@ -20,6 +20,7 @@ import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
+import { slidesMisfit } from './destination-check'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -709,6 +710,26 @@ export async function pieceDependencies(
       if (found?.t === 'feature' && found.photo) {
         const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
         if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      }
+      continue
+    }
+    /* An approved file prints its night's date and time in its own pixels, so the night is read again, never the file
+       changed: a night gone, no longer public, ended, moved, or whose ticket page no longer answers holds the post. */
+    if (found?.t === 'file') {
+      const name = e ? String(e.title) : id
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      if (found.startDate && Date.parse(String(e.start_date)) !== Date.parse(found.startDate)) {
+        issues.push(`${name}: its date or time is now ${whenOf({ startDate: String(e.start_date), timezone: (e.timezone as string | null) ?? null } as CampaignNight)}, not what its approved file shows.`)
+      }
+      const { cta } = await admissionOf(e, now)
+      if (cta.state === 'paid_external') {
+        const outside = await answers(fetcher, String(e.external_ticket_url))
+        if (!outside.ok) issues.push(`${name}: its ticket page answers ${outside.status ?? 'nothing'}.`)
       }
       continue
     }
@@ -1901,6 +1922,13 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       continue
     }
     const rev = await newestRevision(db, pieceId)
+    // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
+    // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
+    const misfit = await slidesMisfit(rev?.slides ?? [], platform, opts.fetcher ?? fetch)
+    if (misfit) {
+      await hold(id, `Not published: ${misfit}`)
+      continue
+    }
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
       // 18 November 2026, item 1), set at the moment it posts.

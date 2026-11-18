@@ -109,6 +109,9 @@ export function layoutOfSlide(f: Format, slide: UnlockedSlide, image: SlideImage
       layout = layoutDailyPoster(tf, posterWords(facts, tf), m, facts.photo ? { url: facts.photo.url } : null)
       break
     }
+    case 'file':
+      // Lawal's approved file is never drawn: it is posted and shown from its own address on www (src/lib/social/meta-wiring.ts).
+      throw new Error('an approved file is never drawn; it is posted and shown from its own address')
   }
   if (layout.photo && image?.focal) layout = { ...layout, photo: { ...layout.photo, focal: image.focal } }
   return layout

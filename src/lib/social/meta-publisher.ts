@@ -93,7 +93,7 @@ const idOf = (json: Record<string, unknown>, what: string): string => {
 }
 
 export function formatOfSlides(slides: readonly Slide[]): 'feed' | 'story' {
-  return slides.some((s) => s.t === 'story') ? 'story' : 'feed'
+  return slides.some((s) => s.t === 'story' || (s.t === 'file' && s.format === 'story')) ? 'story' : 'feed'
 }
 
 export function makeMetaPublisher(deps: MetaPublisherDeps): Publisher {
