@@ -47,7 +47,8 @@ export async function readMarketingResults(db: Db): Promise<MarketingResults> {
   const pieceIds = [...new Set(clickRows.map((c) => c.piece_id))]
   const labels = new Map<string, string>()
   for (let i = 0; i < pieceIds.length; i += 100) {
-    const { data } = await db.from('social_pieces').select('id, partner_name, kind, city').in('id', pieceIds.slice(i, i + 100))
+    // At most 100 ids a batch, so at most 100 rows: the bound is stated, never Supabase's silent 1,000.
+    const { data } = await db.from('social_pieces').select('id, partner_name, kind, city').in('id', pieceIds.slice(i, i + 100)).limit(100)
     for (const p of data ?? []) labels.set(p.id as string, (p.partner_name as string | null) ?? `${p.kind} ${p.city}`)
   }
   const clicks: ClickRow[] = clickRows.map((c) => ({ pieceId: c.piece_id, label: labels.get(c.piece_id) ?? 'a post' }))
