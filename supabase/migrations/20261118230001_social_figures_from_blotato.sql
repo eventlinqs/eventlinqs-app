@@ -17,6 +17,7 @@
 --    refusal, none with a published sibling). The rest of the rule is as it was.
 --
 -- 5. Each day's read is kept (social_measure_runs): what it kept, matched and could not match, for the results card.
+-- 6. Family B's two kinds, 'free_week' and 'tonight' (a Tonight story dated by its day), for car A2.
 --
 -- Additive: three columns and three checks added, one check widened, one function changed in place, one table created
 -- with its grants; no row changes (the figures table held 0 rows on production at 23:04:38 on 18 November). Reversal:
@@ -92,6 +93,18 @@ alter table public.social_measure_runs enable row level security;
 revoke all on public.social_measure_runs from public, anon, authenticated, service_role;
 grant select, insert on public.social_measure_runs to service_role;
 
+-- 6: family B's two kinds (the PM's 23:38 of 18 November 2026, car A2): 'free_week', the week's free nights on gold
+-- (the master set's 02), and 'tonight', a city's nights tonight as a story (the master set's 01), dated by its day as a
+-- daily poster is, so one a city a day (social_pieces_once keys the day). The lists are as production held them at
+-- 23:39:06 on 18 November, with the two added.
+alter table public.social_pieces drop constraint if exists social_pieces_kind_check;
+alter table public.social_pieces add constraint social_pieces_kind_check
+  check (kind in ('week_ahead', 'discovery_reel', 'weekend_carousel', 'venue_spotlight', 'organiser_campaign', 'partner_kit',
+                  'brand_campaign', 'daily_poster', 'tonight_tomorrow', 'category_spotlight', 'coming_up', 'free_week', 'tonight'));
+alter table public.social_pieces drop constraint if exists social_pieces_poster_day_is_its_kind;
+alter table public.social_pieces add constraint social_pieces_poster_day_is_its_kind
+  check ((kind in ('daily_poster', 'tonight')) = (poster_day is not null));
+
 comment on column public.social_piece_figures.source is
   'Where the figure came from: person (typed from the app''s insights, with entered_by) or blotato (read by the daily run from GET /v2/analytics, with the post''s own id).';
 
@@ -117,6 +130,14 @@ begin
   end if;
   if has_table_privilege('anon', 'public.social_piece_figures', 'SELECT') or has_table_privilege('authenticated', 'public.social_piece_figures', 'SELECT') then
     v_missing := v_missing || ' grants.still_staff_only';
+  end if;
+  if position('''tonight''' in (select pg_get_constraintdef(oid) from pg_constraint where conname = 'social_pieces_kind_check')) = 0
+     or position('''free_week''' in (select pg_get_constraintdef(oid) from pg_constraint where conname = 'social_pieces_kind_check')) = 0
+     or position('''coming_up''' in (select pg_get_constraintdef(oid) from pg_constraint where conname = 'social_pieces_kind_check')) = 0 then
+    v_missing := v_missing || ' social_pieces.kinds';
+  end if;
+  if position('''tonight''' in (select pg_get_constraintdef(oid) from pg_constraint where conname = 'social_pieces_poster_day_is_its_kind')) = 0 then
+    v_missing := v_missing || ' social_pieces.tonight_dated';
   end if;
   if not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = 'social_measure_runs' and c.relrowsecurity) then
     v_missing := v_missing || ' social_measure_runs.rls';
