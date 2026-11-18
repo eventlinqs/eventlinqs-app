@@ -179,3 +179,50 @@ describe("the standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 
     expect(voiceProblems(REPLY, POLICY)).toEqual([])
   })
 })
+
+// THE ACQ-FIRST LETTER (the PM's 11:25 of 18 November 2026, item 1; standard.json's version of 18 November 11:25), as the
+// gateway's tests 35 to 39: its own two offer subjects, and its no event form lawful, the timing rule applying only where
+// a night is named.
+const ACQ_BODY = [
+  'Hi Hop Temple team,',
+  "I hope you're well.",
+  "I'd love to help more people in Ballarat find Hop Temple Country Night on Friday 4 December.",
+  "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. We can list your events at no cost to you: we build the listing ourselves, put it in our Ballarat guide, and give it a button straight to your own booking page. Your tickets stay exactly where they are.",
+  "Would you like me to list Hop Temple Country Night? Just reply yes, and I'll send you the link to look over before it goes live.",
+  'Kind regards,\n' + SIG.join('\n'),
+  OPT,
+].join('\n\n')
+const ACQ: VoiceMessage = {
+  channel: 'email', category: 'first_contact', from: 'hello@eventlinqs.com', to: ['info@hoptemple.com.au'], subject: 'Hop Temple Country Night on EventLinqs, at no cost to you',
+  greetingName: 'Hop Temple team', body: ACQ_BODY, consent: { basis: 'conspicuous_publication', publishedOnUrl: 'https://hoptemple.com.au/', noMarketingStatementChecked: true },
+  eventDate: '2026-12-04', landsOn: '2026-11-19', subtype: 'ACQ-FIRST',
+}
+const ACQ_NO_EVENT: VoiceMessage = {
+  ...ACQ, subject: 'Your events on EventLinqs, at no cost to you', eventDate: undefined,
+  body: ACQ_BODY.replace('find Hop Temple Country Night on Friday 4 December.', 'find your events.').replace('Would you like me to list Hop Temple Country Night?', 'Would you like me to list your next event?'),
+}
+
+describe('the ACQ-FIRST letter (standard.json of 18 November 11:25)', () => {
+  it('the policy carries the ACQ-FIRST subjects and its no event subject', () => {
+    expect(POLICY.standard.acqFirstSubjects).toContain('^.+ on EventLinqs, at no cost to you$')
+    expect(POLICY.standard.acqFirstNoEventSubject).toBe('^Your events on EventLinqs, at no cost to you$')
+  })
+  it('35: an ACQ-FIRST letter naming a night passes', () => {
+    expect(voiceProblems(ACQ, POLICY)).toEqual([])
+  })
+  it('36: its no event form passes', () => {
+    expect(voiceProblems(ACQ_NO_EVENT, POLICY)).toEqual([])
+  })
+  it('37: the ACQ subjects are refused outside ACQ-FIRST', () => {
+    expect(has(voiceProblems({ ...EMAIL, subject: 'Ian Moss on EventLinqs, at no cost to you' }, POLICY), 'offer led subject')).toBe(true)
+    expect(has(voiceProblems({ ...ACQ, subtype: 'PERM-IMAGE' }, POLICY), 'offer led subject')).toBe(true)
+  })
+  it('38: a letter naming a night keeps its timing', () => {
+    expect(has(voiceProblems({ ...ACQ, eventDate: undefined }, POLICY), 'timing')).toBe(true)
+    expect(has(voiceProblems({ ...ACQ, landsOn: '2026-12-03' }, POLICY), 'timing')).toBe(true)
+  })
+  it('39: the no event form is for ACQ-FIRST only', () => {
+    expect(has(voiceProblems({ ...ACQ_NO_EVENT, subtype: undefined }, POLICY), 'timing')).toBe(true)
+  })
+})
+

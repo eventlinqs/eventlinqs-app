@@ -44,6 +44,10 @@ export interface VoiceStandard {
   readonly unprovedClaims: readonly string[]
   readonly consentBases: readonly string[]
   readonly minDaysAhead: number
+  /** The ACQ-FIRST letter's own offer subjects (standard.json of 18 November 11:25, the PM's ruling of 11:25). */
+  readonly acqFirstSubjects?: readonly string[]
+  /** The subject of the ACQ-FIRST letter that names no night: the timing rule applies only where a night is named. */
+  readonly acqFirstNoEventSubject?: string
 }
 
 /** The lawful basis to write to this address (the standard's Part 2 rule 5, the Spam Act's conspicuous publication test). */
@@ -70,6 +74,8 @@ export interface VoiceMessage {
   /** The local day of the night the letter is about, and the local day it would land (YYYY-MM-DD), for the timing rule. */
   readonly eventDate?: string
   readonly landsOn?: string
+  /** The message's communication subtype (Law 24), as its record carries it: ACQ-FIRST has its own subjects and no event form. */
+  readonly subtype?: string | null
 }
 
 /** The generated policy, refused whole if any fact is missing: POLICY_UNAVAILABLE means stop, never assume. */
@@ -140,7 +146,8 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
     if (!subj) r.push('no subject line')
     if (isEmail && (cat === 'reply' || cat === 'follow_up') && !/^re:\s/i.test(subj)) r.push('a reply must keep the thread subject, starting "Re:"')
     // The advice subject is replaced by an offer led one, from the standard's own list (the PM's 02:00 of 18 November 2026).
-    if (cat === 'first_contact' && (/could I ask your advice/i.test(subj) || !policy.standard.offerSubjects.some((pat) => new RegExp(pat).test(subj)))) {
+    const subjects = [...policy.standard.offerSubjects, ...(msg.subtype === 'ACQ-FIRST' ? policy.standard.acqFirstSubjects ?? [] : [])]
+    if (cat === 'first_contact' && (/could I ask your advice/i.test(subj) || !subjects.some((pat) => new RegExp(pat).test(subj)))) {
       r.push(`a first message takes an offer led subject (standard Part 2 rule 7); found ${JSON.stringify(subj.slice(0, 80))}`)
     }
   }
@@ -248,6 +255,9 @@ function standardProblems(msg: VoiceMessage, std: VoiceStandard, own: string, bo
   else if (c.basis === 'conspicuous_publication' && !((c.publishedOnUrl ?? '').startsWith('https://') && c.noMarketingStatementChecked === true)) {
     r.push('consent by conspicuous publication needs the page it was published on and its no refusal statement checked (standard Part 2 rule 5)')
   }
+  // The ACQ-FIRST letter's no event form names no night, so the timing rule has nothing to judge (gateway.py, the same).
+  const noEvent = msg.subtype === 'ACQ-FIRST' && msg.eventDate === undefined && Boolean(std.acqFirstNoEventSubject) && new RegExp(std.acqFirstNoEventSubject ?? '(?!)').test((msg.subject ?? '').trim())
+  if (noEvent) return r
   const ev = dayOf(msg.eventDate)
   const lands = dayOf(msg.landsOn)
   if (Number.isNaN(ev) || Number.isNaN(lands)) r.push('timing: event_date and lands_on (YYYY-MM-DD) are needed so no letter lands on or after its night (standard Part 2 rule 4)')

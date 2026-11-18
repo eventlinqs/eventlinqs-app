@@ -173,6 +173,10 @@
       "conspicuous_publication",
       "express_consent"
     ],
-    "minDaysAhead": 3
+    "minDaysAhead": 3,
+    "acqFirstSubjects": [
+      "^.+ on EventLinqs, at no cost to you$"
+    ],
+    "acqFirstNoEventSubject": "^Your events on EventLinqs, at no cost to you$"
   }
 }
