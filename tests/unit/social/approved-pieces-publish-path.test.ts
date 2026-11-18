@@ -1,0 +1,147 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
+import { APPROVED_FILE_PREFIX, isApprovedFileUrl } from '@/lib/social/campaign'
+
+/*
+ * THE WHOLE PUBLISH PATH ON EVERY APPROVED PIECE, AS PRODUCTION HOLDS IT (the PM's 15:33 of 18 November 2026, items (a)
+ * and (b)). On 18 November at 15:13 the publish run threw on the first of Lawal's twelve approved posts; a test that ran
+ * one piece's fit and never the gate let it through. This runs publishDuePieces itself, the gate (pieceDependencies:
+ * the nights, the publish gate, the visual check, the creative checks, the page), the destination check and then a
+ * publisher that records what it is given, over the twelve stored pieces read from production at 15:42
+ * (tests/fixtures/social/approved-pieces-18nov.json: only the columns store.ts reads).
+ *
+ * The network: an approved file is served from its own bytes in public/social/approved; our own page answers listing
+ * each night's page; an outside ticket page answers. The booking links are the fixture's own rows.
+ *
+ * THE GO'S CHECK, item (b): a go that writes an approval runs this same file first on the pieces it is about to approve,
+ * read from production that minute (SOCIAL_GO_FIXTURE=<its fixture>, SOCIAL_GO_LIVE=1: every page, ticket page and file
+ * is then fetched for real), and the go refuses unless every piece reaches the publisher (C:\dev\EVIDENCE\EL-18NOV\go\
+ * check-go.sh writes the record apply.sh reads).
+ */
+type Row = Record<string, unknown>
+type Fixture = Record<string, Row[]> & { read_at: string }
+
+const root = process.cwd()
+const FIXTURE = process.env.SOCIAL_GO_FIXTURE ?? join(root, 'tests', 'fixtures', 'social', 'approved-pieces-18nov.json')
+const LIVE = process.env.SOCIAL_GO_LIVE === '1'
+const fixture = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Fixture
+const hoisted = vi.hoisted(() => ({ links: [] as Record<string, unknown>[] }))
+hoisted.links.push(...(fixture.booking_links ?? []))
+
+vi.mock('@/lib/events/booking-links-read', async () => {
+  const { toBookingLink } = await import('@/lib/events/booking-links')
+  return {
+    readBookingLinks: async (eventId: string) =>
+      hoisted.links
+        .filter((r) => r.event_id === eventId)
+        .sort((a, b) => Number(a.position) - Number(b.position))
+        .map((r) => toBookingLink(r as never)),
+  }
+})
+
+/** A database over the fixture's rows, answering the chains store.ts makes; any other table or call fails the test. */
+function fixtureDb(tables: Record<string, Row[]>) {
+  const writes: { table: string; payload: Row; where: [string, unknown][] }[] = []
+  const query = (table: string) => {
+    const tests: ((r: Row) => boolean)[] = []
+    const where: [string, unknown][] = []
+    let sort: { key: string; up: boolean } | null = null
+    let cap = Number.POSITIVE_INFINITY
+    let one = false
+    let change: Row | null = null
+    const run = () => {
+      const rows = (tables[table] ?? []).filter((r) => tests.every((t) => t(r)))
+      if (change) {
+        writes.push({ table, payload: change, where })
+        for (const r of rows) Object.assign(r, change)
+        return { data: null, error: null }
+      }
+      const at = (r: Row, k: string) => String(r[k] ?? '')
+      const sorted = sort ? [...rows].sort((a, b) => (sort!.up ? 1 : -1) * at(a, sort!.key).localeCompare(at(b, sort!.key), 'en', { numeric: true })) : rows
+      const kept = sorted.slice(0, cap)
+      return one ? { data: kept[0] ?? null, error: null } : { data: kept, error: null }
+    }
+    const time = (v: unknown) => Date.parse(String(v))
+    const q = {
+      select: () => q,
+      eq: (k: string, v: unknown) => (where.push([k, v]), tests.push((r) => String(r[k]) === String(v)), q),
+      neq: (k: string, v: unknown) => (tests.push((r) => String(r[k]) !== String(v)), q),
+      in: (k: string, vs: unknown[]) => (tests.push((r) => vs.map(String).includes(String(r[k]))), q),
+      lte: (k: string, v: unknown) => (tests.push((r) => time(r[k]) <= time(v)), q),
+      order: (k: string, o?: { ascending?: boolean }) => ((sort = { key: k, up: o?.ascending !== false }), q),
+      limit: (n: number) => ((cap = n), q),
+      maybeSingle: () => ((one = true), q),
+      update: (payload: Row) => ((change = payload), q),
+      then: (ok: (v: unknown) => unknown, no: (e: unknown) => unknown) => Promise.resolve().then(run).then(ok, no),
+    }
+    return q
+  }
+  const db = {
+    from: (table: string) => {
+      if (!(table in tables)) throw new Error(`the publish path read a table the fixture does not hold: ${table}`)
+      return query(table)
+    },
+    rpc: async (name: string) => {
+      if (name === 'venue_distribution_off') return { data: tables.venue_distribution_off ?? [], error: null }
+      if (name === 'social_usable_images') return { data: [], error: null }
+      throw new Error(`the publish path called a function the fixture does not hold: ${name}`)
+    },
+  }
+  return { db, writes }
+}
+
+const onDisk = (url: string) => new Uint8Array(readFileSync(join(root, 'public', 'social', 'approved', url.slice(APPROVED_FILE_PREFIX.length))))
+const nightPages = (fixture.events ?? []).map((e) => `<a href="/events/${String(e.slug)}">${String(e.title)}</a>`).join('')
+async function served(url: string): Promise<Response> {
+  if (url.startsWith(APPROVED_FILE_PREFIX)) return new Response(onDisk(url))
+  if (new URL(url).hostname === 'www.eventlinqs.com.au') return new Response(`<html><body>${nightPages}</body></html>`, { status: 200 })
+  return new Response('<html><body>tickets</body></html>', { status: 200 })
+}
+
+describe('the whole publish path on every approved piece', () => {
+  it(`reaches the publisher with every piece exactly as approved, holding none${LIVE ? ' (live network)' : ''}`, async () => {
+    const { publishDuePieces } = await import('@/lib/social/store')
+    const tables: Record<string, Row[]> = {
+      feature_flags: fixture.feature_flags ?? [],
+      social_piece_schedules: (fixture.social_piece_schedules ?? []).map((s) => ({ ...s, state: 'scheduled' })),
+      social_pieces: fixture.social_pieces ?? [],
+      social_piece_revisions: fixture.social_piece_revisions ?? [],
+      social_piece_approvals: fixture.social_piece_approvals ?? [],
+      events: fixture.events ?? [],
+      venue_distribution_off: (fixture.venue_distribution_off ?? []) as Row[],
+    }
+    const { db, writes } = fixtureDb(tables)
+    const schedules = tables.social_piece_schedules
+    expect(schedules.length).toBeGreaterThan(0)
+    // The moment every piece is due and no night has started, read from the rows themselves.
+    const lastDue = Math.max(...schedules.map((s) => Date.parse(String(s.go_at))))
+    const now = LIVE ? new Date() : new Date(lastDue + 60_000)
+    const given: { readonly pieceId: string; readonly platform: string; readonly slides: readonly unknown[]; readonly caption: string }[] = []
+    const publisher = vi.fn(async (p: { readonly pieceId: string; readonly platform: string; readonly slides: readonly unknown[]; readonly caption: string }) => {
+      given.push(p)
+      return { ref: `https://www.instagram.com/p/fixture-${p.pieceId.slice(0, 8)}-${p.platform}` }
+    })
+    const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: LIVE ? undefined : served })
+
+    // Every piece reaches the publisher; nothing is held, and each held reason would be said here.
+    expect(out.held).toEqual([])
+    expect(given.length).toBe(schedules.length)
+    expect(new Set(given.map((g) => `${g.pieceId} ${g.platform}`)).size).toBe(schedules.length)
+    for (const s of schedules) {
+      const rev = tables.social_piece_revisions.filter((r) => r.piece_id === s.piece_id).sort((a, b) => Number(b.version) - Number(a.version))[0]
+      const sent = given.find((g) => g.pieceId === s.piece_id && g.platform === s.platform)
+      expect(sent, `${String(s.piece_id)} on ${String(s.platform)}`).toBeDefined()
+      // Lawal's words and files exactly as approved: the platform's own caption, the stored slides, each an approved file.
+      expect(sent!.caption).toBe((rev.versions as Record<string, { caption: string }>)[String(s.platform)].caption)
+      expect(sent!.slides).toEqual(rev.slides)
+      for (const slide of sent!.slides as { t: string; url: string }[]) {
+        expect(slide.t).toBe('file')
+        expect(isApprovedFileUrl(slide.url)).toBe(true)
+      }
+    }
+    // Each schedule is recorded published, once.
+    const published = writes.filter((w) => w.table === 'social_piece_schedules' && w.payload.state === 'published')
+    expect(published.length).toBe(schedules.length)
+  }, 120_000)
+})

@@ -19,7 +19,7 @@ import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
 import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
-import { inLockedLook, type Composition, type Slide } from '@/lib/social/campaign'
+import { inLockedLook, isApprovedFileUrl, type Composition, type LOCKED_SLIDES, type Slide } from '@/lib/social/campaign'
 import { standInCredit, standInOf } from '@/lib/social/stand-ins'
 
 /**
@@ -109,9 +109,6 @@ export function layoutOfSlide(f: Format, slide: UnlockedSlide, image: SlideImage
       layout = layoutDailyPoster(tf, posterWords(facts, tf), m, facts.photo ? { url: facts.photo.url } : null)
       break
     }
-    case 'file':
-      // Lawal's approved file is never drawn: it is posted and shown from its own address on www (src/lib/social/meta-wiring.ts).
-      throw new Error('an approved file is never drawn; it is posted and shown from its own address')
   }
   if (layout.photo && image?.focal) layout = { ...layout, photo: { ...layout.photo, focal: image.focal } }
   return layout
@@ -146,6 +143,9 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
   for (const f of formatsOf(pieceFormat)) {
     for (const [i, slide] of slides.entries()) {
       if (!isLocked(slide)) continue
+      // An approved file is never drawn, so nothing here can measure it: its fit is read from its own bytes against its
+      // destination before any publisher is called (slidesMisfit, src/lib/social/destination-check.ts).
+      if (slide.t === 'file') continue
       const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
       const image = images.get(i) ?? null
       if (slide.t === 'feature' && slide.photo && !image) faults.push(`${where}: its own photograph is no longer usable for this night, so the slide is drawn without it.`)
@@ -198,12 +198,24 @@ export async function buildCampaignSlide(f: Format, given: Slide, n: number, tot
 
 /** The slide as the JPEG Instagram and Facebook take, at the format's published size. `next` names a story's next slide. */
 export async function renderCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<Uint8Array> {
+  // An approved file is its own bytes, read from its own address on www, never drawn again: a story reel, a kit download
+  // or any later caller gets exactly the file Lawal approved.
+  if (slide.t === 'file') {
+    if (!isApprovedFileUrl(slide.url)) throw new Error(`slide ${n} is not an approved file's own address on www: ${slide.url}`)
+    const res = await fetch(slide.url, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`slide ${n}'s approved file answers ${res.status}`)
+    return new Uint8Array(await res.arrayBuffer())
+  }
   return rasteriseCard(f, await buildCampaignSlide(f, slide, n, total, label, image, next))
 }
 
 /* ------------------------------------------------------------------ the 9.5 locked look (the PM's 17:10 of 15 November 2026) */
 
-type LockedSlide = Extract<Slide, { t: 'week_cover' | 'days' | 'feature' | 'ask' | 'venue' }>
+// The type is the one list itself (campaign.ts LOCKED_SLIDES), so a kind added there must be handled in lockedElement
+// before this compiles. It once named five kinds while the list held six: the approved file passed isLocked at run
+// time, lockedElement had no case for it and returned nothing, and the publish gate's visual check threw at 15:13 on
+// 18 November 2026 with Lawal's twelve approved posts due.
+type LockedSlide = Extract<Slide, { t: (typeof LOCKED_SLIDES)[number] }>
 type UnlockedSlide = Exclude<Slide, LockedSlide>
 
 export function isLocked(slide: Slide): slide is LockedSlide {
@@ -327,5 +339,8 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
       const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'venue')), image?.focal ?? standInOf(url)?.focal ?? null)
       return venueElement(f, { ...words, credit: photo ? words.credit : null }, photo, foot, bh)
     }
+    case 'file':
+      // Lawal's approved file is never drawn: it is posted and shown from its own address on www (renderCampaignSlide).
+      throw new Error('an approved file is never drawn; it is posted and shown from its own address')
   }
 }
