@@ -410,7 +410,7 @@ export async function lastPosted(db: Db, platform: SocialPlatform, format: Socia
 /* ------------------------------------------------------------------ K2: which image a night may carry */
 
 /** A usable image as the register holds it: its address, its credit, the focal point a person set, its pixel size. */
-export type UsableImage = { url: string; credit: string; assetId: string; focal: { x: number; y: number } | null; width: number | null; height: number | null }
+export type UsableImage = { kind?: 'photo' | 'artwork'; url: string; credit: string; assetId: string; focal: { x: number; y: number } | null; width: number | null; height: number | null }
 
 function usableOf(r: Record<string, unknown>): UsableImage {
   const fx = r.focal_x as number | string | null
@@ -440,6 +440,19 @@ export async function usableImages(db: Db, eventIds: readonly string[], now: Dat
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     if (isLibraryPhoto(r.asset_url as string)) continue
     usable.set(r.event_id as string, usableOf(r))
+  }
+  // Family C (the PM's 23:38 of 18 November 2026): an organiser's flyer is kept as artwork; its type, read once for the
+  // register's own images. A failed read leaves each a photograph, so a night is drawn as family D, never wrongly as C.
+  const ids = [...usable.values()].map((u) => u.assetId)
+  if (ids.length > 0) {
+    let artwork = new Set<string>()
+    try {
+      const { data: types, error: terr } = await db.from('social_assets').select('id, asset_type').in('id', ids)
+      if (!terr) artwork = new Set(((types ?? []) as { id: string; asset_type: string }[]).filter((t) => t.asset_type === 'artwork').map((t) => t.id))
+    } catch (error) {
+      console.error('[social] the images\' types could not be read, each is drawn as a photograph:', error instanceof Error ? error.message : error)
+    }
+    for (const u of usable.values()) u.kind = artwork.has(u.assetId) ? 'artwork' : 'photo'
   }
   // D4 (the DemandOS directive, section 4): a night with no register photo takes the venue photo dealt to it, read
   // through the one reader for the use 'social', so only a photo whose rights row permits social reaches a post. A
@@ -914,6 +927,7 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       summary: (e.summary as string | null) ?? null,
       approvedPhotoUrl: image?.url ?? null,
       photoCredit: image?.credit ?? null,
+      approvedPhotoKind: image?.kind ?? null,
       cta,
       priceLine,
       venueAddress: (e.venue_address as string | null) ?? null,

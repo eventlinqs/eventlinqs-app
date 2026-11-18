@@ -42,6 +42,10 @@ export type PieceKind =
   | 'tonight_tomorrow'
   | 'category_spotlight'
   | 'coming_up'
+  /** Family B (the master set's 02): the week's free nights on gold; one a city a week. */
+  | 'free_week'
+  /** Family B (the master set's 01): a city's nights tonight, a story, dated by its day as a daily poster is. */
+  | 'tonight'
 
 /**
  * THE EDITION CITIES, in order (D5 of Lawal's final directive, 30 October 2026: 'Initially support Geelong and
@@ -111,6 +115,8 @@ export type CampaignNight = {
   summary: string | null
   /** A photograph with an APPROVED rights row for this night (J1 to J4), else null and the slide is typographic. */
   approvedPhotoUrl: string | null
+  /** The register's type for that image: an organiser's flyer is 'artwork' (family C, the organiser spotlight). */
+  approvedPhotoKind?: 'photo' | 'artwork' | null
   /** The credit that row requires, shown with the photograph. */
   photoCredit: string | null
   cta: Cta
@@ -153,6 +159,10 @@ export type Slide =
   | { t: 'week_cover'; composition: 'contents_cover'; range: string; lines: [string, string, string]; draws: string | null; line: string; photoEventId: string | null; photo: string | null; credit: string | null; lead?: DayRow[] }
   /** A day or two days of the piece's nights, under a photograph of the lead night's kind (a stand-in) or none. */
   | { t: 'days'; composition: 'contents_cover'; day: string; date: string; rows: DayRow[]; photo: string | null; credit: string | null }
+  /** Family B, Tonight (master 01): the day and the city, the nights as cream timed cards, the line the tap opens. */
+  | { t: 'tonight'; composition: 'close'; eyebrow: string; rows: DayRow[]; tap: string; photo: string | null; credit: string | null }
+  /** Family B, the free week (master 02): the range, the count and its lines, the nights on one white card, on gold. */
+  | { t: 'free_week'; composition: 'close'; range: string; pill: string; count: number; lines: [string, string, string]; rows: DayRow[]; photo: string | null; credit: string | null }
   /** A night with its own permitted photograph, shown whole: "an organiser's own permitted photograph always leads its night". */
   | { t: 'feature'; composition: Composition; eventId: string; startDate: string; eyebrow: string; title: string; accent: string | null; chip: string | null; photo: string | null; credit: string | null }
   /** Lawal's ask on gold, with the three to start with. */
@@ -175,10 +185,19 @@ export type Slide =
  * week's plan and refused before approval and before publishing. The older look is kept behind OLDER_LOOK_IN_PLAN, never
  * deleted (law 13); it goes back on only when Lawal says so.
  */
-export const LOCKED_SLIDES = ['week_cover', 'days', 'feature', 'ask', 'venue', 'file'] as const
+export const LOCKED_SLIDES = ['week_cover', 'days', 'feature', 'ask', 'venue', 'file', 'tonight', 'free_week'] as const
 
 /** Where an approved file lives: our own site, under /social/approved/, a plain name and .jpg, nothing else. */
 export const APPROVED_FILE_PREFIX = 'https://www.eventlinqs.com.au/social/approved/'
+
+/**
+ * FAMILY G, THE ORGANISER OFFER, AS LAWAL APPROVED IT (the master set's 13; Lawal's approval of 18 November 2026, 11:55;
+ * the PM's 23:38, item 3): its 4:5 file (1440 x 1800, both feeds), posted unchanged. It shows a live event page whose night
+ * is Saturday 5 December 2026 (Kyivska Perepichka at The Wheeler Centre), so it is never posted after the end of that day
+ * in Melbourne (midnight, AEDT), until Lawal approves a new capture (his list holds the step).
+ */
+export const ORGANISER_OFFER_FILE = `${APPROVED_FILE_PREFIX}organisers-feed-ig45.jpg`
+export const ORGANISER_OFFER_SHOWS_UNTIL = '2026-12-05T13:00:00.000Z'
 
 /** True only for an approved file's own address on www. Pure. */
 export function isApprovedFileUrl(url: string): boolean {
@@ -217,7 +236,7 @@ export type DayRow = { eventId: string; startDate: string; when: string; sub: st
  * locked look prints, planned with the night. A night's own photograph is drawn whole (family D's feature piece); a
  * stand-in of its kind across the top with the name in gold and one cream timed card (family D's name card).
  */
-export type PosterLook = { eyebrow: string; name: string; accent: string; row: DayRow; chip: string | null }
+export type PosterLook = { eyebrow: string; name: string; accent: string; row: DayRow; chip: string | null; family?: 'C'; presenter?: string; nightLines?: [string, string] }
 
 /** The facts a daily poster prints, kept on its slide; the store sets shortLink to the piece's own /e/ link. */
 export type PosterFacts = Omit<PosterNight, 'photo'>
@@ -1493,6 +1512,21 @@ export function listEmoji(nights: readonly CampaignNight[], oneVenue: boolean): 
   return oneVenue ? KIND_EMOJI.theatre : KIND_EMOJI.festival
 }
 
+/**
+ * FAMILY G's CAPTIONS (the PM's 23:38 of 18 November 2026, item 3), in caption standard version 2's shape: the hook with
+ * its emoji, Lawal's approved words, the link line led by its ticket (Instagram's link in bio; Facebook's own page on the
+ * next line), the share line, the state's events tag and ours last. No blank lines.
+ */
+export function offerCaptions(hook: string, body: readonly string[], origin: string): PiecePlan['versions'] {
+  const link = `${origin}/organisers`
+  const head = [`\u{1F4E3} ${hook}`, ...body]
+  const tail = ['Send this to an organiser you know.', '#VictoriaEvents #EventLinqs']
+  return {
+    instagram: { hook: head[0], caption: join([...head, '\u{1F39F} List your event: link in our bio', ...tail]), crop: '4:5', cta: 'link in our bio' },
+    facebook: { hook: head[0], caption: join([...head, '\u{1F39F} List your event:', link, ...tail]), crop: '4:5', cta: link },
+  }
+}
+
 export function versionsOf(hook: string, body: readonly string[], link: string, igCta: string, fbCta: string, crop: '4:5' | '9:16', tags: string): PiecePlan['versions'] {
   return {
     instagram: { hook, caption: join([hook, '', ...body, '', igCta, '', tags]), crop, cta: igCta },
@@ -1636,6 +1670,91 @@ export function planCampaign(input: {
     }
 
     if (!EDITION_CITIES.includes(city.slug)) continue
+
+    /* FAMILY B, THE FREE WEEK (the PM's 23:38 of 18 November 2026; the master set's 02): the city's free nights this week,
+       at most three on one white card on gold, to the free week page. */
+    const freeNights = oncePerTitle(week.filter((n) => n.cta.state === 'free_open' || n.cta.state === 'free_registration'))
+    const { nights: freeRows } = selectNights(freeNights, 3)
+    if (freeRows.length >= 2) {
+      const sorted = [...freeRows].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+      const noun = countNoun(sorted)
+      const stand = weekPick(nightKind(sorted[0]))
+      const fDest = destinationOf(sorted, city)
+      const freeWords = listCaptions({ hook: `${listEmoji(sorted, false)} ${countWord(sorted.length)} free ${noun} in ${city.name} this week.`, nights: sorted, rows: sorted.map((n) => rowLine(n, week)), pictured: stand ? picturedLine([{ t: 'free_week', composition: 'close', range: '', pill: '', count: 0, lines: ['', '', ''], rows: [], photo: standInUrl(origin, stand), credit: null }]) : null, place: null, link: `${origin}${fDest.path}`, share: 'Save this for the week.', tags: standardTags(city, tagWord(city.name)), crop: '4:5', lead: `Every free ${noun.replace(/s$/, '')} this week` })
+      pieces.push({
+        kind: 'free_week',
+        city: city.slug,
+        audience: 'attendees',
+        objective: 'audience_growth',
+        purpose: `Show what is free in ${city.name} this week`,
+        nextStep: `Save it and open ${site}${fDest.path}`,
+        outcome: outcomeOf(fDest.path),
+        link: `${origin}${fDest.path}`,
+        format: 'feed',
+        eventIds: sorted.map((n) => n.eventId),
+        picks: sorted.map((n) => ({ eventId: n.eventId, reason: `Picked: free, on ${whenOf(n)}.` })),
+        mode: 'type_led',
+        slides: [{
+          t: 'free_week',
+          composition: 'close',
+          range: spanLine(sorted),
+          pill: `FREE \u00b7 ${city.name.toUpperCase()}`,
+          count: sorted.length,
+          lines: [`free ${noun}`, `in ${city.name}`, 'this week'],
+          rows: sorted.map((n) => ({ eventId: n.eventId, startDate: n.startDate, when: local(n.startDate, n.timezone, { weekday: 'short', day: 'numeric' }).replace(/,/g, ''), sub: clockOf(n.startDate, n.timezone), title: n.title, place: n.venueName ?? city.name, free: true })),
+          photo: stand ? standInUrl(origin, stand) : null,
+          credit: stand ? standInCredit(stand) : null,
+        }],
+        caption: freeWords.caption,
+        versions: freeWords.versions,
+        partnerName: null,
+        partnerEventId: null,
+        message: null,
+      })
+    }
+
+    /* FAMILY B, TONIGHT (the PM's 23:38 of 18 November 2026; the master set's 01): a story for each evening from Thursday
+       to Sunday with two or more nights starting at 4 pm or later, at most three, in the edition cities, dated by its day. */
+    if (EDITION_CITIES.includes(city.slug)) {
+      for (const d of [3, 4, 5, 6]) {
+        const evening = oncePerTitle(inWeek.filter((x) => x.n.citySlug === city.slug && x.day === d && localHour(x.n) >= 16).map((x) => x.n))
+        const { nights: tonight } = selectNights(evening, 3)
+        if (tonight.length < 2) continue
+        const rows = [...tonight].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+        const stand = weekPick(nightKind(rows[0]))
+        const dayIso = new Date(Date.parse(`${weekStart}T00:00:00Z`) + d * 86_400_000).toISOString().slice(0, 10)
+        const tWords = listCaptions({ hook: `${listEmoji(rows, false)} ${countPhrase(rows)} in ${city.name} tonight.`, nights: rows, rows: rows.map((n) => rowLine(n, rows)), pictured: null, place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, 'Tonight'), crop: '9:16' })
+        pieces.push({
+          kind: 'tonight',
+          city: city.slug,
+          audience: 'attendees',
+          objective: 'audience_growth',
+          purpose: `Pick a night out in ${city.name} tonight`,
+          nextStep: `Open ${site}/city/${city.slug} and choose a night`,
+          outcome: outcomeOf(`/city/${city.slug}`),
+          link: `${origin}/city/${city.slug}`,
+          format: 'story',
+          eventIds: rows.map((n) => n.eventId),
+          picks: rows.map((n) => ({ eventId: n.eventId, reason: `Picked: tonight, ${whenOf(n)}.` })),
+          mode: 'type_led',
+          slides: [{
+            t: 'tonight',
+            composition: 'close',
+            eyebrow: `${local(rows[0].startDate, rows[0].timezone, { weekday: 'long', day: 'numeric', month: 'short' }).replace(/,/g, '')} \u00b7 ${city.name}`,
+            rows: rows.map((n) => ({ eventId: n.eventId, startDate: n.startDate, when: clockOf(n.startDate, n.timezone), sub: null, title: n.title, place: n.venueName ?? city.name, free: false })),
+            tap: `All ${countWord(rows.length).toLowerCase()} on EventLinqs`,
+            photo: stand ? standInUrl(origin, stand) : null,
+            credit: stand ? standInCredit(stand) : null,
+          }],
+          caption: tWords.caption,
+          versions: tWords.versions,
+          partnerName: null,
+          partnerEventId: null,
+          message: null,
+          posterDay: dayIso,
+        })
+      }
+    }
 
     /* Friday: Tonight and Tomorrow, the city's Friday and Saturday nights, to the city page. Its words name the days,
        never 'tonight', so a piece that posts late is still true; a night that has ended holds it (pieceDependencies). */
@@ -1816,15 +1935,15 @@ export function planCampaign(input: {
     feature(nights.slice(0, 4))
   }
 
-  /* The organiser campaign: its own asset, for organisers, advertising no night (J11), to /organisers. */
-  if (inWeek.length > 0) {
-    const hook = 'Run regular nights in Victoria?'
+  /* The organiser campaign: its own asset, for organisers, advertising no night (J11), to /organisers. FAMILY G (the PM's
+     23:38 of 18 November 2026, item 3; law 26): the approved organiser offer, the master set's 13, posted as Lawal approved
+     it (ORGANISER_OFFER_FILE), with his approved caption's words in caption standard version 2; drawn for no week that
+     starts after the night in its phone (ORGANISER_OFFER_SHOWS_UNTIL), and refused by the publish gate after it. */
+  if (inWeek.length > 0 && Date.parse(`${weekStart}T00:00:00+11:00`) < Date.parse(ORGANISER_OFFER_SHOWS_UNTIL)) {
+    const hook = 'Reach people beyond your own followers.'
     const body = [
-      'List them on EventLinqs for free.',
-      'We put them in front of people looking for something to do this week.',
-      // The PM's 06:39 of 18 November 2026, item 3: no line says a link counts who it sends until the openers count is
-      // proved to count people (scripts/guards/presses-are-not-people.mjs reads post copy too).
-      'When we feature your night, we send you a post of your own to share.',
+      "List your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours.",
+      'Free events stay free.',
     ]
     pieces.push({
       kind: 'organiser_campaign',
@@ -1839,9 +1958,9 @@ export function planCampaign(input: {
       eventIds: [],
       picks: [],
       mode: 'graphic_led',
-      slides: [{ t: 'offer', composition: 'organiser_campaign', eyebrow: 'For venues and organisers', headline: hook, points: body, url: `${site}/organisers` }],
-      caption: join([`\u{1F4E3} ${hook}`, '', ...body, '', `\u{1F39F} List your nights: ${site}/organisers`, '', '#VictoriaEvents #EventLinqs']),
-      versions: versionsOf(`\u{1F4E3} ${hook}`, body, `${origin}/organisers`, '\u{1F39F} List your nights: link in our bio', '\u{1F39F} List your nights:', '4:5', '#VictoriaEvents #EventLinqs'),
+      slides: [{ t: 'file', composition: 'close', url: ORGANISER_OFFER_FILE, format: 'feed', eventId: null, startDate: null }],
+      caption: offerCaptions(hook, body, origin).instagram.caption,
+      versions: offerCaptions(hook, body, origin),
       partnerName: null,
       partnerEventId: null,
       message: null,

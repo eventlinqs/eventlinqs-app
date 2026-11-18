@@ -88,6 +88,8 @@ export async function givePhotos(
     readonly uses: PhotoUses
     readonly givenBy: string
     readonly now: Date
+    /** The organiser's own answer: a photograph, or their event's flyer (kept as artwork; the PM's 23:38 of 18 November 2026). */
+    readonly kind?: 'photo' | 'flyer'
   },
   deps: MediaDeps,
 ): Promise<GiveAnswer> {
@@ -134,7 +136,7 @@ export async function givePhotos(
     }
     const done = await addAsset(db, {
       assetState: 'organiser_authorised',
-      assetType: 'photo',
+      assetType: input.kind === 'flyer' ? 'artwork' : 'photo',
       assetUrl: stored.url,
       sourceUrl: `${ORIGIN}/photos`,
       rightsHolder: input.page.organiserName,

@@ -1,4 +1,4 @@
-import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, type CampaignNight, type Slide } from './campaign'
+import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, ORGANISER_OFFER_FILE, ORGANISER_OFFER_SHOWS_UNTIL, type CampaignNight, type Slide } from './campaign'
 import { standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
 import { getAllCities } from '@/lib/cities/data'
@@ -43,7 +43,7 @@ export type QualityInput = {
 
 /** The nights a slide's photograph stands over: a day or venue slide's rows, a cover's lead cards, a night's own slide. */
 function nightIdsOf(slide: Slide): string[] {
-  if (slide.t === 'days' || slide.t === 'venue') return slide.rows.map((r) => r.eventId)
+  if (slide.t === 'days' || slide.t === 'venue' || slide.t === 'tonight' || slide.t === 'free_week') return slide.rows.map((r) => r.eventId)
   if (slide.t === 'week_cover') return (slide.lead ?? []).map((r) => r.eventId)
   if ('eventId' in slide && typeof slide.eventId === 'string') return [slide.eventId]
   return []
@@ -198,13 +198,19 @@ export function pieceQuality(input: QualityInput): string[] {
 
   /* [night] fix (a): one time per night; a row prints its own night's start, the time its caption prints. */
   for (const slide of input.slides) {
-    if (slide.t !== 'days' && slide.t !== 'venue') continue
+    if (slide.t !== 'days' && slide.t !== 'venue' && slide.t !== 'tonight') continue
     for (const row of slide.rows) {
       const n = input.nights.get(row.eventId)
       if (!n || row.when.includes(' to ')) continue
       const own = clockOf(n.startDate, n.timezone ?? null)
       if (row.when !== own) out.push(`[night] ${n.title} prints ${row.when} on its slide, but this night starts at ${own}; one night shows one time.`)
     }
+  }
+
+  /* [night] family G (the PM's 23:38 of 18 November 2026, item 3): the approved organiser offer shows a live event page of
+     Saturday 5 December 2026; after the end of that day in Melbourne it is never posted, until a new capture is approved. */
+  if (input.slides.some((s) => s.t === 'file' && s.url === ORGANISER_OFFER_FILE) && input.now.getTime() >= Date.parse(ORGANISER_OFFER_SHOWS_UNTIL)) {
+    out.push('[night] The approved organiser offer shows a live event page of Saturday 5 December 2026, and that day is over; it is not posted again until a new capture is approved.')
   }
 
   /* [night] fix (c): no day it prints is already over on the day it would go. */

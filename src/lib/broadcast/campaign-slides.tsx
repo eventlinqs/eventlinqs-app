@@ -17,7 +17,7 @@ import {
 } from '@/lib/broadcast/treatment-layout'
 import { drawLayout, treatmentMeasurers } from '@/lib/broadcast/treatments'
 import { layoutDailyPoster, posterWords } from '@/lib/broadcast/daily-poster'
-import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, nameCardElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
+import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement, freeWeekElement, nameCardElement, spotlightElement, tonightElement, scaleOf, sizeOf, startScale, venueElement, weekCoverElement, wholePhoto, SAFE, type El, type Foot } from '@/lib/broadcast/day-cards'
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, isApprovedFileUrl, type Composition, type LOCKED_SLIDES, type Slide } from '@/lib/social/campaign'
 import { standInCredit, standInOf } from '@/lib/social/stand-ins'
@@ -286,6 +286,15 @@ async function posterLockedElement(f: Format, slide: Extract<Slide, { t: 'poster
   const look = slide.look!
   const url = image && slide.photo && slide.photo === image.url ? image.url : null
   const stand = standInOf(url)
+  if (url && !stand && look.family === 'C' && look.presenter && look.nightLines) {
+    // Family C (master 17): the organiser's flyer whole, PRESENTED BY its organiser.
+    const whole = await wholePhoto(url, f, 'feature')
+    // The flyer whole, never taller than the master's (looked at 19 November 00:10: a 3:2 flyer drawn full width pushed the
+    // send ask off the frame); a smaller copy keeps its own shape (law 15: never cropped).
+    const maxH = Math.round(sizeOf(f).h * (f === 'story' ? 0.42 : f === 'square' ? 0.34 : 0.4))
+    const flyer = whole && whole.height > maxH ? { ...whole, width: Math.round((whole.width * maxH) / whole.height), height: maxH } : whole
+    return spotlightElement(f, { presenter: look.presenter, nightLines: look.nightLines, credit: flyer ? (slide.credit ?? null) : null }, flyer)
+  }
   if (url && !stand) {
     const photo = await wholePhoto(url, f, 'feature')
     return featureElement(f, { eyebrow: look.eyebrow, title: look.name, accent: look.accent, chip: look.chip, credit: photo ? slide.credit : null }, photo, null, true)
@@ -359,6 +368,28 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
     }
     case 'ask':
       return askElement(f, { count: slide.count, three: slide.three }, foot)
+    case 'tonight': {
+      // Family B, Tonight (master 01): a story; the band ends above the day line, read from the layout (law 22's contrast).
+      const words = { eyebrow: slide.eyebrow, rows: slide.rows, tap: slide.tap, credit: url ? slide.credit : null }
+      if (!url) return tonightElement(words, null)
+      const marker = (slide.eyebrow.split(' ')[0] ?? '').toUpperCase().replace(/[^\p{L}\p{N}]+$/u, '')
+      const at = marker ? await wordTop(tonightElement(words, BLANK('story', sizeOf('story').h), sizeOf('story').h), 'story', marker, 30) : null
+      // A story's words stand high (the day line about a third down), so its band is never held longer than the room
+      // above them: looked at 19 November 00:10, a floor of 18 percent ran the band under the day line at 1.1 to 1.
+      const bh = Math.max(bandTop('story', 'days') + Math.round(sizeOf('story').h * 0.06), at === null ? Math.round(sizeOf('story').h * 0.3) : Math.round(at - 8))
+      const photo = await bandPhoto(url, 'story', Math.max(1, bh - bandTop('story', 'days')), image?.focal ?? standInOf(url)?.focal ?? null)
+      return tonightElement({ ...words, credit: photo ? words.credit : null }, photo, bh)
+    }
+    case 'free_week': {
+      // Family B, the free week (master 02): on gold; the band ends above the range, read from the layout.
+      const words = { range: slide.range, pill: slide.pill, count: slide.count, lines: slide.lines, rows: slide.rows, credit: url ? slide.credit : null }
+      if (!url) return freeWeekElement(f, words, null)
+      const marker = (slide.range.split(' ')[0] ?? '').toUpperCase().replace(/[^\p{L}\p{N}]+$/u, '')
+      const at = marker ? await wordTop(freeWeekElement(f, words, BLANK(f, sizeOf(f).h), sizeOf(f).h), f, marker, 30 * scaleOf(f)) : null
+      const bh = Math.max(bandTop(f, 'days') + Math.round(sizeOf(f).h * 0.18), at === null ? Math.round(sizeOf(f).h * 0.36) : Math.round(at - 60 * scaleOf(f)))
+      const photo = await bandPhoto(url, f, Math.max(1, bh - bandTop(f, 'days')), image?.focal ?? standInOf(url)?.focal ?? null)
+      return freeWeekElement(f, { ...words, credit: photo ? words.credit : null }, photo, bh)
+    }
     case 'venue': {
       const words = { venue: slide.venue, eyebrow: slide.eyebrow, accent: slide.accent, rows: slide.rows, credit: url ? slide.credit : null }
       if (!url) {

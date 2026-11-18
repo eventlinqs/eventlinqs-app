@@ -359,6 +359,20 @@ export function posterLook(n: CampaignNight, city: CampaignCity, sessions: reado
   }
 }
 
+/**
+ * FAMILY C OR D (the PM's 23:38 of 18 November 2026, item 2): a night whose own image is its organiser's flyer (the
+ * register's 'artwork') is the organiser spotlight (master 17): PRESENTED BY its organiser, the night's name and its day,
+ * time and place in gold; any other night is family D's poster. Pure.
+ */
+export function spotlightOrPoster(n: CampaignNight, city: CampaignCity, sessions: readonly CampaignNight[], ownPhoto: boolean): PosterLook {
+  const look = posterLook(n, city, sessions)
+  if (!ownPhoto || n.approvedPhotoKind !== 'artwork' || !n.host) return look
+  const tz = n.timezone ?? 'Australia/Melbourne'
+  const day = new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(n.startDate)).replace(/,/g, '')
+  const time = timeOf(partsOf(n.startDate, tz))
+  return { ...look, family: 'C', presenter: n.host, nightLines: [`${postTitle(n.title, n.venueName)}.`, `${day}, ${time}${n.venueName ? `, ${n.venueName}` : ''}.`] }
+}
+
 /** Both platforms' posted versions of a night's caption, in the piece's own crop. */
 export function nightVersions(n: CampaignNight, city: CampaignCity, origin: string, crop: '4:5' | '9:16', sessions: readonly CampaignNight[] = []): PiecePlan['versions'] {
   const site = siteOf(origin)
@@ -434,7 +448,7 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
           photo: shown,
           credit: shownCredit,
           rights: photo ? pick.rightsReason : `${pick.rightsReason} Family D's name card: an illustrative photograph of its kind (${standIn!.subject}).`,
-          look: posterLook(n, city, sessions),
+          look: spotlightOrPoster(n, city, sessions, Boolean(photo)),
           night: {
             title: n.title,
             startDate: n.startDate,
