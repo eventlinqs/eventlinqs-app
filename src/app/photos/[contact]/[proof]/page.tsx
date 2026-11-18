@@ -81,10 +81,7 @@ export default async function PhotoPage({
                 </select>
               </div>
               <div>
-                <label htmlFor="ph-photos" className={LABEL}>
-                  Photos or artwork
-                </label>
-                <PhotoFilesInput className="mt-1 block min-h-[44px] w-full text-sm text-[var(--text-primary)] file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-[var(--surface-2)] file:px-4 file:text-sm file:font-medium" />
+                <PhotoFilesInput labelClassName={LABEL} className="mt-1 block min-h-[44px] w-full text-sm text-[var(--text-primary)] file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-[var(--surface-2)] file:px-4 file:text-sm file:font-medium" />
                 <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP. Shown whole, never cropped.</p>
               </div>
               {/* The PM's 23:38 of 18 November 2026: a flyer is shown whole in an organiser spotlight, a photograph in an event poster. */}

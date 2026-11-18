@@ -11,7 +11,7 @@ import { prepareImageForUpload, shareOfRequest, TRANSPORT_SAFE_BYTES } from '@/l
  * of the request in the browser (src/lib/media/client-compress.ts: full size first, stepped quality, then size), and the
  * input carries the fitted files. With no script it is the plain input it always was.
  */
-export function PhotoFilesInput({ className }: { className: string }) {
+export function PhotoFilesInput({ className, labelClassName }: { className: string; labelClassName: string }) {
   const ref = useRef<HTMLInputElement>(null)
   const [note, setNote] = useState<string | null>(null)
 
@@ -36,6 +36,9 @@ export function PhotoFilesInput({ className }: { className: string }) {
 
   return (
     <>
+      <label htmlFor="ph-photos" className={labelClassName}>
+        Photos or artwork
+      </label>
       <input
         ref={ref}
         id="ph-photos"
