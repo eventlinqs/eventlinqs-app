@@ -7,7 +7,7 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, nightKind, postTitle, selectNights, siteOf, tagsFor, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type Slide } from './campaign'
+import { creditsOf, dayInWeek, join, KIND_EMOJI, nightKind, postTitle, selectNights, siteOf, standardTags, tagsFor, tagWord, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type Slide } from './campaign'
 
 const DAY_MS = 86_400_000
 
@@ -110,21 +110,7 @@ export function onItsDay(caption: string, slides: readonly Slide[], at: Date): s
     .join('\n')
 }
 const an = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
-const EMOJI: Record<NightKind | 'other', string> = {
-  gig: '\u{1F3B6}',
-  jazz: '\u{1F3B7}',
-  classical: '\u{1F3BB}',
-  dance: '\u{1F483}',
-  festival: '\u{1F3AA}',
-  comedy: '\u{1F602}',
-  theatre: '\u{1F3AD}',
-  talk: '\u{1F399}',
-  family: '\u{1F388}',
-  sport: '\u{1F3DF}',
-  market: '\u{1F6CD}',
-  christmas: '\u{1F384}',
-  other: '\u2728',
-}
+const EMOJI = KIND_EMOJI
 /** The kind of event, on the line under its title (class 3), in words true of its time of day (class 1); `at` is ' in <city>', or nothing where the title holds the city (class 4). */
 const KIND: Record<NightKind | 'other', (p: Part, at: string) => string> = {
   gig: (_p, at) => `Live music${at}.`,
@@ -184,7 +170,8 @@ function partsOf(iso: string, tz: string | null): Record<string, string> {
   ) as Record<string, string>
 }
 const timeOf = (parts: Record<string, string>) =>
-  (parts.minute === '00' ? `${parts.hour} ${String(parts.dayPeriod ?? '').toLowerCase()}` : `${parts.hour}:${parts.minute} ${String(parts.dayPeriod ?? '').toLowerCase()}`).trim()
+  // A time with a full stop, as the approved samples write it ('7.30 pm'; caption standard version 2).
+  (parts.minute === '00' ? `${parts.hour} ${String(parts.dayPeriod ?? '').toLowerCase()}` : `${parts.hour}.${parts.minute} ${String(parts.dayPeriod ?? '').toLowerCase()}`).trim()
 
 /**
  * The date line: one day ('Thursday 19 November · 6.30 pm'), or the days of an event that runs over several, from its own
@@ -212,41 +199,123 @@ function dateLine(n: CampaignNight, sessions: readonly CampaignNight[]): string 
 export type CaptionOptions = { readonly platform: 'instagram' | 'facebook'; readonly link: string; readonly sessions?: readonly CampaignNight[] }
 
 /**
- * THE ONE CAPTION A NIGHT POSTS WITH (Lawal's Kate Ceberano caption as the reference, 18 November 2026; the PM's 03:10
- * classes): the kind's emoji and the title alone; the kind of event in words true of its time of day, the city only where
- * the title does not hold it; the night's own words (or its kind's), with no second place name beside the city; the
- * place, the city once; the date, or the days of a run; tickets where it sells them, 'Free entry' where it is free; then,
- * on Instagram, the link in bio and our tags, on Facebook the whole link. It IS each platform's posted version
- * (store.ts publishDuePieces posts rev.versions[platform].caption). No exclamation mark and no long dash. Pure.
+ * THE ONE CAPTION A NIGHT POSTS WITH, CAPTION STANDARD VERSION 2 (C:/dev/GROWTH/CAPTION-STANDARD-18NOV.md; Lawal's Kate
+ * Ceberano caption of 18 November 2026, 00:12, as the base; his 20:44 approval for every new caption; the PM's 20:45 rules):
+ *   1. THE HOOK: the night's kind's emoji, then who or what, and where, in a shape of its own kind (two nights of different
+ *      kinds never share one); at most one exclamation mark, there only;
+ *   2. ONE LINE ON THE EXPERIENCE: the night's own words; where it has none, its tour as Lawal wrote his ('Experience
+ *      the Australian Made Tour at Her Majesty's Theatre this Thursday, 19 November, at 7 pm.'), or its kind;
+ *   3. THE SIGNPOSTS, one emoji each: the place (the city once in a line), the date and time, the price or free entry;
+ *   4. THE LINK LINE, led by its own emoji: on Instagram the link in our bio, on Facebook the event page itself;
+ *   5. A SHARE LINE of its kind, with no emoji, where the price is shown (the third sample carries both; Lawal's own
+ *      caption, with no price, carries neither);
+ *   6. HASHTAGS LAST, on both platforms: the city's events, the night, #EventLinqs.
+ * No blank lines, a time with a full stop ('7.30 pm'), as the golden cases stand (tests/unit/social/caption-golden.test.ts,
+ * the PM's 21:40). At most five emoji, never two in a row, never inside a name or a title. It IS each platform's posted
+ * version (store.ts publishDuePieces posts rev.versions[platform].caption). No long dash. Pure.
  */
 export function posterCaption(n: CampaignNight, city: CampaignCity, site: string, opts: CaptionOptions = { platform: 'instagram', link: `https://www.${site}/events/${n.slug}` }): string {
   const kind = nightKind(n) ?? 'other'
   const part = partOfDay(n.startDate, n.timezone ?? null)
-  const at = holds(n.title, city.name) ? '' : ` in ${city.name}`
+  // No emoji inside a name or a title, and the only exclamation mark is the hook's own (the standard's limits).
+  const title = plainWords(postTitle(n.title, n.venueName))
+  const [who, second] = splitTitle(title)
+  const inCity = holds(title, city.name) ? '' : ` in ${city.name}`
+  const toCity = holds(title, city.name) ? '' : ` to ${city.name}`
   const own = whyOf(n)
   // One place name per night (class 4): '... at Archive Wine Bar, Belmont.' keeps the venue and leaves the city to the place line.
   const why = own && n.venueName ? own.replace(new RegExp(`${esc(n.venueName)},\\s*[A-Z][A-Za-z' ]+(?=[.;]|$)`), n.venueName) : own
+  const words = why && !addsNothing(why, kind, n.venueName, city.name) ? plainWords(why).replace(/!+/g, '.') : null
+  // The kind said in words ('A night of dance.'); a night of no known kind has none, and then no line is invented.
+  const kindLine = kind === 'other' ? null : KIND[kind](part, '')
+  // A title's second part is what is experienced, unless it names who presents it ('Showtime: The Entertainers Performing
+  // Arts Studio'). A tour, a show or a season is said as Lawal said his: its year left off ('the Australian Made Tour').
+  const named = second && !/\b(studio|academy|school|company|ensemble|presents?)\b/i.test(second) ? second : null
+  const tour = named && /\b(tour|show|season)\b/i.test(named) ? named.replace(/\s+(?:19|20)\d{2}$/, '') : null
+  const tourName = tour ? `${/^the\b/i.test(tour) ? '' : 'the '}${tour}` : null
+  const parts = partsOf(n.startDate, n.timezone ?? null)
+  const experience = words
+    ? words
+    : tourName
+      ? `Experience ${tourName}${n.venueName ? ` at ${n.venueName}` : ''} this ${parts.weekday}, ${parts.day} ${parts.month}, at ${timeOf(parts)}.`
+      : named
+        ? kindLine
+          ? `${named}, ${kindLine.charAt(0).toLowerCase()}${kindLine.slice(1)}`
+          : `${named}.`
+        : kindLine
+  // A tour with words of its own takes the tour into the hook, and its words under it (caption standard version 2's third
+  // sample: 'Kim Wilde is bringing her Closer Tour to Geelong!'; never a pronoun guessed from a name, so 'the').
+  const hook = words && tourName && kind === 'gig' ? `${who} is bringing ${tourName}${toCity}!` : HOOK[kind](who, inCity, toCity, part)
   const place = n.venueName ? (holds(n.venueName, city.name) ? n.venueName : `${n.venueName}, ${city.name}`) : city.name
   const free = n.cta.state === 'free_open' || n.cta.state === 'free_registration'
-  const access = free
-    ? [n.cta.state === 'free_registration' ? 'Free, with registration.' : 'Free entry.', '\u{1F517} Event details:']
-    : ['\u{1F39F} Event details and tickets:']
+  const price = free
+    ? n.cta.state === 'free_registration' ? 'Free, with registration' : 'Free entry'
+    : n.priceLine && /\$\s?\d/.test(n.priceLine) ? `Tickets ${n.priceLine.charAt(0).toLowerCase()}${n.priceLine.slice(1)}` : null
+  const lead = free ? 'Event details' : 'Event details and tickets'
+  const credits = creditsOf([n])
   return join([
-    `${EMOJI[kind]} ${n.title}`,
-    KIND[kind](part, at),
-    // The kind is said once (the pack of 05:43: 'Live music in Melbourne. / Live music, up close.'): the night's own words,
-    // or nothing.
-    ...(why && !addsNothing(why, kind, n.venueName, city.name) ? [why] : []),
-    '',
+    `${EMOJI[kind]} ${who.includes('!') ? hook.replace(/!$/, '.') : hook}`,
+    ...(experience ? [experience] : []),
     `\u{1F4CD} ${place}`,
     `\u{1F4C5} ${dateLine(n, opts.sessions ?? [])}`,
-    '',
-    ...access,
-    opts.platform === 'instagram' ? 'At the link in our bio.' : opts.link,
+    ...(price ? [`\u{1F4B2} ${price}`] : []),
+    ...(opts.platform === 'instagram' ? [`\u{1F39F} ${lead}: link in our bio`] : [`\u{1F39F} ${lead}:`, opts.link]),
+    // The share line where the price is shown, as the third sample; Lawal's own caption, with no price, carries none.
+    ...(price ? [SHARE[kind]] : []),
     // A third party photograph shows its credit (law 17 (d)): creditsOf says one only where the night's own photo is used.
-    ...(creditsOf([n]) ? ['', creditsOf([n])] : []),
-    ...(opts.platform === 'instagram' ? ['', tagsFor(city, null)] : []),
+    ...(credits ? [credits] : []),
+    posterTags(city, who),
   ])
+}
+
+/** A name or a line with no emoji in it: the caption's five are its own signposts, never a source's. */
+function plainWords(text: string): string {
+  return text.replace(/\p{Extended_Pictographic}\uFE0F?/gu, '').replace(/\s{2,}/g, ' ').trim()
+}
+
+/** A title's first part (who or what) and its second (the tour or show), split at its first colon: 'Kate Ceberano: Australian Made Tour 2026'. */
+function splitTitle(title: string): [string, string | null] {
+  const at = title.indexOf(': ')
+  return at > 0 ? [title.slice(0, at).trim(), title.slice(at + 2).trim() || null] : [title, null]
+}
+
+/** THE HOOK, of the night's own kind (two kinds never share a shape); `inCity` and `toCity` are empty where the title holds the city. */
+const HOOK: Record<NightKind | 'other', (who: string, inCity: string, toCity: string, p: Part) => string> = {
+  gig: (who, _i, to) => `${who} is coming${to}!`,
+  jazz: (who, inCity, _t, p) => `${who}: ${an(p === 'night' ? 'evening' : p).toLowerCase()} ${p === 'night' ? 'evening' : p} of jazz${inCity}.`,
+  classical: (who, inCity) => `${who}, in concert${inCity}.`,
+  dance: (who, inCity) => `${who} takes the stage${inCity}.`,
+  festival: (who, inCity) => `${who} is on${inCity}!`,
+  comedy: (who, _i, to) => `${who} brings the laughs${to}!`,
+  theatre: (who, inCity) => `${who}, on stage${inCity}.`,
+  talk: (who, inCity) => `${who}, in conversation${inCity}.`,
+  family: (who, inCity) => `A family day out${inCity}: ${who}.`,
+  sport: (who, inCity) => `Game day${inCity}: ${who}.`,
+  market: (who, inCity) => `${who}, a market${inCity}.`,
+  christmas: (who, inCity) => `Christmas${inCity}: ${who}.`,
+  other: (who, inCity) => `${who}${inCity}.`,
+}
+
+/** THE SHARE LINE, of the night's own kind; never an emoji (the five are the hook and the four signposts). */
+const SHARE: Record<NightKind | 'other', string> = {
+  gig: 'Bring the friend who knows every word.',
+  jazz: 'Bring someone who loves a late set.',
+  classical: 'Bring someone who loves a live concert.',
+  dance: 'Send this to someone who would love it.',
+  festival: 'Tag who you are going with.',
+  comedy: 'Tag the friend who needs a laugh.',
+  theatre: 'Send this to your theatre friend.',
+  talk: 'Send this to someone who would want to hear it.',
+  family: 'Send this to the family.',
+  sport: 'Tag who you are going with.',
+  market: 'Send this to who you would go with.',
+  christmas: 'Send this to the family.',
+  other: 'Send this to who you would go with.',
+}
+
+/** HASHTAGS LAST (Lawal's model: '#BallaratEvents #KateCeberano #EventLinqs'): campaign.ts standardTags, the one rule. */
+export function posterTags(city: CampaignCity, who: string): string {
+  return standardTags(city, tagWord(who))
 }
 
 /** Both platforms' posted versions of a night's caption, in the piece's own crop. */
@@ -257,7 +326,7 @@ export function nightVersions(n: CampaignNight, city: CampaignCity, origin: stri
   const facebook = posterCaption(n, city, site, { platform: 'facebook', link, sessions })
   const hook = instagram.split('\n')[0]
   return {
-    instagram: { hook, caption: instagram, crop, cta: 'At the link in our bio.' },
+    instagram: { hook, caption: instagram, crop, cta: 'link in our bio' },
     facebook: { hook, caption: facebook, crop, cta: link },
   }
 }

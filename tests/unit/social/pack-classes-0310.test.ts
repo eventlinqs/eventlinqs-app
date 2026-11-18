@@ -47,15 +47,18 @@ describe('(1) the time of day word is true of the local start', () => {
     const torquay = night({ title: 'Torquay Dance Academy: SHOWTIME: A World of Imagination', startDate: '2026-11-21T00:00:00Z', summary: null })
     const c = ig(torquay)
     expect(c).not.toMatch(/a night of dance/i)
-    expect(c).toMatch(/A morning of dance in Geelong\./)
+    expect(lines(c)[0]).toBe('\u{1F483} Torquay Dance Academy takes the stage in Geelong.')
+    expect(lines(c)[1]).toBe('Showtime: A World of Imagination, a morning of dance.')
   })
 })
 
-describe('(3) the hook is the title alone, the kind of event on the next line; capitals take title case', () => {
+// Caption standard version 2 (Lawal's 20:44 of 18 November 2026): the hook names who and where in a shape of its kind;
+// the show's own name and the kind of night take the next line, never chained to the title by a colon.
+describe('(3) the hook names who, the show and the kind of event on the next line; capitals take title case', () => {
   it('no colon chain into the kind', () => {
     const l = lines(ig(night({})))
-    expect(l[0]).toBe('\u{1F483} Geelong Dance Movement: A Passage Through Time')
-    expect(l[1]).toBe('A night of dance.')
+    expect(l[0]).toBe('\u{1F483} Geelong Dance Movement takes the stage.')
+    expect(l[1]).toBe('A Passage Through Time, a night of dance.')
     expect(ig(night({}))).not.toMatch(/Time: a night/)
   })
   it('a title written in capitals, or a long word in capitals, takes title case; a short name in capitals stays', () => {
@@ -68,8 +71,11 @@ describe('(3) the hook is the title alone, the kind of event on the next line; c
 
 describe('(4) the city once, and one place name per night', () => {
   it("a title that holds its city takes no 'in <city>'", () => {
-    expect(lines(ig(night({})))[1]).toBe('A night of dance.')
-    expect(lines(ig(night({ title: 'Fine Lines & Wine', categorySlug: 'arts-community', summary: null })))[1]).not.toMatch(/Geelong.*Geelong/)
+    expect(lines(ig(night({})))[0]).not.toMatch(/in Geelong/)
+    expect(lines(ig(night({ title: 'Fine Lines & Wine', categorySlug: 'arts-community', summary: null })))[0]).toMatch(/in Geelong/)
+    // The city once in a line (the hook may name it, as Lawal's model does, and the place line again: 'to Geelong!' over
+    // '📍 Costa Hall, Geelong' in caption standard version 2's approved third sample); never twice in one line.
+    for (const l of lines(ig(night({ title: 'Fine Lines & Wine', categorySlug: 'arts-community', summary: null })))) expect(l).not.toMatch(/Geelong.*Geelong/)
   })
   it("the night's own words keep the venue, never a second place name beside the city", () => {
     const fine = night({ title: 'Fine Lines & Wine', venueName: 'Archive Wine Bar', summary: 'A relaxed sketching night with a glass of wine at Archive Wine Bar, Belmont.', startDate: '2026-11-18T07:00:00Z' })
@@ -84,24 +90,26 @@ describe("(5) a free event never says 'tickets'", () => {
   it('free entry and event details', () => {
     const tour = night({ title: 'Free Sunday Garden Tour', categorySlug: 'health-wellness', cta: ctaFor({ isFree: true }), priceLine: null, summary: null })
     const c = ig(tour)
-    expect(c).toContain('Free entry.')
-    expect(c).toContain('\u{1F517} Event details:')
+    expect(c).toContain('\u{1F4B2} Free entry')
+    expect(c).toContain('\u{1F39F} Event details: link in our bio')
     expect(c).not.toMatch(/tickets/i)
+    expect(fb(tour)).toContain(`\u{1F39F} Event details:\n${ORIGIN}/events/a-night`)
   })
 })
 
 describe('the two posted versions are the one poster caption', () => {
-  it('Instagram ends with the link in bio line and our tags; Facebook carries the whole link and no tags', () => {
-    expect(ig(night({}))).toContain('At the link in our bio.')
-    expect(lines(ig(night({}))).at(-1)).toBe('#geelong #geelongevents')
-    expect(fb(night({}))).toContain(`${ORIGIN}/events/a-night`)
-    expect(fb(night({}))).not.toContain('#geelong')
+  // Version 2 (Lawal's Kate Ceberano model): hashtags close BOTH platforms' versions; Facebook carries the whole link.
+  it('Instagram points to the link in bio; Facebook carries the whole link; both end with the same tags', () => {
+    expect(ig(night({}))).toContain('\u{1F39F} Event details and tickets: link in our bio')
+    expect(ig(night({}))).not.toContain(ORIGIN)
+    expect(fb(night({}))).toContain(`\u{1F39F} Event details and tickets:\n${ORIGIN}/events/a-night`)
+    for (const c of [ig(night({})), fb(night({}))]) expect(lines(c).at(-1)).toBe('#GeelongEvents #GeelongDanceMovement #EventLinqs')
   })
   it("a daily poster's versions are those captions, never 'title, at venue, city.' and a pick line", () => {
     const [p] = dailyPosterPieces({ nights: [night({})], cities: [GEELONG], weekStart: '2026-11-16', origin: ORIGIN })
     expect(p.versions.instagram.caption).toBe(posterCaption(night({ title: postTitle(night({}).title, 'The Play House') }), GEELONG, SITE, { platform: 'instagram', link: `${ORIGIN}/events/a-night` }))
     expect(p.versions.facebook.caption).toContain(`${ORIGIN}/events/a-night`)
-    expect(p.versions.instagram.hook).toBe('\u{1F483} Geelong Dance Movement: A Passage Through Time')
+    expect(p.versions.instagram.hook).toBe('\u{1F483} Geelong Dance Movement takes the stage.')
   })
 })
 
@@ -119,7 +127,7 @@ describe('(7) one poster for an event over several days, naming its days', () =>
     const thu = night({ eventId: 'w1', slug: 'gdm-19', startDate: '2026-11-19T07:30:00Z' })
     const next = { ...thu, eventId: 'w2', slug: 'gdm-26', startDate: '2026-11-26T07:30:00Z', endDate: '2026-11-26T10:00:00Z' }
     const [p] = dailyPosterPieces({ nights: [thu, next], cities: [GEELONG], weekStart: '2026-11-16', origin: ORIGIN })
-    expect(p.versions.instagram.caption).toContain('\u{1F4C5} Thursday 19 November · 6:30 pm')
+    expect(p.versions.instagram.caption).toContain('\u{1F4C5} Thursday 19 November · 6.30 pm')
     expect(p.versions.instagram.caption).not.toMatch(/to Thursday 26/)
   })
 })
@@ -129,7 +137,7 @@ describe("(8) a partner kit's caption is of its kind, with its ticket line", () 
     const n = night({})
     const kit = { kind: 'partner_kit', city: 'geelong', eventIds: [n.eventId], link: `${ORIGIN}/events/a-night`, caption: 'Geelong Dance Movement, featured on EventLinqs this week.', versions: { instagram: { hook: 'x', caption: 'x', crop: '9:16', cta: 'x' }, facebook: { hook: 'x', caption: 'x', crop: '9:16', cta: 'x' } } } as unknown as PiecePlan
     const [out] = withKitCaptions([kit], [n], [GEELONG], ORIGIN)
-    expect(out.versions.instagram.caption).toContain('\u{1F483} Geelong Dance Movement: A Passage Through Time')
+    expect(out.versions.instagram.caption).toContain('\u{1F483} Geelong Dance Movement takes the stage.')
     expect(out.versions.instagram.caption).toContain('\u{1F39F} Event details and tickets:')
     expect(out.versions.facebook.caption).toContain(`${ORIGIN}/events/a-night`)
     expect(out.caption).not.toContain('featured on EventLinqs this week')
@@ -184,7 +192,8 @@ describe("the night's own line adds something, or it goes", () => {
     const bendigo = { slug: 'bendigo', name: 'Bendigo' }
     for (const platform of ['instagram', 'facebook'] as const) {
       const l = lines(posterCaption(showtime, bendigo, SITE, { platform, link: `${ORIGIN}/events/a-night` }))
-      expect(l[1]).toBe('An afternoon of dance in Bendigo.')
+      expect(l[0]).toBe('\u{1F483} Showtime takes the stage in Bendigo.')
+      expect(l[1]).toBe('An afternoon of dance.')
       expect(l[2].startsWith('\u{1F4CD}')).toBe(true)
     }
     for (const c of [ig(night({})), fb(night({}))]) expect(c).not.toMatch(/A performance at The Play House/)

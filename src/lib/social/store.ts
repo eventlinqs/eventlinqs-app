@@ -9,6 +9,7 @@ import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SchedulePiece, type SocialFormat, type SocialPlatform } from './cadence'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
+import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
 import { resultOf, type CreditedOrder, type LinkEvent, type PostResult } from './results'
@@ -1327,8 +1328,9 @@ function drawnAtOfCandidate(p: RedrawCandidate): string {
 export function isOlderLookDraft(p: RedrawCandidate): boolean {
   // Every caption that posts is read, as the publish gate reads them (the pack of 05:43: two posters whose faults were only
   // in their platform versions were never drawn again).
-  const posted = [p.revision.caption ?? '', ...Object.values(p.revision.versions ?? {}).map((v) => v?.caption ?? '')].join('\n')
-  return p.state === 'drafted' && pieceCorrections({ slides: p.revision.slides, caption: posted, madeAt: drawnAtOfCandidate(p) }).length > 0
+  const captions = [p.revision.caption ?? '', ...Object.values(p.revision.versions ?? {}).map((v) => v?.caption ?? '')]
+  const posted = captions.join('\n')
+  return p.state === 'drafted' && pieceCorrections({ slides: p.revision.slides, caption: posted, captions, madeAt: drawnAtOfCandidate(p) }).length > 0
 }
 
 /**
@@ -1391,7 +1393,10 @@ export async function editPiece(db: Db, input: { readonly pieceId: string; reado
   const rev = await newestRevision(db, input.pieceId)
   if (!rev) return { state: 'refused', reason: 'The piece has no version to edit.' }
   const caption = input.caption.trim()
-  if (/[!\u2013\u2014]/.test(caption)) return { state: 'refused', reason: 'The words carry an exclamation mark or a long dash.' }
+  // Caption standard version 2's marks (caption-marks.ts): an emoji (the PM's 21:00: a caption with none is refused), at
+  // most five, one exclamation mark in the hook only, never a long dash.
+  const marks = captionMarkFaults(caption)
+  if (marks.length > 0) return { state: 'refused', reason: marks.map((m) => m.replace(/^\[caption\] /, '')).join(' ') }
   // LAW 22's publish gate at draft save: the same language rules as approval and publishing (piece-quality.ts).
   const wrong = languageFaults(caption.split('\n'))
   if (wrong.length > 0) return { state: 'refused', reason: wrong.join(' ') }
