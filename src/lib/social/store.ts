@@ -1820,7 +1820,7 @@ async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
  * approval. Writes schedules only; publishes nothing (F9). A second run finds them scheduled already (the database keeps
  * one per piece, network and approval).
  */
-export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Scheduled> {
+export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly fetcher?: Fetcher } = {}): Promise<Scheduled> {
   const { data: approvals, error } = await db.from('social_piece_approvals').select('id, piece_id, revision, approved_at').order('approved_at', { ascending: true }).limit(2000)
   if (error) throw new Error(`the approvals could not be read: ${error.message}`)
   const { data: gone } = await db.from('social_piece_postings').select('piece_id').limit(5000)
@@ -1902,7 +1902,27 @@ export async function scheduleApprovedPieces(db: Db, now: Date): Promise<Schedul
       held.push(`${d.id}: ${reason}`)
       continue
     }
-    scheduled.push({ pieceId: d.id, goAt })
+    /* DESTINATION FIRST, BEFORE A SLOT IS KEPT (law 28 (d); the PM's 20:50 of 18 November 2026, item 2: check-go before
+       scheduling). Each platform's row is measured against that platform's own rule, as the run before publishing measures
+       it (destination-check.ts), and a row that does not fit is held here with its reason: on 18 November two Facebook
+       posts drawn 3:4 were given a slot and only refused at publishing. One platform's misfit never holds the other's. */
+    let fits = 0
+    for (const platform of ['instagram', 'facebook'] as const) {
+      let misfit: string | null
+      try {
+        misfit = await slidesMisfit(d.rev.slides, platform, opts.fetcher ?? fetch)
+      } catch (e) {
+        misfit = `its fit for ${platform} could not be read (${e instanceof Error ? e.message : String(e)})`
+      }
+      if (!misfit) {
+        fits += 1
+        continue
+      }
+      const reason = `Not scheduled on ${platform}: ${misfit}`
+      await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('platform', platform).eq('state', 'scheduled')
+      held.push(`${d.id}: ${reason}`)
+    }
+    if (fits > 0) scheduled.push({ pieceId: d.id, goAt })
   }
   return { scheduled, held }
 }

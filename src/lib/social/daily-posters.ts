@@ -7,7 +7,8 @@
  *
  * PURE: the same week gives the same posters, so a second press of Plan this week finds them made.
  */
-import { creditsOf, dayInWeek, join, KIND_EMOJI, nightKind, postTitle, selectNights, siteOf, standardTags, tagsFor, tagWord, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type Slide } from './campaign'
+import { clockOf, creditsOf, dayInWeek, join, KIND_EMOJI, nightKind, postTitle, selectNights, siteOf, standardTags, tagsFor, tagWord, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type PosterLook, type Slide } from './campaign'
+import { standInChooser, standInCredit, standInUrl } from './stand-ins'
 
 const DAY_MS = 86_400_000
 
@@ -318,6 +319,43 @@ export function posterTags(city: CampaignCity, who: string): string {
   return standardTags(city, tagWord(who))
 }
 
+/**
+ * FAMILY D'S WORDS FOR A NIGHT (law 26; the master set's 11 LANY: 'WEDNESDAY 18 NOVEMBER · JOHN CAIN ARENA', 'LANY',
+ * 'Live in Melbourne this Wednesday.', the cream card '8:00 PM / WED 18 NOV | John Cain Arena / Tickets at AXS'): the
+ * day and the venue, the night's name (its first part), a line of its kind and its day, and one timed card: the time, the
+ * date, the venue and how to get in. A run of days says its days ('Friday to Sunday'). Pure.
+ */
+export function posterLook(n: CampaignNight, city: CampaignCity, sessions: readonly CampaignNight[] = []): PosterLook {
+  const tz = n.timezone ?? 'Australia/Melbourne'
+  const day = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: tz, ...o }).format(new Date(iso)).replace(/,/g, '')
+  const title = plainWords(postTitle(n.title, n.venueName))
+  const [who] = splitTitle(title)
+  const kind = nightKind(n) ?? 'other'
+  const days = [...new Set([n, ...sessions].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((x) => day(x.startDate, { weekday: 'long' })))]
+  const when = days.length > 1 ? `${days[0]} to ${days[days.length - 1]}` : `this ${days[0]}`
+  const lead: Record<NightKind | 'other', string> = {
+    gig: 'Live', jazz: 'Jazz', classical: 'In concert', dance: 'Dance', festival: 'A festival', comedy: 'Stand-up', theatre: 'On stage',
+    talk: 'In conversation', family: 'A family day out', sport: 'Game day', market: 'Market day', christmas: 'Christmas', other: 'On',
+  }
+  const free = n.cta.state === 'free_open' || n.cta.state === 'free_registration'
+  const entry = free ? (n.cta.state === 'free_registration' ? 'Free, with registration' : 'Free entry') : (n.priceLine ?? city.name)
+  return {
+    eyebrow: [day(n.startDate, { weekday: 'long', day: 'numeric', month: 'long' }), n.venueName].filter(Boolean).join(' · '),
+    name: who,
+    accent: `${lead[kind]} in ${city.name} ${when}.`,
+    row: {
+      eventId: n.eventId,
+      startDate: n.startDate,
+      when: clockOf(n.startDate, n.timezone ?? null),
+      sub: day(n.startDate, { weekday: 'short', day: 'numeric', month: 'short' }),
+      title: n.venueName ?? city.name,
+      place: entry,
+      free,
+    },
+    chip: free ? 'FREE ENTRY' : null,
+  }
+}
+
 /** Both platforms' posted versions of a night's caption, in the piece's own crop. */
 export function nightVersions(n: CampaignNight, city: CampaignCity, origin: string, crop: '4:5' | '9:16', sessions: readonly CampaignNight[] = []): PiecePlan['versions'] {
   const site = siteOf(origin)
@@ -354,11 +392,19 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
   const site = siteOf(input.origin)
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const pieces: PiecePlan[] = []
+  // The week's posters share one chooser, so no stand-in photograph leads two of them (the PM's 22:41 fix 2 of 15 November).
+  const pickStandIn = standInChooser(`daily posters ${input.weekStart}`)
   for (const pick of planDailyPosters(input)) {
     const n = byId.get(pick.eventId)
     const city = input.cities.find((c) => c.slug === pick.city)
     if (!n || !city) continue
     const photo = pick.rights === 'photo' ? n.approvedPhotoUrl : null
+    // FAMILY D (law 26): the night's own permitted photograph, else a stand-in of its kind; a night with neither has no
+    // poster of its own (it stays in the week's lists), never the older planner poster.
+    const standIn = photo ? null : pickStandIn(nightKind(n))
+    if (!photo && !standIn) continue
+    const shown = photo ?? standInUrl(input.origin, standIn!)
+    const shownCredit = photo ? n.photoCredit : standInCredit(standIn!)
     // Its sessions this week (one poster names the days of a run, class 7), and both posted versions from the one caption.
     const sessions = input.nights.filter((x) => x.citySlug === n.citySlug && x.title.toLowerCase() === n.title.toLowerCase() && dayInWeek(x, input.weekStart) >= 0)
     const versions = nightVersions(n, city, input.origin, '4:5', sessions)
@@ -381,9 +427,10 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
           t: 'poster',
           composition: 'daily_poster',
           eventId: n.eventId,
-          photo,
-          credit: photo ? n.photoCredit : null,
-          rights: pick.rightsReason,
+          photo: shown,
+          credit: shownCredit,
+          rights: photo ? pick.rightsReason : `${pick.rightsReason} Family D's name card: an illustrative photograph of its kind (${standIn!.subject}).`,
+          look: posterLook(n, city, sessions),
           night: {
             title: n.title,
             startDate: n.startDate,

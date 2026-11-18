@@ -34,6 +34,11 @@ describe('the publish gate is on every route', () => {
 
   it('scheduling and draft save carry the same rules', () => {
     expect(bodyOf(store, 'export async function scheduleApprovedPieces(')).toMatch(/pieceQuality\(/)
+    // Destination first, before a slot is kept (law 28 (d); the PM's 20:50 item 2): each platform's fit, as publishing reads it.
+    const schedule = bodyOf(store, 'export async function scheduleApprovedPieces(')
+    expect(schedule).toMatch(/slidesMisfit\(d\.rev\.slides, platform/)
+    expect(schedule.indexOf('slidesMisfit(')).toBeLessThan(schedule.indexOf('scheduled.push('))
+    expect(schedule).toMatch(/\.eq\('platform', platform\)/)
     expect(bodyOf(store, 'export async function editPiece(')).toMatch(/languageFaults\(/)
   })
 

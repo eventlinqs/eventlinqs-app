@@ -142,7 +142,7 @@ export type Slide =
   /** A brand piece naming no night: a photograph licensed for EventLinqs' own promotion (treatment A) or its own art (C). */
   | { t: 'brand'; composition: 'close'; headline: string; line: string; action: string; photo: string | null; credit: string | null }
   /** Family F, the daily poster: one night's verified facts, its photograph only from an approved row, and why (daily-posters.ts). */
-  | { t: 'poster'; composition: 'daily_poster'; eventId: string; photo: string | null; credit: string | null; rights: string; night: PosterFacts }
+  | { t: 'poster'; composition: 'daily_poster'; eventId: string; photo: string | null; credit: string | null; rights: string; night: PosterFacts; look?: PosterLook }
   /*
    * THE 9.5 LOCKED LOOK (the PM's 17:10 of 15 November 2026, on WINDOW 6's locked-look-4.ts, scored 9.5 to 9.6 at 09:50):
    * a list post is its week's cover (the count, the biggest draws, a night's own photograph whole, or a photograph of the
@@ -211,6 +211,13 @@ export function lockRefusal(slides: readonly Slide[]): string | null {
 
 /** One night on a day slide, as Lawal's gold timed card draws it; its start kept so a check before publishing reads drift. */
 export type DayRow = { eventId: string; startDate: string; when: string; sub: string | null; title: string; place: string; free: boolean }
+
+/**
+ * A DAILY POSTER IN FAMILY D (law 26; the master set's 11 LANY and 20 AMCF; daily-posters.ts posterLook): the words its
+ * locked look prints, planned with the night. A night's own photograph is drawn whole (family D's feature piece); a
+ * stand-in of its kind across the top with the name in gold and one cream timed card (family D's name card).
+ */
+export type PosterLook = { eyebrow: string; name: string; accent: string; row: DayRow; chip: string | null }
 
 /** The facts a daily poster prints, kept on its slide; the store sets shortLink to the piece's own /e/ link. */
 export type PosterFacts = Omit<PosterNight, 'photo'>
