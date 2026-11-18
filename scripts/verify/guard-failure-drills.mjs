@@ -11676,6 +11676,18 @@ const DRILLS = [
     expect: 'spaced hyphen(s) in copy a visitor reads',
   },
   /*
+   * no-founder-name-public (WINDOW 5A, 18 November 2026, Lawal's 13:46, the PM's 13:50 item 2): the photo page promises
+   * the founder's look again, exactly as it read until that day.
+   */
+  {
+    name: "no founder name in public: the photo page names Lawal again",
+    guard: `${GUARDS}/no-founder-name-public.mjs`,
+    file: 'src/app/photos/[contact]/[proof]/page.tsx',
+    find: 'subtitle="You choose where EventLinqs may use them."',
+    replace: 'subtitle="You choose where EventLinqs may use them. Nothing is used until Lawal has looked at it."',
+    expect: "founder's name(s) in words a customer, an organiser or the public reads",
+  },
+  /*
    * source-reads-are-polite (WINDOW 5A, 11 November 2026, law 14 (k)): outreach-basis reads organisers' own pages with
    * a bare fetch again, no robots.txt and no spacing, exactly as it did until 11 November.
    */

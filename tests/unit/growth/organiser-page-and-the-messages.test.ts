@@ -66,10 +66,13 @@ describe('OL1: the way to say yes to the founder rather than to a form', () => {
     expect(TEMPLATE).not.toMatch(/mailto:[a-z0-9._%-]+@/i)
   })
 
-  it('says the thing in the founder’s own words, under the button', () => {
-    expect(FOUNDING_OFFER.founderCtaLabel).toBe('Set up my event with Lawal')
+  // Lawal, 18 November 2026, 13:46: "I don't put my name out there ... The last thing you can ever say is EventLinqs
+  // team". The button and its note speak as the EventLinqs team, never a person.
+  it('says it as the EventLinqs team, under the button, and names no person', () => {
+    expect(FOUNDING_OFFER.founderCtaLabel).toBe('Set up my event with the EventLinqs team')
     expect(FOUNDING_OFFER.founderCtaNote).toContain('20 minute call')
-    expect(FOUNDING_OFFER.founderCtaNote).toContain('Lawal Adams, founder')
+    expect(FOUNDING_OFFER.founderCtaNote).toContain('The EventLinqs team')
+    expect(`${FOUNDING_OFFER.founderCtaLabel} ${FOUNDING_OFFER.founderCtaNote}`).not.toMatch(/Lawal/)
     expect(TEMPLATE).toContain('FOUNDING_OFFER.founderCtaLabel')
     expect(TEMPLATE).toContain('FOUNDING_OFFER.founderCtaNote')
   })

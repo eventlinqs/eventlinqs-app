@@ -476,6 +476,8 @@
  *                              (law 6, 31 October 2026)
  *   no-spaced-hyphen-in-copy  no spaced hyphen stands in the JSX text or read attributes of
  *                              any .tsx (law 6, 8 November 2026)
+ *   no-founder-name-public    no founder's name in the rendered words of a public page,
+ *                              component or copy module; legal pages only (18 November 2026)
  *   community-layer-protected the 21 communities, their 20 cities, the faith pages and the
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
@@ -2486,6 +2488,10 @@ const GUARDS = [
   // admin sign in; the guard reads every .tsx as TypeScript, so code's subtractions never trip it. Drilled red (8) and
   // green on the real tree.
   'scripts/guards/no-spaced-hyphen-in-copy.mjs',
+  // Lawal, 18 November 2026, 13:46: "I don't put my name out there ... The last thing you can ever say is EventLinqs
+  // team" (the PM's 13:50 item 2, law 4). No founder's name in the rendered words of a public page, component or copy
+  // module; the legal pages name the trader. Drilled red on that day's main (6 names) and green after.
+  'scripts/guards/no-founder-name-public.mjs',
   // Close-out C18 FINAL (7 September 2026): the community layer and the categories
   // are approved and recorded; nothing may be lost from the source or the database,
   // and every addition is recorded in docs/scope/community-layer-approved.json.
