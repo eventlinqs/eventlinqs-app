@@ -9,6 +9,7 @@ import { attachOrganisers, type AttachOutcome } from '@/lib/listings/discovery-o
 import { discoveryDayStore } from '@/lib/listings/discovery-day-store'
 import { walkHolds, type WalkOutcome } from '@/lib/listings/hold-walk-run'
 import { closeFalseChanges } from '@/lib/listings/false-changes'
+import { collectionDeadline, scoutMayStart, scoutSkippedLine } from '@/lib/listings/collect-budget'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,8 +17,6 @@ export const dynamic = 'force-dynamic'
 // compute (https://vercel.com/docs/functions/configuring-functions/duration). No source is started in the last minute.
 export const maxDuration = 300
 const RUN_BUDGET_MS = (maxDuration - 60) * 1000
-/** The scout starts only with at least this much of the budget left, so the collection run is never cut short for it. */
-const SCOUT_MIN_LEFT_MS = 90_000
 /** The engine's own steps after the reads (its organisers, its day line) start only with this much of the function left. */
 const ENGINE_MIN_LEFT_MS = 25_000
 
@@ -40,7 +39,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const started = Date.now()
-    const result = await runCollection(collectionStore(createAdminClient()), fetch, new Date(started), started + RUN_BUDGET_MS)
+    // On the scout's turn the collection stops early enough to leave the scout its time (collect-budget.ts; gap 1).
+    const scoutTurn = melbourneHour(new Date(started)) === SCOUT_HOUR
+    const result = await runCollection(collectionStore(createAdminClient()), fetch, new Date(started), collectionDeadline(started, RUN_BUDGET_MS, scoutTurn))
     console.log(
       `[cron/collection-run] ${result.read} source(s) read, ${result.skipped} not read, ${result.landed} event(s) new: ` +
         `${result.acceptedByRule} accepted by the partner rule, ${result.queued} for review; ${result.expired} passed night(s) taken out of the queue` +
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest) {
     for (const s of result.sources) console.log(`[cron/collection-run] ${s.name}: ${s.outcome}`)
     /* THE SCOUT RUNS ITSELF (src/lib/listings/scout-engine.ts; Lawal's 10:42 of 13 November 2026): once a night, in the
        23:25 turn and only with the budget the collection run left; no schedule is added. A failure never fails the run. */
-    let scout: ScoutOutcome[] | string = 'not this turn: the scout runs in the 23:25 turn'
-    if (melbourneHour(new Date(started)) === SCOUT_HOUR && started + RUN_BUDGET_MS - Date.now() >= SCOUT_MIN_LEFT_MS) {
+    let scout: ScoutOutcome[] | string = scoutTurn ? scoutSkippedLine(started, RUN_BUDGET_MS, Date.now()) : 'not this turn: the scout runs in the 23:25 turn'
+    if (scoutMayStart(started, RUN_BUDGET_MS, Date.now(), scoutTurn)) {
       try {
         const db = createAdminClient()
         scout = await runScout(scoutStore(db), fetch, new Date(), started + RUN_BUDGET_MS)
