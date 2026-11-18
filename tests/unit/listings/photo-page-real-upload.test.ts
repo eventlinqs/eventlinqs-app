@@ -121,7 +121,7 @@ describe('the photo page keeps a real organiser photo', () => {
     const broken = new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], 'broken.jpg', { type: 'image/jpeg' })
     const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [small, broken], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(done).toMatchObject({ state: 'done', added: 0 })
-    const refused = (done as { refused: string[] }).refused
+    const refused = (done as { refused: readonly string[] }).refused
     expect(refused[0]).toBe(`small.jpg: it is 600 x 400 pixels, so your event page would have to enlarge it; a photo at least ${EVENT_PHOTO_BOX.height} pixels tall, or ${EVENT_PHOTO_BOX.width} wide, shows sharp.`)
     expect(refused[1]).toMatch(/^broken\.jpg: /)
     expect(refused.join(' ')).not.toMatch(/small\.jpg: That image could not be read/)
@@ -131,7 +131,7 @@ describe('the photo page keeps a real organiser photo', () => {
     const { client } = db()
     const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_6082.jpg', 973, 695)], uses: 'both', givenBy: 'Aria', now: NOW }, deps('cover', []))
     expect(done).toMatchObject({ state: 'done', added: 0 })
-    const said = (done as { refused: string[] }).refused[0]
+    const said = (done as { refused: readonly string[] }).refused[0]
     expect(said).toMatch(/too small for a cover \(973px wide\)/)
     expect(said).not.toMatch(/could not be read/)
   }, 30000)
