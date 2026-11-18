@@ -32,6 +32,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { label: 'Today', href: '/admin/today', capability: 'admin.dashboard.view' },
       { label: 'Overview', href: '/admin', capability: 'admin.dashboard.view' },
       { label: 'Growth plan', href: '/admin/growth', capability: 'admin.pricing.manage' },
+      { label: 'Communications centre', href: '/admin/comms', capability: 'admin.network.manage' },
       { label: 'Platform health', href: '/admin/health', capability: 'admin.dashboard.view' },
     ],
   },
