@@ -352,8 +352,12 @@ export async function recordBlotatoFigures(
   if (serr) throw new Error(`the posts that went: ${serr.message}`)
   const goneRows = (sched ?? []).filter((s) => s.state === 'published' || /^Sent as blotato:|social_piece_schedules_published_ref_check/.test(String(s.held_reason ?? '')))
   const pieceIds = [...new Set(goneRows.map((s) => s.piece_id as string))]
-  const { data: revs, error: rerr } = pieceIds.length > 0 ? await db.from('social_piece_revisions').select('piece_id, version, caption, versions').in('piece_id', pieceIds) : { data: [], error: null }
-  if (rerr) throw new Error(`the captions that went: ${rerr.message}`)
+  // Every revision of those pieces, paged (no-silent-row-ceiling: a read with no bound stops at 1,000 rows and says nothing).
+  const revs = pieceIds.length > 0
+    ? await readEveryRow<{ piece_id: string; version: number; caption: string | null; versions: unknown }>('the captions that went', (from, to) =>
+        db.from('social_piece_revisions').select('piece_id, version, caption, versions').in('piece_id', pieceIds).order('id', { ascending: true }).range(from, to),
+      )
+    : []
   // Every caption a piece ever carried on its platform, so a post is matched by the words it went with.
   const captionsOf = (pieceId: string, platform: string): string[] =>
     (revs ?? [])

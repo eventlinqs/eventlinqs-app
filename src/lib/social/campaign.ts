@@ -1521,13 +1521,19 @@ export function listEmoji(nights: readonly CampaignNight[], oneVenue: boolean): 
  * its emoji, Lawal's approved words, the link line led by its ticket (Instagram's link in bio; Facebook's own page on the
  * next line), the share line, the state's events tag and ours last. No blank lines.
  */
+/**
+ * The feed crop a caption names for both platforms: 4:5, inside Instagram's published feed range '4:5 to 1.91:1'
+ * (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media, law 7).
+ */
+export const FEED_CROP = '4:5' as const
+
 export function offerCaptions(hook: string, body: readonly string[], origin: string): PiecePlan['versions'] {
   const link = `${origin}/organisers`
   const head = [`\u{1F4E3} ${hook}`, ...body]
   const tail = ['Send this to an organiser you know.', '#VictoriaEvents #EventLinqs']
   return {
-    instagram: { hook: head[0], caption: join([...head, '\u{1F39F} List your event: link in our bio', ...tail]), crop: '4:5', cta: 'link in our bio' },
-    facebook: { hook: head[0], caption: join([...head, '\u{1F39F} List your event:', link, ...tail]), crop: '4:5', cta: link },
+    instagram: { hook: head[0], caption: join([...head, '\u{1F39F} List your event: link in our bio', ...tail]), crop: FEED_CROP, cta: 'link in our bio' },
+    facebook: { hook: head[0], caption: join([...head, '\u{1F39F} List your event:', link, ...tail]), crop: FEED_CROP, cta: link },
   }
 }
 
@@ -1999,8 +2005,8 @@ export function planCampaign(input: {
       slides: [{ t: 'brand', composition: 'close', headline: hook, line, action: "See what's on", photo: photo?.url ?? null, credit: photo?.credit ?? null }],
       caption: join([head, ...body, `\u{1F39F} What's on: ${site}/events`, tags]),
       versions: {
-        instagram: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on: link in our bio", tags]), crop: '4:5', cta: 'link in our bio' },
-        facebook: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on:", `${origin}/events`, tags]), crop: '4:5', cta: `${origin}/events` },
+        instagram: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on: link in our bio", tags]), crop: FEED_CROP, cta: 'link in our bio' },
+        facebook: { hook: head, caption: join([head, ...body, "\u{1F39F} What's on:", `${origin}/events`, tags]), crop: FEED_CROP, cta: `${origin}/events` },
       },
       partnerName: null,
       partnerEventId: null,

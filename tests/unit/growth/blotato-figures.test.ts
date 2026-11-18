@@ -102,14 +102,21 @@ function fakeDb(tables: Record<string, Record<string, unknown>[]>) {
   const inserted: Record<string, unknown>[] = []
   const query = (table: string) => {
     const tests: ((r: Record<string, unknown>) => boolean)[] = []
+    let window: [number, number] | null = null
     const q = {
       select: () => q,
       eq: (k: string, v: unknown) => (tests.push((r) => r[k] === v), q),
       gte: (k: string, v: string) => (tests.push((r) => String(r[k]) >= v), q),
       in: (k: string, vs: unknown[]) => (tests.push((r) => vs.includes(r[k])), q),
       limit: () => q,
+      // A paged read (readEveryRow): its order, then its rows from..to.
+      order: () => q,
+      range: (from: number, to: number) => ((window = [from, to]), q),
       insert: async (rows: Record<string, unknown>[] | Record<string, unknown>) => (inserted.push(...(Array.isArray(rows) ? rows : [{ ...rows, table }])), { error: null }),
-      then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: (tables[table] ?? []).filter((r) => tests.every((t) => t(r))), error: null }).then(ok),
+      then: (ok: (v: unknown) => unknown) => {
+        const rows = (tables[table] ?? []).filter((r) => tests.every((t) => t(r)))
+        return Promise.resolve({ data: window ? rows.slice(window[0], window[1] + 1) : rows, error: null }).then(ok)
+      },
     }
     return q
   }
