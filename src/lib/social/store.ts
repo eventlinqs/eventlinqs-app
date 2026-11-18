@@ -576,6 +576,28 @@ function revisionOf(r: Record<string, unknown>): Revision {
 
 const REVISION_COLUMNS = 'version, event_ids, picks, mode, slides, caption, versions, message, made_by, made_at'
 
+/** A revision's number and maker, for a piece's history: never its slides or words (the P0 of 18 November 2026). */
+export const HISTORY_COLUMNS = 'version, made_by, made_at'
+
+/**
+ * Each piece's newest revision in full, read by (piece, version), twenty pieces a request: the week's read carries one
+ * drawing a piece, never every drawing it ever had. A piece whose newest revision cannot be read is left out of the
+ * map, said by the caller as missing; a read error throws.
+ */
+export async function newestRevisions(db: Db, newest: readonly (readonly [string, number])[]): Promise<Map<string, Revision>> {
+  const out = new Map<string, Revision>()
+  for (let i = 0; i < newest.length; i += 20) {
+    const batch = newest.slice(i, i + 20)
+    const { data, error } = await db
+      .from('social_piece_revisions')
+      .select(`piece_id, ${REVISION_COLUMNS}`)
+      .or(batch.map(([id, v]) => `and(piece_id.eq.${id},version.eq.${v})`).join(','))
+    if (error) throw new Error(`the newest drawings could not be read: ${error.message}`)
+    for (const r of (data ?? []) as Record<string, unknown>[]) out.set(r.piece_id as string, revisionOf(r))
+  }
+  return out
+}
+
 /** The newest revision of a piece: what it says now (K7). */
 async function newestRevision(db: Db, pieceId: string): Promise<Revision | null> {
   const { data } = await db.from('social_piece_revisions').select(REVISION_COLUMNS).eq('piece_id', pieceId).order('version', { ascending: false }).limit(1).maybeSingle()
@@ -1042,7 +1064,10 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
   if (campaignId === null) return null
   const { data, error } = await db
     .from('social_pieces')
-    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, poster_day, social_piece_revisions(${REVISION_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
+    // Each revision's number and maker only: the slides and words are read for each piece's NEWEST revision alone
+    // (newestRevisions below). The P0 of 18 November 2026: every revision's slides came with the week, 904 revisions
+    // and 2.4 MB, and Lawal could not open /admin/social.
+    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, poster_day, social_piece_revisions(${HISTORY_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
     .eq('campaign_id', campaignId)
     .order('planned_at', { ascending: true })
     .limit(500)
@@ -1050,11 +1075,19 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
   const ORDER: PiecePlan['kind'][] = ['week_ahead', 'discovery_reel', 'weekend_carousel', 'tonight_tomorrow', 'venue_spotlight', 'category_spotlight', 'coming_up', 'organiser_campaign', 'brand_campaign', 'partner_kit']
   // A partner kit went when Lawal marked it sent or sent the message carrying its own link (src/lib/social/kit-sent.ts).
   const kitsSentByEmail = await readKitTouchesSent(db, (data ?? []).filter((p) => p.kind === 'partner_kit').map((p) => (p.link as string | null) ?? null))
+  const historyOf = (p: Record<string, unknown>) =>
+    ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? [])
+      .map((r) => ({ version: Number(r.version), madeBy: r.made_by as Revision['madeBy'], madeAt: r.made_at as string }))
+      .sort((a, b) => b.version - a.version)
+  const full = await newestRevisions(db, (data ?? []).flatMap((p) => {
+    const h = historyOf(p as Record<string, unknown>)
+    return h.length ? [[p.id as string, h[0].version] as const] : []
+  }))
   const pieces: PieceRow[] = []
   for (const p of data ?? []) {
-    const revisions = ((p.social_piece_revisions as Record<string, unknown>[] | null) ?? []).map(revisionOf).sort((a, b) => b.version - a.version)
-    if (revisions.length === 0) continue
-    const newest = revisions[0]
+    const revisions = historyOf(p as Record<string, unknown>)
+    const newest = full.get(p.id as string)
+    if (revisions.length === 0 || !newest) continue
     const decisions = ((p.social_piece_decisions as Record<string, unknown>[] | null) ?? [])
       .map((d) => ({ revision: Number(d.revision), decision: d.decision as string, reason: d.reason as string, at: d.decided_at as string }))
       .sort((a, b) => b.at.localeCompare(a.at))
@@ -1560,6 +1593,41 @@ export function withoutCredits(text: string, removed: ReadonlySet<string>, kept:
 }
 
 /**
+ * THE SLIDES WHOSE PHOTOGRAPH IS NO LONGER USABLE: only a slide that holds a photograph now can lose one. The P0 of
+ * 18 November 2026 (Lawal could not open /admin/social): slideImagesNow maps every slide that may hold a night's photo,
+ * and a slide whose photo was already empty maps to null, so the hourly sweep read it as withdrawn and wrote the same
+ * drawing again every hour (of 141 revisions since 08:00 that morning, 119 were identical to the one before; one piece
+ * held 56). Pure.
+ */
+export function withdrawnSlides(slides: readonly Slide[], images: ReadonlyMap<number, unknown>): number[] {
+  return [...images.entries()]
+    .filter(([i, u]) => {
+      const sl = slides[i] as { photo?: string | null } | undefined
+      return u === null && Boolean(sl && 'photo' in sl && sl.photo)
+    })
+    .map(([i]) => i)
+}
+
+/** JSON with every object's keys in one order, so a drawing read back from the database (jsonb orders its keys) compares
+ * equal to the same drawing made in code. Pure. */
+function canonical(x: unknown): string {
+  if (Array.isArray(x)) return `[${x.map(canonical).join(',')}]`
+  if (x && typeof x === 'object') {
+    return `{${Object.keys(x as Record<string, unknown>).filter((k) => (x as Record<string, unknown>)[k] !== undefined).sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical((x as Record<string, unknown>)[k])}`).join(',')}}`
+  }
+  return JSON.stringify(x ?? null)
+}
+
+/** Two drawings are the same when their nights, slides, both platforms' words and caption are. Pure. */
+export function sameDrawing(
+  a: { eventIds: readonly string[]; slides: readonly unknown[]; versions: unknown; caption: string },
+  b: { eventIds: readonly string[]; slides: readonly unknown[]; versions: unknown; caption: string },
+): boolean {
+  return canonical([a.eventIds, a.slides, a.versions, a.caption]) === canonical([b.eventIds, b.slides, b.versions, b.caption])
+}
+
+/**
  * THE HOURLY SWEEP (part D: "withdrawal pulls images from every unposted post within the hour"). Every piece that has
  * not gone, whose newest version carries an image no longer usable for its slide (withdrawn, replaced, expired or
  * refused since it was planned), gets a new version with those images taken out and the slides drawn in type, and a
@@ -1589,7 +1657,7 @@ export async function sweepWithdrawnImages(db: Db, now: Date): Promise<Swept> {
     if (!rev.slides.some((sl) => 'photo' in sl && sl.photo)) continue
     checked += 1
     const images = await slideImagesNow(db, rev.slides, now)
-    const goneAt = [...images.entries()].filter(([, u]) => u === null).map(([i]) => i)
+    const goneAt = withdrawnSlides(rev.slides, images)
     if (goneAt.length === 0) continue
     const removed = new Set(goneAt.map((i) => (rev.slides[i] as { credit: string | null }).credit).filter((c): c is string => Boolean(c)))
     const slides = rev.slides.map((sl, i) => (goneAt.includes(i) ? ({ ...sl, photo: null, credit: null } as Slide) : sl))
@@ -1601,6 +1669,8 @@ export async function sweepWithdrawnImages(db: Db, now: Date): Promise<Swept> {
     const stillPhoto = slides.some((sl) => 'photo' in sl && sl.photo)
     const mode: PiecePlan['mode'] = stillPhoto ? 'photo_led' : rev.slides.some((sl) => sl.t === 'brand' || sl.t === 'offer') ? 'graphic_led' : 'type_led'
     const plan = { eventIds: rev.eventIds, picks: rev.picks, mode, slides, caption: withoutCredits(rev.caption, removed, kept), versions } as PiecePlan
+    // Never the same drawing twice: a version equal to the newest would only void its approval and weigh down the page.
+    if (sameDrawing(plan, rev)) continue
     const version = rev.version + 1
     const { error } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, version, plan, rev.message, 'sweep', null, now))
     if (error) {
