@@ -41,7 +41,7 @@ vi.mock('@/lib/events/booking-links-read', async () => {
 })
 
 /** A database over the fixture's rows, answering the chains store.ts makes; any other table or call fails the test. */
-function fixtureDb(tables: Record<string, Row[]>) {
+function fixtureDb(tables: Record<string, Row[]>, refuse: (table: string, change: Row) => string | null = () => null) {
   const writes: { table: string; payload: Row; where: [string, unknown][] }[] = []
   const query = (table: string) => {
     const tests: ((r: Row) => boolean)[] = []
@@ -53,6 +53,8 @@ function fixtureDb(tables: Record<string, Row[]>) {
     const run = () => {
       const rows = (tables[table] ?? []).filter((r) => tests.every((t) => t(r)))
       if (change) {
+        const why = refuse(table, change)
+        if (why) return { data: null, error: { message: why } }
         writes.push({ table, payload: change, where })
         for (const r of rows) Object.assign(r, change)
         return { data: null, error: null }
@@ -199,6 +201,45 @@ describe('the whole publish path on every approved piece', () => {
     } finally {
       link!.availability = before
       hoisted.links.splice(hoisted.links.indexOf(second), 1)
+    }
+  }, 120_000)
+
+  it.skipIf(LIVE)('a post Blotato accepts keeps its submission when the database refuses its reference (18 November, five lost)', async () => {
+    const { publishDuePieces } = await import('@/lib/social/store')
+    const tables: Record<string, Row[]> = {
+      feature_flags: fixture.feature_flags ?? [],
+      social_piece_schedules: (fixture.social_piece_schedules ?? []).map((s) => ({ ...s, state: 'scheduled' })),
+      social_pieces: fixture.social_pieces ?? [],
+      social_piece_revisions: fixture.social_piece_revisions ?? [],
+      social_piece_approvals: fixture.social_piece_approvals ?? [],
+      events: fixture.events ?? [],
+      venue_distribution_off: (fixture.venue_distribution_off ?? []) as Row[],
+    }
+    // The check in force on 18 November: published_ref takes only a public post URL, so a 'blotato:' reference is refused.
+    const refuse = (table: string, change: Row) =>
+      table === 'social_piece_schedules' && typeof change.published_ref === 'string' && change.published_ref.startsWith('blotato:')
+        ? 'new row for relation "social_piece_schedules" violates check constraint "social_piece_schedules_published_ref_check"'
+        : null
+    const { db, writes } = fixtureDb(tables, refuse)
+    const schedules = tables.social_piece_schedules
+    const now = new Date(Math.max(...schedules.map((s) => Date.parse(String(s.go_at)))) + 60_000)
+    const publisher = vi.fn(async (p: { readonly pieceId: string; readonly platform: string }) => {
+      const submission = `sub-${p.pieceId.slice(0, 8)}-${p.platform}`
+      return { ref: `blotato:${submission}`, submission }
+    })
+    const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(publisher).toHaveBeenCalledTimes(schedules.length)
+    // Every row held, and each held reason begins with the reference that names the post, so it can be read back.
+    expect(out.held.length).toBe(schedules.length)
+    for (const s of schedules) {
+      const id = String(s.id)
+      const submission = `sub-${String(s.piece_id).slice(0, 8)}-${String(s.platform)}`
+      const mine = writes.filter((w) => w.where.some(([k, v]) => k === 'id' && v === id))
+      const first = mine.findIndex((w) => w.payload.submission_ref === `blotato:${submission}`)
+      const held = mine.findIndex((w) => w.payload.state === 'held')
+      expect(first, `${id}: its submission is written to its own column`).toBeGreaterThanOrEqual(0)
+      expect(held, `${id}: then it is held`).toBeGreaterThan(first)
+      expect(String(mine[held].payload.held_reason)).toMatch(new RegExp(`^Sent as blotato:${submission}; the database refused that reference`))
     }
   }, 120_000)
 

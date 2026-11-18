@@ -49,7 +49,7 @@ describe('route B, Blotato', () => {
     const b = blotato({ accounts: [{ id: 101, platform: 'facebook' }, { id: 202, platform: 'instagram' }] })
     const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
     const out = await publish({ pieceId: 'p1', platform: 'instagram', slides: [night(1), night(2)], caption: 'This weekend' })
-    expect(out).toEqual({ ref: 'https://www.instagram.com/p/abc/' })
+    expect(out).toEqual({ ref: 'https://www.instagram.com/p/abc/', submission: 'sub-1' })
     expect(b.seen.every((s) => s.key === config.apiKey)).toBe(true)
     expect(b.seen.filter((s) => s.url.endsWith('/v2/media')).map((s) => s.body)).toEqual([{ url: 'https://storage.example/s1.jpg' }, { url: 'https://storage.example/s2.jpg' }])
     const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
@@ -92,6 +92,6 @@ describe('route B, Blotato', () => {
   test('accepted and still publishing after the checks: recorded by its submission, so it is never sent twice', async () => {
     const slow = blotato({ accounts: [{ id: 202, platform: 'instagram' }], status: 'in-progress' })
     const out = await makeBlotatoPublisher({ config, fetchImpl: slow.fetchImpl, slideUrls, sleep: async () => {} })({ pieceId: 'p', platform: 'instagram', slides: [night(1)], caption: 'x' })
-    expect(out).toEqual({ ref: 'blotato:sub-1' })
+    expect(out).toEqual({ ref: 'blotato:sub-1', submission: 'sub-1' })
   })
 })

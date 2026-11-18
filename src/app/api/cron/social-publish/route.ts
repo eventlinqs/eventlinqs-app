@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { planCampaignWeek, publishDuePieces, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
-import { socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +46,14 @@ export async function GET(request: NextRequest) {
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
     )
     for (const h of [...scheduled.held, ...published.held]) console.log(`[cron/social-publish] held: ${h}`)
+    // Every post Blotato accepted is read back until its public URL is known; a failed read never stops the run.
+    try {
+      const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
+      for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
+      for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
+    } catch (error) {
+      console.error('[cron/social-publish] the posts waiting for their URL could not be read back:', error instanceof Error ? error.message : error)
+    }
     /* The release checklist F5: a publish by the machine is audited as a person's press is, one row per run that
        published or held anything; a run that only says what would go writes nothing. */
     if (published.published.length > 0 || published.held.length > 0) {
