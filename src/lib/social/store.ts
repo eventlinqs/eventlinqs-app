@@ -20,6 +20,7 @@ import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { standInOf } from './stand-ins'
+import { slidesMisfit } from './destination-check'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -1921,6 +1922,13 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       continue
     }
     const rev = await newestRevision(db, pieceId)
+    // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
+    // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
+    const misfit = await slidesMisfit(rev?.slides ?? [], platform, opts.fetcher ?? fetch)
+    if (misfit) {
+      await hold(id, `Not published: ${misfit}`)
+      continue
+    }
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
       // 18 November 2026, item 1), set at the moment it posts.

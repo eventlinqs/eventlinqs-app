@@ -30,12 +30,15 @@ describe('an approved file slide', () => {
     expect(formatOfSlides([file(`${APPROVED_FILE_PREFIX}11-lany-feed.jpg`)])).toBe('feed')
   })
 
-  it('the ten approved files are in the site, each at an approved address', () => {
+  it('the ten approved files and their four Instagram feed fits are in the site, each at an approved address', () => {
     const dir = join(root, 'public/social/approved')
     const names = readdirSync(dir).filter((n) => n.endsWith('.jpg')).sort()
+    // The four -ig45 files are the approved 3:4 feed files scaled whole onto 4:5 for Instagram's feed (the PM's 13:42 of
+    // 18 November 2026; C:\dev\EVIDENCE\EL-18NOV\fit45), nothing cropped or changed.
     expect(names).toEqual([
       '11-lany-feed.jpg', '13-organisers-feed.jpg', '14-organisers-story.jpg', '15-organisers-square.jpg', '16-lany-story.jpg',
       '17-groovytown-feed.jpg', '18-groovytown-story.jpg', '20-amcf-feed.jpg', '21-amcf-square.jpg', '22-amcf-story.jpg',
+      'amcf-feed-ig45.jpg', 'groovytown-feed-ig45.jpg', 'lany-feed-ig45.jpg', 'organisers-feed-ig45.jpg',
     ])
     for (const n of names) {
       expect(isApprovedFileUrl(`${APPROVED_FILE_PREFIX}${n}`), n).toBe(true)
