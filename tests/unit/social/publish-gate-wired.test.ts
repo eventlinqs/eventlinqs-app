@@ -39,6 +39,10 @@ describe('the publish gate is on every route', () => {
     expect(schedule).toMatch(/slidesMisfit\(d\.rev\.slides, platform/)
     expect(schedule.indexOf('slidesMisfit(')).toBeLessThan(schedule.indexOf('scheduled.push('))
     expect(schedule).toMatch(/\.eq\('platform', platform\)/)
+    // A partner kit is never given a slot on our account (the PM's 23:09 of 18 November 2026).
+    expect(schedule).toMatch(/select\('format, kind'\)/)
+    expect(schedule).toMatch(/if \(String\(piece\.kind\) === 'partner_kit'\) continue/)
+    expect(schedule.indexOf("=== 'partner_kit') continue")).toBeLessThan(schedule.indexOf('due.push('))
     expect(bodyOf(store, 'export async function editPiece(')).toMatch(/languageFaults\(/)
   })
 

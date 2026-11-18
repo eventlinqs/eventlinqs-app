@@ -1833,8 +1833,11 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
     const rev = await newestRevision(db, pieceId)
     if (!rev || rev.version !== (a.revision as number)) continue
-    const { data: piece } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
+    const { data: piece } = await db.from('social_pieces').select('format, kind').eq('id', pieceId).maybeSingle()
     if (!piece) continue
+    // A PARTNER KIT IS NEVER POSTED ON OUR ACCOUNT (the PM's 23:09 of 18 November 2026; law 26 names the plain kit): it is
+    // a story card and a message for the partner to share from their own, recorded as sent, never given a slot here.
+    if (String(piece.kind) === 'partner_kit') continue
     due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev })
   }
   if (due.length === 0) return { scheduled: [], held: [] }
