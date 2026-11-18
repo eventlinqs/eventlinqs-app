@@ -2003,7 +2003,8 @@ export const PUBLIC_POST_URL = /^https:\/\/(www\.)?(instagram\.com|facebook\.com
  */
 export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | null): Promise<{ readonly read: number; readonly filled: string[]; readonly pending: string[] }> {
   if (read === null) return { read: 0, filled: [], pending: [] }
-  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').like('published_ref', 'blotato:%').order('go_at').limit(20)
+  // Every reference that begins 'blotato:' sorts at or after 'blotato:' and before 'blotato;' (';' follows ':'), and no URL does.
+  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').gte('published_ref', 'blotato:').lt('published_ref', 'blotato;').order('go_at').limit(20)
   if (error) throw new Error(`the posts waiting for their URL could not be read: ${error.message}`)
   const filled: string[] = []
   const pending: string[] = []
