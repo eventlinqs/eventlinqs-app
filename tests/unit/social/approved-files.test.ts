@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { APPROVED_FILE_PREFIX, inLockedLook, isApprovedFileUrl, type Slide } from '@/lib/social/campaign'
 import { formatOfSlides } from '@/lib/social/meta-publisher'
+import { pieceQuality } from '@/lib/social/piece-quality'
 
 /*
  * LAWAL'S APPROVED FILES, POSTED AS THEY ARE (Lawal, 18 November 2026, 11:55: "You can post this. You have my approval
@@ -57,5 +58,14 @@ describe('an approved file slide', () => {
       expect(gate, words).toContain(words)
     }
     expect(read('src/app/admin/(authed)/social/piece/[pieceId]/[n]/route.ts')).toContain("if (fileSlide.t === 'file') return NextResponse.redirect(fileSlide.url, 307)")
+  })
+
+  it('never posts once its night has started (law 22, class 2), by the same rule as every other piece', () => {
+    const night = { eventId: 'lany', title: 'LANY', summary: null, venueName: 'John Cain Arena', host: null, categorySlug: 'music', sourceTitle: 'LANY',
+      startDate: '2026-11-18T09:00:00Z', timezone: 'Australia/Melbourne', endDate: '2026-11-18T13:00:00Z' }
+    const slides = [{ ...file(`${APPROVED_FILE_PREFIX}11-lany-feed.jpg`), eventId: 'lany', startDate: night.startDate }] as Slide[]
+    const at = (iso: string) => pieceQuality({ slides, caption: 'LANY at John Cain Arena tonight.', madeAt: '2026-11-18T01:00:00Z', nights: new Map([['lany', night as never]]), now: new Date(iso) })
+    expect(at('2026-11-18T08:59:00Z').filter((x) => x.startsWith('[night]'))).toEqual([])
+    expect(at('2026-11-18T09:00:00Z').some((x) => x.startsWith('[night] LANY: it has started'))).toBe(true)
   })
 })
