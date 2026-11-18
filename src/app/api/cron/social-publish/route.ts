@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
-import { socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
       for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
       for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
+      const held = await findHeldPostsOnBlotato(db, socialPublishedSearchFromEnv())
+      for (const f of held.found) console.log(`[cron/social-publish] held but published, found on Blotato: ${f}`)
+      for (const m of held.missing) console.log(`[cron/social-publish] held, not found on Blotato: ${m}`)
     } catch (error) {
       console.error('[cron/social-publish] the posts waiting for their URL could not be read back:', error instanceof Error ? error.message : error)
     }
