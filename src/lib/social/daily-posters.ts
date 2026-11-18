@@ -9,6 +9,7 @@
  */
 import { clockOf, creditsOf, dayInWeek, join, KIND_EMOJI, nightKind, postTitle, selectNights, siteOf, standardTags, tagsFor, tagWord, whyOf, type CampaignCity, type CampaignNight, type NightKind, type PiecePlan, type PosterFacts, type PosterLook, type Slide } from './campaign'
 import { standInChooser, standInCredit, standInUrl } from './stand-ins'
+import { creditLine } from '@/lib/media/photo-credits'
 
 const DAY_MS = 86_400_000
 
@@ -329,9 +330,11 @@ export function posterLook(n: CampaignNight, city: CampaignCity, sessions: reado
   const tz = n.timezone ?? 'Australia/Melbourne'
   const day = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: tz, ...o }).format(new Date(iso)).replace(/,/g, '')
   const title = plainWords(postTitle(n.title, n.venueName))
-  const [who] = splitTitle(title)
+  // The name as the master writes it: its first part, its year left off ('African Music and Cultural Festival 2026' reads
+  // 'African Music and Cultural Festival', as master 20 does).
+  const who = splitTitle(title)[0].replace(/\s+(?:19|20)\d{2}$/, '')
   const kind = nightKind(n) ?? 'other'
-  const days = [...new Set([n, ...sessions].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((x) => day(x.startDate, { weekday: 'long' })))]
+  const days =[...new Set([n, ...sessions].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).map((x) => day(x.startDate, { weekday: 'long' })))]
   const when = days.length > 1 ? `${days[0]} to ${days[days.length - 1]}` : `this ${days[0]}`
   const lead: Record<NightKind | 'other', string> = {
     gig: 'Live', jazz: 'Jazz', classical: 'In concert', dance: 'Dance', festival: 'A festival', comedy: 'Stand-up', theatre: 'On stage',
@@ -404,7 +407,8 @@ export function dailyPosterPieces(given: { nights: readonly CampaignNight[]; cit
     const standIn = photo ? null : pickStandIn(nightKind(n))
     if (!photo && !standIn) continue
     const shown = photo ?? standInUrl(input.origin, standIn!)
-    const shownCredit = photo ? n.photoCredit : standInCredit(standIn!)
+    // A night's own photograph is credited as every other own photograph is ('Photo: AMCF, past festival'; featureSlideOf).
+    const shownCredit = photo ? (n.photoCredit ? creditLine(n.photoCredit) : null) : standInCredit(standIn!)
     // Its sessions this week (one poster names the days of a run, class 7), and both posted versions from the one caption.
     const sessions = input.nights.filter((x) => x.citySlug === n.citySlug && x.title.toLowerCase() === n.title.toLowerCase() && dayInWeek(x, input.weekStart) >= 0)
     const versions = nightVersions(n, city, input.origin, '4:5', sessions)
