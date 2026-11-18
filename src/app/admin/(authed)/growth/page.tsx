@@ -25,6 +25,8 @@ import { CoverageDeskSection } from '@/components/admin/coverage-desk'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readWeeklyReport } from '@/lib/growth/weekly-report'
 import { WeeklyReportSection } from '@/components/admin/weekly-report-section'
+import { readMarketingResults } from '@/lib/growth/marketing-results'
+import { MarketingResultsSection } from '@/components/admin/marketing-results-section'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -89,12 +91,26 @@ export default async function AdminGrowthPage() {
     (value) => ({ ok: true as const, value }),
     (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
   )
+  // Organiser Marketing results (the PM's 12:40 of 18 November 2026, item 5): a failed read is said in its own words and
+  // never stops the page.
+  const marketing = await readMarketingResults(createAdminClient()).then(
+    (value) => ({ ok: true as const, value }),
+    (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
+  )
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
   const lastSunday = new Date(new Date(g.last.to).getTime() - 1).toISOString()
 
   return (
     <div>
+      {marketing.ok ? (
+        <MarketingResultsSection results={marketing.value} readAt={formatPlatformDate(new Date().toISOString())} />
+      ) : (
+        <section data-section="organiser-marketing-results" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+          <h2 className="font-display text-lg font-semibold text-white">Organiser Marketing results</h2>
+          <p className="mt-2 text-sm text-white/70">Not read just now: {marketing.why}</p>
+        </section>
+      )}
       {/* The growth desk first (Law 8): today's tasks and the plan against the actual, then last week's detail. */}
       <GrowthDeskSection desk={desk} />
       <AcquisitionDeskSection acq={acq} />
