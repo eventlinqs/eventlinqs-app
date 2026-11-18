@@ -10,7 +10,7 @@ import type { SocialPlatform } from '@/lib/social/cadence'
  * (SOCIAL_CARD_FORMATS) are held to the same table by tests/unit/social/destination-specs.test.ts.
  */
 
-export type Destination = 'instagram_feed' | 'instagram_story' | 'facebook_feed'
+export type Destination = 'instagram_feed' | 'instagram_story' | 'facebook_feed' | 'facebook_story'
 export type ImageKind = 'jpeg' | 'png' | 'gif' | 'bmp' | 'tiff' | 'other'
 export type ImageFacts = { readonly width: number; readonly height: number; readonly bytes: number; readonly kind: ImageKind }
 
@@ -49,8 +49,21 @@ export const DESTINATION_SPECS: Readonly<Record<Destination, DestinationSpec>> =
     source: IG_MEDIA,
     quoted: ['Format: JPEG', 'File size: 8 MB maximum.', 'Aspect ratio: We recommended 9:16 to avoid cropping or blank space'],
   },
-  // A photo on our Facebook Page, from https://developers.facebook.com/docs/graph-api/reference/page/photos/ (Photo Specifications): no ratio or width is stated.
+  // A photo in our Facebook Page's feed: the file kinds and size from https://developers.facebook.com/docs/graph-api/reference/page/photos/ (Photo Specifications),
+  // which states no ratio. THE RATIO IS LAWAL'S RULING of 18 November 2026, 20:08 (through the PM's 20:15 item 1): a designed post goes to the
+  // Facebook feed on the same 4:5 file as the Instagram feed, and a taller file is refused, because the feed showed the 3:4 originals cut and the
+  // AMCF square narrower than its words. Meta's own statement that its feed crops taller images to 4:5 is UNSOURCED here: every Meta page answered
+  // 400 to a signed out read from the build machine at about 20:12 that day.
   facebook_feed: {
+    kinds: ['jpeg', 'bmp', 'png', 'gif', 'tiff'],
+    underBytes: 10_000_000,
+    ratio: { min: 4 / 5, max: 1.91 }, // Lawal's ruling of 18 November 2026, 20:08; Meta's feed crop to 4:5 UNSOURCED (its pages answer 400 signed out)
+    width: null,
+    source: `Lawal's ruling of 18 November 2026, 20:08, for the feed; ${FB_PHOTOS} for kinds and size`,
+    quoted: ['.jpeg, .bmp, .png, .gif, .tiff', 'Files can not exceed 10MB. For .png files, we recommend not exceeding 1MB or the image may appear pixelated.'],
+  },
+  // A story on our Facebook Page: Page photos' own rule (https://developers.facebook.com/docs/graph-api/reference/page/photos/), no ratio stated; we post none today.
+  facebook_story: {
     kinds: ['jpeg', 'bmp', 'png', 'gif', 'tiff'],
     underBytes: 10_000_000,
     ratio: null,
@@ -60,9 +73,9 @@ export const DESTINATION_SPECS: Readonly<Record<Destination, DestinationSpec>> =
   },
 }
 
-/** The destination of a post: Instagram's feed or story by the slides' format; every Facebook post is a Page photo. */
+/** The destination of a post: the feed or the story of Instagram or of our Facebook Page, by the slides' format. */
 export function destinationOf(platform: SocialPlatform, format: 'feed' | 'story'): Destination {
-  if (platform === 'facebook') return 'facebook_feed'
+  if (platform === 'facebook') return format === 'story' ? 'facebook_story' : 'facebook_feed'
   return format === 'story' ? 'instagram_story' : 'instagram_feed'
 }
 
