@@ -152,16 +152,24 @@ export async function readLiveRules(env, locked) {
       or: `(effective_until.is.null,effective_until.gt.${now})`,
       order: 'version.desc',
     })
-    let res
-    try {
-      res = await fetch(`${url}/rest/v1/pricing_rules?${q}`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-      })
-    } catch (e) {
-      return { reachable: false, ref: refFromUrl(url), rules: {}, readAs, error: e.message }
+    // A READ THAT ERRORS IS TRIED ONCE MORE (the PM's 13:38 of 18 November 2026): at 13:30:52 a passing network fault
+    // was reported as drift. A second failure is a failed read, said as one, never a verdict on the rates.
+    let res = null
+    let error = null
+    for (let attempt = 0; attempt < 2 && !res; attempt += 1) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000))
+      try {
+        const answer = await fetch(`${url}/rest/v1/pricing_rules?${q}`, {
+          headers: { apikey: key, Authorization: `Bearer ${key}` },
+        })
+        if (answer.ok) res = answer
+        else error = `HTTP ${answer.status} read as ${readAs}`
+      } catch (e) {
+        error = e.message
+      }
     }
-    if (!res.ok) {
-      return { reachable: false, ref: refFromUrl(url), rules: {}, readAs, error: `HTTP ${res.status} read as ${readAs}` }
+    if (!res) {
+      return { reachable: false, ref: refFromUrl(url), rules: {}, readAs, error }
     }
     const rows = await res.json()
     rules[r.key] = {
@@ -197,9 +205,10 @@ export const PRICING_LOCK_RULE = {
     if (!live.reachable) {
       return {
         ok: false,
+        kind: 'read_failed',
         reason:
-          `pricing_rules could not be read${live.error ? ` (${live.error})` : ''}, so the locked values are UNVERIFIED. ` +
-          `A build that cannot prove its own pricing must not ship.`,
+          `READ FAILED: pricing_rules could not be read${live.error ? ` (${live.error})` : ''}${live.error ? ', tried twice' : ''}, so the locked values are UNVERIFIED. ` +
+          `No rate was read, so nothing is said about the rates. A build that cannot prove its own pricing must not ship.`,
       }
     }
     const problems = []
@@ -221,9 +230,10 @@ export const PRICING_LOCK_RULE = {
     if (problems.length === 0) return { ok: true, warnings }
     return {
       ok: false,
+      kind: 'drift',
       warnings,
       reason:
-        `${problems.length} pricing rule(s) disagree with ${PRICING_DOC} on project ${live.ref}:\n` +
+        `DRIFT: ${problems.length} pricing rule(s) disagree with ${PRICING_DOC} on project ${live.ref}:\n` +
         problems.map(p => `      - ${p}`).join('\n') +
         `\n    Either the database drifted (apply the pricing lock migration) or the figures changed with founder approval (update ${PRICING_DOC} and commit it).`,
     }
