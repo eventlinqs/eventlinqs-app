@@ -860,5 +860,11 @@
   }
  ],
  "venue_distribution_off": [],
- "read_at": "2026-11-18T04:42:31.605174+00:00"
+ "read_at": "2026-11-18T04:42:31.605174+00:00",
+ "ticket_page_answers": {
+  "https://www.axs.com/au/events/1511305/lany-tickets": 403,
+  "https://groovytown.com.au/amomentofsanity": 200
+ },
+ "ticket_pages_read_at": "2026-11-18T17:07:33+1100",
+ "ticket_pages_read_by": "curl from the build machine with the gate's own agent, EventLinqs/1.0 (+https://www.eventlinqs.com.au), following redirects"
 }
