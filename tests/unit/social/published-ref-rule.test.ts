@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { PUBLIC_POST_URL, findHeldPostsOnBlotato, readBackPendingPosts } from '@/lib/social/store'
+import { PUBLIC_POST_URL, heldPostsNeedingInvestigation, readBackPendingPosts } from '@/lib/social/store'
 
 /*
  * THE PUBLISHED REFERENCE, AS THE DATABASE READS IT (the PM's 18:40 of 18 November 2026, item 1 (a)). The rule is the one
@@ -105,12 +105,12 @@ describe('every post Blotato accepted is read back to its public URL', () => {
   })
 })
 
-describe('a post Blotato accepted whose id was never kept is found in its published list by its words', () => {
+describe('a post Blotato accepted whose id was never kept is named for a person, never matched by its words', () => {
   const rows: Record<string, Record<string, unknown>[]> = {
     social_piece_schedules: [
-      { id: 'h1', piece_id: 'p1', platform: 'instagram', held_reason: 'new row for relation "social_piece_schedules" violates check constraint "social_piece_schedules_published_ref_check"' },
-      { id: 'h2', piece_id: 'p2', platform: 'instagram', held_reason: 'Sent as blotato:sub-2; the database refused that reference: x' },
-      { id: 'h3', piece_id: 'p3', platform: 'instagram', held_reason: 'Not published: LANY: its ticket page answers 403.' },
+      { id: 'h1', go_at: '2026-11-18T06:00:00Z', piece_id: 'p1', platform: 'instagram', held_reason: 'new row for relation "social_piece_schedules" violates check constraint "social_piece_schedules_published_ref_check"' },
+      { id: 'h2', go_at: '2026-11-18T07:00:00Z', piece_id: 'p2', platform: 'instagram', held_reason: 'Sent as blotato:sub-2; the database refused that reference: x' },
+      { id: 'h3', go_at: '2026-11-18T08:00:00Z', piece_id: 'p3', platform: 'instagram', held_reason: 'Not published: LANY: its ticket page answers 403.' },
     ],
     social_piece_revisions: [
       { piece_id: 'p1', version: 1, slides: [], caption: 'x', versions: { instagram: { caption: 'GroovyTown, Monday.\nLink in bio.' } }, made_by: 'edit', made_at: '2026-11-18T04:10:50Z', event_ids: [], picks: [], mode: 'photo_led', message: 'm' },
@@ -137,18 +137,17 @@ describe('a post Blotato accepted whose id was never kept is found in its publis
     },
   }
 
-  it('says each one found by its exact words, never touches a held row, and names what is not found', async () => {
-    const search = vi.fn(async () => [
-      { content: 'GroovyTown,   Monday.\nLink in bio.', postUrl: 'https://www.instagram.com/p/GT1/', createdAt: '2026-11-18T06:10:00Z' },
-      { content: 'Something else entirely.', postUrl: 'https://www.instagram.com/p/X/', createdAt: '2026-11-18T06:11:00Z' },
+  it('lists each held row whose id was never kept, by its piece, network and due time, and nothing else (Lawal 09:01 item 2)', async () => {
+    const out = await heldPostsNeedingInvestigation(db as never)
+    expect(out).toEqual([
+      'p1 on instagram, due 2026-11-18T06:00:00Z: requires investigation (accepted by Blotato, its id never kept)',
+      'p2 on instagram, due 2026-11-18T07:00:00Z: requires investigation (accepted by Blotato, its id never kept)',
     ])
-    const out = await findHeldPostsOnBlotato(db as never, search)
-    expect(search).toHaveBeenCalledTimes(1)
-    expect(out.found).toEqual(['p1 on instagram: https://www.instagram.com/p/GT1/'])
-    expect(out.missing).toEqual(["p2 on instagram: not in Blotato's published list by its words"])
   })
 
-  it('with no Blotato key there is nothing to look for', async () => {
-    expect(await findHeldPostsOnBlotato(db as never, null)).toEqual({ found: [], missing: [] })
+  it('matches no post by its caption anywhere in the store (status by provider id only)', () => {
+    const store = readFileSync(join(process.cwd(), 'src', 'lib', 'social', 'store.ts'), 'utf8')
+    expect(store).not.toContain('findHeldPostsOnBlotato')
+    expect(store).not.toMatch(/even\(i\.content\) === words/)
   })
 })

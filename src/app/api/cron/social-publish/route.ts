@@ -1,12 +1,14 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { socialPhaseAt } from '@/lib/ops/timetable'
+import { planCheckWords } from '@/lib/ops/plan-check'
+import { midnightIn } from '@/lib/dates/zone-midnight'
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
-import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -110,9 +112,8 @@ export async function GET(request: NextRequest) {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
       for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
       for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
-      const held = await findHeldPostsOnBlotato(db, socialPublishedSearchFromEnv())
-      for (const f of held.found) console.log(`[cron/social-publish] held but published, found on Blotato: ${f}`)
-      for (const m of held.missing) console.log(`[cron/social-publish] held, not found on Blotato: ${m}`)
+      const held = await heldPostsNeedingInvestigation(db)
+      for (const h of held) console.log(`[cron/social-publish] ${h}`)
     } catch (error) {
       console.error('[cron/social-publish] the posts waiting for their URL could not be read back:', error instanceof Error ? error.message : error)
     }
@@ -165,6 +166,22 @@ export async function GET(request: NextRequest) {
     // the phase this hour holds, its pieces scheduled and published as its units.
     const phase = socialPhaseAt(melbourneHour(now))
     if (phase) {
+      // THE DAILY PLAN CHECK (Lawal's 09:01 of 20 November 2026, item 3; src/lib/ops/plan-check.ts): at the schedule and live
+      // phases, the policy's own dry run and what is scheduled for the rest of the day, on the phase row itself. A read that
+      // fails is said on the row and fails the phase, never a calm one.
+      let plan: { readonly words: string; readonly failed: boolean } | null = null
+      if (phase === 'schedule' || phase === 'live') {
+        try {
+          const dry = await standingPolicyDryRun(db, { now, siteOrigin: getSiteUrl() })
+          // The end of Melbourne's today, as the 08:00 report reads it (src/lib/admin/morning-report.ts windowsAt).
+          const tomorrow = midnightIn(new Date(midnightIn(now, 'Australia/Melbourne').getTime() + 36 * 3_600_000), 'Australia/Melbourne')
+          const later = await db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'scheduled').gte('go_at', now.toISOString()).lt('go_at', tomorrow.toISOString())
+          if (later.error) throw new Error(`the rest of the day's schedule could not be read: ${later.error.message}`)
+          plan = planCheckWords(dry, later.count ?? 0)
+        } catch (fault) {
+          plan = { words: `plan: the check could not run: ${fault instanceof Error ? fault.message : String(fault)}`, failed: true }
+        }
+      }
       await recordPhaseRun(db, {
         phase,
         ride: 'social',
@@ -173,8 +190,8 @@ export async function GET(request: NextRequest) {
         // The pieces it drew again count as its work too (the PM's 04:51 of 20 November 2026: the 04:40 freeze drew six again
         // and read 0 units, so its time per unit measured nothing).
         units: scheduled.scheduled.length + published.published.length + redrawn.redrawn.length,
-        result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again`,
-        failed: published.held.length > 0,
+        result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again${plan ? `; ${plan.words}` : ''}`,
+        failed: published.held.length > 0 || plan?.failed === true,
       })
     }
     return NextResponse.json({ ok: true, redrawn, scheduled, published, planned })

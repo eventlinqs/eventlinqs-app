@@ -1,3 +1,4 @@
+import { LOST_ID } from './post-state'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
 import { generateShareCode, getOrCreateShareLink } from '@/lib/broadcast/share-links'
@@ -23,7 +24,7 @@ import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
-import type { BlotatoPostReader, BlotatoPublishedSearch } from './blotato-publisher'
+import type { BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -2176,39 +2177,26 @@ export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | nul
 }
 
 /**
- * A POST BLOTATO ACCEPTED BUT WHOSE ID WAS NEVER KEPT, FOUND IN BLOTATO'S OWN LIST (the PM's 18:40 of 18 November 2026,
- * item 2): a held row whose reason is the database's refusal of its reference, or begins 'Sent as blotato:', is looked
- * for among Blotato's published posts on its platform by the exact words its piece sent (that platform's caption,
- * spaces evened). A held row stays as it is, so each one found is said, never written. Read only towards Blotato.
+ * A POST BLOTATO ACCEPTED BUT WHOSE ID WAS NEVER KEPT, NAMED FOR A PERSON (Lawal's 09:01 of 20 November 2026, item 2:
+ * "status by stable provider id, never caption matching"). Until then each such held row was looked for in Blotato's
+ * published list by its caption's words. Now each is listed by its piece, network and the time it was due, for a person
+ * to read on Blotato by that time; nothing is matched by words and no row is touched. Read only.
  */
-export async function findHeldPostsOnBlotato(db: Db, search: BlotatoPublishedSearch | null): Promise<{ readonly found: string[]; readonly missing: string[] }> {
-  if (search === null) return { found: [], missing: [] }
-  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, platform, held_reason').eq('state', 'held').order('go_at', { ascending: false }).limit(60)
+export async function heldPostsNeedingInvestigation(db: Db): Promise<readonly string[]> {
+  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, platform, go_at, held_reason').eq('state', 'held').order('go_at', { ascending: false }).limit(60)
   if (error) throw new Error(`the held posts could not be read: ${error.message}`)
-  const sent = (data ?? []).filter((r) => /social_piece_schedules_published_ref_check|^Sent as blotato:/.test(String(r.held_reason ?? '')))
-  const even = (t: string) => t.replace(/\s+/g, ' ').trim()
-  const lists = new Map<string, readonly { readonly content: string; readonly postUrl: string | null }[]>()
-  const found: string[] = []
-  const missing: string[] = []
-  for (const r of sent) {
-    const platform = String(r.platform)
-    if (!lists.has(platform)) lists.set(platform, await search(platform))
-    const rev = await newestRevision(db, String(r.piece_id))
-    const words = even(rev?.versions[platform as SocialPlatform]?.caption ?? '')
-    const match = words ? lists.get(platform)!.find((i) => even(i.content) === words && i.postUrl !== null && PUBLIC_POST_URL.test(i.postUrl)) : undefined
-    if (match) found.push(`${String(r.piece_id)} on ${platform}: ${match.postUrl}`)
-    else missing.push(`${String(r.piece_id)} on ${platform}: not in Blotato's published list by its words`)
-  }
-  return { found, missing }
+  return (data ?? [])
+    .filter((r) => LOST_ID.test(String(r.held_reason ?? '')))
+    .map((r) => `${String(r.piece_id)} on ${String(r.platform)}, due ${String(r.go_at)}: requires investigation (accepted by Blotato, its id never kept)`)
 }
 
-export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>> {
-  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>()
+export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]>> {
+  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]>()
   if (pieceIds.length === 0) return out
-  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
+  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, published_ref, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
   for (const r of data ?? []) {
     const list = out.get(r.piece_id as string) ?? []
-    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null })
+    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null, publishedRef: (r.published_ref as string | null) ?? null })
     out.set(r.piece_id as string, list)
   }
   return out

@@ -1,3 +1,4 @@
+import { postState } from '@/lib/social/post-state'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
@@ -185,12 +186,13 @@ function Piece({ p }: { p: PieceRow }) {
         <p data-schedule className="mt-2 text-sm text-[var(--admin-soft)]">
           {p.schedule
             .map((s) =>
-              s.state === 'held'
-                ? `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: held, ${s.heldReason}`
-                : `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${s.state === 'published' ? 'published' : 'scheduled for'} ${formatPlatformDateTime(s.goAt)}`,
+              // Each post's state by its provider's own id (src/lib/social/post-state.ts): submitted is never called published.
+              postState(s).state === 'scheduled'
+                ? `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: scheduled for ${formatPlatformDateTime(s.goAt)}`
+                : `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${postState(s).words}`,
             )
             .join('. ')}
-          . It goes by itself only once Meta approves our app and publishing is switched on; until then post it by hand and record it below.
+          . A post goes by itself only while publishing is switched on, and is called published only once its public address is read back.
         </p>
       ) : null}
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-[150px_minmax(0,1fr)]">
