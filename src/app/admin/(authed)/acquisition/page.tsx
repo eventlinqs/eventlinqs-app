@@ -84,6 +84,11 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
           {WEIGHTS.value}, readiness {WEIGHTS.readiness}, detail {WEIGHTS.completeness}, partnership {WEIGHTS.partnership}. The score sets who is asked first;
           it predicts nothing.
         </p>
+        <p className="mt-2 text-sm">
+          <Link prefetch={false} href="/admin/acquisition/board" className="underline underline-offset-2">
+            The pipeline as a board, by Lawal&apos;s stages
+          </Link>
+        </p>
       </header>
 
       {said === undefined ? null : (

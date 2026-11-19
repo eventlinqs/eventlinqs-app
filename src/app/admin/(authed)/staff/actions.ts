@@ -12,7 +12,8 @@ import {
   STAFF_CAPABILITIES,
 } from '@/lib/admin/admin-staff'
 
-const RoleEnum = z.enum(['super_admin', 'admin', 'support', 'moderator'])
+// Only the roles a person is given (ASSIGNABLE_ADMIN_ROLES): Owner, Operations, Viewer (law 33 (f)).
+const RoleEnum = z.enum(['super_admin', 'admin', 'viewer'])
 
 function assertStaffManager(session: Awaited<ReturnType<typeof requireAdminSession>>) {
   assertCan(session, 'admin.invites.manage')
