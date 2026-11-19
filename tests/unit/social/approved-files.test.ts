@@ -37,7 +37,7 @@ describe('an approved file slide', () => {
     // 18 November 2026; C:\dev\EVIDENCE\EL-18NOV\fit45), nothing cropped or changed.
     expect(names).toEqual([
       '11-lany-feed.jpg', '13-organisers-feed.jpg', '14-organisers-story.jpg', '15-organisers-square.jpg', '16-lany-story.jpg',
-      '17-groovytown-feed.jpg', '18-groovytown-story.jpg', '20-amcf-feed.jpg', '21-amcf-square.jpg', '22-amcf-story-clean.jpg', '22-amcf-story.jpg',
+      '17-groovytown-feed.jpg', '18-groovytown-story.jpg', '20-amcf-feed.jpg', '21-amcf-square.jpg', '22-amcf-story-clean.jpg', '22-amcf-story-nolink.jpg', '22-amcf-story.jpg',
       'amcf-feed-ig45-clean.jpg', 'amcf-feed-ig45.jpg', 'groovytown-feed-ig45.jpg', 'lany-feed-ig45.jpg', 'organisers-feed-ig45.jpg',
     ])
     for (const n of names) {
