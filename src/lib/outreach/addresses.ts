@@ -1,4 +1,5 @@
 import type { CommsCategory } from '@/lib/comms/categories'
+import { contactAddress } from '@/lib/email/sender'
 
 /**
  * EACH MESSAGE TYPE TO ITS ADDRESS, ONE TABLE (law 33 (a), Lawal's 13:47 of 19 November 2026, through the PM's 13:50 item
@@ -13,8 +14,9 @@ import type { CommsCategory } from '@/lib/comms/categories'
  * message whose category is not on its record, so nothing goes from a guessed address.
  */
 
-export const LAWAL_MAILBOX = 'lawal@eventlinqs.com'
-export const HELLO_MAILBOX = 'hello@eventlinqs.com'
+// Derived from the one domain (src/lib/email/sender.ts contactAddress; scripts/guards/one-contact-domain.mjs), never typed.
+export const LAWAL_MAILBOX = contactAddress('founder')
+export const HELLO_MAILBOX = contactAddress('hello')
 
 export type FromMailbox = 'lawal' | 'hello'
 
