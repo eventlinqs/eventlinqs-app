@@ -28,8 +28,8 @@ for (const r of rides) {
     let wf = ''
     try {
       wf = readFileSync(r.path, 'utf8')
-    } catch {
-      faults.push(`the table's ride '${r.ride}' names ${r.path}, which does not exist`)
+    } catch (err) {
+      faults.push(`the table's ride '${r.ride}' names ${r.path}, which could not be read (${err instanceof Error ? err.message : String(err)})`)
       continue
     }
     if (!wf.includes(`- cron: '${r.schedule}'`)) faults.push(`${r.path} does not schedule '${r.schedule}', which the timetable says for '${r.ride}'. Change both in one change, the table first.`)
@@ -62,8 +62,8 @@ for (const r of rides) {
   let text = ''
   try {
     text = readFileSync(file, 'utf8')
-  } catch {
-    faults.push(`the ride '${r.ride}' names ${r.path}, which has no route at ${file}`)
+  } catch (err) {
+    faults.push(`the ride '${r.ride}' names ${r.path}, which has no readable route at ${file} (${err instanceof Error ? err.message : String(err)})`)
     continue
   }
   if (!text.includes('recordPhaseRun(') || !text.includes(`ride: '${r.ride}'`)) {
