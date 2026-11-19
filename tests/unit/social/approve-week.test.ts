@@ -1,5 +1,26 @@
 import { describe, expect, it, vi } from 'vitest'
-import { approveWeek } from '@/lib/social/store'
+import { approveWeek, NEVER_POSTED_KINDS, policyPieces } from '@/lib/social/store'
+
+/*
+ * THE STANDING PUBLISHING POLICY (law 31, Lawal's 12:03 of 19 November 2026): the social run approves the week's drafted
+ * pieces itself, through the same checked approval, but never the two older planner looks that never post (law 26).
+ */
+describe('the standing policy approves', () => {
+  const row = (id: string, kind: string) => ({ id, kind, state: 'drafted' as const, partnerName: kind === 'partner_kit' ? 'Aireys Pub' : null, city: 'geelong' })
+  it('every kind of piece but a daily poster and a partner kit', () => {
+    expect([...NEVER_POSTED_KINDS].sort()).toEqual(['daily_poster', 'partner_kit'])
+    const out = policyPieces([row('a', 'coming_up'), row('b', 'daily_poster'), row('c', 'partner_kit'), row('d', 'tonight'), row('e', 'week_ahead')])
+    expect(out.map((p) => p.id)).toEqual(['a', 'd', 'e'])
+    expect(out[0]).toEqual({ id: 'a', state: 'drafted', label: 'coming up, geelong' })
+  })
+  it('through the checked approval, so a piece outside the policy is held with its reason', async () => {
+    const approveOne = vi.fn(async (id: string) => (id === 'd' ? { state: 'refused' as const, reason: 'Not approved yet: LANY: its ticket page answers 403.' } : { state: 'done' as const }))
+    const done = await approveWeek(policyPieces([row('a', 'coming_up'), row('b', 'daily_poster'), row('d', 'tonight')]), approveOne)
+    expect(approveOne.mock.calls.map((c) => c[0])).toEqual(['a', 'd'])
+    expect(done.approved).toEqual(['a'])
+    expect(done.held).toEqual([{ id: 'd', label: 'tonight, geelong', reason: 'Not approved yet: LANY: its ticket page answers 403.' }])
+  })
+})
 
 /*
  * THE WEEK APPROVED IN ONE PRESS (the release checklist's B3: "Approve control per post and per week"). The same checked
