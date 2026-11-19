@@ -28,7 +28,7 @@ export function TimetableBoard({ read }: { read: { rows: TimetableRow[] } | { un
       ) : (
         <ol className="mt-3 divide-y divide-[var(--admin-line)]">
           {read.rows.map((r) => (
-            <li key={r.phase.key} data-phase={r.phase.key} data-state={r.state} className="grid grid-cols-1 gap-1 py-2 text-sm sm:grid-cols-[7rem_1fr_7rem] sm:items-baseline sm:gap-3">
+            <li key={r.phase.key} data-phase={r.phase.key} data-state={r.state} className="grid grid-cols-1 gap-1 py-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)_7rem] sm:items-baseline sm:gap-3">
               <span className="font-medium text-[var(--admin-ink)]">
                 {r.phase.nightBefore ? `${r.phase.slot} (night before)` : r.phase.slot}
               </span>
