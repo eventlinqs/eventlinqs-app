@@ -123,6 +123,7 @@
     "/admin/notifications": 159711,
     "/admin/opportunity": 157450,
     "/admin/eligibility": 157450,
+    "/admin/engine": 157450,
     "/admin/orders": 157306,
     "/admin/orders/[orderId]": 160190,
     "/admin/orders/unfulfilled": 158522,

@@ -29,9 +29,10 @@ walk(ROOT)
 const writes = []
 for (const f of files) {
   const text = readFileSync(f, 'utf8').replace(/\r\n/g, '\n')
-  // A Supabase update of the sender whose object names the mode, within the call.
+  // A Supabase update of the sender whose object names the mode, within the call: as 'mode: x' or as the shorthand
+  // '{ mode, ... }' the admin switch writes (the first version read only 'mode:' and failed its own one path).
   for (const m of text.matchAll(/from\(\s*['"]outreach_sender['"]\s*\)\s*\.\s*(update|upsert|insert)\s*\(\s*\{([^}]*)\}/g)) {
-    if (/\bmode\s*:/.test(m[2])) writes.push(f)
+    if (/(?:^|[\s,])mode\s*(?:[:,]|$)/.test(m[2])) writes.push(f)
   }
   // SQL in a string: an update of the sender that sets its mode.
   if (/update\s+(public\.)?outreach_sender\s+set\s+[^;'"`]*\bmode\s*=/i.test(text)) writes.push(f)
