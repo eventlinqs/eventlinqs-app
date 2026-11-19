@@ -115,7 +115,7 @@ export default async function PhotoPage({
               </div>
               <label className={CHECK}>
                 <input type="checkbox" name="rights" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
-                <span>I took these or have the right to share them, and EventLinqs may use them where I ticked above, for this night only.</span>
+                <span>I took these or have the right to share them, anyone identifiable in them has agreed, and EventLinqs may use them where I ticked above, for this night only.</span>
               </label>
               <Button type="submit" variant="primary" size="lg" className="w-full sm:w-auto">
                 Add my photos

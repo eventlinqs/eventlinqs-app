@@ -27,7 +27,7 @@ describe('the uses they choose', () => {
 describe('their yes, in their words', () => {
   it('names who gave it, for whom, the night, the images and the uses', () => {
     expect(grantWording({ givenBy: ' Iryna Koval ', organiserName: 'Ukrainian Sounds', nightTitle: 'Kyivska Perepichka', uses: 'site', count: 3 })).toBe(
-      "Iryna Koval, for Ukrainian Sounds: I took the 3 images I added for Kyivska Perepichka, or have the right to share them, and EventLinqs may use them on this night's own page and cards on EventLinqs.",
+      "Iryna Koval, for Ukrainian Sounds: I took the 3 images I added for Kyivska Perepichka, or have the right to share them, anyone identifiable in them has agreed, and EventLinqs may use them on this night's own page and cards on EventLinqs (declaration of 19 November 2026).",
     )
     expect(grantWording({ givenBy: 'Iryna', organiserName: 'U', nightTitle: 'K', uses: 'social', count: 1 })).toContain('I took the image I added for K, or have the right to share it')
   })

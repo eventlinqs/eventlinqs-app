@@ -25,10 +25,36 @@ export function permittedUsesWords(uses: PhotoUses): string {
   return `${USE_WORDS[uses].charAt(0).toUpperCase()}${USE_WORDS[uses].slice(1)}, as the organiser chose on their EventLinqs photo page; this night only, not paid advertising.`
 }
 
+/**
+ * THE ORGANISER MEDIA DECLARATION, version of 19 November 2026 (law 32, the PM's 13:30, on Lawal's 13:20): the organiser
+ * confirms they own the images or hold the rights EventLinqs needs, INCLUDING the agreement of anyone identifiable in
+ * them, for the uses they tick and that night only. A yes given before this date keeps the words it was given in.
+ */
+export const DECLARATION_VERSION = '19 November 2026'
+
+/**
+ * THE ONE DECISION FOR AN ORGANISER'S IMAGE (law 32 (c) and (e)): approved when the organiser's grant covers where it
+ * goes and no concrete concern is written down; otherwise held with its own reason. The concerns are the only ones
+ * law 32 names, each with evidence written beside it: they say they lack the rights, another owner's mark with no
+ * licence, an objection or takedown from a person shown, or sensitive content (names or schools attached to children,
+ * a private setting, distress, anything sexual). What the image shows is never a reason by itself: children or a
+ * family in an organiser's photograph of their own public event are not a concern (Lawal, 19 November 2026, 13:20).
+ */
+export type MediaConcern = 'rights_denied' | 'third_party_mark' | 'objection' | 'sensitive'
+export type MediaDecision = { readonly state: 'approved' } | { readonly state: 'held'; readonly reason: 'no_authorisation' | 'outside_scope' | MediaConcern }
+
+export function mediaDecision(input: { readonly grant: { readonly uses: PhotoUses } | null; readonly placement: 'site' | 'social'; readonly concerns?: readonly MediaConcern[] }): MediaDecision {
+  const concern = input.concerns?.[0]
+  if (concern) return { state: 'held', reason: concern }
+  if (input.grant === null) return { state: 'held', reason: 'no_authorisation' }
+  if (input.grant.uses !== 'both' && input.grant.uses !== input.placement) return { state: 'held', reason: 'outside_scope' }
+  return { state: 'approved' }
+}
+
 /** Their yes, as the page put it to them and as they gave it. */
 export function grantWording(input: { readonly givenBy: string; readonly organiserName: string; readonly nightTitle: string; readonly uses: PhotoUses; readonly count: number }): string {
   const images = input.count === 1 ? 'the image' : `the ${input.count} images`
-  return `${input.givenBy.trim()}, for ${input.organiserName.trim()}: I took ${images} I added for ${input.nightTitle.trim()}, or have the right to share ${input.count === 1 ? 'it' : 'them'}, and EventLinqs may use ${input.count === 1 ? 'it' : 'them'} ${USE_WORDS[input.uses]}.`
+  return `${input.givenBy.trim()}, for ${input.organiserName.trim()}: I took ${images} I added for ${input.nightTitle.trim()}, or have the right to share ${input.count === 1 ? 'it' : 'them'}, anyone identifiable in ${input.count === 1 ? 'it' : 'them'} has agreed, and EventLinqs may use ${input.count === 1 ? 'it' : 'them'} ${USE_WORDS[input.uses]} (declaration of ${DECLARATION_VERSION}).`
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']

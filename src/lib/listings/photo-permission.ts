@@ -8,7 +8,7 @@ import { addAsset, decideAsset, pendingAssetId } from '@/lib/social/store'
 import { EVENT_PHOTO_BOX, fitsEventPhotoBox } from '@/lib/media/limits'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { storeImage, type MediaDeps } from './organiser-media'
-import { grantWording, nightNamedBy, permittedUsesWords, type PhotoUses } from './photo-permission-math'
+import { grantWording, mediaDecision, nightNamedBy, permittedUsesWords, type PhotoUses } from './photo-permission-math'
 
 /**
  * AN ORGANISER'S PHOTOS, GIVEN THROUGH THEIR SECURE LINK (Lawal, 12 November 2026, 12:01, item 2; the Growth OS order's
@@ -179,7 +179,9 @@ export async function givePhotos(
     // permission ticked and the uses chosen, has passed every check above, so it is approved now, scoped exactly to the
     // ticked uses and that night (the register row carries both). No founder review. An admin can still withdraw it.
     const assetId = await pendingAssetId(db as never, night.eventId, stored.url)
-    if (assetId) {
+    // The one decision (law 32): their declaration on this page is the grant, for the uses they ticked.
+    const decided = mediaDecision({ grant: { uses: input.uses }, placement: input.uses === 'social' ? 'social' : 'site' })
+    if (assetId && decided.state === 'approved') {
       const ok = await decideAsset(db as never, { id: assetId, decision: 'approved', by: founder.id, now: input.now })
       if (ok.state === 'done') applied.push(stored.url)
     }
