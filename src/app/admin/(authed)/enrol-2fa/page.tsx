@@ -111,7 +111,7 @@ export default async function EnrolTwoFactorPage() {
             <div
               role="img"
               aria-label="QR code carrying your one-time two-factor secret. Scan it with your authenticator app, or use the URI below."
-              className="w-full max-w-[248px] rounded-lg border border-[var(--admin-line)] bg-[var(--admin-ink)] p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+              className="w-full max-w-[248px] rounded-lg border border-[var(--admin-line)] bg-white p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           </div>

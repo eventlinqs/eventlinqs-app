@@ -479,7 +479,7 @@ describe('a-table-a-phone-can-read, the admin scope', () => {
     })
 
     it('draws the card on both skins, so neither is invisible on its own surface', () => {
-      expect(ADMIN_ROW).toContain('max-lg:bg-[#131A2A]')
+      expect(ADMIN_ROW).toContain('max-lg:bg-[var(--admin-paper)]')
       expect(ADMIN_ROW_LIGHT).toContain('max-lg:bg-white')
     })
   })

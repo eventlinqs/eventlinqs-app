@@ -131,9 +131,9 @@ export const ADMIN_EMPTY_CELL = 'px-4 py-10 text-center text-[var(--admin-muted)
 /* THE LIGHT SKIN. /admin/health only, and it says so.                         */
 /* -------------------------------------------------------------------------- */
 
-export const ADMIN_TABLE_WRAP_LIGHT = `border border-ink-200 bg-[var(--admin-ink)] ${WRAP_SHAPE}`
+export const ADMIN_TABLE_WRAP_LIGHT = `border border-ink-200 bg-white ${WRAP_SHAPE}`
 
-export const ADMIN_ROW_LIGHT = `border-b border-ink-100 last:border-0 max-lg:border max-lg:border-ink-200 max-lg:bg-[var(--admin-ink)] ${ROW_SHAPE}`
+export const ADMIN_ROW_LIGHT = `border-b border-ink-100 last:border-0 max-lg:border max-lg:border-ink-200 max-lg:bg-white ${ROW_SHAPE}`
 
 export const ADMIN_THEAD_LIGHT =
   'border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400 max-lg:hidden'
