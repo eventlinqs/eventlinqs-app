@@ -23,6 +23,8 @@ export type Decision = {
   readonly greetingName: string
   readonly ourSubject: string | null
   readonly ourSentAt: string | null
+  /** Their message's internet message id, by which its attachments are read from the mailbox. */
+  readonly sourceMessageId: string | null
 }
 
 /** The name the greeting takes: the person on their own record, else their organisation's team (the gateway's rule). */
@@ -41,7 +43,7 @@ export function proposedReply(greetingName: string, replySignature: readonly str
 export async function readDecisions(db: Admin, limit = 25): Promise<Decision[]> {
   const r = await db
     .from('outreach_replies')
-    .select('id, received_at, outcome, confidence, wording, contact_id, touch_id')
+    .select('id, received_at, outcome, confidence, wording, contact_id, touch_id, source_message_id')
     .eq('needs_lawal', true)
     .order('received_at', { ascending: false })
     .limit(limit)
@@ -78,6 +80,7 @@ export async function readDecisions(db: Admin, limit = 25): Promise<Decision[]> 
       greetingName: greetingNameFor(c?.person_name as string | null, organiser),
       ourSubject: (t?.subject as string | null) ?? null,
       ourSentAt: (t?.sent_at as string | null) ?? null,
+      sourceMessageId: (x.source_message_id as string | null) ?? null,
     }
   })
 }

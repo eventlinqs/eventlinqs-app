@@ -9,6 +9,8 @@ import type { Figures } from '@/lib/comms/centre-math'
 import { proposedReply, readDecisions } from '@/lib/comms/decisions'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
 import { approveAndSendAction, closeWithoutReplyAction } from './actions'
+import { graphConfigFromEnv } from '@/lib/outreach/graph'
+import { graphIdOf, graphPhotosOf, type InboundAttachment } from '@/lib/comms/inbound-attachments'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -50,6 +52,26 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
   const db = createAdminClient()
   const [centre, decisions] = await Promise.all([readCentre(db, new Date()), readDecisions(db)])
   const signature = readVoicePolicy().replySignature
+  // The photographs an organiser attached, listed from the outreach mailbox itself (law 30, section 4 A); a read that
+  // fails says so on the reply and never stops the page.
+  const photos = new Map<string, InboundAttachment[] | string>()
+  const withPhotos = decisions.filter((d) => d.outcome === 'photographs' && d.sourceMessageId)
+  if (withPhotos.length > 0) {
+    const sender = await db.from('outreach_sender').select('from_address').eq('id', true).single()
+    const cfg = sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
+    for (const d of withPhotos) {
+      if (!cfg) {
+        photos.set(d.replyId, 'The outreach mailbox is not connected here, so the photographs cannot be shown.')
+        continue
+      }
+      try {
+        const graphId = await graphIdOf(cfg, d.sourceMessageId as string)
+        photos.set(d.replyId, graphId ? await graphPhotosOf(cfg, graphId) : 'The message is no longer in the mailbox.')
+      } catch {
+        photos.set(d.replyId, 'The photographs could not be read from the mailbox just now.')
+      }
+    }
+  }
 
   return (
     <div>
@@ -80,6 +102,25 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
               </p>
               {d.ourSubject ? <p className="mt-1 text-sm text-[var(--admin-soft)]">Answering our message: {d.ourSubject}</p> : null}
               <blockquote className="mt-3 whitespace-pre-wrap rounded-md bg-[var(--admin-tint)] p-3 text-sm text-[var(--admin-soft)]">{d.theirWords}</blockquote>
+              {(() => {
+                const shown = photos.get(d.replyId)
+                if (shown === undefined) return null
+                if (typeof shown === 'string') return <p className="mt-3 text-sm text-[var(--admin-soft)]">{shown}</p>
+                return (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-[var(--admin-ink)]">{shown.length === 1 ? 'One photograph attached' : `${shown.length} photographs attached`}</p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {shown.map((a) => (
+                        <li key={a.id}>
+                          <a href={`/admin/comms/photo/${d.replyId}/${encodeURIComponent(a.id)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--admin-line-strong)] px-3 text-sm text-[var(--admin-ink)] hover:bg-[var(--admin-tint-strong)]">
+                            {a.name} ({Math.max(1, Math.round(a.size / 1024))} KB)
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })()}
               {d.channel === 'email' ? (
                 <form action={approveAndSendAction} className="mt-4 grid gap-3">
                   <input type="hidden" name="replyId" value={d.replyId} />
