@@ -182,6 +182,12 @@ export function judgeWorkerCaching(source) {
     failures.push(
       `${APP_WORKER}: the navigation branch does not go to the network first and fall back only on a refusal. A navigation answered from a cache is a stale price shown to a buyer.`,
     )
+  } else if (!/if \(self\.navigator && self\.navigator\.onLine === false\) \{\s*event\.respondWith\(/.test(source)) {
+    // THE P0 OF 19 NOVEMBER 2026, 11:33: an online visitor (Lawal, on his phone) was shown "You are offline", because the
+    // branch answered every navigation and any rejected fetch with the offline document. It answers only offline.
+    failures.push(
+      `${APP_WORKER}: the navigation branch answers while the browser is online. Only when navigator.onLine is false may it take a navigation; online, a slow or failing page is the browser's own, never the offline page.`,
+    )
   } else {
     judged += 1
   }
