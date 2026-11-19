@@ -142,6 +142,8 @@ export type CollectionStore = {
   holdLeftSource?(rows: { eventId: string; seriesId: string; sourceId: string; listUrl: string }[], at: Date): Promise<number>
   /** Releases the 'left_source' holds on nights this read carried again; returns how many. */
   releaseLeftSource?(eventIds: readonly string[], sourceId: string, at: Date): Promise<number>
+  /** Writes a whole read on every open 'left_source' hold naming this list whose night it still does not carry (./left-source-store.ts). */
+  recordLeftSourceRereads?(input: { readonly sourceId: string; readonly listUrl: string; readonly carried: ReadonlySet<string>; readonly at: Date }): Promise<number>
   /** Keeps the validators the source's list answered with, for the next conditional read (listing_sources.last_etag, ...). */
   noteValidators?(sourceId: string, etag: string | null, lastModified: string | null): Promise<void>
 }
@@ -516,6 +518,17 @@ export async function runCollection(
                 if (back > 0) leftSaid += `; ${back} night(s) back on its list shown again`
               } catch (err) {
                 console.error('[collection] nights back on the list could not be released:', err instanceof Error ? err.message : err)
+              }
+            }
+            /* A whole read that still does not carry a held night is written on its hold, so the hold reads as checked
+               (main's engine verifier, 19 November 2026; ./left-source-store.ts leftSourceRereads). Before holding this
+               read's own leavers, so a hold made now is not also read again. Never stops the read. */
+            if (complete && !stoppedBy && store.recordLeftSourceRereads) {
+              try {
+                const reread = await store.recordLeftSourceRereads({ sourceId: source.id, listUrl: source.pageUrl, carried, at: now })
+                if (reread > 0) leftSaid += `; ${reread} held night(s) still off its list, read again`
+              } catch (err) {
+                console.error('[collection] the held nights could not be read again:', err instanceof Error ? err.message : err)
               }
             }
             if (complete && !stoppedBy && store.holdLeftSource) {

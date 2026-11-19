@@ -642,7 +642,24 @@ export function nightKind(n: Pick<CampaignNight, 'title' | 'summary' | 'venueNam
 
 /** The place a post names (fix 4): the venue row's own name; with no venue row, the listing's venue name. */
 export function placeOf(n: Pick<CampaignNight, 'venueName' | 'placeName'>): string | null {
-  return n.placeName === undefined ? n.venueName : n.placeName
+  const place = n.placeName === undefined ? n.venueName : n.placeName
+  return place ? notAStreet(place) || null : place
+}
+
+/** A street address: a number, a street name and its kind of road ('1 Sailors Gully Road'). */
+const STREET_ADDRESS = /^\d+[a-z]?(?:[-/]\d+[a-z]?)?\s+[A-Za-z'\u2019. -]+?\s(?:Road|Rd|Street|St|Avenue|Ave|Lane|Ln|Parade|Pde|Drive|Dr|Highway|Hwy|Court|Ct|Place|Pl|Terrace|Tce|Crescent|Cres|Way|Boulevard|Blvd|Close|Square|Sq|Esplanade|Esp|Grove|Gr)\b\.?/i
+
+/**
+ * A PLACE IS NEVER A BARE STREET ADDRESS (the PM's round 3 verdict of 19 November 2026, item 3: Bendigo's card named
+ * '1 Sailors Gully Road, Eaglehawk'). A venue's own name stands as it is; a listing whose place is only a street names
+ * its suburb (the part after the street, never a postcode or a state), or nothing. Pure.
+ */
+export function notAStreet(place: string): string {
+  const p = place.replace(/\s+/g, ' ').trim()
+  if (!STREET_ADDRESS.test(p)) return p
+  // Each part after the street with its state and postcode taken off ('Fitzroy VIC 3065' reads 'Fitzroy').
+  const rest = p.split(',').slice(1).map((x) => x.trim().replace(/\s+(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\b.*$/i, '').replace(/\s*\d{4}$/, '').trim())
+  return rest.find((x) => x && !/\d/.test(x) && !/^(VIC|NSW|QLD|SA|WA|TAS|NT|ACT|Victoria|Australia)$/i.test(x)) ?? ''
 }
 
 /** The composition a night's slide takes, by its category and admission (the 14:08's list). */
@@ -1346,7 +1363,15 @@ export function tagsFor(city: CampaignCity, extra: string | null): string {
   return [`#${city.slug}`, `#${city.slug}events`, extra].filter(Boolean).slice(0, 3).join(' ')
 }
 
+/**
+ * NO CAPTION CARRIES A PHOTO CREDIT LINE (Lawal, 19 November 2026, 11:36: 'You don't put no photo credit'; the PM's
+ * round 3 verdict, item 4: free week Melbourne's caption ended 'Photo: AMCF, past festival'). The organiser's declaration
+ * records the right; the caption does not carry it. A switch, never a deletion (law 13).
+ */
+export const CAPTION_PHOTO_CREDITS = false
+
 export function creditsOf(nights: readonly CampaignNight[]): string {
+  if (!CAPTION_PHOTO_CREDITS) return ''
   const credits = [...new Set(nights.map((n) => (n.approvedPhotoUrl ? n.photoCredit : null)).filter((c): c is string => Boolean(c)))]
   return credits.map((c) => creditLine(c)).filter((c): c is string => Boolean(c)).join('\n')
 }
@@ -1464,7 +1489,8 @@ export function rowLine(n: CampaignNight, sessions: readonly CampaignNight[] = [
   const days = [...new Set(all.map(day))]
   const list = (xs: readonly string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
   const when = days.length === 1 ? `${days[0]}, ${list(all.map(clockWords))}` : list(days.map((d) => `${d}, ${list(all.filter((x) => day(x) === d).map(clockWords))}`))
-  return `${when}: ${n.title}${place && n.venueName ? `, ${n.venueName}` : ''}`
+  const where = placeOf(n)
+  return `${when}: ${n.title}${place && where ? `, ${where}` : ''}`
 }
 
 /**
@@ -1485,8 +1511,15 @@ export function listCaptions(input: {
   readonly crop: '4:5' | '9:16'
   /** The link line's words: 'Times and tickets for all five' for a city's list, 'Event details and tickets' for a venue's. */
   readonly lead?: string
+  /**
+   * The show's other sessions the slides fold into its card ('Fri 20 & Sat 21'): the caption runs in time from each
+   * show's FIRST session (the PM's round 3 verdict, item 3: Bendigo's 'From Showtime on Saturday to Witness for the
+   * Prosecution on Saturday', when Witness opens on Friday).
+   */
+  readonly sessionsOf?: (n: CampaignNight) => readonly CampaignNight[]
 }): { hook: string; caption: string; versions: PiecePlan['versions'] } {
-  const sorted = [...input.nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const firstOf = (n: CampaignNight) => [n, ...(input.sessionsOf?.(n) ?? [])].reduce((a, b) => (Date.parse(b.startDate) < Date.parse(a.startDate) ? b : a))
+  const sorted = [...input.nights].sort((a, b) => Date.parse(firstOf(a).startDate) - Date.parse(firstOf(b).startDate))
   const titles = [...new Set(sorted.map((n) => n.title))]
   const weekday = (n: CampaignNight) => local(n.startDate, n.timezone, { weekday: 'long' })
   const first = sorted.find((n) => n.title === titles[0])
@@ -1494,7 +1527,7 @@ export function listCaptions(input: {
   // One line on the experience, from the rows' own facts only: where the list runs from and to.
   const experience =
     titles.length >= 2 && first && last && `${titles[0]}${titles[titles.length - 1]}`.length <= 110
-      ? `From ${titles[0]} on ${weekday(first)} to ${titles[titles.length - 1]} on ${weekday(last)}.`
+      ? `From ${titles[0]} on ${weekday(firstOf(first))} to ${titles[titles.length - 1]} on ${weekday(last)}.`
       : null
   const free = sorted.every((n) => n.cta.state === 'free_open' || n.cta.state === 'free_registration')
   const all = input.rows.length >= 2 ? ` for all ${countWord(input.rows.length).toLowerCase()}` : ''
@@ -1645,7 +1678,7 @@ export function planCampaign(input: {
     if (ahead.length >= 2) {
       for (const n of ahead) listed.add(n.eventId)
       const aheadSlides = lockedListSlides(ahead, [`${ahead.length} ${countNoun(ahead)} on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
-      const aheadWords = listCaptions({ hook: `${listEmoji(ahead, false)} ${countPhrase(ahead)} in ${city.name} this week.`, nights: ahead, rows: oncePerTitle(ahead).map((n) => rowLine(n, ahead)), pictured: picturedLine(aheadSlides), place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '4:5' })
+      const aheadWords = listCaptions({ sessionsOf: (n) => sessionsOf(n), hook: `${listEmoji(ahead, false)} ${countPhrase(ahead)} in ${city.name} this week.`, nights: ahead, rows: oncePerTitle(ahead).map((n) => rowLine(n, ahead)), pictured: picturedLine(aheadSlides), place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '4:5' })
       pieces.push({
         kind: 'week_ahead',
         city: city.slug,
@@ -1675,7 +1708,7 @@ export function planCampaign(input: {
       for (const n of weekend) listed.add(n.eventId)
       const wDest = destinationOf(weekend, city)
       const weekendSlides = lockedListSlides(weekend, [`${weekend.length} ${countNoun(weekend)} on`, `in ${city.name}`, 'this weekend'], origin, (n) => sessionsOf(n, [4, 5, 6]), weekPick)
-      const weekendWords = listCaptions({ hook: `${listEmoji(weekend, false)} ${countPhrase(weekend)} in ${city.name} this weekend.`, nights: weekend, rows: oncePerTitle(weekend).map((n) => rowLine(n, weekend)), pictured: picturedLine(weekendSlides), place: null, link: `${origin}${wDest.path}`, share: 'Tag who you are going with.', tags: standardTags(city, 'ThisWeekend'), crop: '4:5' })
+      const weekendWords = listCaptions({ sessionsOf: (n) => sessionsOf(n, [4, 5, 6]), hook: `${listEmoji(weekend, false)} ${countPhrase(weekend)} in ${city.name} this weekend.`, nights: weekend, rows: oncePerTitle(weekend).map((n) => rowLine(n, weekend)), pictured: picturedLine(weekendSlides), place: null, link: `${origin}${wDest.path}`, share: 'Tag who you are going with.', tags: standardTags(city, 'ThisWeekend'), crop: '4:5' })
       pieces.push({
         kind: 'weekend_carousel',
         city: city.slug,
@@ -1795,7 +1828,7 @@ export function planCampaign(input: {
       for (const n of friSat) listed.add(n.eventId)
       const days = `Friday and Saturday in ${city.name}`
       const friSatSlides = lockedListSlides(friSat, [`${friSat.length} ${countNoun(friSat)} on`, `in ${city.name}`, 'Fri and Sat'], origin, (n) => sessionsOf(n, [4, 5]), weekPick)
-      const friSatWords = listCaptions({ hook: `${listEmoji(friSat, false)} ${countPhrase(friSat)} on ${days}.`, nights: friSat, rows: oncePerTitle(friSat).map((n) => rowLine(n, friSat)), pictured: picturedLine(friSatSlides), place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '4:5' })
+      const friSatWords = listCaptions({ sessionsOf: (n) => sessionsOf(n, [4, 5]), hook: `${listEmoji(friSat, false)} ${countPhrase(friSat)} on ${days}.`, nights: friSat, rows: oncePerTitle(friSat).map((n) => rowLine(n, friSat)), pictured: picturedLine(friSatSlides), place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '4:5' })
       pieces.push({
         kind: 'tonight_tomorrow',
         city: city.slug,
@@ -1865,7 +1898,7 @@ export function planCampaign(input: {
       if (spot.length < SPOTLIGHT_MIN_NIGHTS) continue
       const path = `/events?city=${city.slug}&category=${slug}`
       const spotSlides = lockedListSlides(spot, spotlightLines(name, spot, city.name), origin, (n) => sessionsOf(n), weekPick)
-      const spotWords = listCaptions({ hook: `${listEmoji(spot, false)} ${name} in ${city.name} this week: ${countPhrase(spot).toLowerCase()}.`, nights: spot, rows: oncePerTitle(spot).map((n) => rowLine(n, spot)), pictured: picturedLine(spotSlides), place: null, link: `${origin}${path}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(name)), crop: '4:5' })
+      const spotWords = listCaptions({ sessionsOf: (n) => sessionsOf(n), hook: `${listEmoji(spot, false)} ${name} in ${city.name} this week: ${countPhrase(spot).toLowerCase()}.`, nights: spot, rows: oncePerTitle(spot).map((n) => rowLine(n, spot)), pictured: picturedLine(spotSlides), place: null, link: `${origin}${path}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(name)), crop: '4:5' })
       pieces.push({
         kind: 'category_spotlight',
         city: city.slug,
@@ -1901,7 +1934,7 @@ export function planCampaign(input: {
     const rDest = destinationOf(reel, city)
     // Family F, the week as stories (the PM's 17:10 of 15 November 2026): the same locked slides, drawn at 9:16.
     const reelSlides = lockedListSlides(reel, [`${reel.length} ${countNoun(reel)} on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
-    const reelWords = listCaptions({ hook: `${listEmoji(reel, false)} ${countPhrase(reel)} in ${city.name} this week.`, nights: reel, rows: oncePerTitle(reel).map((n) => rowLine(n, reel)), pictured: picturedLine(reelSlides), place: null, link: `${origin}${rDest.path}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '9:16' })
+    const reelWords = listCaptions({ sessionsOf: (n) => sessionsOf(n), hook: `${listEmoji(reel, false)} ${countPhrase(reel)} in ${city.name} this week.`, nights: reel, rows: oncePerTitle(reel).map((n) => rowLine(n, reel)), pictured: picturedLine(reelSlides), place: null, link: `${origin}${rDest.path}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '9:16' })
     pieces.push({
       kind: 'discovery_reel',
       city: city.slug,
@@ -2003,7 +2036,7 @@ export function planCampaign(input: {
     const hook = 'Say yes to this weekend.'
     const line = `Gigs, festivals, markets and free nights across ${input.cities.map((c) => c.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, in one place.`
     const photo = input.brandPhoto ?? null
-    const brandCredit = photo ? creditLine(photo.credit) : null
+    const brandCredit = photo && CAPTION_PHOTO_CREDITS ? creditLine(photo.credit) : null
     // Caption standard version 2 (read on production at 02:42 on 19 November 2026: the brand post was the one caption still
     // drawn with blank lines after #304): no blank line, the link line led by its ticket, hashtags last on both platforms.
     const body = [line, ...(brandCredit ? [brandCredit] : [])]
@@ -2126,6 +2159,7 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     // The PM's 15:55 of 19 November 2026, item 6: no caption goes with more than five emoji, each caption judged alone.
     const emoji = emojiCount(v.caption)
     if (emoji > MAX_EMOJI) issues.push(`The ${name} words carry ${emoji} emoji, over ${MAX_EMOJI}.`)
+    if (!CAPTION_PHOTO_CREDITS && /^\s*(Photos?|Photograph(?: by)?|Illustrative photo)\s*:/im.test(v.caption)) issues.push(`The ${name} words carry a photo credit line; no caption carries one.`)
     if (!STAND_INS_IN_PLAN && namesAStandIn(v.caption)) issues.push(`The ${name} words name a stock photograph; none goes out.`)
     if (!v.cta?.trim()) issues.push(`The ${name} version has no call to action.`)
   }

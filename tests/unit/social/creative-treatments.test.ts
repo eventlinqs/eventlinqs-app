@@ -107,7 +107,8 @@ describe('the weekend brand piece', () => {
   it('carries a photograph only when one is licensed for EventLinqs own promotion, with its credit', () => {
     const brand = planCampaign({ nights: week, cities: CITIES, weekStart: WEEK, origin: ORIGIN, brandPhoto: { url: 'https://example.com/licensed.jpg', credit: 'Licensed for EventLinqs' } }).pieces.find((p) => p.kind === 'brand_campaign')!
     expect(brand.mode).toBe('photo_led')
-    expect(brand.caption).toContain('Photo: Licensed for EventLinqs')
+    // No caption carries a photo credit line (CAPTION_PHOTO_CREDITS, the PM's round 3 verdict of 19 November 2026).
+    expect(brand.caption).not.toMatch(/^Photo:/m)
   })
   it('is refused if it ever names a night', () => {
     const brand = planCampaign({ nights: week, cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces.find((p) => p.kind === 'brand_campaign')!
