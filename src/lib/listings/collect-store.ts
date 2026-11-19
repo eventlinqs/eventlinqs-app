@@ -6,7 +6,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
 import { huntBooking, huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
 import { sourceHostOf } from './judge'
-import { holdLeftSource, releaseLeftSource } from './left-source-store'
+import { holdLeftSource, recordLeftSourceRereads, releaseLeftSource } from './left-source-store'
 import { sellerName } from '@/lib/events/booking-links'
 import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
@@ -184,6 +184,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
 
     async holdLeftSource(rows, at): Promise<number> {
       return holdLeftSource(db, rows, at)
+    },
+
+    async recordLeftSourceRereads(input): Promise<number> {
+      return recordLeftSourceRereads(db, input)
     },
 
     async releaseLeftSource(eventIds, sourceId, at): Promise<number> {
