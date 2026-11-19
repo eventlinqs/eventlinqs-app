@@ -30,7 +30,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
     redirect(params.next && params.next.startsWith('/admin') ? params.next : '/admin')
   }
   return (
-    <main className="min-h-screen bg-[var(--admin-canvas)] text-[var(--admin-ink)]">
+    <main className="admin-light min-h-screen bg-[var(--admin-canvas)] text-[var(--admin-ink)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
         <div className="mb-10 text-center">
           <p className="font-display text-[11px] uppercase tracking-[0.3em] text-[var(--admin-muted)]">EventLinqs</p>
