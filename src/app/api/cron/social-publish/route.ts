@@ -170,7 +170,9 @@ export async function GET(request: NextRequest) {
         ride: 'social',
         startedAt: now,
         endedAt: new Date(),
-        units: scheduled.scheduled.length + published.published.length,
+        // The pieces it drew again count as its work too (the PM's 04:51 of 20 November 2026: the 04:40 freeze drew six again
+        // and read 0 units, so its time per unit measured nothing).
+        units: scheduled.scheduled.length + published.published.length + redrawn.redrawn.length,
         result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again`,
         failed: published.held.length > 0,
       })

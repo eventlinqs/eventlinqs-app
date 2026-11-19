@@ -15,8 +15,10 @@ name: engine verifier
 on:
   deployment_status:
   schedule:
-    # 05:30 and 15:30 Melbourne in daylight saving time (AEDT, UTC+11), half an hour after the hunt's 05:00 and 15:00.
-    - cron: '30 18 * * *'
+    # 04:20 and 15:30 Melbourne in daylight saving time (AEDT, UTC+11). The morning run sits inside the daily timetable's
+    # verify phase (04:20 to 04:40, src/lib/ops/timetable.ts RIDES.engineVerifier), moved from 05:30 by the PM's 05:38 of
+    # 20 November 2026, the same once a day, and records that phase; in standard time both read an hour earlier.
+    - cron: '20 17 * * *'
     - cron: '30 4 * * *'
   workflow_dispatch:
 
@@ -54,8 +56,22 @@ jobs:
         run: npm ci
       - name: Install the browser
         run: npx playwright install --with-deps chromium
+      - name: Mark the start
+        run: echo "PHASE_STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Verify source, stored and live
+        id: verify
         run: node node_modules/tsx/dist/cli.mjs scripts/verify/engine-verifier.mts --sample 20 --enforce
+      - name: Record the verify phase
+        # The timetable's verify phase, measured (the PM's 05:38 of 20 November 2026): the morning run only, a failed run too.
+        if: always() && github.event_name == 'schedule' && github.event.schedule == '20 17 * * *'
+        env:
+          PHASE_KEY: verify
+          PHASE_RIDE: engineVerifier
+          PHASE_UNIT: night
+          PHASE_UNITS: '20'
+          PHASE_RESULT: "the engine verifier, run ${{ github.run_id }}: ${{ steps.verify.outcome }}; a sample of 20 nights and every fixed case, source, stored and live"
+          PHASE_FAILED: ${{ steps.verify.outcome != 'success' }}
+        run: node scripts/ops/record-phase-run-api.mjs
       - name: Keep the table
         if: always()
         uses: actions/upload-artifact@v7

@@ -24,7 +24,13 @@ export const RIDES = {
   social: { path: '/api/cron/social-publish', schedule: '40 * * * *' },
   outreach: { path: '/api/cron/outreach-run', schedule: '*/15 * * * *' },
   heartbeat: { path: '/api/cron/health-heartbeat', schedule: '0 21 * * *' },
-  linkCheck: { path: '/api/cron/booking-link-check', schedule: '0 18 * * *' },
+  // 04:20 Melbourne in daylight time, inside verify (04:20 to 04:40); it ran at 05:00, after verify's cutoff, so verify
+  // had no run in its window (the PM's 04:51 of 20 November 2026). The same one run a day, moved, never added.
+  linkCheck: { path: '/api/cron/booking-link-check', schedule: '20 17 * * *' },
+  // The engine verifier, a GitHub workflow (no Vercel cron): 04:20 Melbourne in daylight time, inside verify, moved from
+  // 05:30 by the PM's 05:38 of 20 November 2026, the same once a day; it records 'verify' by scripts/ops/record-phase-run-api.mjs.
+  // In standard time (from April) every UTC slot here reads an hour earlier and timetable-is-the-one-schedule names the phase.
+  engineVerifier: { path: '.github/workflows/engine-verifier.yml', schedule: '20 17 * * *' },
 } as const
 export type Ride = keyof typeof RIDES
 
@@ -46,7 +52,7 @@ export interface Phase {
 export const PHASES: readonly Phase[] = [
   { key: 'prepare', label: 'Prepare tomorrow', slot: '22:00', cutoff: '23:30', nightBefore: true, unit: 'piece', rides: ['social', 'outreach'], what: "Tomorrow's posts drafted from the night's rows; tomorrow's letters drafted and passed through the gateway." },
   { key: 'collect', label: 'Collect', slot: '00:25', cutoff: '04:15', unit: 'source', rides: ['collection', 'listings'], what: 'Listing sources read; IndexNow sent for changes and ended nights.' },
-  { key: 'verify', label: 'Verify', slot: '04:20', cutoff: '04:40', unit: 'night', rides: ['listings', 'linkCheck'], what: 'Engine verifier, booking link sweep, ended nights off every list, structured data spot check.' },
+  { key: 'verify', label: 'Verify', slot: '04:20', cutoff: '04:40', unit: 'night', rides: ['listings', 'linkCheck', 'engineVerifier'], what: 'Engine verifier, booking link sweep, ended nights off every list, structured data spot check.' },
   { key: 'freeze', label: 'Freeze and redraw', slot: '04:40', cutoff: '05:30', unit: 'piece', rides: ['social'], what: "Today's rows frozen; any piece whose facts changed drawn again; the publish gate run on every piece." },
   { key: 'schedule', label: 'Schedule', slot: '05:40', cutoff: '05:55', unit: 'piece', rides: ['social'], what: "Every passed piece scheduled into its band; the city guides revalidated." },
   { key: 'live', label: 'Live', slot: '06:00', cutoff: '06:00', unit: 'piece', rides: ['social'], what: 'The site current for today; the morning post published; the first story out.' },

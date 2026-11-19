@@ -18,9 +18,13 @@ describe('the one table', () => {
     expect(phaseOf('report').cutoff).toBe('08:00')
   })
 
-  test('every run a phase rides is a cron vercel.json already has, on the schedule the table names', () => {
+  test('every run a phase rides is a cron vercel.json already has, or its own workflow schedules, on the schedule the table names', () => {
     const crons = (JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as { crons: { path: string; schedule: string }[] }).crons
-    for (const r of Object.values(RIDES)) expect(crons.find((c) => c.path === r.path)?.schedule, r.path).toBe(r.schedule)
+    for (const r of Object.values(RIDES)) {
+      // The engine verifier rides GitHub (the PM's 05:38 of 20 November 2026): its own workflow schedules it.
+      if (r.path.startsWith('.github/workflows/')) expect(readFileSync(join(process.cwd(), r.path), 'utf8'), r.path).toContain(`- cron: '${r.schedule}'`)
+      else expect(crons.find((c) => c.path === r.path)?.schedule, r.path).toBe(r.schedule)
+    }
     expect(RIDES.collection.schedule).toBe('25 4,10,16,22 * * *')
     expect(SCHEDULES.collectionRun.cron).toBe(RIDES.collection.schedule)
   })

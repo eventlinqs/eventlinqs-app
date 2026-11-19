@@ -114,14 +114,20 @@ export async function GET(request: NextRequest) {
       console.log(`[cron/listing-occurrences] IndexNow: ${indexNow}`)
     }
     // THE TIMETABLE'S COLLECT PHASE, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
-    // this run's nights as its units, and IndexNow's answer in its result, so both are read from production.
+    // this run's nights as its units, and IndexNow's answer in its result, so both are read from production. Each failed
+    // night is named in it too, its series, date and reason (the PM's 05:38 of 20 November 2026, item 3: the same eight
+    // failed every hour and their reasons lived only in this run's log, which not everyone can read).
     await recordPhaseRun(createAdminClient(), {
       phase: 'collect',
       ride: 'listings',
       startedAt: new Date(started),
       endedAt: new Date(),
       units: result.nights,
-      result: `${result.nights} nights, ${result.created} made, ${result.failed.length} failed; re-read: ${reverify}; IndexNow: ${indexNow}`,
+      result:
+        `${result.nights} nights, ${result.created} made, ${result.failed.length} failed; re-read: ${reverify}; IndexNow: ${indexNow}` +
+        (result.failed.length > 0
+          ? `; failed: ${result.failed.slice(0, 12).map((f) => `series ${f.seriesId} ${f.date ?? '(the night)'}: ${f.why.replace(/\s+/g, ' ').slice(0, 110)}`).join(' | ')}`
+          : ''),
       failed: result.failed.length > 0,
     })
     return NextResponse.json({ ok: true, ...result, dealt, selfListed, reports: reports.length, reverify, indexNow })

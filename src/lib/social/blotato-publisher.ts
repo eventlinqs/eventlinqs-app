@@ -13,8 +13,8 @@ import { formatOfSlides } from './meta-publisher'
  *   POST /v2/media with a public url returns Blotato's own copy of the image (an older page asks that media come from
  *        Blotato; the newer examples pass any public URL; uploading first satisfies both);
  *   POST /v2/posts with { post: { accountId, content: { text, mediaUrls, platform }, target: { targetType, pageId? ,
- *        mediaType? } } }, content.platform and target.targetType the same, "story" as an Instagram mediaType for a
- *        story; it answers a postSubmissionId, read at GET /v2/posts/{postSubmissionId}.
+ *        mediaType? } } }, content.platform and target.targetType the same, "story" as the mediaType for a story on
+ *        Instagram and on Facebook (blotatoMediaType); it answers a postSubmissionId, read at GET /v2/posts/{postSubmissionId}.
  * The switch social_auto_publish still decides whether anything is sent; nothing here retries silently: a refusal is
  * thrown with Blotato's own words and the run holds the piece with them.
  */
@@ -28,6 +28,18 @@ export function blotatoConfigFrom(env: Readonly<Record<string, string | undefine
 }
 
 export class BlotatoRefusal extends Error {}
+
+/**
+ * A STORY POSTS AS A STORY, ON EVERY NETWORK (the PM's 04:40 of 20 November 2026, item 4, on WINDOW 5A's read of 02:47).
+ * Blotato's own reference (help.blotato.com/api/api-reference/publish-post, read 20 November 2026 at 02:45) takes
+ * mediaType 'story' on Instagram ("Set 'story' to publish one image or video as an Instagram Story") AND on Facebook ("Set 'story' for
+ * Stories. Omit (default) for text-only or image posts"). The target once set it for Instagram alone, so a Facebook story
+ * would have posted to the Page's feed as a photo. The story type follows the piece's format, whatever the network;
+ * scripts/guards/stories-post-as-stories.mjs refuses it gated on a network again.
+ */
+export function blotatoMediaType(format: 'feed' | 'story'): 'story' | null {
+  return format === 'story' ? 'story' : null
+}
 
 export type BlotatoPublisherDeps = {
   readonly config: BlotatoConfig
@@ -69,7 +81,8 @@ export function makeBlotatoPublisher(deps: BlotatoPublisherDeps): Publisher {
       if (pages.length !== 1) throw new BlotatoRefusal(`Blotato's Facebook account has ${pages.length} Pages; exactly one, the EventLinqs Page, is expected`)
       target.pageId = String(pages[0].id)
     }
-    if (platform === 'instagram' && format === 'story') target.mediaType = 'story'
+    const mediaType = blotatoMediaType(format)
+    if (mediaType) target.mediaType = mediaType
 
     const urls = await deps.slideUrls(pieceId, slides, format)
     const mediaUrls: string[] = []

@@ -55,11 +55,12 @@ export type PhotoPage =
 /** The contact's page, only when the proof is theirs; their own public nights ahead, soonest first. */
 export async function readPhotoPage(db: Db, contactId: string, proof: string, now: Date): Promise<PhotoPage> {
   if (!/^[0-9a-f-]{36}$/i.test(contactId)) return { state: 'not found' }
-  const c = await db.from('organiser_contacts').select('id, organiser_id, person_name, unsubscribe_token, organisers(id, name, organisation_id, website_url)').eq('id', contactId).maybeSingle()
+  const c = await db.from('organiser_contacts').select('id, organiser_id, person_name, unsubscribe_token, organisers(id, name, organisation_id, website_url, is_test)').eq('id', contactId).maybeSingle()
   if (c.error || !c.data || !proofMatches(proof, c.data.unsubscribe_token as string | null)) return { state: 'not found' }
-  const org = c.data.organisers as unknown as { id: string; name: string; organisation_id: string | null; website_url: string | null } | null
+  const org = c.data.organisers as unknown as { id: string; name: string; organisation_id: string | null; website_url: string | null; is_test: boolean | null } | null
   if (!org) return { state: 'not found' }
-  const nights = (await readTheirNights(db, { id: org.id, organisation_id: org.organisation_id, website_url: org.website_url }, now, 12)).map((n) => ({
+  // The test mark is read here, on the server, from the organiser's own row (the PM's 05:38 of 20 November 2026, item 2).
+  const nights = (await readTheirNights(db, { id: org.id, organisation_id: org.organisation_id, website_url: org.website_url, isTest: org.is_test === true }, now, 12)).map((n) => ({
     eventId: n.eventId,
     slug: n.slug,
     title: n.title,

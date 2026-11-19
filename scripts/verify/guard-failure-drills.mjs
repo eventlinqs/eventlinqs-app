@@ -1595,6 +1595,56 @@ const DRILLS = [
     expect: "without the table's socialPhaseAt",
   },
   /*
+   * timetable-is-the-one-schedule, its two rules of the PM's 04:51 of 20 November 2026 (no phase is silent), one drill
+   * each: a ride's route recording itself under another ride's name, and the verify phase left with only a ride that
+   * never fires in its window (the shape the walk found: no run between 04:20 and 04:40).
+   */
+  {
+    name: 'the booking link check records its run as another ride, so verify has no row from it',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'src/app/api/cron/booking-link-check/route.ts',
+    find: "ride: 'linkCheck'",
+    replace: "ride: 'listings'",
+    expect: "never records its run with ride: 'linkCheck'",
+  },
+  {
+    name: 'the verify phase rides only a run that never fires between 04:20 and 04:40',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'src/lib/ops/timetable.ts',
+    find: "unit: 'night', rides: ['listings', 'linkCheck', 'engineVerifier']",
+    replace: "unit: 'night', rides: ['listings']",
+    expect: 'has no ride firing inside its window',
+  },
+  {
+    name: "the engine verifier's workflow runs at 05:30 again while the table says 04:20",
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: '.github/workflows/engine-verifier.yml',
+    find: "    - cron: '20 17 * * *'",
+    replace: "    - cron: '30 18 * * *'",
+    expect: "does not schedule '20 17 * * *'",
+  },
+  /*
+   * stories-post-as-stories (the PM's 04:40 of 20 November 2026, item 4), two drills: the fault as it was found (the
+   * story type set for Instagram alone, so a Facebook story posts to the Page's feed), and the Meta route's Facebook
+   * story refusal taken out.
+   */
+  {
+    name: "a Facebook story goes to Blotato without its story type, as it once did",
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/blotato-publisher.ts',
+    find: '    if (mediaType) target.mediaType = mediaType',
+    replace: "    if (mediaType && platform === 'instagram') target.mediaType = mediaType",
+    expect: 'set under a network test',
+  },
+  {
+    name: "the Meta route no longer refuses a Facebook story, so it could post to the Page's feed",
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/meta-publisher.ts',
+    find: "    if (format === 'story') throw new MetaRefusal(",
+    replace: "    if (format === 'reel') throw new MetaRefusal(",
+    expect: 'no longer refused first',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *

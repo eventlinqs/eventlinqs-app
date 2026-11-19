@@ -21,7 +21,20 @@ if (!ridesBlock) {
 const rides = [...ridesBlock[1].matchAll(/(\w+): \{ path: '([^']+)', schedule: '([^']+)' \}/g)].map((m) => ({ ride: m[1], path: m[2], schedule: m[3] }))
 const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons ?? []
 const faults = []
+// A GitHub ride (the engine verifier, the PM's 05:38 of 20 November 2026) is scheduled by its own workflow's crons.
+const isWorkflow = (r) => r.path.startsWith('.github/workflows/')
 for (const r of rides) {
+  if (isWorkflow(r)) {
+    let wf = ''
+    try {
+      wf = readFileSync(r.path, 'utf8')
+    } catch (err) {
+      faults.push(`the table's ride '${r.ride}' names ${r.path}, which could not be read (${err instanceof Error ? err.message : String(err)})`)
+      continue
+    }
+    if (!wf.includes(`- cron: '${r.schedule}'`)) faults.push(`${r.path} does not schedule '${r.schedule}', which the timetable says for '${r.ride}'. Change both in one change, the table first.`)
+    continue
+  }
   const c = crons.find((x) => x.path === r.path)
   if (!c) faults.push(`the table's ride '${r.ride}' names ${r.path}, which vercel.json does not schedule`)
   else if (c.schedule !== r.schedule) faults.push(`vercel.json schedules ${r.path} at '${c.schedule}'; the timetable says '${r.schedule}'. Change both in one change, the table first.`)
@@ -32,8 +45,65 @@ for (const [file, reader] of Object.entries(PHASE_READERS)) {
   const text = readFileSync(file, 'utf8')
   if (!text.includes(`${reader}(`)) faults.push(`${file} records a timetable phase without the table's ${reader}`)
 }
-console.log(`${TAG} ${rides.length} ride(s) read from ${TABLE}, ${crons.length} cron(s) from vercel.json, ${Object.keys(PHASE_READERS).length} phase reader(s) checked`)
+
+// NO PHASE IS SILENT (the PM's 04:51 of 20 November 2026: the walk found the 03:25 collection run had written no row, and
+// verify, 04:20 to 04:40, had no run in its window at all: its link check fired at 05:00). Two rules, read from the
+// table itself:
+// (1) every ride's route records itself, by its own ride name, through recordPhaseRun;
+for (const r of rides) {
+  if (isWorkflow(r)) {
+    const wf = readFileSync(r.path, 'utf8')
+    if (!wf.includes('scripts/ops/record-phase-run-api.mjs') || !wf.includes(`PHASE_RIDE: ${r.ride}`)) {
+      faults.push(`${r.path} (the ride '${r.ride}') never records its run with PHASE_RIDE: ${r.ride} through scripts/ops/record-phase-run-api.mjs, so the phases it serves have no row from it`)
+    }
+    continue
+  }
+  const file = `src/app${r.path}/route.ts`
+  let text = ''
+  try {
+    text = readFileSync(file, 'utf8')
+  } catch (err) {
+    faults.push(`the ride '${r.ride}' names ${r.path}, which has no readable route at ${file} (${err instanceof Error ? err.message : String(err)})`)
+    continue
+  }
+  if (!text.includes('recordPhaseRun(') || !text.includes(`ride: '${r.ride}'`)) {
+    faults.push(`${file} (the ride '${r.ride}') never records its run with ride: '${r.ride}', so the phases it serves have no row from it`)
+  }
+}
+// (2) every phase has at least one of its rides firing inside its window: from its slot to its cutoff, or the hour before
+// a cutoff that equals its slot. Fired in Melbourne's offset in force when this runs, since a cron is written in UTC
+// and the offset moves twice a year (a schedule that holds in daylight time is read again when standard time begins).
+const melbourneOffsetMinutes = (() => {
+  const now = new Date()
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map((p) => [p.type, p.value]))
+  return (((Number(parts.hour) * 60 + Number(parts.minute)) - (now.getUTCHours() * 60 + now.getUTCMinutes())) % 1440 + 1440) % 1440
+})()
+const field = (f, max) => {
+  if (f === '*') return [...Array(max).keys()]
+  if (f.startsWith('*/')) return [...Array(max).keys()].filter((x) => x % Number(f.slice(2)) === 0)
+  return f.split(',').map(Number)
+}
+const firesAt = (schedule) => {
+  const [m, h] = schedule.split(' ')
+  return field(h, 24).flatMap((hh) => field(m, 60).map((mm) => (hh * 60 + mm + melbourneOffsetMinutes) % 1440))
+}
+const minutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5))
+const phaseLines = [...table.matchAll(/\{ key: '(\w+)', label: '([^']+)', slot: '(\d\d:\d\d)', cutoff: '(\d\d:\d\d)',[^\n]*?rides: \[([^\]]*)\]/g)]
+for (const [, key, label, slot, cutoff, rideList] of phaseLines) {
+  const to = minutes(cutoff)
+  const from = to > minutes(slot) ? minutes(slot) : to - 60
+  const named = [...rideList.matchAll(/'(\w+)'/g)].map((x) => x[1])
+  const fired = named.flatMap((name) => {
+    const ride = rides.find((r) => r.ride === name)
+    return ride ? firesAt(ride.schedule).filter((t) => t >= from && t <= to) : []
+  })
+  if (fired.length === 0) {
+    faults.push(`the phase '${key}' (${label}, ${slot} to ${cutoff}) has no ride firing inside its window: ${named.join(' and ')} never run(s) between ${Math.floor(from / 60).toString().padStart(2, '0')}:${(from % 60).toString().padStart(2, '0')} and ${cutoff} Melbourne, so it can never write its row`)
+  }
+}
+console.log(`${TAG} ${rides.length} ride(s) read from ${TABLE}, ${crons.length} cron(s) from vercel.json, ${Object.keys(PHASE_READERS).length} phase reader(s) checked, ${phaseLines.length} phase window(s) read at Melbourne's offset of ${melbourneOffsetMinutes / 60} hours`)
 if (rides.length === 0) faults.push(`no ride read from ${TABLE}: the RIDES lines no longer match this guard's reading`)
+if (phaseLines.length === 0) faults.push(`no phase read from ${TABLE}: the PHASES lines no longer match this guard's reading`)
 for (const f of faults) console.error(`${TAG} FAIL: ${f}`)
 if (faults.length > 0) process.exit(1)
 console.log(`${TAG} OK`)
