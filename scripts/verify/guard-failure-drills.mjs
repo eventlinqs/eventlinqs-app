@@ -266,6 +266,18 @@ const AUDIENCE_PAGE =
 
 const DRILLS = [
   /*
+   * mutation-revalidates' write through a library function (train AE, 20 November 2026, T5): the photo page's press as it
+   * stood on main, a bare path refreshed only when the cover changed, so the night kept its old render.
+   */
+  {
+    name: "the photo page refreshes only its path, only when the cover changed, as when T5 read a stale night",
+    guard: `${GUARDS}/mutation-revalidates.mjs`,
+    file: 'src/app/photos/[contact]/[proof]/actions.ts',
+    find: "  if (d.added > 0) await revalidateEventSurfacesById(db as never, String(formData.get('night') ?? ''))",
+    replace: '  if (d.coverSet) void d.slug',
+    expect: 'never calls the shared event refresh',
+  },
+  /*
    * form-answers-outlive-the-form (Lawal's 11:13 of 31 October 2026, one defect is a class: the venue calendar's
    * 'Thank you' lived in a form the refreshed page stopped drawing), two drills, each the way the class comes back: a
    * form holds its own answer again, and a page stops drawing its family's answer holder.

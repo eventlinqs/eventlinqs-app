@@ -60,6 +60,14 @@ const rel = (f) => relative(ROOT, f).replace(/\\/g, '/')
 const PUBLIC_TABLES = ['events', 'ticket_tiers']
 
 /**
+ * Library functions that write a publicly rendered row for their caller (train AE, 20 November 2026, T5): an action
+ * that calls one writes as surely as one that names the table. The photo page's press wrote a night's photos through
+ * givePhotos and refreshed only its path, only when the cover changed, so the night's page kept its old render.
+ * Such a write needs the shared refresh itself (revalidateEventSurfaces), never a bare path.
+ */
+const PUBLIC_WRITERS = ['givePhotos']
+
+/**
  * What counts as telling the cache about a PUBLIC surface.
  *
  * TIGHTENED 18 August 2026, because the first version of this guard passed
@@ -109,7 +117,18 @@ for (const file of files) {
       )
       return write.test(action.body)
     })
-    if (writes.length === 0) continue
+    const through = PUBLIC_WRITERS.filter((fn) => new RegExp(String.raw`${fn}\s*\(`).test(action.body))
+    if (writes.length === 0 && through.length === 0) continue
+    if (through.length > 0 && !/revalidateEventSurfaces(?:ById)?\s*\(/.test(action.body)) {
+      mutatingActions += 1
+      mutating.push({ file: rel(file), name: action.name, writes: through, revalidates: false, dashboardOnly: false })
+      failures.push(
+        `${rel(file)}: ${action.name}() writes a night's rows through ${through.join(' and ')} but never calls the shared ` +
+          `event refresh (revalidateEventSurfacesById), so the night's page keeps its old render. Call it whenever a row was written.`,
+      )
+      continue
+    }
+    if (writes.length === 0) writes.push(...through)
 
     mutatingActions += 1
 
