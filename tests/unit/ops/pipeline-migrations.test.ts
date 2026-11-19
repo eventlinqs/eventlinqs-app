@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error a plain .mjs module with no types
-import { backupSql, classify, planOf, PRESERVED, splitRefusal } from '../../../scripts/ops/pipeline-migrations.mjs'
+import { backupSql, classify, planOf, PRESERVED, splitRefusal, workdirPlan } from '../../../scripts/ops/pipeline-migrations.mjs'
 
 /*
  * MIGRATIONS BY THE PIPELINE, WITH NO PERSON IN THE LOOP (car M; Lawal's word of 19 November 2026, the PM's 04:42 items 2
@@ -109,6 +109,33 @@ describe('what a migration does, read from its own SQL', () => {
   it('the plan joins every pending migration', () => {
     const p = planOf([{ file: 'a.sql' }, { file: 'b.sql' }], (f: string) => (f === 'a.sql' ? 'create table public.a (id int);' : 'alter table public.b drop column c;'))
     expect(p).toMatchObject({ pending: ['a.sql', 'b.sql'], destructive: true, tables: ['public.b'], refused: [] })
+  })
+})
+
+describe("the test database is pushed through a scratch folder that reads its whole history", () => {
+  // TEST's history on 19 November 2026 (ledger-vkapkibzokmfaxqogypq.json): ten versions from branches never merged, and
+  // four of production's own it lacked. The CLI refused it: 'DbPushMissingLocalError: Remote migration versions not
+  // found in local migrations directory'.
+  const ONLY_ON_TEST = ['20260908000001', '20260908000002', '20260908000003', '20260908000004', '20260921000030', '20260921000050', '20260929000010', '20261024000001', '20261102080001', '20261118103501']
+  const tree = ['20261115091001_same_day_verification.sql', '20261116150001_health_sentinel_runs.sql', '20261118230001_social_figures_from_blotato.sql', '20261119040001_sender_mode_record.sql', 'README.md']
+  it('every version only TEST holds gets an empty placeholder, every tree migration is copied, nothing else', () => {
+    const plan = workdirPlan(tree, new Set([...ONLY_ON_TEST, '20261115091001']))
+    expect(plan.stubs).toEqual(ONLY_ON_TEST)
+    expect(plan.copy).toEqual(tree.filter((f) => f.endsWith('.sql')))
+  })
+  it("DRILL: a folder of the tree alone leaves TEST's history unexplained, which is the refusal the CLI gave", () => {
+    const treeOnly = { copy: tree.filter((f) => f.endsWith('.sql')), stubs: [] as string[] }
+    const explained = new Set([...treeOnly.copy.map((f) => f.split('_')[0]), ...treeOnly.stubs])
+    expect(ONLY_ON_TEST.filter((v) => !explained.has(v))).toHaveLength(10)
+    const plan = workdirPlan(tree, new Set(ONLY_ON_TEST))
+    const whole = new Set([...plan.copy.map((f: string) => f.split('_')[0]), ...plan.stubs])
+    expect(ONLY_ON_TEST.filter((v) => !whole.has(v))).toEqual([])
+  })
+  it('the job pushes TEST from that folder with --include-all, and production from the tree, both without a link', () => {
+    expect(WORKFLOW).toContain('node scripts/ops/pipeline-migrations.mjs test-workdir "$RUNNER_TEMP/test-db"')
+    expect(WORKFLOW).toContain('supabase db push --yes --include-all --remote="$TEST_REF" --workdir "$RUNNER_TEMP/test-db"')
+    expect(WORKFLOW).toContain('supabase db push --yes --remote="$PRODUCTION_REF"')
+    expect(WORKFLOW).not.toContain('supabase link')
   })
 })
 

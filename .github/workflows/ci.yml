@@ -240,8 +240,8 @@ jobs:
   # MIGRATIONS BY THE PIPELINE (car M; Lawal's word of 19 November 2026, relayed by the PM at 04:42: "no more migrations
   # for him ... get it all done internally"; AUTONOMOUS-OPS-DIRECTIVE-LOCKED-19NOV.md section 1: "database migrations,
   # with backups, validation and rollback safeguards"). When a pull request from this repository is ready, and on every
-  # push to main, this applies whatever production has not applied, by Supabase's own CI path (supabase link, then
-  # supabase db push --yes: supabase.com/docs/guides/deployment/managing-environments, read 19 November 2026; the CLI
+  # push to main, this applies whatever production has not applied, by Supabase's own CI path (supabase db push --yes
+  # --remote=<ref>: supabase.com/docs/guides/deployment/managing-environments, read 19 November 2026; the CLI
   # accepts a hosted change only with --yes or SUPABASE_YES exported). BEFORE the merge, because production parity
   # below and the production build refuse a tree whose migrations production lacks (6 September 2026). In this order,
   # each failing closed (scripts/ops/pipeline-migrations.mjs, held by tests/unit/ops/pipeline-migrations.test.ts):
@@ -297,8 +297,12 @@ jobs:
         if: steps.plan.outputs.pending != '0'
         run: |
           set -euo pipefail
-          supabase link --project-ref "$TEST_REF"
-          supabase db push --yes --remote
+          # TEST's history holds versions from branches never merged, and the CLI refuses a history it cannot find in
+          # the folder (DbPushMissingLocalError, 19 November 2026). So it pushes from a scratch folder: the tree's
+          # migrations, and an empty placeholder for each version only TEST holds; --include-all then applies exactly
+          # what TEST lacks, in order, and touches nothing else.
+          node scripts/ops/pipeline-migrations.mjs test-workdir "$RUNNER_TEMP/test-db"
+          supabase db push --yes --include-all --remote="$TEST_REF" --workdir "$RUNNER_TEMP/test-db"
 
       - name: 3. A backup of every table a destructive migration names
         if: steps.plan.outputs.pending != '0' && steps.plan.outputs.destructive == 'true'
@@ -308,8 +312,7 @@ jobs:
         if: steps.plan.outputs.pending != '0'
         run: |
           set -euo pipefail
-          supabase link --project-ref "$PRODUCTION_REF"
-          supabase db push --yes --remote
+          supabase db push --yes --remote="$PRODUCTION_REF"
 
       - name: 4. Production's ledger read back, nothing pending
         run: node scripts/ops/pipeline-migrations.mjs verify

@@ -22,7 +22,7 @@
  *     migration is never applied by the pipeline; it fails closed and says why.
  * The ledger is read through the Management API, as production parity reads it (production-parity.mjs).
  */
-import { appendFileSync, readdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { computePendingMigrations, fetchAppliedMigrations, MIGRATIONS_DIR, PRODUCTION_PROJECT_REF } from './production-parity.mjs'
 import { declareWork } from '../lib/work-report.mjs'
@@ -106,6 +106,23 @@ export function backupSql(tables, stamp) {
   return lines.join('\n')
 }
 
+/**
+ * THE TEST DATABASE'S SCRATCH FOLDER (19 November 2026). TEST's history holds versions from branches never merged, and
+ * `supabase db push` refuses any history it cannot find in the folder ('DbPushMissingLocalError: Remote migration versions
+ * not found in local migrations directory', read in a dry run that day: ten versions, newest 20261118103501). So TEST is
+ * pushed from a scratch folder holding the tree's migrations and an EMPTY placeholder for each version only TEST holds;
+ * with --include-all the CLI applies exactly the tree migrations TEST lacks, in order, and touches nothing else (the same
+ * dry run listed the four production already carries and car D's one). Pure: which files to copy, which to stub.
+ * @param {string[]} treeFiles  the names in supabase/migrations
+ * @param {Set<string>} testApplied  the versions TEST's history holds
+ */
+export function workdirPlan(treeFiles, testApplied) {
+  const copy = treeFiles.filter((f) => /^\d+_.*\.sql$/.test(f)).sort()
+  const local = new Set(copy.map((f) => f.split('_')[0]))
+  const stubs = [...testApplied].filter((v) => !local.has(v)).sort()
+  return { copy, stubs }
+}
+
 /** The plan for the pending migrations. Pure over the files' texts. */
 export function planOf(pending, read) {
   const each = pending.map((m) => ({ file: m.file, ...classify(read(m.file)) }))
@@ -122,13 +139,39 @@ async function main() {
   const mode = process.argv[2]
   const token = process.env.SUPABASE_ACCESS_TOKEN
   const project = process.env.SUPABASE_PROJECT_ID || PRODUCTION_PROJECT_REF
-  if (mode !== 'plan' && mode !== 'verify' && mode !== 'backup') {
-    console.error('usage: node scripts/ops/pipeline-migrations.mjs plan|backup|verify')
+  if (mode !== 'plan' && mode !== 'verify' && mode !== 'backup' && mode !== 'test-workdir') {
+    console.error('usage: node scripts/ops/pipeline-migrations.mjs plan|backup|verify|test-workdir <dir>')
     return 2
   }
   if (!token) {
     console.error('[pipeline-migrations] FAIL: SUPABASE_ACCESS_TOKEN is not set, so production\'s ledger cannot be read; nothing is applied on a guess.')
     return 1
+  }
+  if (mode === 'test-workdir') {
+    const dir = process.argv[3]
+    if (!dir) {
+      console.error('[pipeline-migrations] FAIL: test-workdir needs its folder')
+      return 2
+    }
+    const testRef = process.env.TEST_REF || 'vkapkibzokmfaxqogypq'
+    const test = await fetchAppliedMigrations(token, testRef)
+    if (!test.ok) {
+      console.error(`[pipeline-migrations] FAIL: the test database's history could not be read (${test.reason}); nothing is pushed.`)
+      return 1
+    }
+    const plan = workdirPlan(readdirSync(MIGRATIONS_DIR), test.applied)
+    rmSync(dir, { recursive: true, force: true })
+    mkdirSync(join(dir, 'supabase', 'migrations'), { recursive: true })
+    copyFileSync(join(MIGRATIONS_DIR, '..', 'config.toml'), join(dir, 'supabase', 'config.toml'))
+    for (const f of plan.copy) copyFileSync(join(MIGRATIONS_DIR, f), join(dir, 'supabase', 'migrations', f))
+    for (const v of plan.stubs) writeFileSync(join(dir, 'supabase', 'migrations', `${v}_applied_on_test_only.sql`), '-- applied on the test database from a branch never merged; kept so its history reads whole\n')
+    declareWork('pipeline-migrations', {
+      did: { 'migration file copied for the test database': plan.copy.length },
+      found: { 'unmerged version on the test database': plan.stubs.length },
+      exitOnZero: false,
+    })
+    console.log(`[pipeline-migrations] test workdir ${dir}: ${plan.copy.length} migrations, ${plan.stubs.length} placeholders (${plan.stubs.join(' ') || 'none'})`)
+    return 0
   }
   const listed = await fetchAppliedMigrations(token, project)
   if (!listed.ok) {
