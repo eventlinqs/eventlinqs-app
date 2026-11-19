@@ -1,4 +1,5 @@
 import type { MorningReport } from './morning-report'
+import type { LearnedLines } from '@/lib/ops/learned-lines'
 
 /**
  * THE 08:00 REPORT AS AN EMAIL, SENT BY VERCEL'S OWN DAILY CRON (the PM's 22:14 of 19 November 2026, item 4; the
@@ -12,7 +13,7 @@ import type { MorningReport } from './morning-report'
  */
 export function morningReportEmail(
   report: MorningReport,
-  when: { readonly dateWords: string; readonly adminUrl: string },
+  when: { readonly dateWords: string; readonly adminUrl: string; readonly learned?: LearnedLines },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
   const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -24,6 +25,8 @@ export function morningReportEmail(
     ...report.rows.flatMap((r, i) => [`${i + 1}. ${r.area}`, `   Yesterday: ${r.yesterday}`, `   Today: ${r.today}`, '']),
     ...(report.unreadable.length > 0 ? [`Not read this morning: ${report.unreadable.join(', ')}.`, ''] : []),
     ...(report.engine ? [`The engine: ${report.engine}`, ''] : []),
+    // What the engine learned, from production (Lawal's 06:07 of 20 November 2026): the timetable, yesterday's lessons, today's changes.
+    ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     `Everything above is read from production at the time of sending. The admin: ${when.adminUrl}`,
   ].join('\n')
   const rowsHtml = report.rows
@@ -40,6 +43,9 @@ export function morningReportEmail(
     `<table cellpadding="0" style="width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse">${rowsHtml}</table>` +
     (report.unreadable.length > 0 ? `<p>Not read this morning: ${escape(report.unreadable.join(', '))}.</p>` : '') +
     (report.engine ? `<p>The engine: ${escape(report.engine)}</p>` : '') +
+    (when.learned
+      ? `<p><strong>Today's timetable:</strong> ${escape(when.learned.timetable)}<br/><strong>Learned yesterday:</strong> ${escape(when.learned.learned)}<br/><strong>Changed today because of it:</strong> ${escape(when.learned.changed)}</p>`
+      : '') +
     `<p style="color:#666">Everything above is read from production at the time of sending. <a href="${when.adminUrl}">The admin</a></p>` +
     `</div>`
   return { subject: `EventLinqs 08:00 report, ${when.dateWords}: ${report.allWell ? 'all well' : 'needs your eye'}`, text, html }
