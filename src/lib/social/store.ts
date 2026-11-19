@@ -1115,7 +1115,7 @@ export type PieceRow = {
   state: PieceState
   postUrl: string | null
   /** B5: its moment on each network once approved, and whether it went or was held. */
-  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]
+  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]
 }
 
 /** The week's campaign as /admin/social shows it: each piece's newest revision, its history and its state (K7). */

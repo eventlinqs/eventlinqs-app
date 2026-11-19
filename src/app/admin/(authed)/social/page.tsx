@@ -185,11 +185,11 @@ function Piece({ p }: { p: PieceRow }) {
       {p.schedule.length > 0 && p.state !== 'gone' ? (
         <p data-schedule className="mt-2 text-sm text-[var(--admin-soft)]">
           {p.schedule
-            .map((s) =>
+            .map((row) =>
               // Each post's state by its provider's own id (src/lib/social/post-state.ts): submitted is never called published.
-              postState(s).state === 'scheduled'
-                ? `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: scheduled for ${formatPlatformDateTime(s.goAt)}`
-                : `${s.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${postState(s).words}`,
+              postState(row).state === 'scheduled'
+                ? `${row.platform === 'instagram' ? 'Instagram' : 'Facebook'}: scheduled for ${formatPlatformDateTime(row.goAt)}`
+                : `${row.platform === 'instagram' ? 'Instagram' : 'Facebook'}: ${postState(row).words}`,
             )
             .join('. ')}
           . A post goes by itself only while publishing is switched on, and is called published only once its public address is read back.
