@@ -218,9 +218,9 @@ export default async function AdminNetworkPage({
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Demand signal</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           The tipping-point view: where demand is building, how many organisers have joined through an invite, and how the
           Launch Kit is being used. All figures are live counts.
         </p>
@@ -235,7 +235,7 @@ export default async function AdminNetworkPage({
 
       {/* Kit usage */}
       <section className="mb-8">
-        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">Launch Kit usage</h2>
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-[var(--admin-soft)]">Launch Kit usage</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Metric label="Events published" value={String(signal.kit.eventsPublished)} />
           <Metric label="Posters downloaded" value={String(signal.kit.postersDownloaded)} />
@@ -246,7 +246,7 @@ export default async function AdminNetworkPage({
 
       {/* Per-city waitlist demand */}
       <section className="mb-8">
-        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">Waitlist demand by city</h2>
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-[var(--admin-soft)]">Waitlist demand by city</h2>
         {/*
           A SCROLLING REGION A FINGER CAN REACH AND A KEYBOARD CANNOT IS A
           SERIOUS VIOLATION, AND THIS ONE FIRED ON EVERY MOBILE LOAD.
@@ -270,14 +270,14 @@ export default async function AdminNetworkPage({
           the region as something rather than dropping into an unlabelled box.
         */}
         <div
-          className="overflow-x-auto rounded-xl border border-white/15 bg-[#131A2A]"
+          className="overflow-x-auto rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)]"
           tabIndex={0}
           role="region"
           aria-label="Waitlist demand by city"
         >
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-left text-white/50">
+              <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
                 <th className="px-4 py-3 font-medium">City</th>
                 <th className="px-4 py-3 font-medium">Total</th>
                 <th className="px-4 py-3 font-medium">Organisers</th>
@@ -290,15 +290,15 @@ export default async function AdminNetworkPage({
               {signal.cities
                 .sort((a, b) => b.total - a.total)
                 .map(c => (
-                  <tr key={c.slug} className="border-b border-white/5 last:border-0">
-                    <td className="px-4 py-3 font-semibold text-white">
+                  <tr key={c.slug} className="border-b border-[var(--admin-line)] last:border-0">
+                    <td className="px-4 py-3 font-semibold text-[var(--admin-ink)]">
                       {c.name}
                     </td>
-                    <td className="px-4 py-3 text-white">{c.total}</td>
-                    <td className="px-4 py-3 text-white/80">{c.organisers}</td>
-                    <td className="px-4 py-3 text-white/80">{c.attendees}</td>
-                    <td className="px-4 py-3 text-white/80">{c.last7}</td>
-                    <td className="px-4 py-3 text-white/80">{c.last30}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{c.total}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{c.organisers}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{c.attendees}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{c.last7}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{c.last30}</td>
                   </tr>
                 ))}
             </tbody>
@@ -308,10 +308,10 @@ export default async function AdminNetworkPage({
 
       {/* Waitlist-to-invite bridge */}
       <section>
-        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-[var(--admin-soft)]">
           Invite organisers from the waitlist
         </h2>
-        <p className="mb-3 max-w-2xl text-sm text-white/60">
+        <p className="mb-3 max-w-2xl text-sm text-[var(--admin-soft)]">
           These are organiser waitlist sign-ups who have not yet been invited. Inviting one mints a referral link
           from EventLinqs and emails it to them. They consented to hear about founding invitations when
           they joined, and every email carries the one-click leave link.
@@ -321,10 +321,10 @@ export default async function AdminNetworkPage({
 
       {/* Founding terms, by hand */}
       <section className="mt-8">
-        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-[var(--admin-soft)]">
           Founding terms
         </h2>
-        <p className="mb-3 max-w-2xl text-sm text-white/60">
+        <p className="mb-3 max-w-2xl text-sm text-[var(--admin-soft)]">
           {FOUNDING_OFFER_OPEN
             ? 'Grant, extend or revoke the fee-free window of any organiser. The charge reads this field on every order, so a change here applies to the next order placed, with no deploy. Every change is written to the audit log with who made it and what it moved.'
             : `The fee-free windows kept for the organisations registered before ${FOUNDING_OFFER_CLOSED_ON_LABEL}. The charge reads each one on every order until its date; nothing here can grant or extend one.`}{' '}
@@ -332,7 +332,7 @@ export default async function AdminNetworkPage({
           handle to reach any other.
         </p>
         <form method="get" action="/admin/network" className="mb-3 flex flex-wrap items-center gap-2">
-          <label htmlFor="org-search" className="text-xs text-white/60">
+          <label htmlFor="org-search" className="text-xs text-[var(--admin-soft)]">
             Find an organisation
           </label>
           <input
@@ -341,16 +341,16 @@ export default async function AdminNetworkPage({
             type="search"
             defaultValue={foundingQuery}
             placeholder="Name or handle"
-            className="min-h-[40px] min-w-[220px] rounded-full border border-white/20 bg-[#131A2A] px-4 text-sm text-white placeholder:text-white/30"
+            className="min-h-[40px] min-w-[220px] rounded-full border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-4 text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)]"
           />
           <button
             type="submit"
-            className="inline-flex min-h-[40px] items-center rounded-full border border-white/25 px-4 text-sm font-semibold text-white"
+            className="inline-flex min-h-[40px] items-center rounded-full border border-[var(--admin-line-strong)] px-4 text-sm font-semibold text-[var(--admin-ink)]"
           >
             Search
           </button>
           {foundingQuery ? (
-            <a href="/admin/network" className="text-xs text-white/50 underline">
+            <a href="/admin/network" className="text-xs text-[var(--admin-muted)] underline">
               Clear
             </a>
           ) : null}
@@ -371,9 +371,9 @@ export default async function AdminNetworkPage({
 
 function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/15 bg-[#131A2A] px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">{label}</p>
-      <p className={`mt-2 font-display text-2xl font-bold ${accent ? 'text-[var(--brand-accent)]' : 'text-white'}`}>
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--admin-muted)]">{label}</p>
+      <p className={`mt-2 font-display text-2xl font-bold ${accent ? 'text-[var(--brand-accent-strong)]' : 'text-[var(--admin-ink)]'}`}>
         {value}
       </p>
     </div>

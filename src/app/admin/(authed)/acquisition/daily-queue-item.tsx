@@ -7,7 +7,7 @@ import { copyText } from '@/lib/share/copy-text'
 const BUTTON =
   'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]'
 const QUIET =
-  'inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-white/70 hover:border-white/40 hover:text-white'
+  'inline-flex min-h-[44px] items-center rounded-full border border-[var(--admin-line)] px-5 text-sm font-semibold text-[var(--admin-soft)] hover:border-[var(--admin-line-strong)] hover:text-[var(--admin-ink)]'
 
 /**
  * One held message in Lawal's daily queue: copy it, open where it goes in its own app, send it there by hand, then press
@@ -63,7 +63,7 @@ export function DailyQueueItem({
         <input type="hidden" name="contentHash" value={contentHash} />
         <input type="hidden" name="policyVersion" value={policyVersion} />
         {from ? <input type="hidden" name="from" value={from} /> : null}
-        <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-white/80">
+        <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-[var(--admin-ink)]">
           <input type="checkbox" name="checked" required className="h-5 w-5 shrink-0" />
           I opened their page and it says nothing against messages.
         </label>
@@ -71,7 +71,7 @@ export function DailyQueueItem({
           Sent
         </button>
       </form>
-      {copied === 'failed' && <p className="w-full text-xs text-white/60">This browser would not copy it. Select the message above and copy it by hand.</p>}
+      {copied === 'failed' && <p className="w-full text-xs text-[var(--admin-soft)]">This browser would not copy it. Select the message above and copy it by hand.</p>}
     </div>
   )
 }

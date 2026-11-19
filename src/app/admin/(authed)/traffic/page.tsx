@@ -78,8 +78,8 @@ function rateText(value: number | null): string {
  */
 function Figure({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <td className="flex items-baseline justify-between gap-6 py-1 tabular-nums text-white/80 md:table-cell md:py-3 md:pr-4 md:text-right md:align-top">
-      <span aria-hidden className="text-[11px] uppercase tracking-[0.16em] text-white/50 md:hidden">
+    <td className="flex items-baseline justify-between gap-6 py-1 tabular-nums text-[var(--admin-ink)] md:table-cell md:py-3 md:pr-4 md:text-right md:align-top">
+      <span aria-hidden className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)] md:hidden">
         {label}
       </span>
       <span>{children}</span>
@@ -90,10 +90,10 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 function ChannelRow({ row }: { row: ChannelTotals }) {
   const copy = TRAFFIC_CHANNEL_COPY[row.channel]
   return (
-    <tr className="block border-t border-white/[0.06] py-4 md:table-row md:py-0">
+    <tr className="block border-t border-[var(--admin-line)] py-4 md:table-row md:py-0">
       <th scope="row" className="block pb-2 pr-4 text-left md:table-cell md:py-3 md:align-top">
-        <span className="font-display text-sm font-semibold text-white">{copy.label}</span>
-        <span className="mt-1 block max-w-md text-xs font-normal text-white/50">{copy.meaning}</span>
+        <span className="font-display text-sm font-semibold text-[var(--admin-ink)]">{copy.label}</span>
+        <span className="mt-1 block max-w-md text-xs font-normal text-[var(--admin-muted)]">{copy.meaning}</span>
       </th>
       <Figure label="Visits">{number(row.visits)}</Figure>
       <Figure label="Orders">{number(row.orders)}</Figure>
@@ -119,9 +119,9 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Free traffic</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Where the people who look at event pages came from, and which of those channels produced
           orders. Search traffic nobody paid for is counted separately from people who arrived with
           no referring site at all, because adding the two together is how a platform convinces
@@ -140,7 +140,7 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
               className={
                 selected
                   ? 'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]'
-                  : 'inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-white/70 transition-colors hover:border-white/40 hover:text-white'
+                  : 'inline-flex min-h-[44px] items-center rounded-full border border-[var(--admin-line)] px-5 text-sm font-semibold text-[var(--admin-soft)] transition-colors hover:border-[var(--admin-line-strong)] hover:text-[var(--admin-ink)]'
               }
             >
               {windowLabel(option)}
@@ -174,16 +174,16 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
         />
       </div>
 
-      <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Every channel</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+      <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Every channel</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           A visit is one visitor, one event page, one day, which is how the demand beacon records
           it, so somebody who refreshes a page nine times counts once. An order is counted once
           however many ticket types it holds.
         </p>
 
         {nothingYet ? (
-          <p className="mt-6 rounded-lg border border-white/[0.08] bg-white/[0.02] p-5 text-sm text-white/70">
+          <p className="mt-6 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-5 text-sm text-[var(--admin-soft)]">
             Nothing has been recorded in this period. Event pages write a row the first time each
             visitor opens them, so this fills as soon as there is traffic. Try a longer period, or
             check that events are published.
@@ -211,7 +211,7 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
                 Event page visits, orders and tickets by traffic channel, {windowLabel(days)}
               </caption>
               <thead className="sr-only md:not-sr-only">
-                <tr className="text-[11px] uppercase tracking-[0.16em] text-white/50">
+                <tr className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
                   <th scope="col" className="pb-3 pr-4 text-left font-normal">Channel</th>
                   <th scope="col" className="pb-3 pr-4 text-right font-normal">Visits</th>
                   <th scope="col" className="pb-3 pr-4 text-right font-normal">Orders</th>
@@ -223,10 +223,10 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
                 {summary.active.map(row => (
                   <ChannelRow key={row.channel} row={row} />
                 ))}
-                <tr className="block border-t border-white/20 py-4 font-semibold md:table-row md:py-0">
+                <tr className="block border-t border-[var(--admin-line-strong)] py-4 font-semibold md:table-row md:py-0">
                   <th
                     scope="row"
-                    className="block pb-2 pr-4 text-left font-display text-sm font-semibold text-white md:table-cell md:py-3"
+                    className="block pb-2 pr-4 text-left font-display text-sm font-semibold text-[var(--admin-ink)] md:table-cell md:py-3"
                   >
                     Total
                   </th>
@@ -241,14 +241,14 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
         )}
 
         {summary.silent.length > 0 ? (
-          <p className="mt-5 text-xs text-white/50">
+          <p className="mt-5 text-xs text-[var(--admin-muted)]">
             Recorded nothing in this period:{' '}
             {summary.silent.map(channel => TRAFFIC_CHANNEL_COPY[channel].label).join(', ')}.
           </p>
         ) : null}
 
         {unresolvedSaleRows > 0 ? (
-          <p className="mt-3 text-xs text-amber-300">
+          <p className="mt-3 text-xs text-amber-800">
             {number(unresolvedSaleRows)} sale row{unresolvedSaleRows === 1 ? '' : 's'} could not be
             traced back to an order, so {unresolvedSaleRows === 1 ? 'it is' : 'they are'} counted
             separately rather than dropped. That is worth looking into.
@@ -257,14 +257,14 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
       </section>
 
       <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">Who sent them</h2>
-          <p className="mt-2 text-sm text-white/60">
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Who sent them</h2>
+          <p className="mt-2 text-sm text-[var(--admin-soft)]">
             The referring sites behind those visits, busiest first. A host only, never the search
             somebody typed or the page they were on.
           </p>
           {topHosts.length === 0 ? (
-            <p className="mt-5 text-sm text-white/60">
+            <p className="mt-5 text-sm text-[var(--admin-soft)]">
               No visit in this period carried a referring site. Everything arrived direct, or with a
               campaign label and no referrer.
             </p>
@@ -272,10 +272,10 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
             <ul className="mt-5 space-y-3">
               {topHosts.map(host => (
                 <li key={host.host} className="flex items-baseline justify-between gap-4">
-                  <span className="min-w-0 truncate text-sm text-white/85">{host.host}</span>
-                  <span className="shrink-0 text-xs text-white/50">
+                  <span className="min-w-0 truncate text-sm text-[var(--admin-ink)]">{host.host}</span>
+                  <span className="shrink-0 text-xs text-[var(--admin-muted)]">
                     {TRAFFIC_CHANNEL_COPY[host.channel].label}
-                    <span className="ml-3 tabular-nums text-white/80">{number(host.visits)}</span>
+                    <span className="ml-3 tabular-nums text-[var(--admin-ink)]">{number(host.visits)}</span>
                   </span>
                 </li>
               ))}
@@ -283,20 +283,20 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">How a channel is decided</h2>
-          <p className="mt-2 text-sm text-white/60">
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">How a channel is decided</h2>
+          <p className="mt-2 text-sm text-[var(--admin-soft)]">
             Which sites count as search engines is not something this platform is entitled to decide
             for itself, so it does not. The rules, and the list of sites each rule matches, are the
             default channel group Google publishes, fetched into the build and checked by a guard on
             every release. The list was last confirmed on{' '}
             {formatPlatformDate(SOURCE_CATEGORY_FETCHED_ON)}.
           </p>
-          <ul className="mt-5 space-y-2 text-sm text-white/70">
+          <ul className="mt-5 space-y-2 text-sm text-[var(--admin-soft)]">
             <li>
               <a
                 href={SOURCE_CATEGORY_PROVENANCE.rules}
-                className="font-semibold text-[var(--brand-accent)] underline underline-offset-2"
+                className="font-semibold text-[var(--brand-accent-strong)] underline underline-offset-2"
                 rel="noreferrer noopener"
                 target="_blank"
               >
@@ -306,7 +306,7 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
             <li>
               <a
                 href={SOURCE_CATEGORY_PROVENANCE.table}
-                className="font-semibold text-[var(--brand-accent)] underline underline-offset-2"
+                className="font-semibold text-[var(--brand-accent-strong)] underline underline-offset-2"
                 rel="noreferrer noopener"
                 target="_blank"
               >
@@ -314,7 +314,7 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
               </a>
             </li>
           </ul>
-          <p className="mt-5 text-xs text-white/50">
+          <p className="mt-5 text-xs text-[var(--admin-muted)]">
             Where a rule needs something this platform does not hold, the rule is left out rather
             than approximated, and a visit it would have claimed stays a referral. So this
             under-reports search rather than flattering it.

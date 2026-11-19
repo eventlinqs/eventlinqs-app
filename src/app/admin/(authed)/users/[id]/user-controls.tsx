@@ -18,9 +18,9 @@ export function RoleControl({ userId, currentRole }: { userId: string; currentRo
 
   if (isPlatformAdmin) {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-        <h3 className="text-sm font-semibold text-white/80">Role</h3>
-        <p className="mt-2 text-sm text-white/60">
+      <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+        <h3 className="text-sm font-semibold text-[var(--admin-ink)]">Role</h3>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           This account holds a platform role ({currentRole}). Platform roles are not changed from this surface.
         </p>
       </div>
@@ -39,16 +39,16 @@ export function RoleControl({ userId, currentRole }: { userId: string; currentRo
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-      <h3 className="text-sm font-semibold text-white/80">Role</h3>
-      {error ? <p role="alert" className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
-      {done ? <p role="status" className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">Role updated.</p> : null}
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+      <h3 className="text-sm font-semibold text-[var(--admin-ink)]">Role</h3>
+      {error ? <p role="alert" className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800">{error}</p> : null}
+      {done ? <p role="status" className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800">Role updated.</p> : null}
       <div className="mt-3 flex items-center gap-2">
         <select
           aria-label="Role"
           value={role}
           onChange={e => { setRole(e.target.value); setDone(false) }}
-          className="min-h-[44px] rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+          className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
         >
           {ASSIGNABLE.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
@@ -83,14 +83,14 @@ export function SuspendControl({ userId, suspended }: { userId: string; suspende
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-      <h3 className="text-sm font-semibold text-white/80">Account status</h3>
-      <p className="mt-2 text-sm text-white/60">
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+      <h3 className="text-sm font-semibold text-[var(--admin-ink)]">Account status</h3>
+      <p className="mt-2 text-sm text-[var(--admin-soft)]">
         {suspended
           ? 'This account is suspended and cannot sign in.'
           : 'This account is active. Suspending blocks sign-in and revokes existing sessions.'}
       </p>
-      {error ? <p role="alert" className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800">{error}</p> : null}
       <button
         type="button"
         disabled={submitting}
@@ -98,7 +98,7 @@ export function SuspendControl({ userId, suspended }: { userId: string; suspende
         className={`mt-3 min-h-[44px] rounded-md px-5 text-xs font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
           suspended
             ? 'bg-[var(--brand-accent)] text-[var(--text-primary)]'
-            : 'border border-red-500/40 text-red-200 hover:bg-red-500/10'
+            : 'border border-red-500/40 text-red-800 hover:bg-red-500/10'
         }`}
       >
         {submitting ? 'Working' : suspended ? 'Reactivate account' : 'Suspend account'}

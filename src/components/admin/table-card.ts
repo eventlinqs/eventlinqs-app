@@ -69,9 +69,9 @@
  * src/components/features/dashboard/row-control.ts already established.
  *
  * NOTHING HERE INVENTS A TOKEN. Every colour, radius and size below is lifted
- * from the admin tables as they already stand (`bg-[#131A2A]`,
- * `border-white/[0.08]`, `border-white/[0.06]`, the `text-[11px] uppercase
- * tracking-[0.18em] text-white/50` of the column headings, which is what
+ * from the admin tables as they already stand (`bg-[var(--admin-paper)]`,
+ * `border-[var(--admin-line)]`, `border-[var(--admin-line)]`, the `text-[11px] uppercase
+ * tracking-[0.18em] text-[var(--admin-muted)]` of the column headings, which is what
  * ADMIN_CELL_LABEL is: the heading itself, moved inline next to its value).
  */
 
@@ -105,13 +105,13 @@ const ROW_SHAPE = 'max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:px-4 max-l
 /* THE DARK SKIN. Seventeen of the eighteen.                                   */
 /* -------------------------------------------------------------------------- */
 
-export const ADMIN_TABLE_WRAP = `border border-white/[0.08] bg-[#131A2A] ${WRAP_SHAPE}`
+export const ADMIN_TABLE_WRAP = `border border-[var(--admin-line)] bg-[var(--admin-paper)] ${WRAP_SHAPE}`
 
-export const ADMIN_ROW = `border-t border-white/[0.06] hover:bg-white/[0.03] max-lg:border max-lg:border-white/[0.08] max-lg:bg-[#131A2A] ${ROW_SHAPE}`
+export const ADMIN_ROW = `border-t border-[var(--admin-line)] hover:bg-[var(--admin-tint)] max-lg:border max-lg:border-[var(--admin-line)] max-lg:bg-[var(--admin-paper)] ${ROW_SHAPE}`
 
 /** The column headings. They hide below `lg`, where every cell carries its own. */
 export const ADMIN_THEAD =
-  'bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50 max-lg:hidden'
+  'bg-[var(--admin-tint)] text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)] max-lg:hidden'
 
 /**
  * THE COLUMN HEADING, MOVED INLINE NEXT TO ITS VALUE, below `lg` only.
@@ -122,18 +122,18 @@ export const ADMIN_THEAD =
  * the value.
  */
 export const ADMIN_CELL_LABEL =
-  'mr-1 text-[11px] uppercase tracking-[0.18em] text-white/50 lg:hidden'
+  'mr-1 text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)] lg:hidden'
 
 /** The empty state's cell. A designed answer, so it gets the card treatment too. */
-export const ADMIN_EMPTY_CELL = 'px-4 py-10 text-center text-white/50 max-lg:block max-lg:px-0'
+export const ADMIN_EMPTY_CELL = 'px-4 py-10 text-center text-[var(--admin-muted)] max-lg:block max-lg:px-0'
 
 /* -------------------------------------------------------------------------- */
 /* THE LIGHT SKIN. /admin/health only, and it says so.                         */
 /* -------------------------------------------------------------------------- */
 
-export const ADMIN_TABLE_WRAP_LIGHT = `border border-ink-200 bg-white ${WRAP_SHAPE}`
+export const ADMIN_TABLE_WRAP_LIGHT = `border border-ink-200 bg-[var(--admin-ink)] ${WRAP_SHAPE}`
 
-export const ADMIN_ROW_LIGHT = `border-b border-ink-100 last:border-0 max-lg:border max-lg:border-ink-200 max-lg:bg-white ${ROW_SHAPE}`
+export const ADMIN_ROW_LIGHT = `border-b border-ink-100 last:border-0 max-lg:border max-lg:border-ink-200 max-lg:bg-[var(--admin-ink)] ${ROW_SHAPE}`
 
 export const ADMIN_THEAD_LIGHT =
   'border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400 max-lg:hidden'
@@ -178,7 +178,7 @@ export const ADMIN_CELL =
  * renders is a constant that is never wrong and never checked.
  */
 export const ADMIN_CELL_ACTIONS =
-  'px-4 py-3 max-lg:mt-3 max-lg:block max-lg:border-t max-lg:border-white/[0.06] max-lg:px-0 max-lg:pb-0'
+  'px-4 py-3 max-lg:mt-3 max-lg:block max-lg:border-t max-lg:border-[var(--admin-line)] max-lg:px-0 max-lg:pb-0'
 
 /**
  * A CONTROL INSIDE A ROW, RAISED TO THE 44px MINIMUM.

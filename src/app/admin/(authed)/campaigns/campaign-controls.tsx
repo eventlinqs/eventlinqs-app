@@ -57,7 +57,7 @@ export function CampaignControls({
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[16rem] flex-1">
-          <label htmlFor="campaign_nav" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+          <label htmlFor="campaign_nav" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             Campaign
           </label>
           <select
@@ -67,7 +67,7 @@ export function CampaignControls({
               setCampaignId(e.target.value)
               go(e.target.value, channelCode)
             }}
-            className="mt-2 h-11 w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+            className="mt-2 h-11 w-full rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] focus:border-[var(--brand-accent)] focus:outline-none"
           >
             <option value="">Choose a campaign</option>
             {campaigns.map(c => (
@@ -78,7 +78,7 @@ export function CampaignControls({
           </select>
         </div>
         <div className="min-w-[10rem]">
-          <label htmlFor="channel_nav" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+          <label htmlFor="channel_nav" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             Channel
           </label>
           <select
@@ -88,7 +88,7 @@ export function CampaignControls({
               setChannelCode(e.target.value)
               go(campaignId, e.target.value)
             }}
-            className="mt-2 h-11 w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+            className="mt-2 h-11 w-full rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] focus:border-[var(--brand-accent)] focus:outline-none"
           >
             {channels.map(c => (
               <option key={c.code} value={c.code}>
@@ -117,7 +117,7 @@ export function CampaignControls({
           <button
             type="submit"
             disabled={running || !campaignId}
-            className="min-h-[44px] rounded-lg border border-white/20 px-5 text-sm font-semibold text-white transition hover:border-[var(--brand-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] rounded-lg border border-[var(--admin-line-strong)] px-5 text-sm font-semibold text-[var(--admin-ink)] transition hover:border-[var(--brand-accent)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {running ? 'Running' : 'Run the pacing once'}
           </button>
@@ -128,7 +128,7 @@ export function CampaignControls({
         <p
           role="status"
           className={`rounded-lg px-4 py-3 text-sm ${
-            approveState.ok ? 'bg-emerald-500/10 text-emerald-200' : 'bg-rose-500/10 text-rose-200'
+            approveState.ok ? 'bg-emerald-500/10 text-emerald-800' : 'bg-rose-500/10 text-rose-800'
           }`}
         >
           {approveState.message}
@@ -138,7 +138,7 @@ export function CampaignControls({
         <p
           role="status"
           className={`rounded-lg px-4 py-3 text-sm ${
-            runState.ok ? 'bg-emerald-500/10 text-emerald-200' : 'bg-rose-500/10 text-rose-200'
+            runState.ok ? 'bg-emerald-500/10 text-emerald-800' : 'bg-rose-500/10 text-rose-800'
           }`}
         >
           {runState.message}

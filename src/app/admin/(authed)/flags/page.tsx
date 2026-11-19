@@ -55,9 +55,9 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Platform</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Platform</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Feature flags</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           The Broadcast Layer stage switches. Every stage is built and tested; switching one on
           is this change plus a re-run of its evidence gate on staging, never a deploy. Changes
           take effect within 30 seconds and are audit-logged.
@@ -65,17 +65,17 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
       </header>
 
       {status === 'saved' && (
-        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
           Saved {flag}. The new state is live for new requests now.
         </div>
       )}
       {status === 'invalid' && (
-        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
           That switch was not valid. Refresh and try again.
         </div>
       )}
       {status === 'error' && (
-        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
           Could not save {flag}. Try again.
         </div>
       )}
@@ -85,7 +85,7 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
       <div className={`relative ${ADMIN_TABLE_WRAP}`}>
         <table className={`${ADMIN_TABLE} lg:min-w-[680px]`}>
           <thead className={ADMIN_THEAD}>
-            <tr className="border-b border-white/[0.08] text-left text-white/50">
+            <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
               <th scope="col" className="px-4 py-3 font-medium">Stage</th>
               <th scope="col" className="px-4 py-3 font-medium">What it switches</th>
               <th scope="col" className="px-4 py-3 font-medium">Launch default</th>
@@ -97,14 +97,14 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
             {flags.map((row) => (
               <tr key={row.flag} className={`${ADMIN_ROW} align-middle`}>
                 <td className={ADMIN_CELL_NAME}>
-                  <div className="font-medium text-white">{STAGE_LABELS[row.flag] ?? row.flag}</div>
-                  <div className="text-[11px] uppercase tracking-wider text-white/40">{row.flag}</div>
+                  <div className="font-medium text-[var(--admin-ink)]">{STAGE_LABELS[row.flag] ?? row.flag}</div>
+                  <div className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">{row.flag}</div>
                 </td>
-                <td className={`${ADMIN_CELL} max-w-md text-white/60`}>
+                <td className={`${ADMIN_CELL} max-w-md text-[var(--admin-soft)]`}>
                   <span className={ADMIN_CELL_LABEL}>Switches</span>
                   {row.description}
                 </td>
-                <td className={`${ADMIN_CELL} text-white/60`}>
+                <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                   <span className={ADMIN_CELL_LABEL}>Launch default</span>
                   {row.launchDefault ? 'On' : 'Off'}
                 </td>
@@ -113,8 +113,8 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
                   <span
                     className={
                       row.enabled
-                        ? 'inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-200'
-                        : 'inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-white/50'
+                        ? 'inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-800'
+                        : 'inline-flex items-center rounded-full border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2.5 py-0.5 text-xs font-medium text-[var(--admin-muted)]'
                     }
                   >
                     {row.enabled ? 'On' : 'Off'}
@@ -126,7 +126,7 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
                     <input type="hidden" name="enabled" value={row.enabled ? 'false' : 'true'} />
                     <ConfirmSubmitButton
                       confirmMessage={`Switch ${row.flag} ${row.enabled ? 'OFF' : 'ON'}? The change is live within 30 seconds.`}
-                      className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white transition hover:border-amber-300/40 hover:text-amber-200`}
+                      className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint-strong)] px-3 py-1.5 text-xs font-medium text-[var(--admin-ink)] transition hover:border-amber-300/40 hover:text-amber-800`}
                     >
                       Switch {row.enabled ? 'off' : 'on'}
                     </ConfirmSubmitButton>
@@ -138,7 +138,7 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
         </table>
       </div>
 
-      <p className="mt-6 max-w-2xl text-xs text-white/40">
+      <p className="mt-6 max-w-2xl text-xs text-[var(--admin-muted)]">
         Per the Broadcast Layer SPEC, a switch-on also requires the stage&apos;s evidence gate
         re-run green on staging and the marketing copy updated the same day. The runbook lives
         in docs/broadcast/.

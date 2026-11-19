@@ -30,12 +30,12 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
     redirect(params.next && params.next.startsWith('/admin') ? params.next : '/admin')
   }
   return (
-    <main className="min-h-screen bg-[#0A0F1A] text-white">
+    <main className="min-h-screen bg-[var(--admin-canvas)] text-[var(--admin-ink)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
         <div className="mb-10 text-center">
-          <p className="font-display text-[11px] uppercase tracking-[0.3em] text-white/50">EventLinqs</p>
+          <p className="font-display text-[11px] uppercase tracking-[0.3em] text-[var(--admin-muted)]">EventLinqs</p>
           <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">Admin console</h1>
-          <p className="mt-3 text-sm text-white/60">
+          <p className="mt-3 text-sm text-[var(--admin-soft)]">
             Restricted access. All actions are logged.
           </p>
         </div>

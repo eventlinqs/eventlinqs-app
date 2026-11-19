@@ -30,18 +30,18 @@ export const metadata = {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  needs_response: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  warning_needs_response: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  under_review: 'border-sky-500/30 bg-sky-500/10 text-sky-200',
-  warning_under_review: 'border-sky-500/30 bg-sky-500/10 text-sky-200',
-  won: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  prevented: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  warning_closed: 'border-white/15 bg-white/[0.04] text-white/60',
-  lost: 'border-red-500/30 bg-red-500/10 text-red-200',
+  needs_response: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  warning_needs_response: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  under_review: 'border-sky-500/30 bg-sky-500/10 text-sky-800',
+  warning_under_review: 'border-sky-500/30 bg-sky-500/10 text-sky-800',
+  won: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
+  prevented: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
+  warning_closed: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
+  lost: 'border-red-500/30 bg-red-500/10 text-red-800',
 }
 
 function statusBadgeClass(status: string): string {
-  return STATUS_BADGE[status] ?? 'border-white/15 bg-white/[0.04] text-white/60'
+  return STATUS_BADGE[status] ?? 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]'
 }
 
 function formatDueDate(iso: string): string {
@@ -63,9 +63,9 @@ export default async function AdminDisputesPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Operations</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Operations</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Disputes</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Chargebacks raised against the platform appear here. Respond with evidence before the due date,
           or accept the dispute to forfeit it. Every action is recorded in the audit log.
         </p>
@@ -73,8 +73,8 @@ export default async function AdminDisputesPage() {
 
       {!result.ok ? (
         <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-6">
-          <p className="text-sm font-semibold text-red-200">Stripe is unreachable</p>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="text-sm font-semibold text-red-800">Stripe is unreachable</p>
+          <p className="mt-2 text-sm text-[var(--admin-soft)]">
             Disputes could not be loaded: {result.error}. Refresh to try again.
           </p>
         </div>
@@ -104,13 +104,13 @@ export default async function AdminDisputesPage() {
                   result.disputes.map(d => {
                     const pastDue = d.dueStatus === 'past_due'
                     const dueSoon = d.dueStatus === 'due_soon'
-                    const dueClass = pastDue ? 'text-red-200' : dueSoon ? 'text-amber-200' : 'text-white/70'
+                    const dueClass = pastDue ? 'text-red-800' : dueSoon ? 'text-amber-800' : 'text-[var(--admin-soft)]'
                     return (
                       <tr key={d.id} className={ADMIN_ROW}>
-                        <td className={`${ADMIN_CELL_NAME} font-medium text-white`}>
+                        <td className={`${ADMIN_CELL_NAME} font-medium text-[var(--admin-ink)]`}>
                           {formatMoneyDisplay(d.amountCents, d.currency)}
                         </td>
-                        <td className={`${ADMIN_CELL} text-white/70`}>
+                        <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                           <span className={ADMIN_CELL_LABEL}>Reason</span>
                           {d.reason.replace(/_/g, ' ')}
                         </td>
@@ -131,13 +131,13 @@ export default async function AdminDisputesPage() {
                               {dueSoon ? <span className="ml-2 text-[11px] uppercase tracking-[0.16em]">due soon</span> : null}
                             </>
                           ) : (
-                            <span className="text-white/40">-</span>
+                            <span className="text-[var(--admin-muted)]">-</span>
                           )}
                         </td>
                         <td className={ADMIN_CELL_ACTIONS}>
                           <Link prefetch={false}
                             href={`/admin/disputes/${d.id}`}
-                            className={`${ADMIN_ROW_CONTROL} text-[var(--brand-accent)] hover:underline`}
+                            className={`${ADMIN_ROW_CONTROL} text-[var(--brand-accent-strong)] hover:underline`}
                           >
                             View
                           </Link>
@@ -150,7 +150,7 @@ export default async function AdminDisputesPage() {
             </table>
           </div>
 
-          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-white/50">
+          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)]">
             {result.disputes.length} {result.disputes.length === 1 ? 'dispute' : 'disputes'}
           </p>
         </>

@@ -77,9 +77,9 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Organiser pipeline</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Each organiser&apos;s acquisition state, as its own records prove it, and its score out of 100: frequency {WEIGHTS.frequency}, fit {WEIGHTS.fit}, value{' '}
           {WEIGHTS.value}, readiness {WEIGHTS.readiness}, detail {WEIGHTS.completeness}, partnership {WEIGHTS.partnership}. The score sets who is asked first;
           it predicts nothing.
@@ -87,48 +87,48 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
       </header>
 
       {said === undefined ? null : (
-        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
           {said}
         </p>
       )}
 
       <section id="queue" data-daily-queue aria-label="Today's queue" className="mb-8">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Today&apos;s queue</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Today&apos;s queue</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Each message you send by hand, channel by channel, never more in a day than the channel allows. Copy it, open where it goes, send it there, then
           press Sent. Nothing here sends anything.
         </p>
         {queue === null ? (
-          <p className="mt-4 text-sm text-white">The queue could not be read just now. Reload in a minute; nothing has been lost.</p>
+          <p className="mt-4 text-sm text-[var(--admin-ink)]">The queue could not be read just now. Reload in a minute; nothing has been lost.</p>
         ) : (
           <div className="mt-4 space-y-4">
             {queue.map((c) => (
-              <div key={c.channel} data-channel={c.channel} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
-                <h3 className="text-sm font-semibold text-white">{CHANNEL_WORDS[c.channel]}</h3>
-                <p className="mt-1 text-xs text-white/60">
+              <div key={c.channel} data-channel={c.channel} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
+                <h3 className="text-sm font-semibold text-[var(--admin-ink)]">{CHANNEL_WORDS[c.channel]}</h3>
+                <p className="mt-1 text-xs text-[var(--admin-soft)]">
                   {c.sentToday} of {c.cap} sent today, {c.left} left
                   {c.waiting > 0 ? `; ${c.waiting} more ${c.waiting === 1 ? 'waits' : 'wait'} for another day` : ''}
                 </p>
                 {c.today.length === 0 ? (
-                  <p className="mt-3 text-sm text-white/70">{c.left === 0 ? 'Done for today on this channel.' : 'Nothing is waiting on this channel.'}</p>
+                  <p className="mt-3 text-sm text-[var(--admin-soft)]">{c.left === 0 ? 'Done for today on this channel.' : 'Nothing is waiting on this channel.'}</p>
                 ) : (
-                  <ul className="mt-3 divide-y divide-white/[0.06]">
+                  <ul className="mt-3 divide-y divide-[var(--admin-line)]">
                     {c.today.map((t) => {
                       const why = notReady(t)
                       const href = openInApp(t.channel, t.address, t.subject)
                       return (
                         <li key={t.touchId} data-touch={t.touchId} className="py-4">
-                          <p className="text-sm font-semibold text-white">
-                            {t.organiserName} <span className="font-normal text-white/60">| {stepWords(t)}</span>
+                          <p className="text-sm font-semibold text-[var(--admin-ink)]">
+                            {t.organiserName} <span className="font-normal text-[var(--admin-soft)]">| {stepWords(t)}</span>
                           </p>
-                          {t.subject ? <p className="mt-1 text-xs text-white/60">Subject: {t.subject}</p> : null}
-                          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-white/80">{t.body}</p>
+                          {t.subject ? <p className="mt-1 text-xs text-[var(--admin-soft)]">Subject: {t.subject}</p> : null}
+                          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-[var(--admin-ink)]">{t.body}</p>
                           {why.length > 0 || href === null ? (
-                            <p className="mt-3 text-sm text-white">Not ready: {why.join('; ')}.</p>
+                            <p className="mt-3 text-sm text-[var(--admin-ink)]">Not ready: {why.join('; ')}.</p>
                           ) : (
                             <>
                               <DailyQueueItem touchId={t.touchId} contentHash={t.contentHash} policyVersion={policyVersion} body={t.body} openHref={href} openLabel={OPEN_LABEL[t.channel]} action={markSentAction} />
-                              <p className="mt-2 text-xs text-white/50">{nextStepWords(t.step)}</p>
+                              <p className="mt-2 text-xs text-[var(--admin-muted)]">{nextStepWords(t.step)}</p>
                             </>
                           )}
                         </li>
@@ -143,23 +143,23 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
       </section>
 
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
-          <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">By state</h2>
-          <ul className="mt-3 space-y-1 text-sm text-white/70">
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
+          <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">By state</h2>
+          <ul className="mt-3 space-y-1 text-sm text-[var(--admin-soft)]">
             {counts.map((c) => (
               <li key={c.state}>
-                <span className="font-semibold text-white">{c.n}</span> {STATE_WORDS[c.state]}
+                <span className="font-semibold text-[var(--admin-ink)]">{c.n}</span> {STATE_WORDS[c.state]}
               </li>
             ))}
           </ul>
         </div>
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
-          <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">First cohort</h2>
-          <p className="mt-3 text-sm text-white/70">
-            <span className="font-semibold text-white">{cohort.total}</span> of {COHORT_SIZE} picked: {cohort.email.length} by email, {cohort.otherRoutes.length} by
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
+          <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">First cohort</h2>
+          <p className="mt-3 text-sm text-[var(--admin-soft)]">
+            <span className="font-semibold text-[var(--admin-ink)]">{cohort.total}</span> of {COHORT_SIZE} picked: {cohort.email.length} by email, {cohort.otherRoutes.length} by
             inbound, partnership or in person.
           </p>
-          <ul className="mt-2 space-y-1 text-sm text-white/70">
+          <ul className="mt-2 space-y-1 text-sm text-[var(--admin-soft)]">
             {Object.entries(cohort.quota).map(([city, quota]) => (
               <li key={city} className="capitalize">
                 {city}: {cohort.byCity[city as keyof typeof cohort.byCity].length} of {quota}
@@ -167,7 +167,7 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-white/50">{cohort.outside} outside the four cities or with no city on record.</p>
+          <p className="mt-2 text-xs text-[var(--admin-muted)]">{cohort.outside} outside the four cities or with no city on record.</p>
         </div>
       </section>
 
@@ -191,37 +191,37 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
               const state = stateOf.get(r.id)
               return (
                 <tr key={r.id} className={`${ADMIN_ROW} align-top`}>
-                  <td className={`${ADMIN_CELL_NAME} text-white`}>
+                  <td className={`${ADMIN_CELL_NAME} text-[var(--admin-ink)]`}>
                     {/* The organiser's whole record: everything that happened, pending and next (Growth OS, Release 1). */}
                     <Link prefetch={false} href={`/admin/crm/organisers/${r.id}`} className={`${ADMIN_ROW_CONTROL} underline-offset-2 hover:underline`}>{r.name}</Link>
-                    <span className="block text-xs text-white/50">
+                    <span className="block text-xs text-[var(--admin-muted)]">
                       {r.city ? `${r.city.replace(/-/g, ' ')}${r.citySource === 'source_file' ? ' (from its source file)' : ''}` : 'No city on record'}
                     </span>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>State</span>
                     {state ? STATE_WORDS[state] : 'Not yet read'}
                   </td>
                   {r.state === 'scored' ? (
                     <>
-                      <td className={`${ADMIN_CELL} font-semibold text-white`}>
+                      <td className={`${ADMIN_CELL} font-semibold text-[var(--admin-ink)]`}>
                         <span className={ADMIN_CELL_LABEL}>Score</span>
                         {r.score}
                       </td>
                       {PARTS.map((p) => (
-                        <td key={p} className={`${ADMIN_CELL} text-white/70`} title={r.why[p]}>
+                        <td key={p} className={`${ADMIN_CELL} text-[var(--admin-soft)]`} title={r.why[p]}>
                           <span className={ADMIN_CELL_LABEL}>{PART_LABEL[p]}</span>
                           {r.parts[p]}
-                          <span className="block text-xs text-white/50">{r.why[p]}</span>
+                          <span className="block text-xs text-[var(--admin-muted)]">{r.why[p]}</span>
                         </td>
                       ))}
                     </>
                   ) : (
-                    <td className={`${ADMIN_CELL} text-white/60`} colSpan={PARTS.length + 1}>
+                    <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`} colSpan={PARTS.length + 1}>
                       Not scored: they said no or stop.
                     </td>
                   )}
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Cohort</span>
                     {byEmail.has(r.id) ? 'By email' : byOther.has(r.id) ? 'Another route' : 'Not picked'}
                   </td>

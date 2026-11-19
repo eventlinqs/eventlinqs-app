@@ -50,26 +50,26 @@ export const metadata = {
 function CountList({ title, counts, label }: { title: string; counts: AudienceCount[]; label?: (k: string) => string }) {
   const max = Math.max(1, ...counts.map(c => c.count))
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-lg font-semibold text-white">{title}</h2>
+    <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{title}</h2>
       {counts.length === 0 ? (
-        <p className="mt-3 text-sm text-white/60">
+        <p className="mt-3 text-sm text-[var(--admin-soft)]">
           Nobody in the audience carries this yet.
         </p>
       ) : (
         <ul className="mt-5 space-y-3">
           {counts.map(c => (
             <li key={c.key} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 truncate text-[11px] uppercase tracking-[0.12em] text-white/50">
+              <span className="w-40 shrink-0 truncate text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
                 {label ? label(c.key) : c.key}
               </span>
-              <span className="relative h-6 flex-1 overflow-hidden rounded bg-white/[0.04]">
+              <span className="relative h-6 flex-1 overflow-hidden rounded bg-[var(--admin-tint)]">
                 <span
                   className="absolute inset-y-0 left-0 rounded bg-[var(--brand-accent)]/70"
                   style={{ width: `${Math.max(2, Math.round((c.count / max) * 100))}%` }}
                 />
               </span>
-              <span className="w-12 shrink-0 text-right text-sm tabular-nums text-white">{c.count}</span>
+              <span className="w-12 shrink-0 text-right text-sm tabular-nums text-[var(--admin-ink)]">{c.count}</span>
             </li>
           ))}
         </ul>
@@ -132,9 +132,9 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Audience</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Buyers who have both a confirmed order and a granted marketing consent. A row cannot
           exist here without that consent: the database refuses it. Counts only, no addresses,
           and nothing on this platform sends to this list yet.
@@ -188,9 +188,9 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
         </div>
       </div>
 
-      <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Consent state</h2>
-        <p className="mt-1 text-sm text-white/60">
+      <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Consent state</h2>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
           Every answer the platform holds, including the people who were asked and said no. A
           decline is never marketing consent and never enters the audience; it is kept so that
           &ldquo;asked and declined&rdquo; can be told apart from &ldquo;never asked&rdquo;.
@@ -202,22 +202,22 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
             ['Declined', dashboard.consent.declined],
             ['Granted, no purchase yet', dashboard.consent.grantedWithoutPurchase],
           ].map(([label, value]) => (
-            <div key={String(label)} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
-              <dt className="text-[11px] uppercase tracking-[0.16em] text-white/50">{label}</dt>
-              <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-white">{value}</dd>
+            <div key={String(label)} className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4">
+              <dt className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">{label}</dt>
+              <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-[var(--admin-ink)]">{value}</dd>
             </div>
           ))}
         </dl>
       </section>
 
       <section
-        className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+        className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6"
         data-capture-placement={placementNow}
       >
-        <h2 className="font-display text-lg font-semibold text-white">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">
           Where the question is asked, and what it costs
         </h2>
-        <p className="mt-1 text-sm text-white/60">
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
           AQ1 puts the discovery question on the surface that sells tickets, so the platform has
           to be able to say whether that costs the organiser sales. Every number here is counted
           off public.reservations: a reservation is one buyer reaching the payment step, and it
@@ -234,14 +234,14 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
             return (
               <div
                 key={label}
-                className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
+                className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4"
                 data-conversion-cell={label}
               >
-                <dt className="text-[11px] uppercase tracking-[0.16em] text-white/50">{label}</dt>
-                <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-white">
+                <dt className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">{label}</dt>
+                <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-[var(--admin-ink)]">
                   {formatRate(r.percent)}
                 </dd>
-                <dd className="mt-1 text-xs text-white/50 tabular-nums">
+                <dd className="mt-1 text-xs text-[var(--admin-muted)] tabular-nums">
                   {r.converted} of {r.settled} settled
                 </dd>
               </div>
@@ -249,20 +249,20 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
           })}
         </dl>
 
-        <p className="mt-5 text-sm text-white/80" data-conversion-verdict={conversion.theQuestionArriving.verdict}>
+        <p className="mt-5 text-sm text-[var(--admin-ink)]" data-conversion-verdict={conversion.theQuestionArriving.verdict}>
           {conversionSentence(conversion.theQuestionArriving, {
             before: 'Before the question existed',
             after: 'Asked at checkout',
           })}
         </p>
-        <p className="mt-2 text-sm text-white/70" data-conversion-move-verdict={conversion.theMove.verdict}>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]" data-conversion-move-verdict={conversion.theMove.verdict}>
           {conversionSentence(conversion.theMove, {
             before: 'Asked at checkout',
             after: 'Asked on the ticket page',
           })}
         </p>
         {conversion.theQuestionArriving.standardErrorPoints !== null && (
-          <p className="mt-2 text-xs text-white/40 tabular-nums">
+          <p className="mt-2 text-xs text-[var(--admin-muted)] tabular-nums">
             Standard error of that difference: {conversion.theQuestionArriving.standardErrorPoints.toFixed(2)} points.
             {conversion.theQuestionArriving.deltaRelativePercent !== null &&
               ` Read as a relative change instead: ${conversion.theQuestionArriving.deltaRelativePercent.toFixed(1)}%.`}
@@ -270,28 +270,28 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
           </p>
         )}
 
-        <div className="mt-6 rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/50">
+        <div className="mt-6 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             In force now
           </p>
-          <p className="mt-1 text-sm text-white/80">
+          <p className="mt-1 text-sm text-[var(--admin-ink)]">
             The question is asked {placementNow === 'checkout' ? 'at the payment step' : 'on the ticket page'}
             {placementDecision ? `, since ${placementDecision.effectiveFrom.slice(0, 10)}.` : '.'}
           </p>
           {placementDecision && (
-            <p className="mt-2 text-xs text-white/50">{placementDecision.reason}</p>
+            <p className="mt-2 text-xs text-[var(--admin-muted)]">{placementDecision.reason}</p>
           )}
 
           <form action={moveCaptureAskAction} className="mt-5 flex flex-wrap items-end gap-3">
             <div>
-              <label htmlFor="placement" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+              <label htmlFor="placement" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
                 Move it to
               </label>
               <select
                 id="placement"
                 name="placement"
                 defaultValue={placementNow === 'checkout' ? 'ticket_page' : 'checkout'}
-                className="mt-1 h-11 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+                className="mt-1 h-11 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] focus:border-[var(--brand-accent)] focus:outline-none"
               >
                 {CAPTURE_PLACEMENTS.map((value: CapturePlacement) => (
                   <option key={value} value={value} className="text-[#0A1628]">
@@ -301,7 +301,7 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
               </select>
             </div>
             <div className="flex-1">
-              <label htmlFor="reason" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+              <label htmlFor="reason" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
                 Why
               </label>
               <input
@@ -312,7 +312,7 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
                 minLength={10}
                 defaultValue={suggestedReason}
                 placeholder="Conversion fell past the limit, so the capture moves"
-                className="mt-1 h-11 w-full min-w-[18rem] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:border-[var(--brand-accent)] focus:outline-none"
+                className="mt-1 h-11 w-full min-w-[18rem] rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)] focus:border-[var(--brand-accent)] focus:outline-none"
               />
             </div>
             <button
@@ -322,27 +322,27 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
               Move the question
             </button>
           </form>
-          <p className="mt-3 text-xs text-white/40">
+          <p className="mt-3 text-xs text-[var(--admin-muted)]">
             Appending a decision, never editing one. The rule is a fall of more than
             {` ${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} `}
             percentage points, and moving the question never removes it: the buyer is still asked,
             one screen earlier.
           </p>
           {placementStatus === 'moved' && (
-            <p className="mt-3 text-sm text-[var(--brand-accent)]">The decision is recorded and is in force now.</p>
+            <p className="mt-3 text-sm text-[var(--brand-accent-strong)]">The decision is recorded and is in force now.</p>
           )}
           {placementStatus === 'error' && (
-            <p className="mt-3 text-sm text-red-300">The decision could not be written. Nothing changed.</p>
+            <p className="mt-3 text-sm text-red-800">The decision could not be written. Nothing changed.</p>
           )}
           {placementStatus === 'invalid' && (
-            <p className="mt-3 text-sm text-red-300">A placement needs a known surface and a reason of at least ten characters.</p>
+            <p className="mt-3 text-sm text-red-800">A placement needs a known surface and a reason of at least ten characters.</p>
           )}
         </div>
       </section>
 
-      <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Look one person up</h2>
-        <p className="mt-1 text-sm text-white/60">
+      <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Look one person up</h2>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
           The screen a complaint is answered from. Type the address the person wrote in with and
           this returns everything the ledger holds for them, in sentences, exactly as they would
           read it on their own preferences page. Every lookup is written to the audit log.
@@ -357,7 +357,7 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
             type="email"
             defaultValue={lookupEmail}
             placeholder="someone@example.com"
-            className="h-11 min-w-[18rem] flex-1 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:border-[var(--brand-accent)] focus:outline-none"
+            className="h-11 min-w-[18rem] flex-1 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)] focus:border-[var(--brand-accent)] focus:outline-none"
           />
           <button
             type="submit"
@@ -368,25 +368,25 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
         </form>
 
         {history && (
-          <div className="mt-6 rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
+          <div className="mt-6 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-5">
             {history.consents.length === 0 && history.suppressions.length === 0 ? (
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-[var(--admin-soft)]">
                 Nothing is recorded for {history.email}. That is a real answer: this platform has
                 never asked that address for marketing consent.
               </p>
             ) : (
               <>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/50">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
                   {history.email}
                 </p>
-                <ul className="mt-4 space-y-3 text-sm text-white/80">
+                <ul className="mt-4 space-y-3 text-sm text-[var(--admin-ink)]">
                   {history.consents.map(row => (
                     <li key={row.id} className="border-l-2 border-[var(--brand-accent)]/60 pl-3">
                       {consentEventSentence(row)}
                     </li>
                   ))}
                   {history.suppressions.map(row => (
-                    <li key={row.id} className="border-l-2 border-white/20 pl-3">
+                    <li key={row.id} className="border-l-2 border-[var(--admin-line-strong)] pl-3">
                       {suppressionSentence(row)}
                     </li>
                   ))}

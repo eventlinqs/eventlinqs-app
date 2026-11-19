@@ -25,17 +25,17 @@ function date(iso: string): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  suspended: 'border-red-500/30 bg-red-500/10 text-red-200',
-  deactivated: 'border-white/15 bg-white/[0.04] text-white/60',
+  active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
+  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  suspended: 'border-red-500/30 bg-red-500/10 text-red-800',
+  deactivated: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
 }
 
 function YesNo({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm last:border-0">
-      <span className="text-white/50">{label}</span>
-      <span className={ok ? 'text-emerald-300' : 'text-amber-300'}>{ok ? 'Yes' : 'No'}</span>
+    <div className="flex items-center justify-between border-b border-[var(--admin-line)] pb-2 text-sm last:border-0">
+      <span className="text-[var(--admin-muted)]">{label}</span>
+      <span className={ok ? 'text-emerald-800' : 'text-amber-800'}>{ok ? 'Yes' : 'No'}</span>
     </div>
   )
 }
@@ -63,15 +63,15 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Organisers</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Organisers</p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-3xl font-bold tracking-tight">{org.name}</h1>
           <span className={`rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${STATUS_BADGE[org.status] ?? STATUS_BADGE.deactivated}`}>
             {org.status}
           </span>
         </div>
-        <p className="mt-2 text-sm text-white/60">{org.email ?? 'No contact email'} | joined {date(org.createdAt)}</p>
-        <Link prefetch={false} href="/admin/organisers" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to organisers</Link>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">{org.email ?? 'No contact email'} | joined {date(org.createdAt)}</p>
+        <Link prefetch={false} href="/admin/organisers" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]">Back to organisers</Link>
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -81,41 +81,41 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">Verification (Stripe Connect)</h2>
-          <p className="mt-1 text-xs text-white/40">Identity verification is handled by Stripe for the connected account.</p>
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Verification (Stripe Connect)</h2>
+          <p className="mt-1 text-xs text-[var(--admin-muted)]">Identity verification is handled by Stripe for the connected account.</p>
 
           {!v.hasAccount ? (
-            <p className="mt-4 text-sm text-white/60">
+            <p className="mt-4 text-sm text-[var(--admin-soft)]">
               {v.lookupError
                 ? 'Could not reach Stripe to read verification status. Try again shortly.'
                 : 'This organiser has not connected a Stripe account yet, so onboarding and verification have not started.'}
             </p>
           ) : (
             <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm">
-                <span className="text-white/50">Onboarding</span>
-                <span className={v.onboarded ? 'text-emerald-300' : 'text-amber-300'}>{v.onboarded ? 'Complete' : 'Incomplete'}</span>
+              <div className="flex items-center justify-between border-b border-[var(--admin-line)] pb-2 text-sm">
+                <span className="text-[var(--admin-muted)]">Onboarding</span>
+                <span className={v.onboarded ? 'text-emerald-800' : 'text-amber-800'}>{v.onboarded ? 'Complete' : 'Incomplete'}</span>
               </div>
               <YesNo ok={v.chargesEnabled} label="Charges enabled" />
               <YesNo ok={v.payoutsEnabled} label="Payouts enabled" />
               <YesNo ok={v.detailsSubmitted} label="Details submitted" />
               {v.disabledReason ? (
-                <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800">
                   Disabled reason: {v.disabledReason}
                 </div>
               ) : null}
               {v.requirementsDue.length > 0 ? (
                 <div className="mt-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Requirements due</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Requirements due</p>
                   <ul className="mt-1.5 flex flex-wrap gap-1.5">
                     {v.requirementsDue.map(r => (
-                      <li key={r} className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">{r}</li>
+                      <li key={r} className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-800">{r}</li>
                     ))}
                   </ul>
                 </div>
               ) : v.onboarded ? (
-                <p className="mt-3 text-sm text-emerald-300">No outstanding requirements.</p>
+                <p className="mt-3 text-sm text-emerald-800">No outstanding requirements.</p>
               ) : null}
             </div>
           )}

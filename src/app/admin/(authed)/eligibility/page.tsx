@@ -26,12 +26,12 @@ const SHOWN = 100
 function Night({ e }: { e: JudgedEvent }) {
   const held = e.checks.filter((c) => !c.ok)
   return (
-    <li className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-      <Link prefetch={false} href={`/events/${e.slug}`} className="inline-flex min-h-[44px] items-center font-medium text-white underline underline-offset-2">
+    <li className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4">
+      <Link prefetch={false} href={`/events/${e.slug}`} className="inline-flex min-h-[44px] items-center font-medium text-[var(--admin-ink)] underline underline-offset-2">
         {e.title}
       </Link>
-      <p className="text-xs text-white/60">{e.level ?? 'No level'}</p>
-      {held.length > 0 && <p className="mt-1 text-xs text-white/60">{held.map((c) => c.words).join('. ')}.</p>}
+      <p className="text-xs text-[var(--admin-soft)]">{e.level ?? 'No level'}</p>
+      {held.length > 0 && <p className="mt-1 text-xs text-[var(--admin-soft)]">{held.map((c) => c.words).join('. ')}.</p>}
     </li>
   )
 }
@@ -57,28 +57,28 @@ export default async function AdminEligibilityPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Campaign eligibility</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">Every public night in the next 90 days, judged on nine points. Not every event gets the same promotion.</p>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">Every public night in the next 90 days, judged on nine points. Not every event gets the same promotion.</p>
       </header>
 
       {report === null ? (
-        <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-sm text-amber-200">
+        <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-sm text-amber-800">
           The nights could not be read just now. Refresh in a minute.
         </p>
       ) : (
         <>
           {report.venuePhotosUnread && (
-            <p role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            <p role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
               The venue photographs could not be read, so none counted in this reading.
             </p>
           )}
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {LEVELS.map((l) => (
-              <div key={l.key} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-                <dt className="text-sm font-medium text-white">{l.label}</dt>
+              <div key={l.key} className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4">
+                <dt className="text-sm font-medium text-[var(--admin-ink)]">{l.label}</dt>
                 <dd className="mt-1 font-display text-2xl font-bold">{counts[l.key]}</dd>
-                <dd className="mt-1 text-xs text-white/60">{l.means}</dd>
+                <dd className="mt-1 text-xs text-[var(--admin-soft)]">{l.means}</dd>
               </div>
             ))}
           </dl>

@@ -113,15 +113,15 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Compliance</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Compliance</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Audit log</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Append-only record of every admin action. Filter by actor, action, target, and time. Each
           row exposes its full metadata payload.
         </p>
       </header>
 
-      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-5">
+      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 md:grid-cols-5">
         <FilterField label="From" name="from" type="date" defaultValue={params.from} />
         <FilterField label="To" name="to" type="date" defaultValue={params.to} />
         <FilterField label="Actor email" name="actor" placeholder="founder@..." defaultValue={params.actor} />
@@ -130,7 +130,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
         <div className="md:col-span-5 flex items-center justify-end gap-2">
           <Link prefetch={false}
             href="/admin/audit"
-            className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+            className="rounded-md border border-[var(--admin-line)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
           >
             Reset
           </Link>
@@ -190,26 +190,26 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
             ) : (
               result.rows.map(row => (
                 <tr key={row.id} className={ADMIN_ROW}>
-                  <td className={`${ADMIN_CELL_NAME} whitespace-nowrap text-white/80`}>
+                  <td className={`${ADMIN_CELL_NAME} whitespace-nowrap text-[var(--admin-ink)]`}>
                     {new Date(row.created_at).toISOString().replace('T', ' ').slice(0, 19)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Actor</span>
                     {row.actor_email_snapshot ?? 'anonymous'}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/60`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Role</span>
                     {row.actor_role_snapshot ?? '-'}
                   </td>
-                  <td className={`${ADMIN_CELL} font-mono text-xs text-white`}>
+                  <td className={`${ADMIN_CELL} font-mono text-xs text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Action</span>
                     {row.action}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Target</span>
                     {row.target_type ? `${row.target_type}:${row.target_id ?? '-'}` : '-'}
                   </td>
-                  <td className={`${ADMIN_CELL} font-mono text-xs text-white/60`}>
+                  <td className={`${ADMIN_CELL} font-mono text-xs text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>IP</span>
                     {row.ip ?? '-'}
                   </td>
@@ -227,12 +227,12 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
         {result.nextCursor ? (
           <Link prefetch={false}
             href={buildNextHref(params, result.nextCursor)}
-            className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+            className="rounded-md border border-[var(--admin-line)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
           >
             Older entries
           </Link>
         ) : (
-          <span className="text-xs uppercase tracking-[0.18em] text-white/40">End of log</span>
+          <span className="text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)]">End of log</span>
         )}
       </div>
     </div>
@@ -248,13 +248,13 @@ function FilterField(props: {
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">{props.label}</span>
+      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{props.label}</span>
       <input
         type={props.type ?? 'text'}
         name={props.name}
         placeholder={props.placeholder}
         defaultValue={props.defaultValue ?? ''}
-        className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+        className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
       />
     </label>
   )
@@ -263,11 +263,11 @@ function FilterField(props: {
 function SelectField(props: { label: string; name: string; options: string[]; defaultValue?: string }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">{props.label}</span>
+      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{props.label}</span>
       <select
         name={props.name}
         defaultValue={props.defaultValue ?? ''}
-        className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+        className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
       >
         <option value="">Any</option>
         {props.options.map(o => (

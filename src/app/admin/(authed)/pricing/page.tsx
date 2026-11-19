@@ -38,9 +38,9 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Money</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Money</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Pricing and fees</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           There is ONE fee. Edit its percent and its fixed amount per ticket, and
           choose who pays it, per region, or set a per-organiser or per-event
           override below. Card processing comes out of that one fee: there is no
@@ -54,40 +54,40 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
       </header>
 
       {status === 'saved' && (
-        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
           Saved {scope}. {Number(changed ?? 0)} field{Number(changed ?? 0) === 1 ? '' : 's'} updated. New transactions use the new fees now.
         </div>
       )}
       {status === 'invalid' && (
-        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
           Those values were not saved. The platform fee percent must be above 0 and no more than 100, and the fixed fee is in whole cents. To charge nothing, use the Founding Organiser waiver on the organisation rather than a zero rate.
         </div>
       )}
       {status === 'error' && (
-        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
           Could not save {scope}. Try again.
         </div>
       )}
       {status === 'override_saved' && (
-        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
           Override saved for this {scope}. {Number(changed ?? 0)} field{Number(changed ?? 0) === 1 ? '' : 's'} updated. New transactions for it use the override now.
         </div>
       )}
       {status === 'override_invalid' && (
-        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
           Override not saved. Check the target ID is a valid UUID, the platform fee percent is above 0 and no more than 100, and the fixed fee is in whole cents. To charge nothing, use the Founding Organiser waiver on the organisation rather than a zero rate.
         </div>
       )}
       {status === 'override_error' && (
-        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
           Could not save the {scope} override. Check the {scope} ID exists and that the fee values are in range, then try again.
         </div>
       )}
 
-      <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
+      <div className="relative overflow-x-auto rounded-lg border border-[var(--admin-line)]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b border-white/[0.08] text-left text-white/50">
+            <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
               <th scope="col" className="px-4 py-3 font-medium">Region</th>
               <th scope="col" className="px-4 py-3 font-medium">Platform fee percent</th>
               <th scope="col" className="px-4 py-3 font-medium">Fixed fee per ticket (cents)</th>
@@ -105,10 +105,10 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                 row.processingTreatment.version ?? 0,
               )
               return (
-                <tr key={id} className="border-b border-white/[0.05] align-middle">
+                <tr key={id} className="border-b border-[var(--admin-line)] align-middle">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-white">{row.scope.label}</div>
-                    <div className="text-[11px] uppercase tracking-wider text-white/40">
+                    <div className="font-medium text-[var(--admin-ink)]">{row.scope.label}</div>
+                    <div className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">
                       {row.scope.countryCode} {row.scope.currency}
                     </div>
                   </td>
@@ -137,7 +137,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                         max="100"
                         required
                         defaultValue={row.platformFeePercentage.value ?? undefined}
-                        className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+                        className="w-24 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
                       />
                     </form>
                   </td>
@@ -152,7 +152,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                       min="0"
                       max="100000"
                       defaultValue={row.platformFeeFixedCents.value ?? 0}
-                      className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+                      className="w-24 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -162,13 +162,13 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                       id={`treat-${id}`}
                       name="processing_fee_pass_through"
                       defaultValue={String(row.processingTreatment.value ?? 1)}
-                      className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+                      className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
                     >
                       <option value="1">Pass to buyer</option>
                       <option value="0">Absorb</option>
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-white/50">v{ver || 1}</td>
+                  <td className="px-4 py-3 text-[var(--admin-muted)]">v{ver || 1}</td>
                   <td className="px-4 py-3">
                     {/* Confirmation step (WCAG-safe native confirm): changing
                         fees affects what every new transaction is charged, so a
@@ -176,7 +176,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                     <ConfirmSubmitButton
                       form={`form-${id}`}
                       confirmMessage={`Update live ${row.scope.label} (${row.scope.countryCode} ${row.scope.currency}) fees? New transactions will use the new fees immediately. Past orders are unchanged.`}
-                      className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white"
+                      className="rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-sm font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]"
                     >
                       Save
                     </ConfirmSubmitButton>
@@ -188,7 +188,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </table>
       </div>
 
-      <p className="mt-4 text-xs text-white/40">
+      <p className="mt-4 text-xs text-[var(--admin-muted)]">
         Who pays the fee: pass to buyer adds it on top at checkout and the organiser keeps the full face value; absorb takes it from the organiser payout and the buyer pays the ticket price only. Overrides below win over these regional defaults.
       </p>
 
@@ -196,7 +196,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
       <section className="mt-12">
         <header className="mb-4">
           <h2 className="font-display text-2xl font-bold tracking-tight">Overrides</h2>
-          <p className="mt-2 max-w-2xl text-sm text-white/60">
+          <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
             Set a fee for one organiser or one event. Precedence is event first, then
             organiser, then the regional default above. The same value drives the displayed
             fee, the checkout charge, and the payout, so an override is what the buyer sees and
@@ -221,14 +221,14 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
             box a screen reader lands in.
           */
           <div
-            className="relative mb-6 overflow-x-auto rounded-lg border border-white/[0.08]"
+            className="relative mb-6 overflow-x-auto rounded-lg border border-[var(--admin-line)]"
             tabIndex={0}
             role="region"
             aria-label="Per-organiser and per-event fee overrides"
           >
             <table className="w-full min-w-[680px] text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] text-left text-white/50">
+                <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
                   <th scope="col" className="px-4 py-3 font-medium">Scope</th>
                   <th scope="col" className="px-4 py-3 font-medium">Target ID</th>
                   <th scope="col" className="px-4 py-3 font-medium">Platform fee percent</th>
@@ -238,30 +238,30 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               </thead>
               <tbody>
                 {overrides.map((o) => (
-                  <tr key={`${o.kind}-${o.targetId}`} className="border-b border-white/[0.05] align-middle">
-                    <td className="px-4 py-3 capitalize text-white">{o.kind}</td>
-                    <td className="px-4 py-3 font-mono text-[12px] text-white/70">{o.targetId}</td>
-                    <td className="px-4 py-3 text-white">{o.percentage.value ?? '-'}{o.percentage.value !== null ? '%' : ''}</td>
-                    <td className="px-4 py-3 text-white">{o.fixed.value ?? '-'}</td>
-                    <td className="px-4 py-3 text-white/50">v{Math.max(o.percentage.version ?? 0, o.fixed.version ?? 0) || 1}</td>
+                  <tr key={`${o.kind}-${o.targetId}`} className="border-b border-[var(--admin-line)] align-middle">
+                    <td className="px-4 py-3 capitalize text-[var(--admin-ink)]">{o.kind}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-[var(--admin-soft)]">{o.targetId}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{o.percentage.value ?? '-'}{o.percentage.value !== null ? '%' : ''}</td>
+                    <td className="px-4 py-3 text-[var(--admin-ink)]">{o.fixed.value ?? '-'}</td>
+                    <td className="px-4 py-3 text-[var(--admin-muted)]">v{Math.max(o.percentage.version ?? 0, o.fixed.version ?? 0) || 1}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="mb-6 text-sm text-white/40">No overrides set. Every organiser and event uses the regional default above.</p>
+          <p className="mb-6 text-sm text-[var(--admin-muted)]">No overrides set. Every organiser and event uses the regional default above.</p>
         )}
 
-        <form action={updateOverridePricingAction} className="grid max-w-3xl grid-cols-1 gap-4 rounded-lg border border-white/[0.08] p-5 sm:grid-cols-2 lg:grid-cols-6">
+        <form action={updateOverridePricingAction} className="grid max-w-3xl grid-cols-1 gap-4 rounded-lg border border-[var(--admin-line)] p-5 sm:grid-cols-2 lg:grid-cols-6">
           <OverrideTargetPicker />
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ov-currency" className="text-[11px] uppercase tracking-wider text-white/50">Currency</label>
+            <label htmlFor="ov-currency" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Currency</label>
             <select
               id="ov-currency"
               name="currency"
               defaultValue="AUD"
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+              className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
             >
               {currencyOptions.map((s) => (
                 <option key={s.currency} value={s.currency}>{s.currency}</option>
@@ -269,7 +269,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ov-pct" className="text-[11px] uppercase tracking-wider text-white/50">Platform fee percent</label>
+            <label htmlFor="ov-pct" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Platform fee percent</label>
             <input
               id="ov-pct"
               name="platform_fee_percentage"
@@ -279,11 +279,11 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               max="100"
               required
               placeholder="e.g. 2.5"
-              className="w-full rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+              className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ov-fixed" className="text-[11px] uppercase tracking-wider text-white/50">Fixed fee (cents)</label>
+            <label htmlFor="ov-fixed" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Fixed fee (cents)</label>
             <input
               id="ov-fixed"
               name="platform_fee_fixed"
@@ -292,13 +292,13 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               min="0"
               max="100000"
               defaultValue={0}
-              className="w-full rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+              className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-6">
             <ConfirmSubmitButton
               confirmMessage="Save this override? New transactions for the target organiser or event will use it immediately. Past orders are unchanged."
-              className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white"
+              className="rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-sm font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]"
             >
               Save override
             </ConfirmSubmitButton>

@@ -27,7 +27,7 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
         // measured 52x26 at every width including 1440, and it is the only
         // control on the audit row: the whole point of the screen is opening
         // one of these.
-        className="inline-flex min-h-11 items-center rounded-md border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+        className="inline-flex min-h-11 items-center rounded-md border border-[var(--admin-line)] px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
       >
         View
       </button>
@@ -40,18 +40,18 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+            className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6"
             onClick={e => e.stopPropagation()}
           >
             <header className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Audit entry</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Audit entry</p>
                 <h2 className="mt-1 font-display text-xl font-bold tracking-tight">#{row.id}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/[0.06]"
+                className="rounded-md border border-[var(--admin-line)] px-2 py-1 text-xs text-[var(--admin-soft)] hover:bg-[var(--admin-tint-strong)]"
               >
                 Close
               </button>
@@ -67,8 +67,8 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
               <Field k="User agent" v={row.user_agent ?? '-'} />
             </dl>
             <div>
-              <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-white/50">Metadata</p>
-              <pre className="max-h-[40vh] overflow-auto rounded-md border border-white/10 bg-black/40 p-3 font-mono text-xs text-white/80">
+              <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Metadata</p>
+              <pre className="max-h-[40vh] overflow-auto rounded-md border border-[var(--admin-line)] bg-black/40 p-3 font-mono text-xs text-[var(--admin-ink)]">
                 {JSON.stringify(row.metadata ?? {}, null, 2)}
               </pre>
             </div>
@@ -83,8 +83,8 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
 function Field({ k, v }: { k: string; v: string }) {
   return (
     <>
-      <dt className="text-[11px] uppercase tracking-[0.18em] text-white/50">{k}</dt>
-      <dd className="break-all font-mono text-xs text-white/80">{v}</dd>
+      <dt className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{k}</dt>
+      <dd className="break-all font-mono text-xs text-[var(--admin-ink)]">{v}</dd>
     </>
   )
 }

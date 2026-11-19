@@ -5,7 +5,7 @@ import type { CoverageDesk, CityDesk } from '@/lib/growth/coverage-desk'
  * ENGINE-FINAL-DIRECTIVE-1NOV.md s8; C:\dev\GROWTH\GROWTH-SYSTEM-DIRECTIVE-1NOV.md s6 and s7). Coverage is shown against
  * monitored sources only and never as a claim to know every event; with none monitored it says so. Admin only.
  */
-const CARD = 'mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6'
+const CARD = 'mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6'
 const n = (v: number) => v.toLocaleString('en-AU')
 const money = (cents: number) => `A$${(cents / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const REASON_WORDS: Record<string, string> = {
@@ -23,9 +23,9 @@ const CHANNEL_WORDS: Record<string, string> = {
 
 function Row({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="flex justify-between gap-4 border-t border-white/[0.06] py-1 text-sm">
-      <span className="text-white/70">{label}</span>
-      <span className="text-right text-white">{value}{note ? <span className="ml-2 text-xs text-white/50">{note}</span> : null}</span>
+    <div className="flex justify-between gap-4 border-t border-[var(--admin-line)] py-1 text-sm">
+      <span className="text-[var(--admin-soft)]">{label}</span>
+      <span className="text-right text-[var(--admin-ink)]">{value}{note ? <span className="ml-2 text-xs text-[var(--admin-muted)]">{note}</span> : null}</span>
     </div>
   )
 }
@@ -35,8 +35,8 @@ function City({ c }: { c: CityDesk }) {
   const latest = c.channels[c.channels.length - 1]
   return (
     <section data-city={c.slug} className={CARD}>
-      <h2 className="font-display text-lg font-semibold text-white">{c.name}: coverage, misses and channels</h2>
-      <p className="mt-1 text-sm text-white/60">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{c.name}: coverage, misses and channels</h2>
+      <p className="mt-1 text-sm text-[var(--admin-soft)]">
         {v.coverage_percent === null
           ? 'No monitored events yet: coverage is measured against the events our registered sources list, and none are counted so far.'
           : `${v.coverage_percent}% of the events our monitored sources list are on EventLinqs (${n(v.listed)} of ${n(v.unique_discovered)}). This is not every event in ${c.name}.`}
@@ -44,7 +44,7 @@ function City({ c }: { c: CityDesk }) {
 
       <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div data-part="sources">
-          <h3 className="font-display text-sm font-semibold text-white">Sources</h3>
+          <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">Sources</h3>
           <Row label="Registered" value={n(v.sources.known)} />
           <Row label="Healthy (read in the last two days)" value={n(v.sources.healthy)} />
           <Row label="Failing" value={n(v.sources.failing)} />
@@ -52,7 +52,7 @@ function City({ c }: { c: CityDesk }) {
           <Row label="Stopped (refused us)" value={n(v.sources.stopped)} />
         </div>
         <div data-part="events">
-          <h3 className="font-display text-sm font-semibold text-white">Events</h3>
+          <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">Events</h3>
           <Row label={`Upcoming in ${c.name}`} value={n(v.upcoming_in_city)} note="placed by the ABS boundaries" />
           <Row label="Nearby towns" value={n(v.upcoming_nearby)} />
           <Row label={`Labelled ${c.name}, not yet placed`} value={n(v.labelled_here_not_yet_placed)} />
@@ -69,8 +69,8 @@ function City({ c }: { c: CityDesk }) {
       </div>
 
       {v.labelled_here_but_placed_elsewhere.length > 0 ? (
-        <div data-part="placed-elsewhere" className="mt-4 text-sm text-white/70">
-          <h3 className="font-display text-sm font-semibold text-white">Labelled {c.name} but placed elsewhere</h3>
+        <div data-part="placed-elsewhere" className="mt-4 text-sm text-[var(--admin-soft)]">
+          <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">Labelled {c.name} but placed elsewhere</h3>
           <ul className="mt-1 list-disc pl-5">
             {v.labelled_here_but_placed_elsewhere.map((e) => (
               <li key={e.event}>{e.venue ?? e.event}: {e.relation === 'outside' ? `outside ${c.name} and ${c.regionName}` : c.regionName}</li>
@@ -79,13 +79,13 @@ function City({ c }: { c: CityDesk }) {
         </div>
       ) : null}
 
-      <div data-part="by-category" className="mt-4 text-sm text-white/70">
-        <h3 className="font-display text-sm font-semibold text-white">By category</h3>
+      <div data-part="by-category" className="mt-4 text-sm text-[var(--admin-soft)]">
+        <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">By category</h3>
         <p className="mt-1">{Object.entries(v.by_category).sort((a, b) => b[1] - a[1]).map(([k, m]) => `${k} ${n(m)}`).join('; ') || 'None yet'}</p>
       </div>
 
-      <div data-part="misses" className="mt-4 text-sm text-white/70">
-        <h3 className="font-display text-sm font-semibold text-white">Misses by week</h3>
+      <div data-part="misses" className="mt-4 text-sm text-[var(--admin-soft)]">
+        <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">Misses by week</h3>
         {c.misses.length === 0 ? <p className="mt-1">No misses recorded yet.</p> : (
           <ul className="mt-1 space-y-1">
             {c.misses.map((w) => (
@@ -98,8 +98,8 @@ function City({ c }: { c: CityDesk }) {
         )}
       </div>
 
-      <div data-part="channels" className="mt-4 text-sm text-white/70">
-        <h3 className="font-display text-sm font-semibold text-white">This week by channel</h3>
+      <div data-part="channels" className="mt-4 text-sm text-[var(--admin-soft)]">
+        <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">This week by channel</h3>
         {!latest ? <p className="mt-1">No visits recorded yet.</p> : (
           <>
             <p className="mt-1">
@@ -123,14 +123,14 @@ export function CoverageDeskSection({ desk }: { desk: CoverageDesk }) {
     <div data-section="coverage-desk">
       {desk.cities.map((c) => <City key={c.slug} c={c} />)}
       <section data-part="experiments" className={CARD}>
-        <h2 className="font-display text-lg font-semibold text-white">Growth experiments</h2>
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Growth experiments</h2>
         {desk.experiments.length === 0 ? (
-          <p className="mt-1 text-sm text-white/60">No experiments recorded yet. Each needs a hypothesis, a baseline and a result before a decision.</p>
+          <p className="mt-1 text-sm text-[var(--admin-soft)]">No experiments recorded yet. Each needs a hypothesis, a baseline and a result before a decision.</p>
         ) : (
-          <ul className="mt-2 space-y-2 text-sm text-white/70">
+          <ul className="mt-2 space-y-2 text-sm text-[var(--admin-soft)]">
             {desk.experiments.map((e) => (
               <li key={e.id}>
-                <span className="text-white">{e.title}</span> ({e.starts_on} to {e.ends_on}, {money(e.budget_cents)}): {e.hypothesis}.
+                <span className="text-[var(--admin-ink)]">{e.title}</span> ({e.starts_on} to {e.ends_on}, {money(e.budget_cents)}): {e.hypothesis}.
                 {' '}{e.primary_metric}: baseline {e.baseline ?? 'not set'}, result {e.result ?? 'not yet'}{e.decision ? `; decided: ${e.decision}` : ''}.
               </li>
             ))}

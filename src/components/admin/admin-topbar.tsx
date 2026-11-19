@@ -14,7 +14,7 @@ import { AdminMobileNav } from './admin-mobile-nav'
  */
 export function AdminTopbar({ session }: { session: AdminSession }) {
   return (
-    <header className="flex items-center gap-4 border-b border-white/[0.08] bg-[#0A0F1A] px-6 py-4 lg:px-10">
+    <header className="flex items-center gap-4 border-b border-[var(--admin-line)] bg-[var(--admin-canvas)] px-6 py-4 lg:px-10">
       <AdminMobileNav items={filterNav(session.capabilities)} groups={filterNavGroups(session.capabilities)} />
       <form method="GET" action="/admin/search" className="hidden flex-1 sm:block">
         <label className="block">
@@ -23,7 +23,7 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
             type="search"
             name="q"
             placeholder="Search organisers, events, users"
-            className="w-full max-w-xl rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full max-w-xl rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </label>
       </form>
@@ -31,7 +31,7 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
         <Link prefetch={false}
           href="/admin/notifications"
           aria-label="Notifications and operations inbox"
-          className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+          className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
             <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -39,12 +39,12 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
           </svg>
         </Link>
         {/* One line at every width (the PM's 02:45 fix 6: 'Automation drive' wrapped at 320): the name truncates instead. */}
-        <div className="flex min-w-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+        <div className="flex min-w-0 items-center gap-3 rounded-full border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-1.5">
           <div className="min-w-0 text-right">
-            <p className="max-w-[7.5rem] truncate whitespace-nowrap text-sm font-medium leading-tight text-white sm:max-w-[14rem]">
+            <p className="max-w-[7.5rem] truncate whitespace-nowrap text-sm font-medium leading-tight text-[var(--admin-ink)] sm:max-w-[14rem]">
               {session.admin.display_name}
             </p>
-            <p className="whitespace-nowrap text-[11px] uppercase tracking-wider leading-tight text-white/50">
+            <p className="whitespace-nowrap text-[11px] uppercase tracking-wider leading-tight text-[var(--admin-muted)]">
               {ROLE_LABELS[session.admin.role]}
             </p>
           </div>

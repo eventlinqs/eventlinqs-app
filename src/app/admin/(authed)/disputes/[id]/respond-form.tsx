@@ -78,20 +78,20 @@ export function DisputeRespondForm({
   }
 
   const fieldClass =
-    'mt-1.5 w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]'
-  const labelClass = 'block text-[11px] uppercase tracking-[0.18em] text-white/50'
+    'mt-1.5 w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]'
+  const labelClass = 'block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]'
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
       {closedWords ? (
         <>
           <h2 className="font-display text-lg font-semibold">No response required</h2>
-          <p className="mt-2 text-sm text-white/60">{closedWords}</p>
+          <p className="mt-2 text-sm text-[var(--admin-soft)]">{closedWords}</p>
         </>
       ) : (
       <>
       <h2 className="font-display text-lg font-semibold">Respond to this dispute</h2>
-      <p className="mt-2 text-sm text-white/60">
+      <p className="mt-2 text-sm text-[var(--admin-soft)]">
         Provide evidence the cardholder authorised this charge and received the tickets. Save a draft to keep
         editing, or submit to send it to Stripe for review.
       </p>
@@ -138,7 +138,7 @@ export function DisputeRespondForm({
         className={
           message
             ? `mt-4 rounded-md border px-3 py-2 text-sm ${
-                message.tone === 'ok' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'
+                message.tone === 'ok' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800' : 'border-red-500/30 bg-red-500/10 text-red-800'
               }`
             : ''
         }
@@ -153,7 +153,7 @@ export function DisputeRespondForm({
           type="button"
           onClick={() => run(false)}
           disabled={pending}
-          className="min-h-[44px] rounded-md border border-white/10 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+          className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)] disabled:opacity-50"
         >
           Save draft
         </button>
@@ -167,19 +167,19 @@ export function DisputeRespondForm({
         </button>
       </div>
 
-      <div className="mt-6 border-t border-white/[0.08] pt-5">
-        <h3 className="text-sm font-semibold text-white/80">Accept the dispute</h3>
-        <p className="mt-1.5 text-sm text-white/60">
+      <div className="mt-6 border-t border-[var(--admin-line)] pt-5">
+        <h3 className="text-sm font-semibold text-[var(--admin-ink)]">Accept the dispute</h3>
+        <p className="mt-1.5 text-sm text-[var(--admin-soft)]">
           Accepting forfeits the disputed amount and closes the dispute. This cannot be undone.
         </p>
         {confirmingClose ? (
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-amber-200">Confirm: forfeit this dispute.</span>
+            <span className="text-sm text-amber-800">Confirm: forfeit this dispute.</span>
             <button
               type="button"
               onClick={runClose}
               disabled={pending}
-              className="min-h-[44px] rounded-md border border-red-500/40 bg-red-500/10 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+              className="min-h-[44px] rounded-md border border-red-500/40 bg-red-500/10 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-red-800 transition hover:bg-red-500/20 disabled:opacity-50"
             >
               Accept and forfeit
             </button>
@@ -187,7 +187,7 @@ export function DisputeRespondForm({
               type="button"
               onClick={() => setConfirmingClose(false)}
               disabled={pending}
-              className="min-h-[44px] rounded-md border border-white/10 px-4 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+              className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-4 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)] disabled:opacity-50"
             >
               Cancel
             </button>
@@ -197,7 +197,7 @@ export function DisputeRespondForm({
             type="button"
             onClick={() => setConfirmingClose(true)}
             disabled={pending}
-            className="mt-3 min-h-[44px] rounded-md border border-red-500/30 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50"
+            className="mt-3 min-h-[44px] rounded-md border border-red-500/30 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-red-800 transition hover:bg-red-500/10 disabled:opacity-50"
           >
             Accept dispute
           </button>

@@ -50,53 +50,53 @@ export default async function AdminEnginePage() {
         {rows.map((r) => {
           const chip = provingChip(r)
           return (
-            <article key={r.key} data-engine-row={r.key} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5 sm:p-6">
+            <article key={r.key} data-engine-row={r.key} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-accent)]">{r.area}</p>
-                  <h2 className="mt-1 font-display text-lg font-semibold text-white">{r.title}</h2>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)]">{r.area}</p>
+                  <h2 className="mt-1 font-display text-lg font-semibold text-[var(--admin-ink)]">{r.title}</h2>
                 </div>
                 <span data-proving={r.proving ? (r.proving.permanent ? 'permanent' : `day-${r.proving.day}`) : 'not-read'}>
                   <StatusChip tone={chip.tone}>{chip.words}</StatusChip>
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">{r.does}</p>
-              <dl className="mt-4 grid grid-cols-1 gap-1 text-sm text-white/70">
+              <p className="mt-2 text-sm leading-relaxed text-[var(--admin-soft)]">{r.does}</p>
+              <dl className="mt-4 grid grid-cols-1 gap-1 text-sm text-[var(--admin-soft)]">
                 {r.schedules.map((s) => (
                   <div key={s.cron} className="flex flex-wrap gap-x-2">
-                    <dt className="font-medium text-white/80">Next run</dt>
+                    <dt className="font-medium text-[var(--admin-ink)]">Next run</dt>
                     <dd>{when(s.next)} ({s.where === 'github' ? 'GitHub Actions' : 'Vercel'}, <span className="font-mono">{s.cron}</span> UTC)</dd>
                   </div>
                 ))}
                 <div className="flex flex-wrap gap-x-2">
-                  <dt className="font-medium text-white/80">Last run</dt>
+                  <dt className="font-medium text-[var(--admin-ink)]">Last run</dt>
                   <dd data-last-run>
                     {r.lastRun ? `${when(r.lastRun.at)}, ${r.lastRun.what}` : r.readFailed ? 'not read' : 'none in its records'}
                     {r.lastRun?.evidence ? (
                       /^https?:\/\//.test(r.lastRun.evidence) ? (
                         <>
                           {' '}
-                          <a href={r.lastRun.evidence} className="text-[var(--brand-accent)] underline-offset-2 hover:underline" rel="noreferrer" target="_blank">its post</a>
+                          <a href={r.lastRun.evidence} className="text-[var(--brand-accent-strong)] underline-offset-2 hover:underline" rel="noreferrer" target="_blank">its post</a>
                         </>
                       ) : (
-                        <span className="font-mono text-xs text-white/50"> ({r.lastRun.evidence})</span>
+                        <span className="font-mono text-xs text-[var(--admin-muted)]"> ({r.lastRun.evidence})</span>
                       )
                     ) : null}
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2">
-                  <dt className="font-medium text-white/80">Last failure</dt>
+                  <dt className="font-medium text-[var(--admin-ink)]">Last failure</dt>
                   <dd data-last-failure>
                     {r.lastFailure ? `${when(r.lastFailure.at)}, ${r.lastFailure.what}${r.lastFailure.recovered === true ? '; a good run followed' : r.lastFailure.recovered === false ? '; no good run since' : ''}` : r.readFailed ? 'not read' : 'none in its records this week'}
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2">
-                  <dt className="font-medium text-white/80">Switch</dt>
+                  <dt className="font-medium text-[var(--admin-ink)]">Switch</dt>
                   <dd>{r.switch}</dd>
                 </div>
               </dl>
-              {r.note ? <p className="mt-3 text-sm text-white/60">{r.note}</p> : null}
-              {r.readFailed ? <p className="mt-3 text-sm text-rose-300">Its records could not be read: {r.readFailed}</p> : null}
+              {r.note ? <p className="mt-3 text-sm text-[var(--admin-soft)]">{r.note}</p> : null}
+              {r.readFailed ? <p className="mt-3 text-sm text-rose-800">Its records could not be read: {r.readFailed}</p> : null}
             </article>
           )
         })}

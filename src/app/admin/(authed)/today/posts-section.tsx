@@ -5,7 +5,7 @@ import { planSpotlightAction } from '../social/actions'
 
 const PRESS =
   'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]'
-const OPEN = 'inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline underline-offset-4'
+const OPEN = 'inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] underline underline-offset-4'
 
 const PIECE_WORDS: Record<PieceSummary['state'], string> = {
   drafted: 'Drafted, waiting for your approval.',
@@ -23,12 +23,12 @@ const GRANT_WORDS = {
 function PieceLine({ label, p }: { label: string; p: PieceSummary | null }) {
   return (
     <li className="py-4">
-      <p className="text-sm font-semibold text-white">{label}</p>
+      <p className="text-sm font-semibold text-[var(--admin-ink)]">{label}</p>
       {p === null ? (
-        <p className="mt-1 text-sm text-white/70">Not in this week&apos;s campaign. Press Plan on the studio to make the week.</p>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">Not in this week&apos;s campaign. Press Plan on the studio to make the week.</p>
       ) : (
         <>
-          <p className="mt-1 text-sm text-white/70">
+          <p className="mt-1 text-sm text-[var(--admin-soft)]">
             {PIECE_WORDS[p.state]}
             {p.postUrl ? (
               <>
@@ -55,27 +55,27 @@ function PieceLine({ label, p }: { label: string; p: PieceSummary | null }) {
  */
 export function PostsSection({ view }: { view: { ok: true; v: ThreePosts } | { ok: false; why: string } }) {
   return (
-    <section id="posts" data-section="posts" aria-label="This week's three posts" className="mb-8 scroll-mt-24 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 sm:p-6">
-      <h2 className="font-display text-lg font-semibold text-white">This week&apos;s three posts</h2>
+    <section id="posts" data-section="posts" aria-label="This week's three posts" className="mb-8 scroll-mt-24 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 sm:p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">This week&apos;s three posts</h2>
       {!view.ok ? (
-        <p className="mt-2 text-sm text-amber-200">The posts could not be read just now ({view.why}). Nothing is lost.</p>
+        <p className="mt-2 text-sm text-amber-800">The posts could not be read just now ({view.why}). Nothing is lost.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-white/[0.06]">
+        <ul className="mt-2 divide-y divide-[var(--admin-line)]">
           <PieceLine label="Melbourne this weekend" p={view.v.weekend} />
           <PieceLine label="Melbourne tonight and tomorrow" p={view.v.tonight} />
           <li className="py-4" data-spotlight={view.v.spotlight?.night.eventId ?? ''}>
-            <p className="text-sm font-semibold text-white">Organiser spotlight</p>
+            <p className="text-sm font-semibold text-[var(--admin-ink)]">Organiser spotlight</p>
             {view.v.spotlight === null ? (
-              <p className="mt-1 text-sm text-white/70">No Melbourne organiser has a night of their own in the next fortnight.</p>
+              <p className="mt-1 text-sm text-[var(--admin-soft)]">No Melbourne organiser has a night of their own in the next fortnight.</p>
             ) : (
               <>
-                <p className="mt-1 text-sm text-white/80">
+                <p className="mt-1 text-sm text-[var(--admin-ink)]">
                   {view.v.spotlight.night.title}, {formatPlatformDateTime(view.v.spotlight.night.startDate)}.{' '}
                   <Link prefetch={false} href={`/events/${view.v.spotlight.night.slug}`} className="underline underline-offset-2">
                     Its page
                   </Link>
                 </p>
-                <p className="mt-1 text-xs text-white/60">{GRANT_WORDS[view.v.spotlight.night.socialGrant ?? 'none']}</p>
+                <p className="mt-1 text-xs text-[var(--admin-soft)]">{GRANT_WORDS[view.v.spotlight.night.socialGrant ?? 'none']}</p>
                 {view.v.spotlight.post === null ? (
                   <form action={planSpotlightAction} className="mt-3">
                     <button type="submit" className={PRESS}>
@@ -84,7 +84,7 @@ export function PostsSection({ view }: { view: { ok: true; v: ThreePosts } | { o
                   </form>
                 ) : (
                   <>
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-[var(--admin-soft)]">
                       {view.v.spotlight.post.postedAt
                         ? 'Posted.'
                         : view.v.spotlight.post.approvedAt

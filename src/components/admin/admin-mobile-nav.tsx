@@ -41,7 +41,7 @@ export function AdminMobileNav({ items, groups }: { items: AdminNavLink[]; group
         aria-label="Open admin menu"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--admin-ink)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
           <path d="M3 6h18M3 12h18M3 18h18" />
@@ -60,19 +60,19 @@ export function AdminMobileNav({ items, groups }: { items: AdminNavLink[]; group
             role="dialog"
             aria-modal="true"
             aria-label="Admin menu"
-            className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80%] overflow-y-auto border-r border-white/[0.08] bg-[#0A0F1A]"
+            className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80%] overflow-y-auto border-r border-[var(--admin-line)] bg-[var(--admin-canvas)]"
           >
             <div className="flex items-center justify-between px-6 py-7">
               <div>
-                <span className="block font-display text-lg font-extrabold tracking-tight text-white">EVENTLINQS</span>
-                <span className="block text-[11px] uppercase tracking-[0.2em] text-white/50">Admin console</span>
+                <span className="block font-display text-lg font-extrabold tracking-tight text-[var(--admin-ink)]">EVENTLINQS</span>
+                <span className="block text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Admin console</span>
               </div>
               <button
                 type="button"
                 aria-label="Close admin menu"
                 autoFocus
                 onClick={() => setOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                   <path d="M18 6 6 18M6 6l12 12" />
@@ -88,7 +88,7 @@ export function AdminMobileNav({ items, groups }: { items: AdminNavLink[]; group
                     <Link prefetch={false}
                       href={i.href}
                       onClick={() => setOpen(false)}
-                      className="flex min-h-[44px] items-center rounded-md px-3 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+                      className="flex min-h-[44px] items-center rounded-md px-3 text-sm text-[var(--admin-ink)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
                     >
                       {i.label}
                     </Link>

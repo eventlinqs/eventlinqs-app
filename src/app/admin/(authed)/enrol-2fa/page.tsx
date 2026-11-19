@@ -46,7 +46,7 @@ export default async function EnrolTwoFactorPage() {
   const prep = await prepareTotpEnrolmentAction()
   if (!prep.ok || !prep.secretBase32 || !prep.otpauthUri || !prep.enrolToken) {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6 text-sm text-white/70">
+      <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6 text-sm text-[var(--admin-soft)]">
         {prep.error ?? 'Could not start enrolment. Refresh and try again.'}
       </div>
     )
@@ -77,17 +77,17 @@ export default async function EnrolTwoFactorPage() {
   return (
     <div className="mx-auto max-w-xl">
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Two-factor</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Two-factor</p>
         <h1 className="mt-2 font-display text-2xl font-bold tracking-tight">Enrol your authenticator</h1>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           Add a 30-second code from Google Authenticator, 1Password, Authy, or Bitwarden. You will use
           this for every sign in.
         </p>
       </header>
 
-      <section className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-sm uppercase tracking-widest text-white/60">1. Add the secret</h2>
-        <p className="mt-2 text-sm text-white/70">
+      <section className="mb-6 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">1. Add the secret</h2>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           {qrSvg
             ? 'Open the authenticator on your phone and scan this. If you would rather not scan, paste the URI below, or type the base32 secret by hand.'
             : 'Open your authenticator and paste the URI below. If your app does not accept the URI, type the base32 secret by hand.'}
@@ -111,21 +111,21 @@ export default async function EnrolTwoFactorPage() {
             <div
               role="img"
               aria-label="QR code carrying your one-time two-factor secret. Scan it with your authenticator app, or use the URI below."
-              className="w-full max-w-[248px] rounded-lg border border-white/10 bg-white p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+              className="w-full max-w-[248px] rounded-lg border border-[var(--admin-line)] bg-[var(--admin-ink)] p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           </div>
         )}
 
         <div className="mt-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Secret</p>
-          <code className="mt-1 block break-all rounded-md border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Secret</p>
+          <code className="mt-1 block break-all rounded-md border border-[var(--admin-line)] bg-black/30 px-3 py-2 font-mono text-sm text-[var(--admin-ink)]">
             {prep.secretBase32}
           </code>
         </div>
         <div className="mt-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">otpauth URI</p>
-          <code className="mt-1 block break-all rounded-md border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white/80">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">otpauth URI</p>
+          <code className="mt-1 block break-all rounded-md border border-[var(--admin-line)] bg-black/30 px-3 py-2 font-mono text-xs text-[var(--admin-ink)]">
             {prep.otpauthUri}
           </code>
         </div>

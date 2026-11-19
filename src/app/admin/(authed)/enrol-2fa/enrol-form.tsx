@@ -37,14 +37,14 @@ export function EnrolForm({ enrolToken }: EnrolFormProps) {
   if (recoveryCodes) {
     return (
       <section className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-6">
-        <h2 className="font-display text-sm uppercase tracking-widest text-amber-200">3. Save your recovery codes</h2>
-        <p className="mt-2 text-sm text-white/70">
+        <h2 className="font-display text-sm uppercase tracking-widest text-amber-800">3. Save your recovery codes</h2>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           Each code works once if you lose your authenticator. Store them in your password manager
           now. They will not be shown again.
         </p>
         <ul className="mt-4 grid grid-cols-2 gap-2 font-mono text-sm">
           {recoveryCodes.map(c => (
-            <li key={c} className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-white">
+            <li key={c} className="rounded-md border border-[var(--admin-line)] bg-black/30 px-3 py-2 text-[var(--admin-ink)]">
               {c}
             </li>
           ))}
@@ -64,12 +64,12 @@ export function EnrolForm({ enrolToken }: EnrolFormProps) {
   }
 
   return (
-    <form method="post" onSubmit={onSubmit} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-sm uppercase tracking-widest text-white/60">2. Verify the first code</h2>
-      <p className="mt-2 text-sm text-white/70">
+    <form method="post" onSubmit={onSubmit} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">2. Verify the first code</h2>
+      <p className="mt-2 text-sm text-[var(--admin-soft)]">
         Type the 6-digit code your authenticator is currently showing.
       </p>
-      <label htmlFor="code" className="mt-4 mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
+      <label htmlFor="code" className="mt-4 mb-1.5 block text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)]">
         Code
       </label>
       <input
@@ -81,10 +81,10 @@ export function EnrolForm({ enrolToken }: EnrolFormProps) {
         maxLength={6}
         required
         autoComplete="one-time-code"
-        className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm tracking-[0.4em] text-white outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+        className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm tracking-[0.4em] text-[var(--admin-ink)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
       />
       {error ? (
-        <div role="alert" className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <div role="alert" className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-800">
           {error}
         </div>
       ) : null}

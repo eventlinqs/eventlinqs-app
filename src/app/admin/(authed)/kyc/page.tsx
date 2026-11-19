@@ -65,9 +65,9 @@ export default async function AdminKycPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Operations</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Operations</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">KYC review</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Organisers whose payouts are on hold or restricted. Open the organiser to review their Stripe verification and
           lift or keep the hold. This queue mirrors the KYC depth on the dashboard.
         </p>
@@ -99,26 +99,26 @@ export default async function AdminKycPage() {
                   <td className={ADMIN_CELL_NAME}>
                     <Link prefetch={false}
                       href={`/admin/organisers/${o.id}`}
-                      className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+                      className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent-strong)] hover:underline`}
                     >
                       {o.name}
                     </Link>
                   </td>
                   <td className={ADMIN_CELL}>
                     <span className={ADMIN_CELL_LABEL}>Payout</span>
-                    <span className="inline-block rounded bg-amber-400/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+                    <span className="inline-block rounded bg-amber-400/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
                       {o.payout_status.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Charges</span>
                     {o.stripe_charges_enabled ? 'Yes' : 'No'}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/60`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Stripe</span>
                     {o.stripe_account_id ? 'Connected' : 'Not connected'}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/50`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-muted)]`}>
                     <span className={ADMIN_CELL_LABEL}>Joined</span>
                     {formatDate(o.created_at)}
                   </td>

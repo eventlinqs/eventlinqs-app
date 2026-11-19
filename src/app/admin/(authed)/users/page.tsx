@@ -42,10 +42,10 @@ type SearchParams = Promise<{
 }>
 
 const ROLE_BADGE: Record<string, string> = {
-  attendee: 'border-white/15 bg-white/[0.04] text-white/60',
-  organiser: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent)]',
-  admin: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  super_admin: 'border-red-500/30 bg-red-500/10 text-red-200',
+  attendee: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
+  organiser: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent-strong)]',
+  admin: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  super_admin: 'border-red-500/30 bg-red-500/10 text-red-800',
 }
 
 /**
@@ -78,9 +78,9 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Accounts</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Accounts</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Users</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Search accounts and change a user&apos;s role between attendee and organiser. Platform
           admin roles are not granted from here. Every change is recorded in the audit log.
         </p>
@@ -88,23 +88,23 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
 
       <NoticeBanner notice={sp.notice} />
 
-      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-4">
+      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 md:grid-cols-4">
         <label className="block md:col-span-2">
-          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Search</span>
+          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Search</span>
           <input
             type="text"
             name="q"
             placeholder="Email or name"
             defaultValue={search ?? ''}
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Role</span>
+          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Role</span>
           <select
             name="role"
             defaultValue={roleFilter}
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           >
             {USER_ROLE_FILTERS.map((r) => (
               <option key={r} value={r}>{r === 'all' ? 'All roles' : r}</option>
@@ -120,7 +120,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
           </button>
           <Link prefetch={false}
             href="/admin/users"
-            className="rounded-md border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+            className="rounded-md border border-[var(--admin-line)] px-3 py-2 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
           >
             Reset
           </Link>
@@ -164,11 +164,11 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
       <td className={ADMIN_CELL_NAME}>
         <Link prefetch={false}
           href={`/admin/users/${row.id}`}
-          className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+          className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent-strong)] hover:underline`}
         >
           {row.name ?? '(no name)'}
         </Link>
-        <div className="text-[11px] text-white/40">{row.email}</div>
+        <div className="text-[11px] text-[var(--admin-muted)]">{row.email}</div>
       </td>
       <td className={ADMIN_CELL}>
         <span className={ADMIN_CELL_LABEL}>Role</span>
@@ -176,11 +176,11 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
           {row.role}
         </span>
       </td>
-      <td className={`${ADMIN_CELL} text-white/70`}>
+      <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
         <span className={ADMIN_CELL_LABEL}>Verified</span>
         {row.isVerified ? 'Yes' : 'No'}
       </td>
-      <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
+      <td className={`${ADMIN_CELL} whitespace-nowrap text-[var(--admin-soft)]`}>
         <span className={ADMIN_CELL_LABEL}>Joined</span>
         {row.createdAt.slice(0, 10)}
       </td>
@@ -193,7 +193,7 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
             id={`role-${row.id}`}
             name="newRole"
             defaultValue={defaultRole}
-            className="min-h-11 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-sm text-white outline-none focus:border-white/40"
+            className="min-h-11 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--admin-line-strong)]"
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>{r}</option>
@@ -201,7 +201,7 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
           </select>
           <button
             type="submit"
-            className={`${ADMIN_ROW_CONTROL} justify-center rounded-md bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0A0F1A] transition hover:bg-white`}
+            className={`${ADMIN_ROW_CONTROL} justify-center rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]`}
           >
             Save
           </button>
@@ -215,20 +215,20 @@ function NoticeBanner({ notice }: { notice?: string }) {
   if (!notice) return null
   if (notice === 'done') {
     return (
-      <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
         Role updated.
       </div>
     )
   }
   if (notice === 'nochange') {
     return (
-      <div role="status" className="mb-6 rounded-md border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
+      <div role="status" className="mb-6 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-4 py-3 text-sm text-[var(--admin-soft)]">
         That user already had the selected role. Nothing changed.
       </div>
     )
   }
   return (
-    <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
       {notice === 'invalid' ? 'That request was not valid.' : 'Could not change the role. Try again.'}
     </div>
   )
@@ -249,15 +249,15 @@ function Pager({
   const next = hasMore ? buildReturnTo(roleFilter, search, page + 1) : null
   return (
     <div className="mt-4 flex items-center justify-between">
-      <span className="text-xs uppercase tracking-[0.18em] text-white/40">Page {page}</span>
+      <span className="text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)]">Page {page}</span>
       <div className="flex gap-2">
         {prev ? (
-          <Link prefetch={false} href={prev} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link prefetch={false} href={prev} className="rounded-md border border-[var(--admin-line)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]">
             Newer
           </Link>
         ) : null}
         {next ? (
-          <Link prefetch={false} href={next} className="rounded-md border border-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white">
+          <Link prefetch={false} href={next} className="rounded-md border border-[var(--admin-line)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]">
             Older
           </Link>
         ) : null}

@@ -32,7 +32,7 @@ export const metadata = {
 const BUTTON =
   'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]'
 const QUIET =
-  'inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-white/70 hover:border-white/40 hover:text-white'
+  'inline-flex min-h-[44px] items-center rounded-full border border-[var(--admin-line)] px-5 text-sm font-semibold text-[var(--admin-soft)] hover:border-[var(--admin-line-strong)] hover:text-[var(--admin-ink)]'
 
 export default async function AdminRoundupPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
   const session = await requireAdminSession()
@@ -59,30 +59,30 @@ export default async function AdminRoundupPage({ searchParams }: { searchParams:
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Weekly roundup</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           This week&apos;s listings for each city with subscribers, as the Thursday email carries them, and the WhatsApp edition drafted from
           the same listings. A city&apos;s email goes on Thursday only once it is approved here.
         </p>
       </header>
 
       {said === undefined ? null : (
-        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
           {said}
         </p>
       )}
 
       {editions.length === 0 ? (
-        <p data-state="empty" className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6 text-sm text-white/70">
+        <p data-state="empty" className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6 text-sm text-[var(--admin-soft)]">
           No city has subscribers yet, so there is no roundup to approve.
         </p>
       ) : (
         editions.map((e) => (
-          <section key={e.slug} data-city={e.slug} className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+          <section key={e.slug} data-city={e.slug} className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-white">{e.name}</h2>
-              <p data-approval={e.approval === null ? 'none' : e.approval === 'unreadable' ? 'unreadable' : 'approved'} className="text-sm text-white/60">
+              <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{e.name}</h2>
+              <p data-approval={e.approval === null ? 'none' : e.approval === 'unreadable' ? 'unreadable' : 'approved'} className="text-sm text-[var(--admin-soft)]">
                 {e.approval === null
                   ? 'Not approved this week'
                   : e.approval === 'unreadable'
@@ -91,32 +91,32 @@ export default async function AdminRoundupPage({ searchParams }: { searchParams:
               </p>
             </div>
             {e.events.length === 0 ? (
-              <p data-state="no-listings" className="mt-4 text-sm text-white/70">
+              <p data-state="no-listings" className="mt-4 text-sm text-[var(--admin-soft)]">
                 No listings this week, so this city gets no email and no edition.
               </p>
             ) : (
               <>
-                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-white">
+                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-[var(--admin-ink)]">
                   {e.events.map((ev) => (
                     <li key={ev.id}>
-                      <a href={ev.url} className="underline decoration-white/30 underline-offset-4 hover:decoration-white">
+                      <a href={ev.url} className="underline decoration-[var(--admin-muted)] underline-offset-4 hover:decoration-[var(--admin-muted)]">
                         {ev.title}
                       </a>
-                      <span className="text-white/60">
+                      <span className="text-[var(--admin-soft)]">
                         {' '}
                         {ev.dateLabel}, {ev.venueLabel}. {ev.priceLabel}.
                       </span>
                     </li>
                   ))}
                 </ol>
-                <h3 className="mt-6 text-[11px] uppercase tracking-[0.18em] text-white/50">The WhatsApp edition</h3>
+                <h3 className="mt-6 text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">The WhatsApp edition</h3>
                 <textarea
                   readOnly
                   aria-label={`The WhatsApp edition for ${e.name}`}
                   data-whatsapp={e.slug}
                   value={e.text}
                   rows={Math.min(18, e.text.split('\n').length + 1)}
-                  className="mt-2 block w-full max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 font-mono text-[13px] text-white"
+                  className="mt-2 block w-full max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-3 font-mono text-[13px] text-[var(--admin-ink)]"
                 />
                 <div className="mt-4 flex flex-wrap gap-3">
                   <a href={whatsappShareUrl(e.text)} target="_blank" rel="noopener noreferrer" className={QUIET}>

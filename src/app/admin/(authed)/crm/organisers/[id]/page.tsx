@@ -39,7 +39,7 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
     const what = e instanceof RecordReadError ? e.message : 'the record could not be read'
     return (
       <main className="mx-auto max-w-3xl px-4 py-8">
-        <p className="font-display text-sm text-red-300">This record could not be shown: {what}. Nothing is missing from it; the read failed. Reload to try again.</p>
+        <p className="font-display text-sm text-red-800">This record could not be shown: {what}. Nothing is missing from it; the read failed. Reload to try again.</p>
       </main>
     )
   }
@@ -48,33 +48,33 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
-      <Link prefetch={false} href="/admin/acquisition" className="font-display text-xs text-white/60 hover:text-white">Organiser pipeline</Link>
+      <Link prefetch={false} href="/admin/acquisition" className="font-display text-xs text-[var(--admin-soft)] hover:text-[var(--admin-ink)]">Organiser pipeline</Link>
       <h1 className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl">{s.organiser.name}</h1>
       <p className="mt-2 font-display text-sm">
-        <span className="rounded-md bg-white/10 px-2 py-0.5 font-semibold">{CRM_STAGE_WORDS[r.stage]}</span>
-        <span className="ml-2 text-white/60">{r.mayWrite ? 'May be written to' : 'No message may reach them'}</span>
+        <span className="rounded-md bg-[var(--admin-tint-strong)] px-2 py-0.5 font-semibold">{CRM_STAGE_WORDS[r.stage]}</span>
+        <span className="ml-2 text-[var(--admin-soft)]">{r.mayWrite ? 'May be written to' : 'No message may reach them'}</span>
       </p>
-      <p data-by-category className="mt-2 text-sm text-white/60">
+      <p data-by-category className="mt-2 text-sm text-[var(--admin-soft)]">
         {r.byCategory.length
           ? `Messages by category: ${r.byCategory.map((c) => `${c.category} ${c.messages}`).join(', ')}`
           : 'No message drafted to them yet'}
       </p>
 
-      <section aria-label="Next action" className="mt-5 rounded-xl border border-white/15 p-4">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Next action</h2>
+      <section aria-label="Next action" className="mt-5 rounded-xl border border-[var(--admin-line)] p-4">
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Next action</h2>
         <p className="mt-1 font-display text-base">{r.nextAction}</p>
       </section>
 
       <section aria-label="Pending" className="mt-5">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Pending ({r.pending.length})</h2>
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Pending ({r.pending.length})</h2>
         {r.pending.length === 0 ? (
-          <p className="mt-1 font-display text-sm text-white/60">Nothing is waiting on this record.</p>
+          <p className="mt-1 font-display text-sm text-[var(--admin-soft)]">Nothing is waiting on this record.</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {r.pending.map((p, i) => (
-              <li key={i} className="rounded-lg bg-white/5 p-3 font-display text-sm">
+              <li key={i} className="rounded-lg bg-[var(--admin-tint)] p-3 font-display text-sm">
                 {p.href ? <Link prefetch={false} href={p.href} className="underline-offset-2 hover:underline">{p.words}</Link> : p.words}
-                <span className="block text-xs text-white/50">since {when(p.since)}</span>
+                <span className="block text-xs text-[var(--admin-muted)]">since {when(p.since)}</span>
               </li>
             ))}
           </ul>
@@ -82,42 +82,42 @@ export default async function OrganiserRecordPage({ params }: { params: Promise<
       </section>
 
       <section aria-label="Contacts" className="mt-5">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Contacts ({s.contacts.length})</h2>
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Contacts ({s.contacts.length})</h2>
         <ul className="mt-2 space-y-2">
           {s.contacts.map((c) => (
             <li key={c.id} className="font-display text-sm">
-              <span className="font-semibold">{c.role}</span> <span className="text-white/60">{c.channel}</span>
-              <span className="block break-all text-white/80">{c.address}</span>
-              <span className="block text-xs text-white/50">{c.basis === 'none' ? 'No lawful basis recorded: not to be written to' : `Lawful basis: ${c.basis.replace(/_/g, ' ')}`}</span>
+              <span className="font-semibold">{c.role}</span> <span className="text-[var(--admin-soft)]">{c.channel}</span>
+              <span className="block break-all text-[var(--admin-ink)]">{c.address}</span>
+              <span className="block text-xs text-[var(--admin-muted)]">{c.basis === 'none' ? 'No lawful basis recorded: not to be written to' : `Lawful basis: ${c.basis.replace(/_/g, ' ')}`}</span>
             </li>
           ))}
         </ul>
       </section>
 
       <section aria-label="Ticketing" className="mt-5">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Ticketing on EventLinqs</h2>
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Ticketing on EventLinqs</h2>
         <p className="mt-1 font-display text-sm">
           {s.ticketing.ticketingActivated ? 'A night ahead is on sale on EventLinqs.' : 'No night ahead is on sale on EventLinqs.'} {s.ticketing.paidOrders} paid order{s.ticketing.paidOrders === 1 ? '' : 's'}.
         </p>
       </section>
 
       <section aria-label="Nights" className="mt-5">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Nights ({s.nights.length})</h2>
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Nights ({s.nights.length})</h2>
         <ul className="mt-2 space-y-1">
           {s.nights.slice(0, 12).map((n) => (
             <li key={n.id} className="font-display text-sm">
-              <Link prefetch={false} href={`/events/${n.slug}`} className="hover:underline">{n.title}</Link> <span className="text-white/50">{n.start_date.slice(0, 10)}, {n.status}</span>
+              <Link prefetch={false} href={`/events/${n.slug}`} className="hover:underline">{n.title}</Link> <span className="text-[var(--admin-muted)]">{n.start_date.slice(0, 10)}, {n.status}</span>
             </li>
           ))}
         </ul>
       </section>
 
       <section aria-label="History" className="mt-5 pb-10">
-        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-white/50">Everything that happened ({r.lines.length})</h2>
-        <ol className="mt-2 space-y-2 border-l border-white/15 pl-3">
+        <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Everything that happened ({r.lines.length})</h2>
+        <ol className="mt-2 space-y-2 border-l border-[var(--admin-line)] pl-3">
           {r.lines.map((l, i) => (
             <li key={i} className="font-display text-sm">
-              <span className="block text-xs text-white/50">{when(l.at)}</span>
+              <span className="block text-xs text-[var(--admin-muted)]">{when(l.at)}</span>
               {l.href ? <Link prefetch={false} href={l.href} className="hover:underline">{l.words}</Link> : l.words}
             </li>
           ))}

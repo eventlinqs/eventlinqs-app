@@ -61,6 +61,25 @@
   --container-7xl: 87.5rem; /* 1400px */
 }
 
+/* ─── The admin, bright (Lawal, 19 November 2026, 12:19: "as bright as an office backend platform") ───
+   One block for the whole admin (src/components/admin/admin-shell.tsx carries .admin-light): each role is an existing
+   token's value, never a new colour, written as the value because the theme block is inline. Every word role holds
+   AA on every admin surface, the grey page included: ink 17:1 on white, soft 17:1, muted 8.9:1 on white and 7.6:1 on
+   ink-100. Gold stays the one accent: a gold fill with navy words, and gold words only in --brand-accent-strong
+   (gold-800, 7.5:1 on white). */
+.admin-light {
+  --admin-ink: #0A1628;          /* ink-900, the navy: headings and main words */
+  --admin-soft: #1A1A1A;         /* ink-800: body words */
+  --admin-muted: #4A4A4A;        /* ink-600: labels, dates and notes */
+  --admin-line: #D9D9D6;         /* ink-200: every card and table border */
+  --admin-line-strong: #6B7280;  /* ink-400: a field's border, a control's edge */
+  --admin-tint: #FAFAF7;         /* canvas: a quiet panel inside a card */
+  --admin-tint-strong: #EFEDE8;  /* ink-100: a hovered row, a selected tab */
+  --admin-paper: #FFFFFF;        /* white: cards and fields */
+  --admin-canvas: #EFEDE8;       /* ink-100: the page under the white cards */
+  color-scheme: light;
+}
+
 /* ─── Tailwind v4 theme block - all design system tokens ─────────────────── */
 @theme inline {
   /* Canvas / background */

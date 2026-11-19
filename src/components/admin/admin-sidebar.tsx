@@ -12,13 +12,13 @@ export function AdminSidebar({ capabilities }: { capabilities: readonly string[]
   const groups = filterNavGroups(capabilities)
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-white/[0.08] bg-[#0A0F1A] lg:block">
+    <aside className="hidden w-64 shrink-0 border-r border-[var(--admin-line)] bg-[var(--admin-canvas)] lg:block">
       <div className="px-6 py-7">
         <Link prefetch={false} href="/admin/today" className="block">
           <span className="block font-display text-lg font-extrabold tracking-tight">
-            EVENTLINQS<span className="text-[var(--brand-accent)]">.</span>
+            EVENTLINQS<span className="text-[var(--brand-accent-strong)]">.</span>
           </span>
-          <span className="block text-[11px] uppercase tracking-[0.2em] text-white/50">
+          <span className="block text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
             Admin console
           </span>
         </Link>
