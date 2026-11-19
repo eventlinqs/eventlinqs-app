@@ -103,6 +103,7 @@
     "/admin/audience": 157306,
     "/admin/audit": 158558,
     "/admin/campaigns": 158891,
+    "/admin/comms": 157450,
     "/admin/campaigns/[id]/proof": 157306,
     "/admin/collected": 157450,
     "/admin/crm/organisers/[id]": 157450,
