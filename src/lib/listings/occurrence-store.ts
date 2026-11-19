@@ -18,7 +18,7 @@ import { venueSlugify } from '@/lib/venues/venue-slug'
 import type { EventStatus } from '@/types/database'
 import { occurrenceSlug, type ExistingOccurrence } from './occurrence-plan'
 import type { CreateOccurrence, ListingNight, OccurrenceStore, StoreResult } from './occurrence-run'
-import { bornVisibility, holdRowFor } from './held-night'
+import { SERIES_HOLD_COLUMNS, bornVisibility, holdCarriesItsNextAction, holdRowFor, type OpenNightHold } from './held-night'
 
 /**
  * THE DAILY RUN'S DATABASE (WI2 Part 1, docs/walk-in/WI2-PLAN.md section 7a).
@@ -228,13 +228,19 @@ export function occurrenceStore(): OccurrenceStore {
       // born private with its own hold. Fail closed: a hold that cannot be read makes no night, and the next run retries.
       const { data: hold, error: holdError } = await admin
         .from('listing_holds')
-        .select('field, reason')
+        .select(SERIES_HOLD_COLUMNS)
         .eq('series_id', night.id)
         .eq('scope', 'night')
         .is('released_at', null)
+        .order('held_at', { ascending: false })
         .limit(1)
         .maybeSingle()
       if (holdError) return refused(`whether the night is held could not be read: ${holdError.message}`)
+      // Its hold copies the series hold's next action (./held-night.ts); one without makes no night rather than a row
+      // the database refuses (listing_holds_open_carries_its_next_action).
+      if (hold && !holdCarriesItsNextAction(hold as NonNullable<OpenNightHold>)) {
+        return refused("its series' hold names no next source and check time, so the new night's hold could not be written")
+      }
 
       // Coordinates once per venue, by the organiser's own rule, stored on the venue.
       let latitude = venue.latitude
@@ -322,7 +328,7 @@ export function occurrenceStore(): OccurrenceStore {
       const eventId = inserted.id as string
 
       if (hold) {
-        const { error: heldError } = await admin.from('listing_holds').insert(holdRowFor(eventId, night.id, hold))
+        const { error: heldError } = await admin.from('listing_holds').insert(holdRowFor(eventId, night.id, hold as NonNullable<OpenNightHold>))
         if (heldError) return takeAway(eventId, `its hold could not be written: ${heldError.message}`)
       }
 
