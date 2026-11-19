@@ -38,7 +38,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     const bytes = await graphPhotoBytes(cfg, graphId, attachmentId)
     return new NextResponse(bytes, {
       status: 200,
-      headers: { 'content-type': photo.contentType, 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex', 'content-disposition': `inline; filename="${photo.name.replace(/["\\\r\n]/g, '')}"` },
+      headers: { 'content-type': photo.contentType, 'cache-control': 'private, no-store', 'content-disposition': `inline; filename="${photo.name.replace(/["\\\r\n]/g, '')}"` },
     })
   } catch {
     return NextResponse.json({ error: 'the photograph could not be read from the mailbox' }, { status: 502 })
