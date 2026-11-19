@@ -97,6 +97,8 @@ export type InboundMessage = {
   text: string
   /** Header name, lower case, to its value: in-reply-to, references, auto-submitted and the like. */
   headers: Record<string, string>
+  /** Whether the message carries attachments, as Graph says (photographs an organiser sends, the CRM directive's 4 A). */
+  hasAttachments?: boolean
 }
 
 type GraphMessage = {
@@ -107,6 +109,7 @@ type GraphMessage = {
   from?: { emailAddress?: { address?: string; name?: string } }
   body?: { content?: string }
   internetMessageHeaders?: { name: string; value: string }[]
+  hasAttachments?: boolean
 }
 
 /** Messages per page asked of Graph (it allows 1 to 1000). */
@@ -119,7 +122,7 @@ export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchIm
     ['$filter', `receivedDateTime ge ${sinceIso}`],
     ['$orderby', 'receivedDateTime asc'],
     ['$top', String(INBOX_PAGE_SIZE)],
-    ['$select', 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders'],
+    ['$select', 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders,hasAttachments'],
   ])
   let url: string | null = `${GRAPH}/users/${encodeURIComponent(cfg.mailbox)}/mailFolders/inbox/messages?${params.toString()}`
   const out: InboundMessage[] = []
@@ -139,6 +142,7 @@ export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchIm
         receivedAt: m.receivedDateTime,
         text: m.body?.content ?? '',
         headers,
+        hasAttachments: m.hasAttachments === true,
       })
     }
     url = json['@odata.nextLink'] ?? null
