@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { allWell, areaOfPlay, BUSINESS_AREAS, dollars, morningRows, type MorningFacts } from '@/lib/admin/morning-report-math'
 import { windowsAt } from '@/lib/admin/morning-report'
-// @ts-expect-error a plain .mjs module with no types
 import { businessAreasSection, ENGINE_PAGE, renderStateReport } from '../../../scripts/lib/state-report.mjs'
 
 /*
@@ -89,19 +88,21 @@ describe("Melbourne's own days", () => {
 describe('the daily email', () => {
   it('draws the seven parts first, with the engine page, and nothing on a run that did not ask for them', () => {
     const areas = { rows: morningRows(NINETEENTH), allWell: false, unreadable: [], engine: '/admin/engine' }
-    const section = businessAreasSection(areas)
+    const drawn = businessAreasSection(areas)
+    expect(drawn).not.toBeNull()
+    const section = drawn!
     expect(section.title).toBe('Your business, yesterday and today')
     expect(section.lines[0]).toBe('Organiser Marketing. Yesterday: 17 first letters sent to organisers; 0 positive replies. Today: No first letters queued for today.')
     expect(section.lines.at(-1)).toBe(`Every automation, run by run: ${ENGINE_PAGE}`)
     expect(businessAreasSection(null)).toBeNull()
-    expect(businessAreasSection({ error: 'the platform was not reached' }).lines).toEqual(['Not known: the platform was not reached.'])
+    expect(businessAreasSection({ error: 'the platform was not reached' })?.lines).toEqual(['Not known: the platform was not reached.'])
     const rendered = renderStateReport({ generatedAt: '2026-11-18T21:00:00Z', business: { areas }, main: { conclusion: 'success', shortSha: 'd570e3cb' } })
     const titles = rendered.sections.map((s: { title: string }) => s.title)
     expect(titles.indexOf('Your business, yesterday and today')).toBeLessThan(titles.indexOf('Main'))
   })
   it('a quiet morning says it once, plainly', () => {
     const section = businessAreasSection({ rows: morningRows(QUIET), allWell: true, unreadable: [], engine: '/admin/engine' })
-    expect(section.lines[0]).toBe('Everything ran, and nothing needs you.')
+    expect(section?.lines[0]).toBe('Everything ran, and nothing needs you.')
   })
   it('the morning run asks for them and the hourly stall check never does; the platform reads them only when asked', () => {
     const ops = readFileSync(join(process.cwd(), 'scripts/ops/state-report.mjs'), 'utf8')

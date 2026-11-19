@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error a plain .mjs module with no types
 import { backupSql, classify, planOf, PRESERVED, splitRefusal, workdirPlan } from '../../../scripts/ops/pipeline-migrations.mjs'
 
 /*
