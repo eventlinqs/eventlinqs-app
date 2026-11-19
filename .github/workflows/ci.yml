@@ -306,7 +306,12 @@ jobs:
 
       - name: 3. A backup of every table a destructive migration names
         if: steps.plan.outputs.pending != '0' && steps.plan.outputs.destructive == 'true'
-        run: node scripts/ops/pipeline-migrations.mjs backup
+        # A write to production, never a check, so the local gate has no step for it (the gate never touches
+        # production): written as shell, as every other step of this job is (tests/unit/ops/pre-push-gate.test.ts
+        # pairs only the single-line checks with gate steps).
+        run: |
+          set -euo pipefail
+          node scripts/ops/pipeline-migrations.mjs backup
 
       - name: 4. Production
         if: steps.plan.outputs.pending != '0'
@@ -315,7 +320,10 @@ jobs:
           supabase db push --yes --remote="$PRODUCTION_REF"
 
       - name: 4. Production's ledger read back, nothing pending
-        run: node scripts/ops/pipeline-migrations.mjs verify
+        # Production's own ledger, read after its push: a deploy step, not a check the local gate could mirror.
+        run: |
+          set -euo pipefail
+          node scripts/ops/pipeline-migrations.mjs verify
 
 
   production-parity:
