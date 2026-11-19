@@ -32,6 +32,33 @@ export function subjectKey(subject: string | null | undefined): string {
   return (subject ?? '').trim().replace(/^((re|fwd?|fw)\s*:\s*)+/i, '').trim().toLowerCase()
 }
 
+/**
+ * HIS OWN WORDS ONLY (the PM's 12:18 of 19 November 2026: Lawal's 12:12:58 reply to Asia Oasis was never recorded).
+ * Graph returns a sent reply with the message it answers quoted beneath it, so the record held the organiser's words
+ * too, and the database's checks (no dashes, no exclamation marks) judged them as his. Everything from the quoted
+ * history on is cut: Outlook's rule line and 'From: ', '-----Original Message-----', or 'On ... wrote:'. The gateway
+ * judges a message's own part the same way (C:\dev\comms-gateway\gateway.py own_part).
+ */
+const QUOTED_HISTORY = /\n[ \t]*(?:_{5,}[ \t]*\n[ \t]*)?(?:From:[ \t]|-----Original Message-----|On .{5,80} wrote:)/
+
+export function ownText(text: string): string {
+  return text.replace(/\r\n?/g, '\n').split(QUOTED_HISTORY)[0].trim()
+}
+
+export type OwnPurpose = { readonly purpose: 'reply' | 'cadence' | 'relationship'; readonly step: number | null }
+
+/**
+ * WHAT A MESSAGE HE WROTE HIMSELF IS (the same defect): to a contact who has written to us, it is a reply, whatever
+ * went before; the database refuses a cadence step to a contact who replied ("the cadence has stopped"), so filing his
+ * answer as the next cadence step lost every reply he sent by hand (production held none on 19 November 2026).
+ * Otherwise it is the next cadence step while there is one, then a relationship message.
+ */
+export function ownMessagePurpose(input: { readonly wroteToUs: boolean; readonly cadenceSoFar: number }): OwnPurpose {
+  if (input.wroteToUs) return { purpose: 'reply', step: null }
+  const step = input.cadenceSoFar + 1
+  return step <= 3 ? { purpose: 'cadence', step } : { purpose: 'relationship', step: null }
+}
+
 export function planSentSync(
   mail: readonly SentMail[],
   contacts: readonly { readonly id: string; readonly address: string }[],

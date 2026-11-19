@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { refusalFromError } from './crm'
 import { graphReadSentItems, type GraphConfig } from './graph'
-import { planSentSync, type SentMail } from './sent-sync-math'
+import { ownMessagePurpose, ownText, planSentSync, type SentMail } from './sent-sync-math'
 import { founderAccount } from './twenty-drafts'
 
 /**
@@ -36,7 +36,7 @@ export async function syncSentItems(db: Admin, cfg: GraphConfig, input: { readon
   const founder = await founderAccount(db)
   if (founder.id === null) return { state: 'not synced', why: founder.why }
   const raw = await graphReadSentItems(cfg, input.sinceIso)
-  const mail: SentMail[] = raw.map((m) => ({ internetMessageId: m.internetMessageId, subject: m.subject, toAddresses: m.toAddresses, sentAt: m.sentAt, text: m.text.trim() }))
+  const mail: SentMail[] = raw.map((m) => ({ internetMessageId: m.internetMessageId, subject: m.subject, toAddresses: m.toAddresses, sentAt: m.sentAt, text: ownText(m.text) }))
 
   const ids = [...new Set(mail.map((m) => m.internetMessageId).filter(Boolean))]
   const recorded = new Set<string>()
@@ -73,16 +73,19 @@ export async function syncSentItems(db: Admin, cfg: GraphConfig, input: { readon
       else marked += 1
       continue
     }
-    // A message he wrote himself: the next cadence step while there is one, otherwise a relationship message.
+    // A message he wrote himself: a reply to a contact who wrote to us, otherwise the next cadence step while there is
+    // one, then a relationship message (./sent-sync-math.ts ownMessagePurpose).
+    const wrote = await db.from('outreach_replies').select('id', { count: 'exact', head: true }).eq('contact_id', a.contactId)
+    if (wrote.error) throw new Error(`whether they wrote to us could not be read: ${wrote.error.message}`)
     const prior = await db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('contact_id', a.contactId).eq('purpose', 'cadence').neq('state', 'void')
     if (prior.error) throw new Error(`their earlier messages could not be counted: ${prior.error.message}`)
-    const step = (prior.count ?? 0) + 1
+    const own = ownMessagePurpose({ wroteToUs: (wrote.count ?? 0) > 0, cadenceSoFar: prior.count ?? 0 })
     const r = await db
       .from('outreach_touches')
       .insert({
         contact_id: a.contactId,
-        purpose: step <= 3 ? 'cadence' : 'relationship',
-        step: step <= 3 ? step : null,
+        purpose: own.purpose,
+        step: own.step,
         held_because: [],
         drafted_by: founder.id,
         ...sent,

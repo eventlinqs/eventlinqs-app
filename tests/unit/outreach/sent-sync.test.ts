@@ -1,6 +1,33 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { forgetGraphToken, graphReadSentItems, type GraphConfig } from '@/lib/outreach/graph'
-import { planSentSync, subjectKey, type SentMail } from '@/lib/outreach/sent-sync-math'
+import { ownMessagePurpose, ownText, planSentSync, subjectKey, type SentMail } from '@/lib/outreach/sent-sync-math'
+
+/*
+ * HIS REPLY BY HAND IS RECORDED (the PM's 12:18 of 19 November 2026): Lawal's 12:12:58 reply to Asia Oasis was filed as
+ * the next cadence step, which the database refuses once a contact has replied, and its body carried the organiser's
+ * quoted message into the database's dash and exclamation checks. So production held no reply sent by hand at all.
+ */
+describe('a message he wrote himself, recorded as what it is', () => {
+  it('to a contact who wrote to us it is a reply, however many letters went before', () => {
+    expect(ownMessagePurpose({ wroteToUs: true, cadenceSoFar: 1 })).toEqual({ purpose: 'reply', step: null })
+    expect(ownMessagePurpose({ wroteToUs: true, cadenceSoFar: 0 })).toEqual({ purpose: 'reply', step: null })
+  })
+  it('otherwise the next cadence step while there is one, then a relationship message', () => {
+    expect(ownMessagePurpose({ wroteToUs: false, cadenceSoFar: 0 })).toEqual({ purpose: 'cadence', step: 1 })
+    expect(ownMessagePurpose({ wroteToUs: false, cadenceSoFar: 2 })).toEqual({ purpose: 'cadence', step: 3 })
+    expect(ownMessagePurpose({ wroteToUs: false, cadenceSoFar: 3 })).toEqual({ purpose: 'relationship', step: null })
+  })
+  it('only his own words are kept: the quoted message under Outlook rule line, From: or On ... wrote: is cut', () => {
+    const outlook = 'Hi Aria,\r\n\r\nThank you for your note.\r\n\r\nKind regards,\r\nLawal Adams\r\n\r\n________________________________\r\nFrom: Asia Oasis Admin <info@asiaoasis.com.au>\r\nSent: Wednesday\r\nSo excited for the night!'
+    expect(ownText(outlook)).toBe('Hi Aria,\n\nThank you for your note.\n\nKind regards,\nLawal Adams')
+    expect(ownText('Hi Jo,\nYes.\n\nOn Tue, 18 Nov 2026 at 9:30 am Jo <jo@x.example> wrote:\n> Great!')).toBe('Hi Jo,\nYes.')
+    expect(ownText('Hi Jo,\nYes.\n-----Original Message-----\nWow!')).toBe('Hi Jo,\nYes.')
+  })
+  it('a message with no quoted history keeps every word, links in angle brackets included', () => {
+    const own = 'Hi team,\nOur listing: https://www.eventlinqs.com.au/e/x <https://www.eventlinqs.com.au/e/x>\nFrom the team at EventLinqs'
+    expect(ownText(own)).toBe(own)
+  })
+})
 
 /*
  * LAWAL'S SENT ITEMS, RECORDED BY THEMSELVES (Release 2, item 5): a message he sent to a contact with a draft held under
