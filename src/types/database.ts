@@ -6032,6 +6032,48 @@ export type Database = {
           },
         ]
       }
+      ops_lessons: {
+        Row: {
+          cause: string | null
+          created_at: string
+          evidence: string | null
+          held_by: string | null
+          id: string
+          learned_at: string
+          now_does: string
+          phase: string | null
+          source: string
+          source_key: string
+          went_wrong: string
+        }
+        Insert: {
+          cause?: string | null
+          created_at?: string
+          evidence?: string | null
+          held_by?: string | null
+          id?: string
+          learned_at: string
+          now_does: string
+          phase?: string | null
+          source: string
+          source_key: string
+          went_wrong: string
+        }
+        Update: {
+          cause?: string | null
+          created_at?: string
+          evidence?: string | null
+          held_by?: string | null
+          id?: string
+          learned_at?: string
+          now_does?: string
+          phase?: string | null
+          source?: string
+          source_key?: string
+          went_wrong?: string
+        }
+        Relationships: []
+      }
       ops_phase_runs: {
         Row: {
           created_at: string
