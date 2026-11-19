@@ -1611,9 +1611,17 @@ const DRILLS = [
     name: 'the verify phase rides only a run that never fires between 04:20 and 04:40',
     guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
     file: 'src/lib/ops/timetable.ts',
-    find: "unit: 'night', rides: ['listings', 'linkCheck']",
+    find: "unit: 'night', rides: ['listings', 'linkCheck', 'engineVerifier']",
     replace: "unit: 'night', rides: ['listings']",
     expect: 'has no ride firing inside its window',
+  },
+  {
+    name: "the engine verifier's workflow runs at 05:30 again while the table says 04:20",
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: '.github/workflows/engine-verifier.yml',
+    find: "    - cron: '20 17 * * *'",
+    replace: "    - cron: '30 18 * * *'",
+    expect: "does not schedule '20 17 * * *'",
   },
   /*
    * stories-post-as-stories (the PM's 04:40 of 20 November 2026, item 4), two drills: the fault as it was found (the

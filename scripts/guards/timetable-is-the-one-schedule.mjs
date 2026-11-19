@@ -21,7 +21,20 @@ if (!ridesBlock) {
 const rides = [...ridesBlock[1].matchAll(/(\w+): \{ path: '([^']+)', schedule: '([^']+)' \}/g)].map((m) => ({ ride: m[1], path: m[2], schedule: m[3] }))
 const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons ?? []
 const faults = []
+// A GitHub ride (the engine verifier, the PM's 05:38 of 20 November 2026) is scheduled by its own workflow's crons.
+const isWorkflow = (r) => r.path.startsWith('.github/workflows/')
 for (const r of rides) {
+  if (isWorkflow(r)) {
+    let wf = ''
+    try {
+      wf = readFileSync(r.path, 'utf8')
+    } catch {
+      faults.push(`the table's ride '${r.ride}' names ${r.path}, which does not exist`)
+      continue
+    }
+    if (!wf.includes(`- cron: '${r.schedule}'`)) faults.push(`${r.path} does not schedule '${r.schedule}', which the timetable says for '${r.ride}'. Change both in one change, the table first.`)
+    continue
+  }
   const c = crons.find((x) => x.path === r.path)
   if (!c) faults.push(`the table's ride '${r.ride}' names ${r.path}, which vercel.json does not schedule`)
   else if (c.schedule !== r.schedule) faults.push(`vercel.json schedules ${r.path} at '${c.schedule}'; the timetable says '${r.schedule}'. Change both in one change, the table first.`)
@@ -38,6 +51,13 @@ for (const [file, reader] of Object.entries(PHASE_READERS)) {
 // table itself:
 // (1) every ride's route records itself, by its own ride name, through recordPhaseRun;
 for (const r of rides) {
+  if (isWorkflow(r)) {
+    const wf = readFileSync(r.path, 'utf8')
+    if (!wf.includes('scripts/ops/record-phase-run-api.mjs') || !wf.includes(`PHASE_RIDE: ${r.ride}`)) {
+      faults.push(`${r.path} (the ride '${r.ride}') never records its run with PHASE_RIDE: ${r.ride} through scripts/ops/record-phase-run-api.mjs, so the phases it serves have no row from it`)
+    }
+    continue
+  }
   const file = `src/app${r.path}/route.ts`
   let text = ''
   try {

@@ -22,6 +22,6 @@ export const SCHEDULES = {
   bookingLinkCheck: { where: 'vercel', path: RIDES.linkCheck.path, cron: RIDES.linkCheck.schedule },
   growthScorecard: { where: 'vercel', path: '/api/cron/growth-scorecard', cron: '15 0 * * *' },
   stateReport: { where: 'github', path: '.github/workflows/state-report.yml', cron: '50 20 * * *' },
-  engineVerifier: { where: 'github', path: '.github/workflows/engine-verifier.yml', cron: '30 18 * * *' },
+  engineVerifier: { where: 'github', path: RIDES.engineVerifier.path, cron: RIDES.engineVerifier.schedule },
   engineVerifierMorning: { where: 'github', path: '.github/workflows/engine-verifier.yml', cron: '30 4 * * *' },
 } as const satisfies Record<string, Schedule>
