@@ -3,6 +3,8 @@ import type { AdminSession } from '@/lib/admin/types'
 import { ROLE_LABELS } from '@/lib/admin/rbac'
 import { filterNav, filterNavGroups } from './admin-nav'
 import { AdminMobileNav } from './admin-mobile-nav'
+import { AdminSearchShortcut } from './admin-search-shortcut'
+import { ADMIN_SEARCH_INPUT_ID } from './admin-search-id'
 
 /**
  * Top bar for the admin shell: a working global search (submits to
@@ -16,18 +18,33 @@ export function AdminTopbar({ session }: { session: AdminSession }) {
   return (
     <header className="flex items-center gap-4 border-b border-[var(--admin-line)] bg-[var(--admin-canvas)] px-6 py-4 lg:px-10">
       <AdminMobileNav items={filterNav(session.capabilities)} groups={filterNavGroups(session.capabilities)} />
+      <AdminSearchShortcut />
       <form method="GET" action="/admin/search" className="hidden flex-1 sm:block">
         <label className="block">
-          <span className="sr-only">Search organisers, events, users</span>
+          <span className="sr-only">Search organisers, events, users (Ctrl K)</span>
           <input
+            id={ADMIN_SEARCH_INPUT_ID}
             type="search"
             name="q"
-            placeholder="Search organisers, events, users"
+            aria-keyshortcuts="Control+K Meta+K"
+            placeholder="Search organisers, events, users (Ctrl K)"
             className="w-full max-w-xl rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </label>
       </form>
       <div className="ml-auto flex items-center gap-3">
+        {/* The phone width hides the box above, so search is one tap here (the CRM standard, section 2 item 8: every
+            view and action at 1440 and 390). */}
+        <Link prefetch={false}
+          href="/admin/search"
+          aria-label="Search organisers, events, users"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)] sm:hidden"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+        </Link>
         <Link prefetch={false}
           href="/admin/notifications"
           aria-label="Notifications and operations inbox"

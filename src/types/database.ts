@@ -14249,7 +14249,7 @@ export type Database = {
       }
     }
     Enums: {
-      admin_role: "super_admin" | "admin" | "support" | "moderator"
+      admin_role: "super_admin" | "admin" | "support" | "moderator" | "viewer"
       discount_type: "percentage" | "fixed_amount"
       event_status:
         | "draft"
@@ -14509,7 +14509,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      admin_role: ["super_admin", "admin", "support", "moderator"],
+      admin_role: ["super_admin", "admin", "support", "moderator", "viewer"],
       discount_type: ["percentage", "fixed_amount"],
       event_status: [
         "draft",

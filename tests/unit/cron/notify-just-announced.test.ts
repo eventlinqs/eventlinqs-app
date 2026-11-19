@@ -312,15 +312,42 @@ describe('the just-announced router reads every follower', () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/lib/notifications/audience.ts', 'utf8'),
     )
+    // Three follower reads: organisations, artists, and venues (the CRM standard of 19 November 2026, section 3).
     const followerReads = source.match(/\.from\('(saved_organisers|follows)'\)/g) ?? []
-    expect(followerReads.length).toBe(2)
+    expect(followerReads.length).toBe(3)
     // Every follower read pages by range and settles ties on the unique column.
-    expect(source.match(/\.order\('user_id'\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
+    expect(source.match(/\.order\('user_id'\)/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
     // And the route itself no longer reaches for either table directly.
     const route = await import('node:fs').then((fs) =>
       fs.readFileSync('src/app/api/cron/notify-just-announced/route.ts', 'utf8'),
     )
     expect(route).not.toMatch(/\.from\('(saved_organisers|follows)'\)/)
+  })
+})
+
+describe('a venue\'s followers hear of a new night there (the CRM standard of 19 November 2026, section 3)', () => {
+  it('alerts every follower of the venue, and someone who follows both the organiser and the venue once', async () => {
+    seedEvent('e1', 'org-1', daysAgo(2))
+    ;(h.db.events as Record<string, unknown>[])[0].venue_id = 'v-1'
+    seedFollowers('org-1', 3)
+    for (const u of ['u-00000', 'venue-a', 'venue-b']) {
+      ;(h.db.follows ||= []).push({ followable_id: 'v-1', followable_type: 'venue', user_id: u })
+    }
+    ;(h.db.follows ||= []).push({ followable_id: 'v-2', followable_type: 'venue', user_id: 'other-venue' })
+
+    await run()
+
+    expect([...reached('e1')].sort()).toEqual(['u-00000', 'u-00001', 'u-00002', 'venue-a', 'venue-b'])
+  })
+
+  it('the drill: a night with no venue reaches only its organiser\'s followers', async () => {
+    seedEvent('e1', 'org-1', daysAgo(2))
+    seedFollowers('org-1', 2)
+    ;(h.db.follows ||= []).push({ followable_id: 'v-1', followable_type: 'venue', user_id: 'venue-a' })
+
+    await run()
+
+    expect([...reached('e1')].sort()).toEqual(['u-00000', 'u-00001'])
   })
 })
 

@@ -1,0 +1,14 @@
+-- THE TEAM ROLES AS LAWAL NAMED THEM (law 33 (f), Lawal 19 November 2026, 13:50: 'every function and every action of
+-- the business works from the admin, by the owner or by staff with roles (owner, operations, viewer) ... each action
+-- server checked by role and written to an audit log'; the CRM standard of 19 November 2026, section 2 item 5; the
+-- PM's 22:14 item 2).
+--
+-- Owner and Operations are the existing super_admin and admin, shown by those names (src/lib/admin/rbac.ts
+-- ROLE_LABELS); Viewer is new: it reads the dashboard, the audit log and its own profile, and holds no capability that
+-- writes, so every action is refused it on the server (rbac.ts assertCan). support and moderator stay in the type for
+-- any account that holds them (none on production, read 19 November 2026 at 22:44) and are no longer offered.
+--
+-- TRANSACTION SHAPE: one ADD VALUE IF NOT EXISTS, re-runnable; the new value is not used in this migration
+-- ("If ALTER TYPE ... ADD VALUE ... is executed inside a transaction block, the new value cannot be used until after
+-- the transaction has been committed", https://www.postgresql.org/docs/current/sql-altertype.html).
+ALTER TYPE public.admin_role ADD VALUE IF NOT EXISTS 'viewer';

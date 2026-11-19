@@ -155,6 +155,35 @@ export async function readFollowersByArtist(
 }
 
 /**
+ * Every follower of every named venue (follows.followable_type 'venue', migration 20261108110001): a new night at a
+ * venue reaches the people who follow it (the CRM standard of 19 November 2026, section 3). Paged and chunked as the
+ * others are.
+ */
+export async function readFollowersByVenue(
+  admin: Admin,
+  venueIds: string[],
+): Promise<Map<string, string[]>> {
+  const rows = await readEveryRowIn<{ followable_id: string; user_id: string }>(
+    'venue followers for just-announced alerts',
+    venueIds,
+    (values, from, to) =>
+      admin
+        .from('follows')
+        .select('followable_id, user_id')
+        .eq('followable_type', 'venue')
+        .in('followable_id', values)
+        .order('followable_id')
+        .order('user_id')
+        .range(from, to),
+  )
+  return groupBy(
+    rows,
+    (r) => r.followable_id,
+    (r) => r.user_id,
+  )
+}
+
+/**
  * The users who have already had this alert for this event, in full.
  *
  * Read per event rather than per batch so one read is bounded by one event's

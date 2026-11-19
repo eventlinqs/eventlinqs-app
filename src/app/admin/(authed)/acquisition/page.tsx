@@ -13,6 +13,7 @@ import { readDailyQueue } from '@/lib/outreach/daily-queue'
 import { CHANNEL_WORDS, nextStepWords, notReady, openInApp, stepWords, type QueueChannel } from '@/lib/outreach/daily-queue-math'
 import { markSentAction } from './actions'
 import { DailyQueueItem } from './daily-queue-item'
+import { PipelineBoardView } from './pipeline-board-view'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_ROW_CONTROL, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
@@ -45,10 +46,15 @@ const PART_LABEL: Record<Part, string> = {
 
 const OPEN_LABEL = { instagram: 'Open in Instagram', facebook: 'Open their Page', website_form: 'Open the form', email: 'Open in mail' } as const
 
-export default async function AdminAcquisitionPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
-  const { said } = await searchParams
+export default async function AdminAcquisitionPage({ searchParams }: { searchParams: Promise<{ said?: string; view?: string }> }) {
+  const { said, view } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
+  // THE BOARD VIEW (the CRM standard of 19 November 2026, section 2 item 3): the same pipeline by Lawal's stages.
+  if (view === 'board') {
+    await recordAuditEvent({ action: 'admin.acquisition.board.view', session })
+    return <PipelineBoardView />
+  }
   await recordAuditEvent({ action: 'admin.acquisition.view', session })
 
   const db = createAdminClient()
@@ -83,6 +89,11 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
           Each organiser&apos;s acquisition state, as its own records prove it, and its score out of 100: frequency {WEIGHTS.frequency}, fit {WEIGHTS.fit}, value{' '}
           {WEIGHTS.value}, readiness {WEIGHTS.readiness}, detail {WEIGHTS.completeness}, partnership {WEIGHTS.partnership}. The score sets who is asked first;
           it predicts nothing.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link prefetch={false} href="/admin/acquisition?view=board" className="underline underline-offset-2">
+            The pipeline as a board, by Lawal&apos;s stages
+          </Link>
         </p>
       </header>
 

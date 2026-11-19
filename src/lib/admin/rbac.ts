@@ -106,6 +106,9 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.refunds.process',
     'admin.disputes.manage',
   ]),
+  // Viewer (Lawal, law 33 (f)): reads the dashboard, the audit log and its own profile; holds nothing that writes, so
+  // every action is refused it on the server.
+  viewer: new Set<AdminCapability>(['admin.dashboard.view', 'admin.audit.read', 'admin.profile.read']),
   // Moderator can action events (moderation) but not pricing or users.
   moderator: new Set<AdminCapability>([
     'admin.dashboard.view',
@@ -177,10 +180,12 @@ export class AdminForbiddenError extends Error {
 }
 
 export const ROLE_LABELS: Record<AdminRole, string> = {
-  super_admin: 'Super admin',
-  admin: 'Admin',
+  // Lawal's names for the team (law 33 (f), 19 November 2026): Owner, Operations, Viewer.
+  super_admin: 'Owner',
+  admin: 'Operations',
   support: 'Support',
   moderator: 'Moderator',
+  viewer: 'Viewer',
 }
 
 /** Short description of each role for the admin UI. */
@@ -189,4 +194,5 @@ export const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
   admin: 'Operational control: pricing, members, events, refunds, payouts. Not staff-locked out.',
   support: 'Refunds and read access (dashboard, audit). No pricing, staff, or event control.',
   moderator: 'Event moderation only. No pricing, members, refunds, or payouts.',
+  viewer: 'Reads the dashboard, the audit log and their own profile. Changes nothing.',
 }

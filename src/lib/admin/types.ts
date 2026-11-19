@@ -9,7 +9,8 @@
  * Mirror of supabase/migrations/20260502000003_admin_foundation.sql.
  */
 
-export type AdminRole = 'super_admin' | 'admin' | 'support' | 'moderator'
+// 'viewer' (Lawal, law 33 (f), 19 November 2026: roles owner, operations, viewer; migration 20261119230001).
+export type AdminRole = 'super_admin' | 'admin' | 'support' | 'moderator' | 'viewer'
 
 export interface AdminUserRow {
   id: string

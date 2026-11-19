@@ -24,11 +24,13 @@ import type { AdminRole, AdminSession, AdminUserRow } from '@/lib/admin/types'
  * Every mutation is audit-logged.
  */
 
+// The roles a person is given (Lawal, law 33 (f), 19 November 2026: owner, operations, viewer). support and moderator
+// stay in the type for any account that holds them (none on production on 19 November 2026) and are not offered
+// (law 13: hidden, never deleted).
 export const ASSIGNABLE_ADMIN_ROLES: readonly AdminRole[] = [
   'super_admin',
   'admin',
-  'support',
-  'moderator',
+  'viewer',
 ]
 
 export interface AdminStaffRow {

@@ -12,6 +12,7 @@ import {
   readFollowersByArtist,
   readFollowersByOrganisation,
   readOrganisationNames,
+  readFollowersByVenue,
 } from '@/lib/notifications/audience'
 
 export const runtime = 'nodejs'
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: events, error } = await admin
       .from('events')
-      .select('id, title, slug, organisation_id, venue_city, start_date, created_at')
+      .select('id, title, slug, organisation_id, venue_id, venue_city, start_date, created_at')
       .eq('status', 'published')
       .eq('visibility', 'public')
       .gte('start_date', now.toISOString())
@@ -81,6 +82,10 @@ export async function GET(request: NextRequest) {
     // src/lib/notifications/audience.ts for the three defects that cost.
     const orgName = await readOrganisationNames(admin, orgIds)
     const followersByOrg = await readFollowersByOrganisation(admin, orgIds)
+    // A venue's followers hear of every new night there (the CRM standard of 19 November 2026, section 3); the same
+    // dedupe key, so someone who follows both the organiser and the venue is alerted once.
+    const venueIds = [...new Set(events.map((e) => e.venue_id).filter(Boolean))] as string[]
+    const followersByVenue = await readFollowersByVenue(admin, venueIds)
 
     // Broadcast Stage 3 (SPEC 4.5): when the stage is on, an artist's followers
     // hear about every show they are confirmed on. Same dedupe key (user, event,
@@ -127,7 +132,8 @@ export async function GET(request: NextRequest) {
       if (!event.organisation_id) continue
       const followers = followersByOrg.get(event.organisation_id) ?? []
       const artistFollowers = artistFollowersByEvent.get(event.id) ?? []
-      const audience = [...new Set([...followers, ...artistFollowers])]
+      const venueFollowers = event.venue_id ? (followersByVenue.get(event.venue_id) ?? []) : []
+      const audience = [...new Set([...followers, ...artistFollowers, ...venueFollowers])]
       if (audience.length === 0) continue
 
       /*
