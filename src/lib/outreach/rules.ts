@@ -138,9 +138,16 @@ export function ruleFailures(draft: Draft): string[] {
  * Fill a template's [fields] from verified facts. A field with no value is left as written, so ruleFailures names it
  * and the draft is held: a message is never sent with a generic stand-in for a fact we do not have.
  */
+/** A guide address's path, where a placeholder takes its field's slug form ('[city]' after it reads 'geelong'). */
+export const GUIDE_PATH = '/city/'
+
 export function fillTemplate(text: string, fields: Record<string, string | null | undefined>): string {
-  return text.replace(PLACEHOLDER, (whole, name: string) => {
-    const value = fields[name.trim().toLowerCase()]
+  return text.replace(PLACEHOLDER, (whole, name: string, offset: number) => {
+    // Inside an address the field's slug is used, never its name: a link is never written with capitals or spaces
+    // (Lawal's approved acq_first v1 reads 'eventlinqs.com.au/city/[city]'; the letters he approved read /city/geelong).
+    const key = name.trim().toLowerCase()
+    const inPath = text.slice(Math.max(0, offset - GUIDE_PATH.length), offset) === GUIDE_PATH
+    const value = inPath ? fields[`${key} slug`] : fields[key]
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : whole
   })
 }
@@ -188,6 +195,8 @@ export function renderTemplate(template: TemplateRow, fields: Record<string, str
   for (const [k, v] of Object.entries(fields)) all[k.trim().toLowerCase()] = v
   all.signature = LAWAL_SIGNATURE
   all.unsubscribe = unsubscribeUrl ? unsubscribeLine(unsubscribeUrl) : null
+  // A template that writes its own unsubscribe line (acq_first v1) names only the address: '[unsubscribe link]'.
+  all['unsubscribe link'] = unsubscribeUrl
   const subject = template.subject ? fillTemplate(template.subject, all) : null
   const { content, closing } = splitClosing(fillTemplate(template.body, all))
   const draft: Draft = { channel: template.channel, purpose: template.purpose, step: template.step, subject, content, closing }

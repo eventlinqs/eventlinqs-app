@@ -19,6 +19,7 @@ import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 import { draftSegmentALetter } from './segment-a-play'
+import { organiserCitySlugs } from './organiser-city'
 import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { ALPHA, CLAIM_WINDOW_DAYS, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge, type Half, type JudgedOutcome } from './learning'
 
@@ -225,9 +226,19 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       const written = writtenContacts((touched.data ?? []) as { contact_id: string; state: string }[], segmentA)
       let allowed: Set<string> | null = null
       if (rule.cities && rule.cities.length > 0) {
-        const venues = await db.from('venues').select('id').in('city_slug', rule.cities).is('removed_at', null)
-        const links = await db.from('organiser_venues').select('organiser_id').in('venue_id', (venues.data ?? []).map((v) => v.id))
-        allowed = new Set((links.data ?? []).map((l) => l.organiser_id))
+        // THE CITIES COHORT (train AE, 20 November 2026; the PM's 08:37 item 4): each organiser's city by its three
+        // roads (./organiser-city.ts: a linked venue, the EventLinqs page they were found on, a night under their own
+        // account). Until now only a linked venue counted, so most organisers of the four guide cities were never in it.
+        // A test organiser is never in a cohort, and one another approved play names by id is left to that play.
+        const organiserIds = [...new Set((candidates.data ?? []).map((c) => c.organiser_id))]
+        const rows = organiserIds.length ? await db.from('organisers').select('id, found_on, organisation_id, is_test').in('id', organiserIds) : { data: [], error: null }
+        if (rows.error) throw new Error(`the cohort's organisers could not be read: ${rows.error.message}`)
+        const named = new Set(
+          (plays.data ?? []).filter((p) => p.id !== play.id).flatMap((p) => ((p.cohort_rule ?? {}) as CohortRule).organisers ?? []),
+        )
+        const real = (rows.data ?? []).filter((o) => !o.is_test && !named.has(o.id))
+        const cities = await organiserCitySlugs(db, real, deps.now)
+        allowed = new Set(real.filter((o) => rule.cities!.includes(cities.get(o.id) ?? '')).map((o) => o.id))
       }
       const seenOrganiser = new Set<string>()
       for (const c of candidates.data ?? []) {
