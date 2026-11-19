@@ -7,6 +7,8 @@ import { melbourneDateWords, morningReportEmail } from '@/lib/admin/morning-repo
 import { sendEmail } from '@/lib/email/send'
 import { founderDestination } from '@/lib/env/destinations'
 import { getSiteUrl } from '@/lib/site-url'
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -41,8 +43,8 @@ export async function GET(request: NextRequest) {
   // daily job from 6 to 18 November. A failed read or send is named in the answer and the log, never thrown.
   let report: 'sent' | 'dry' | string = 'dry'
   if (!dry) {
+    const now = new Date()
     try {
-      const now = new Date()
       const read = await readMorningReport(now)
       const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today` })
       await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
@@ -51,6 +53,8 @@ export async function GET(request: NextRequest) {
       report = `not sent: ${err instanceof Error ? err.message : String(err)}`
       console.error('[health-heartbeat] the 08:00 report was not sent:', err)
     }
+    // THE TIMETABLE'S REPORT PHASE, MEASURED (src/lib/ops/phase-runs.ts): seven areas, sent or why not.
+    await recordPhaseRun(createAdminClient(), { phase: 'report', ride: 'heartbeat', startedAt: now, endedAt: new Date(), units: 7, result: `the morning report ${report}`, failed: report !== 'sent' })
   }
 
   return NextResponse.json({ ok: status !== 'critical', status, sent, report, dry, checkedAt: new Date().toISOString(), checks: results })

@@ -6,6 +6,7 @@ import { dealVenuePhotos, venueMediaDeps } from '@/lib/venues/venue-images'
 import { attachApprovedPhotos, selfListWaiting } from '@/lib/listings/self-listing-run'
 import { sendSellThroughReports } from '@/lib/listings/sell-through-report'
 import { notifyIndexNow } from '@/lib/seo/indexnow'
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { reverifyNights } from '@/lib/listings/reverify-run'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -112,6 +113,17 @@ export async function GET(request: NextRequest) {
       indexNow = await notifyIndexNow(new Date())
       console.log(`[cron/listing-occurrences] IndexNow: ${indexNow}`)
     }
+    // THE TIMETABLE'S COLLECT PHASE, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
+    // this run's nights as its units, and IndexNow's answer in its result, so both are read from production.
+    await recordPhaseRun(createAdminClient(), {
+      phase: 'collect',
+      ride: 'listings',
+      startedAt: new Date(started),
+      endedAt: new Date(),
+      units: result.nights,
+      result: `${result.nights} nights, ${result.created} made, ${result.failed.length} failed; re-read: ${reverify}; IndexNow: ${indexNow}`,
+      failed: result.failed.length > 0,
+    })
     return NextResponse.json({ ok: true, ...result, dealt, selfListed, reports: reports.length, reverify, indexNow })
   } catch (err) {
     console.error('[cron/listing-occurrences] failed:', err)

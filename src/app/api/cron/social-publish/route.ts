@@ -1,3 +1,5 @@
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
+import { socialPhaseAt } from '@/lib/ops/timetable'
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
@@ -158,6 +160,20 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error('[cron/social-publish] the week could not be planned:', error instanceof Error ? error.message : error)
       }
+    }
+    // THE TIMETABLE'S SOCIAL PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
+    // the phase this hour holds, its pieces scheduled and published as its units.
+    const phase = socialPhaseAt(melbourneHour(now))
+    if (phase) {
+      await recordPhaseRun(db, {
+        phase,
+        ride: 'social',
+        startedAt: now,
+        endedAt: new Date(),
+        units: scheduled.scheduled.length + published.published.length,
+        result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again`,
+        failed: published.held.length > 0,
+      })
     }
     return NextResponse.json({ ok: true, redrawn, scheduled, published, planned })
   } catch (err) {

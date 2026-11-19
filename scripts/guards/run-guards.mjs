@@ -250,6 +250,8 @@
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
+ *   timetable-is-the-one-schedule  the daily timetable's rides scheduled in vercel.json exactly as
+ *                              src/lib/ops/timetable.ts says, the phase routes reading its phase
  *   same-day-reads             nothing online unless verified on its source: freshness from
  *                              agreeing reads only, 24 hours; every check timed at its read
  *   offer-is-one-rule          LAW 24 as ruled: the offer is defined once, rendered in src,
@@ -3480,6 +3482,10 @@ const GUARDS = [
   // Car D (the PM's 03:38 of 19 November 2026): the sender's mode is written in the code only by the admin switch, and the
   // sender's own trigger records every change by any path (20261119040001_sender_mode_record.sql).
   'scripts/guards/sender-mode-one-path.mjs',
+
+  // Train Y (the daily timetable, locked 20 November 2026): one table holds every phase's slot and cutoff; vercel.json
+  // schedules each run the phases ride exactly as src/lib/ops/timetable.ts says.
+  'scripts/guards/timetable-is-the-one-schedule.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

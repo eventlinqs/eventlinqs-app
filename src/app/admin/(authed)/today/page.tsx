@@ -23,6 +23,8 @@ import { PostsSection } from './posts-section'
 import { approvePieceAction, approveWeekAction } from '../social/actions'
 import { PageHeader, PRIMARY, StatCard } from '@/components/admin/ui/admin-kit'
 import { AdminToast } from '@/components/admin/ui/admin-toast'
+import { TimetableBoard } from '@/components/admin/timetable-board'
+import { readTimetable } from '@/lib/ops/timetable-read'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -87,6 +89,8 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
   )
   // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
+  // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
+  const timetable = await readTimetable(createAdminClient(), now).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` }))
   const threePosts = await readThreePosts(createAdminClient(), now).then(
     (v) => ({ ok: true as const, v }),
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
@@ -121,6 +125,8 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           )
         }
       />
+
+      <TimetableBoard read={timetable} />
 
       {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
       {/* One card a row at 320, two from 375, four at desktop (the PM's 07:30 polish (b): two narrow columns at 320). */}
