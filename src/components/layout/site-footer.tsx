@@ -6,7 +6,7 @@ import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { withSignupSource } from '@/lib/organisers/signup-source'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
-import { SOCIAL_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
+import { SHOWN_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -175,7 +175,8 @@ function SocialRow() {
     LinkedIn: <LinkedInIcon />,
     Facebook: <FacebookIcon />,
   }
-  const items = SOCIAL_PROFILES.map(p => ({ label: p.label, href: p.href, icon: icons[p.label] }))
+  // Only accounts that are ours (SHOWN_PROFILES; the PM's 17:42 of 19 November 2026).
+  const items = SHOWN_PROFILES.map(p => ({ label: p.label, href: p.href, icon: icons[p.label] }))
   return (
     <div className="flex items-center gap-4">
       {items.map(it => (

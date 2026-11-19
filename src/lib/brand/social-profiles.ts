@@ -48,15 +48,33 @@ export interface SocialProfile {
    * the visible links: see the header for why those differ.
    */
   confirmed: boolean
+  /**
+   * True only for an account that is ours (the PM's 17:42 of 19 November 2026: 'any account that does not exist or is
+   * not ours is removed'). A switch, never a deletion (law 13): a profile proved ours is shown again by setting it.
+   */
+  shown: boolean
 }
 
+/*
+ * READ ON 19 NOVEMBER 2026 (train T): our posts publish to the Facebook Page behind profile id 61590528656810 (the
+ * brand piece's own permalink, published 17:40:07), while facebook.com/eventlinqs answers 400; Lawal's own setup steps
+ * name the Instagram account @eventlinqs; Blotato connects only those two (src/lib/health/checks.ts
+ * checkSocialDestinations), and no record names a TikTok, X or LinkedIn account of ours. So those three are not shown
+ * and not asserted until one is proved ours; the LinkedIn company page exists (14 September), but existing is not ours.
+ */
 export const SOCIAL_PROFILES: readonly SocialProfile[] = [
-  { label: 'Instagram', href: 'https://instagram.com/eventlinqs',           confirmed: false },
-  { label: 'TikTok',    href: 'https://tiktok.com/@eventlinqs',             confirmed: false },
-  { label: 'X',         href: 'https://twitter.com/eventlinqs',             confirmed: false },
-  { label: 'LinkedIn',  href: 'https://linkedin.com/company/eventlinqs',    confirmed: true  },
-  { label: 'Facebook',  href: 'https://facebook.com/eventlinqs',            confirmed: false },
+  { label: 'Instagram', href: 'https://www.instagram.com/eventlinqs',                      confirmed: true,  shown: true  },
+  { label: 'TikTok',    href: 'https://tiktok.com/@eventlinqs',                            confirmed: false, shown: false },
+  { label: 'X',         href: 'https://twitter.com/eventlinqs',                            confirmed: false, shown: false },
+  { label: 'LinkedIn',  href: 'https://linkedin.com/company/eventlinqs',                   confirmed: false, shown: false },
+  { label: 'Facebook',  href: 'https://www.facebook.com/profile.php?id=61590528656810',    confirmed: true,  shown: true  },
 ]
+
+/** The profiles a page shows: ours only. */
+export const SHOWN_PROFILES: readonly SocialProfile[] = SOCIAL_PROFILES.filter((p) => p.shown)
+
+/** The labels shown, for a surface that picks some of them by hand (the contact page). */
+export const SHOWN_LABELS: ReadonlySet<SocialLabel> = new Set(SHOWN_PROFILES.map((p) => p.label))
 
 /**
  * Label to URL, for a surface that shows some of the profiles rather than all of
@@ -76,5 +94,5 @@ export const SOCIAL_HREF = Object.fromEntries(
  * property rather than emitting `sameAs: []`, which is what shipped before.
  */
 export function sameAsProfiles(): string[] {
-  return SOCIAL_PROFILES.filter(p => p.confirmed).map(p => p.href)
+  return SOCIAL_PROFILES.filter(p => p.confirmed && p.shown).map(p => p.href)
 }
