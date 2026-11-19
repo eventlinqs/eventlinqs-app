@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
+
+/** The Melbourne hours whose run gives the standing policy's approvals (06:40 first, then every three hours). */
+const POLICY_HOURS: ReadonlySet<number> = new Set([6, 9, 12, 15, 18])
 
 /** The hour on Melbourne's clock, where the guide's cities keep their days. */
 function melbourneHour(now: Date): number {
@@ -39,6 +43,35 @@ export async function GET(request: NextRequest) {
       for (const k of redrawn.kept) console.log(`[cron/social-publish] kept: ${k}`)
     } catch (error) {
       console.error('[cron/social-publish] the week could not be drawn again:', error instanceof Error ? error.message : error)
+    }
+    /* THE STANDING PUBLISHING POLICY (law 31, Lawal's 12:03 of 19 November 2026): while the switch is on, every drafted
+       piece of the week in an approved family is given the checked approval in the founder's name (store.ts
+       approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Five runs a day, 06:40
+       first so the day is prepared before 07:00, because each check reads the night's booking link. A failure is said
+       and never stops the publishing below. */
+    if (POLICY_HOURS.has(melbourneHour(now))) {
+      try {
+        const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
+        if (flag?.enabled === true) {
+          const founder = await founderAccount(db)
+          if (founder.id === null) {
+            console.error(`[cron/social-publish] the standing policy approved nothing: ${founder.why}`)
+          } else {
+            const policy = await approveUnderStandingPolicy(db, { by: founder.id, now, siteOrigin: getSiteUrl() })
+            if (policy && (policy.approved.length > 0 || policy.held.length > 0)) {
+              console.log(`[cron/social-publish] standing policy: ${policy.approved.length} approved, ${policy.held.length} outside the policy`)
+              for (const h of policy.held) console.log(`[cron/social-publish] outside the policy: ${h.label}: ${h.reason}`)
+              await recordAnonAuditEvent({
+                action: 'system.social.standing_policy_approval',
+                actorEmail: 'cron/social-publish',
+                metadata: { approved: policy.approved, held: policy.held.map((h) => ({ id: h.id, reason: h.reason })) },
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[cron/social-publish] the standing policy could not approve:', error instanceof Error ? error.message : error)
+      }
     }
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })

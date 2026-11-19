@@ -237,9 +237,101 @@ jobs:
       - name: Run types-drift guard
         run: bash scripts/check-types-drift.sh
 
+  # MIGRATIONS BY THE PIPELINE (car M; Lawal's word of 19 November 2026, relayed by the PM at 04:42: "no more migrations
+  # for him ... get it all done internally"; AUTONOMOUS-OPS-DIRECTIVE-LOCKED-19NOV.md section 1: "database migrations,
+  # with backups, validation and rollback safeguards"). When a pull request from this repository is ready, and on every
+  # push to main, this applies whatever production has not applied, by Supabase's own CI path (supabase db push --yes
+  # --remote=<ref>: supabase.com/docs/guides/deployment/managing-environments, read 19 November 2026; the CLI
+  # accepts a hosted change only with --yes or SUPABASE_YES exported). BEFORE the merge, because production parity
+  # below and the production build refuse a tree whose migrations production lacks (6 September 2026). In this order,
+  # each failing closed (scripts/ops/pipeline-migrations.mjs, held by tests/unit/ops/pipeline-migrations.test.ts):
+  #   1. the plan from production's ledger; a delete, truncate or table drop of a record law 19 (d) preserves is
+  #      refused; on a pull request that also changes code, a migration that removes data rides alone (law 14 (gg));
+  #   2. the test database first; if it refuses, production is never touched;
+  #   3. a backup inside production (schema migration_backups, never an artifact: this repository is public) of every
+  #      table a migration that drops, renames or deletes names;
+  #   4. production, then its ledger read back with nothing pending;
+  #   5. on a push to main, any failure here reaches 'main is red' below (its outage email names this job); on a pull
+  #      request it stays in this run's log, and production parity, which waits for this job, refuses the merge.
+  # One at a time across every branch (Supabase's guide warns two pushes can conflict), never cancelled midway.
+  migrate:
+    name: migrate production
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: migrate-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_YES: '1'
+      TEST_REF: vkapkibzokmfaxqogypq
+      PRODUCTION_REF: gndnldyfudbytbboxesk
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: 1. The plan, read from production's ledger
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ] && [ -n "$(git diff --name-only "$BASE_SHA" HEAD -- src)" ]; then export PR_CHANGES_CODE=true; else export PR_CHANGES_CODE=false; fi
+          node scripts/ops/pipeline-migrations.mjs plan
+
+      - uses: supabase/setup-cli@v3
+        if: steps.plan.outputs.pending != '0'
+        with:
+          version: 3.2.0
+
+      - name: 2. The test database first
+        if: steps.plan.outputs.pending != '0'
+        run: |
+          set -euo pipefail
+          # TEST's history holds versions from branches never merged, and the CLI refuses a history it cannot find in
+          # the folder (DbPushMissingLocalError, 19 November 2026). So it pushes from a scratch folder: the tree's
+          # migrations, and an empty placeholder for each version only TEST holds; --include-all then applies exactly
+          # what TEST lacks, in order, and touches nothing else.
+          node scripts/ops/pipeline-migrations.mjs test-workdir "$RUNNER_TEMP/test-db"
+          supabase db push --yes --include-all --remote="$TEST_REF" --workdir "$RUNNER_TEMP/test-db"
+
+      - name: 3. A backup of every table a destructive migration names
+        if: steps.plan.outputs.pending != '0' && steps.plan.outputs.destructive == 'true'
+        # A write to production, never a check, so the local gate has no step for it (the gate never touches
+        # production): written as shell, as every other step of this job is (tests/unit/ops/pre-push-gate.test.ts
+        # pairs only the single-line checks with gate steps).
+        run: |
+          set -euo pipefail
+          node scripts/ops/pipeline-migrations.mjs backup
+
+      - name: 4. Production
+        if: steps.plan.outputs.pending != '0'
+        run: |
+          set -euo pipefail
+          supabase db push --yes --remote="$PRODUCTION_REF"
+
+      - name: 4. Production's ledger read back, nothing pending
+        # Production's own ledger, read after its push: a deploy step, not a check the local gate could mirror.
+        run: |
+          set -euo pipefail
+          node scripts/ops/pipeline-migrations.mjs verify
+
+
   production-parity:
     name: production parity
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    # After the pipeline's migrations, whatever their result (a failed migrate must still leave parity RED, never
+    # skipped: a skipped required check reads as passing).
+    needs: migrate
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Close-out C16.2.2 (7 September 2026). REQUIRED on main. Two merges went
@@ -315,7 +407,7 @@ jobs:
     # email. scripts/guards/alert-routing.mjs fails the build if that condition
     # is ever loosened.
     name: main is red
-    needs: [verify, types-drift-guard, production-parity, test]
+    needs: [verify, types-drift-guard, migrate, production-parity, test]
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -339,6 +431,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           VERIFY: ${{ needs.verify.result }}
           DRIFT: ${{ needs.types-drift-guard.result }}
+          MIGRATE: ${{ needs.migrate.result }}
           PARITY: ${{ needs.production-parity.result }}
           SUITE: ${{ needs.test.result }}
         run: |
@@ -348,6 +441,7 @@ jobs:
             echo ""
             echo "lint / typecheck / build : ${VERIFY}"
             echo "types-drift guard        : ${DRIFT}"
+            echo "migrate production       : ${MIGRATE}"
             echo "production parity        : ${PARITY}"
             echo "test (vitest)            : ${SUITE}"
             echo ""

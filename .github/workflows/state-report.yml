@@ -31,11 +31,13 @@ name: state report
 
 on:
   schedule:
-    # 21:10 UTC is 07:10 in Melbourne during AEST and 08:10 during AEDT, so it
-    # lands in the morning either way without the workflow having to know which
-    # half of the year it is. Ten past, not on the hour: GitHub's own scheduling
-    # documentation warns that runs on the hour are the most contended.
-    - cron: '10 21 * * *'
+    # THE 08:00 REPORT (car D, part 2; the operating model, section 10, 19 November
+    # 2026): 20:50 UTC is 07:50 in Melbourne during AEDT, so the report is in the
+    # inbox by 08:00 even when a schedule runs late. Never on the hour: GitHub's
+    # own scheduling documentation warns that runs on the hour are the most
+    # contended. When AEST returns in April this reads 06:50, and the morning run
+    # moves to '50 21 * * *' (src/lib/admin/automation-schedules.ts holds both).
+    - cron: '50 20 * * *'
     # And hourly, for the stall check only.
     - cron: '25 * * * *'
   workflow_dispatch:
@@ -64,7 +66,7 @@ concurrency:
 jobs:
   daily:
     name: the daily state
-    if: ${{ github.event.schedule == '10 21 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily') }}
+    if: ${{ github.event.schedule == '50 20 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

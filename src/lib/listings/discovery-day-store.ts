@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PARTNER_TYPES } from './collect-store'
 import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import {
   addTurn,
@@ -74,9 +75,17 @@ export function discoveryDayStore(db: SupabaseClient) {
       'the nights held',
       db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('status', 'waiting').gte('found_at', from).lt('found_at', to),
     )
+    /* A HOLD'S REASON (the PM's 02:40 of 19 November 2026, gap 1, check c). A find's reasons are its doubts about the
+       facts (listing_candidates_confidence: high confidence carries none), so a high confidence find from a source that
+       is not a partner waits for a person with an empty list by design: its reason is its source's own register row, as
+       the partner rule lists partners only (collect-store.ts PARTNER_TYPES). Read on production at 03:44: every one of
+       the 146 such waits came from a source that is not a partner (121 subscription feeds, 25 manual research), so the
+       check read 2, 2 and 9 'held without a reason' for nights whose reason was known. Only a partner's find that still
+       waits with no doubt named is unexplained, and only that is counted. */
     const heldWithoutReason = await count(
       'the nights held without a reason',
-      db.from('listing_candidates').select('id', { count: 'exact', head: true }).eq('status', 'waiting').gte('found_at', from).lt('found_at', to).eq('reasons', '{}'),
+      db.from('listing_candidates').select('id, listing_sources!inner(source_type)', { count: 'exact', head: true }).eq('status', 'waiting').gte('found_at', from).lt('found_at', to).eq('reasons', '{}')
+        .in('listing_sources.source_type', [...PARTNER_TYPES]),
     )
     /* The organisers the engine entered that day, the platform's own listings organisation never among them. */
     const { data: entered, error: oErr } = await db.from('organisers').select('id').gte('created_at', from).lt('created_at', to)

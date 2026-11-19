@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NOT_LIVE_FILTER, SUBMISSION_LIVE_WITHIN_MINUTES } from '@/lib/listings/submission-watch-rule'
+import { readMorningReport } from '@/lib/admin/morning-report'
 import { readWeeklyDigest } from '@/lib/growth/weekly-report-digest'
 import { SOURCE_STOP_WORDS } from '@/lib/health/dead-link-hold'
 import { NOT_AN_EVENT } from '@/lib/listings/not-an-event'
@@ -97,11 +98,19 @@ export async function GET(request: NextRequest) {
     // run asks (?weekly=1, on a Melbourne Monday), so the hourly stall check never pays for it; its own failure is said
     // in its own field and never fails the counts above.
     const weekly = request.nextUrl.searchParams.get('weekly') === '1' ? await readWeeklyDigest(admin) : undefined
+    // THE 08:00 REPORT'S SEVEN PARTS (car D, part 2; the operating model, section 10; law 25): only when the morning run
+    // asks (?business=1), so the hourly stall check never pays for them; each area that cannot be read says so in its own
+    // row, and a fault of the whole read is said in its own field and never fails the counts above.
+    const business =
+      request.nextUrl.searchParams.get('business') === '1'
+        ? await readMorningReport().catch((fault: unknown) => ({ error: fault instanceof Error ? fault.message : String(fault) }))
+        : undefined
 
     return NextResponse.json({
       ok: true,
       since,
       ...(weekly ? { weekly } : {}),
+      ...(business ? { business } : {}),
       counts: {
         eventsLive: live.count ?? 0,
         ticketsSold: tickets.count ?? 0,

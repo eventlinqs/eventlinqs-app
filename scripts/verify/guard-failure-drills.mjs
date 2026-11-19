@@ -1553,6 +1553,28 @@ const DRILLS = [
     expect: 'does not render <FeaturedHero>',
   },
   /*
+   * sender-mode-one-path (the PM's 03:38 of 19 November 2026), two drills: a second file writes the sender's mode, and
+   * the admin switch stops writing it. The switch writes the mode as a shorthand property ({ mode, changed_by }), which
+   * the guard's first version read as no write at all and failed train P's gate on 19 November at 12:32.
+   */
+  {
+    name: 'the outreach run sets the sender live itself, a second path beside the admin switch',
+    guard: `${GUARDS}/sender-mode-one-path.mjs`,
+    file: 'src/app/api/cron/outreach-run/route.ts',
+    find: "    const sender = await db.from('outreach_sender').select('mode, from_address, changed_by, dns_checked_at').eq('id', true).single()",
+    replace:
+      "    await db.from('outreach_sender').update({ mode: 'live' }).eq('id', true)\n    const sender = await db.from('outreach_sender').select('mode, from_address, changed_by, dns_checked_at').eq('id', true).single()",
+    expect: 'written outside the one path',
+  },
+  {
+    name: 'the admin switch stops writing the mode, so the one path has moved unseen',
+    guard: `${GUARDS}/sender-mode-one-path.mjs`,
+    file: 'src/app/admin/(authed)/automation/actions.ts',
+    find: '.update({ mode, changed_by: session.userId })',
+    replace: '.update({ changed_by: session.userId })',
+    expect: 'no longer writes the sender',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *

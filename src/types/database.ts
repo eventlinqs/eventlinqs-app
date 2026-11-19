@@ -710,6 +710,62 @@ export type Database = {
         }
         Relationships: []
       }
+      comms_send_approvals: {
+        Row: {
+          approval_words: string
+          approved_at: string
+          approved_by: string
+          contact_id: string | null
+          content_sha256: string
+          gateway_policy_version: string
+          gateway_verdict: string
+          graph_message_id: string
+          id: string
+          internet_message_id: string | null
+          mailbox: string
+          refused_because: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          approval_words: string
+          approved_at?: string
+          approved_by: string
+          contact_id?: string | null
+          content_sha256: string
+          gateway_policy_version: string
+          gateway_verdict: string
+          graph_message_id: string
+          id?: string
+          internet_message_id?: string | null
+          mailbox: string
+          refused_because?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          approval_words?: string
+          approved_at?: string
+          approved_by?: string
+          contact_id?: string | null
+          content_sha256?: string
+          gateway_policy_version?: string
+          gateway_verdict?: string
+          graph_message_id?: string
+          id?: string
+          internet_message_id?: string | null
+          mailbox?: string
+          refused_because?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_send_approvals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           created_at: string
@@ -5916,6 +5972,8 @@ export type Database = {
       notifications: {
         Row: {
           channel: string
+          comms_category: string | null
+          comms_subtype: string | null
           converted: boolean
           created_at: string
           event_id: string | null
@@ -5929,6 +5987,8 @@ export type Database = {
         }
         Insert: {
           channel: string
+          comms_category?: string | null
+          comms_subtype?: string | null
           converted?: boolean
           created_at?: string
           event_id?: string | null
@@ -5942,6 +6002,8 @@ export type Database = {
         }
         Update: {
           channel?: string
+          comms_category?: string | null
+          comms_subtype?: string | null
           converted?: boolean
           created_at?: string
           event_id?: string | null
@@ -6767,6 +6829,8 @@ export type Database = {
       }
       organiser_night_reports: {
         Row: {
+          comms_category: string
+          comms_subtype: string
           event_id: string
           figures: Json
           id: string
@@ -6777,6 +6841,8 @@ export type Database = {
           sent_by: string | null
         }
         Insert: {
+          comms_category?: string
+          comms_subtype?: string
           event_id: string
           figures: Json
           id?: string
@@ -6787,6 +6853,8 @@ export type Database = {
           sent_by?: string | null
         }
         Update: {
+          comms_category?: string
+          comms_subtype?: string
           event_id?: string
           figures?: Json
           id?: string
@@ -6956,6 +7024,8 @@ export type Database = {
       }
       organiser_sales_digest_sends: {
         Row: {
+          comms_category: string
+          comms_subtype: string
           currency: string
           digest_date: string
           gross_cents: number
@@ -6964,6 +7034,8 @@ export type Database = {
           sent_at: string
         }
         Insert: {
+          comms_category?: string
+          comms_subtype?: string
           currency?: string
           digest_date: string
           gross_cents?: number
@@ -6972,6 +7044,8 @@ export type Database = {
           sent_at?: string
         }
         Update: {
+          comms_category?: string
+          comms_subtype?: string
           currency?: string
           digest_date?: string
           gross_cents?: number
@@ -7379,6 +7453,30 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_sender_mode_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_mode: string
+          id: number
+          to_mode: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_mode: string
+          id?: never
+          to_mode: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_mode?: string
+          id?: never
+          to_mode?: string
+        }
+        Relationships: []
+      }
       outreach_templates: {
         Row: {
           body: string
@@ -7425,6 +7523,9 @@ export type Database = {
         Row: {
           basis_at_send: Json | null
           body: string
+          comms_category: string | null
+          comms_source: string | null
+          comms_subtype: string | null
           contact_id: string
           drafted_at: string
           drafted_by: string
@@ -7454,6 +7555,9 @@ export type Database = {
         Insert: {
           basis_at_send?: Json | null
           body: string
+          comms_category?: string | null
+          comms_source?: string | null
+          comms_subtype?: string | null
           contact_id: string
           drafted_at?: string
           drafted_by: string
@@ -7483,6 +7587,9 @@ export type Database = {
         Update: {
           basis_at_send?: Json | null
           body?: string
+          comms_category?: string | null
+          comms_source?: string | null
+          comms_subtype?: string | null
           contact_id?: string
           drafted_at?: string
           drafted_by?: string
@@ -8169,6 +8276,8 @@ export type Database = {
           admin_path: string
           attempts: number
           channel: string | null
+          comms_category: string
+          comms_subtype: string
           created_at: string
           dedupe_key: string
           delivery_state: Database["public"]["Enums"]["platform_notification_state"]
@@ -8192,6 +8301,8 @@ export type Database = {
           admin_path: string
           attempts?: number
           channel?: string | null
+          comms_category?: string
+          comms_subtype?: string
           created_at?: string
           dedupe_key: string
           delivery_state?: Database["public"]["Enums"]["platform_notification_state"]
@@ -8215,6 +8326,8 @@ export type Database = {
           admin_path?: string
           attempts?: number
           channel?: string | null
+          comms_category?: string
+          comms_subtype?: string
           created_at?: string
           dedupe_key?: string
           delivery_state?: Database["public"]["Enums"]["platform_notification_state"]
@@ -10463,6 +10576,8 @@ export type Database = {
           audience: string
           campaign_id: string
           city: string
+          comms_category: string
+          comms_subtype: string | null
           format: string
           id: string
           kind: string
@@ -10480,6 +10595,8 @@ export type Database = {
           audience: string
           campaign_id: string
           city: string
+          comms_category?: string
+          comms_subtype?: string | null
           format: string
           id?: string
           kind: string
@@ -10497,6 +10614,8 @@ export type Database = {
           audience?: string
           campaign_id?: string
           city?: string
+          comms_category?: string
+          comms_subtype?: string | null
           format?: string
           id?: string
           kind?: string
@@ -12992,6 +13111,10 @@ export type Database = {
       claim_founding_spot: {
         Args: { p_city_slug: string; p_org_id: string }
         Returns: number
+      }
+      comms_subtype_of_template_key: {
+        Args: { p_key: string }
+        Returns: string
       }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
       connect_watch_guards: {

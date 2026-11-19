@@ -12,8 +12,11 @@ export const SCHEDULES = {
   outreachRun: { where: 'vercel', path: '/api/cron/outreach-run', cron: '*/15 * * * *' },
   listingOccurrences: { where: 'vercel', path: '/api/cron/listing-occurrences', cron: '10 * * * *' },
   collectionRun: { where: 'vercel', path: '/api/cron/collection-run', cron: '25 */6 * * *' },
+  // The engine page's rows (the operating model's A4): the hunt and the booking link check, held to vercel.json the same way.
+  bigEventHunt: { where: 'vercel', path: '/api/cron/big-event-hunt', cron: '0 4,18 * * *' },
+  bookingLinkCheck: { where: 'vercel', path: '/api/cron/booking-link-check', cron: '0 18 * * *' },
   growthScorecard: { where: 'vercel', path: '/api/cron/growth-scorecard', cron: '15 0 * * *' },
-  stateReport: { where: 'github', path: '.github/workflows/state-report.yml', cron: '10 21 * * *' },
+  stateReport: { where: 'github', path: '.github/workflows/state-report.yml', cron: '50 20 * * *' },
   engineVerifier: { where: 'github', path: '.github/workflows/engine-verifier.yml', cron: '30 18 * * *' },
   engineVerifierMorning: { where: 'github', path: '.github/workflows/engine-verifier.yml', cron: '30 4 * * *' },
 } as const satisfies Record<string, Schedule>

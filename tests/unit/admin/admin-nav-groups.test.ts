@@ -14,11 +14,11 @@ describe("the admin navigation in Lawal's eight groups", () => {
     expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Today', 'Events', 'Organisers', 'Outreach', 'Social', 'Automation', 'Money', 'Settings'])
   })
 
-  it('places every page once, the 37 the flat list held before tonight', () => {
+  it('places every page once: the 37 the flat list held on 15 November, the Communications centre (Law 24, 18 November) and the engine page (A4, 19 November 2026)', () => {
     const hrefs = ADMIN_NAV.map((i) => i.href)
     expect(new Set(hrefs).size).toBe(hrefs.length)
-    expect(hrefs.length).toBe(37)
-    for (const h of ['/admin/automation', '/admin/today', '/admin', '/admin/submissions', '/admin/social', '/admin/acquisition', '/admin/payouts', '/admin/audit']) {
+    expect(hrefs.length).toBe(39)
+    for (const h of ['/admin/automation', '/admin/engine', '/admin/today', '/admin', '/admin/submissions', '/admin/social', '/admin/acquisition', '/admin/payouts', '/admin/audit', '/admin/comms']) {
       expect(hrefs).toContain(h)
     }
   })
@@ -34,8 +34,8 @@ describe("the admin navigation in Lawal's eight groups", () => {
   it('shows a viewer only what they may open, and leaves an empty group out', () => {
     const groups = filterNavGroups(['admin.dashboard.view'])
     expect(groups.map((g) => g.label)).toEqual(['Today', 'Automation'])
-    expect(groups.flatMap((g) => g.items).map((i) => i.href)).toEqual(['/admin/today', '/admin', '/admin/health', '/admin/automation'])
-    expect(filterNav(['admin.dashboard.view']).length).toBe(4)
+    expect(groups.flatMap((g) => g.items).map((i) => i.href)).toEqual(['/admin/today', '/admin', '/admin/health', '/admin/automation', '/admin/engine'])
+    expect(filterNav(['admin.dashboard.view']).length).toBe(5)
   })
 
   it('marks the page you are on, the deepest match winning', () => {

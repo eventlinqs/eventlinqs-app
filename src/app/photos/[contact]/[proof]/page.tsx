@@ -8,6 +8,7 @@ import { MAX_PHOTOS, readPhotoPage } from '@/lib/listings/photo-permission'
 import { dayWords } from '@/lib/outreach/twenty-letters'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { givePhotosAction } from './actions'
+import { PhotoFilesInput } from './photo-files-input'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,19 +81,8 @@ export default async function PhotoPage({
                 </select>
               </div>
               <div>
-                <label htmlFor="ph-photos" className={LABEL}>
-                  Photos or artwork
-                </label>
-                <input
-                  id="ph-photos"
-                  name="photos"
-                  type="file"
-                  multiple
-                  required
-                  accept="image/jpeg,image/png,image/webp"
-                  className="mt-1 block min-h-[44px] w-full text-sm text-[var(--text-primary)] file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-[var(--surface-2)] file:px-4 file:text-sm file:font-medium"
-                />
-                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP, each under 10MB. Shown whole, never cropped.</p>
+                <PhotoFilesInput labelClassName={LABEL} className="mt-1 block min-h-[44px] w-full text-sm text-[var(--text-primary)] file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-[var(--surface-2)] file:px-4 file:text-sm file:font-medium" />
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP. Shown whole, never cropped.</p>
               </div>
               {/* The PM's 23:38 of 18 November 2026: a flyer is shown whole in an organiser spotlight, a photograph in an event poster. */}
               <fieldset className="space-y-2">

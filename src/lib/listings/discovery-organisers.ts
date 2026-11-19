@@ -34,7 +34,42 @@ export function crmWebsite(url: string | null | undefined): string | null {
   }
 }
 
-export type AttachOutcome = { attached: number; entered: number; failed: string[]; left: number }
+/**
+ * A VENUE'S RECORDED SITE IS ITS OWN (read on production, 18 November 2026, 07:45 and 09:52: the engine entered seven
+ * organisers under a place's name with the PRESENTER's site the venue row carried, GMHBA Stadium with
+ * footballaustralia.com.au and Red Energy Arena with bendigospirit.wnbl.com.au among them, so a letter could greet the
+ * venue at another body's address). A site is the venue's own only where its host carries a word of the name (four
+ * letters or more), the name's initials (qvm for Queen Victoria Market), or the starts of its words, three letters each
+ * (hermaj for Her Majesty's). Pure.
+ */
+export function siteFitsName(name: string, url: string | null | undefined): boolean {
+  if (!url) return false
+  let host: string
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return false
+  }
+  const label = host.split('.')[0] ?? ''
+  const flat = host.replace(/[^a-z0-9]/g, '')
+  const words = name.toLowerCase().replace(/[’']s\b/g, '').split(/[^a-z0-9]+/).filter(Boolean)
+  if (words.some((w) => w.length >= 4 && flat.includes(w))) return true
+  const significant = words.filter((w) => !['the', 'of', 'and', 'at'].includes(w))
+  if (significant.length >= 2 && label === significant.map((w) => w[0]).join('')) return true
+  // The starts of consecutive words, three letters or more each, making up the whole first label.
+  const startsMake = (rest: string, from: number): boolean => {
+    if (rest === '') return true
+    for (let i = from; i < words.length; i++) {
+      for (let n = Math.min(words[i].length, rest.length); n >= 3; n--) {
+        if (rest.startsWith(words[i].slice(0, n)) && startsMake(rest.slice(n), i + 1)) return true
+      }
+    }
+    return false
+  }
+  return label.length >= 6 && startsMake(label, 0)
+}
+
+export type AttachOutcome ={ attached: number; entered: number; failed: string[]; left: number }
 
 export async function attachOrganisers(
   db: SupabaseClient,
@@ -80,7 +115,11 @@ export async function attachOrganisers(
       out.failed.push(`venue ${venueId}: no name to enter`)
       continue
     }
-    const website = crmWebsite(venue.website_url as string | null)
+    // A recorded site that is not the venue's own (another body's, the presenter's) is never taken as the venue's
+    // organiser's site: its address would be another body's (siteFitsName; 18 November 2026).
+    const listed = crmWebsite(venue.website_url as string | null)
+    const website = listed && siteFitsName(name, venue.website_url as string | null) ? listed : null
+    const notOwn = listed && !website ? ` Its venue's recorded site, ${new URL(listed).hostname}, is another body's, so it is not taken as this organiser's.` : ''
     /* The CRM organiser already named for this venue: by its name, else by its website. */
     let organiserId: string | null = null
     const byName = await db.from('organisers').select('id').eq('name_key', crmNameKey(name)).maybeSingle()
@@ -103,7 +142,7 @@ export async function attachOrganisers(
           name: name.slice(0, 200),
           website_url: website,
           found_on: website,
-          notes: `${ENGINE_ORGANISER_NOTE} on ${now.toISOString().slice(0, 10)}: the host of its listed nights at ${name.slice(0, 120)}.`,
+          notes: `${ENGINE_ORGANISER_NOTE} on ${now.toISOString().slice(0, 10)}: the host of its listed nights at ${name.slice(0, 120)}.${notOwn}`,
           created_by: by.id,
         })
         .select('id')

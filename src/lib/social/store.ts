@@ -1275,6 +1275,35 @@ export async function approveWeekChecked(db: Db, input: { readonly by: string; r
   return approveWeek(pieces, (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
 }
 
+/**
+ * THE STANDING PUBLISHING POLICY APPROVES (Lawal's operations mandate of 19 November 2026, 12:03, law 31: "If standing
+ * authorisation covers the content, publish automatically ... Do not ask the founder to repeat approvals already
+ * recorded"; the operating model's section 4). While the switch social_auto_publish is on, the social run gives every
+ * drafted piece of this week the same checked approval a person's press gives (approvePieceChecked: the night eligible
+ * and not ended, the permitted photograph or an approved photo free family, the working link, the locked look), in the
+ * founder's name, because the policy is his approval. A piece that fails a check is held with its reason and the rest go
+ * on. The older planner looks never post (law 26): a daily poster or a partner kit is never approved here.
+ */
+export const NEVER_POSTED_KINDS: readonly string[] = ['daily_poster', 'partner_kit']
+
+/** The week's pieces the standing policy may approve: every kind but the two that never post, labelled for the log. */
+export function policyPieces(
+  pieces: readonly { readonly id: string; readonly kind: string; readonly state: PieceState; readonly partnerName: string | null; readonly city: string }[],
+): { id: string; state: PieceState; label: string }[] {
+  return pieces
+    .filter((p) => !NEVER_POSTED_KINDS.includes(p.kind))
+    .map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
+}
+
+export async function approveUnderStandingPolicy(
+  db: Db,
+  input: { readonly by: string; readonly now: Date; readonly siteOrigin: string },
+): Promise<WeekApproved | null> {
+  const campaign = await readCampaign(db, input.now)
+  if (campaign === null) return null
+  return approveWeek(policyPieces(campaign.pieces), (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
+}
+
 export type Redrawn = { readonly redrawn: readonly string[]; readonly kept: readonly string[] }
 
 /**

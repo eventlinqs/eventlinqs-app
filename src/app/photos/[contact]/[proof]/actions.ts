@@ -44,7 +44,9 @@ export async function givePhotosAction(formData: FormData): Promise<void> {
 
   // The PM's 23:38 of 18 November 2026: a flyer is kept as artwork (the organiser spotlight), else as a photograph.
   const kind = formData.get('kind') === 'flyer' ? 'flyer' : 'photo'
-  const done = await givePhotos(db, { page: found, eventId: String(formData.get('night') ?? ''), files, uses: uses as NonNullable<typeof uses>, givenBy, now, kind }, mediaDeps())
+  // 'gallery': the photo page judges a photo by the event page's own box, not the wizard's cover width (the PM's 09:45 of
+  // 19 November 2026, item 1 (c); photo-permission.ts).
+  const done = await givePhotos(db, { page: found, eventId: String(formData.get('night') ?? ''), files, uses: uses as NonNullable<typeof uses>, givenBy, now, kind }, mediaDeps('gallery'))
   await recordAnonAuditEvent({
     action: 'public.photos.given',
     metadata: { contactId: found.contactId, eventId: String(formData.get('night') ?? ''), uses, state: done.state, added: done.state === 'done' ? done.added : 0 },

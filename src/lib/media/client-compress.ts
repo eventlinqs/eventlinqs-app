@@ -31,14 +31,22 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob 
 }
 
 /**
- * Returns a File safe to send through a server action. Files already at or
+ * THE WHOLE REQUEST, NOT ONE FILE (the PM's 09:45 of 19 November 2026, item 1 (c)): a form that posts several photos in
+ * one request shares the platform's cap between them, so each takes an equal share of TRANSPORT_SAFE_BYTES.
+ */
+export function shareOfRequest(count: number): number {
+  return Math.floor(TRANSPORT_SAFE_BYTES / Math.max(1, count))
+}
+
+/**
+ * Returns a File safe to send through a server action (at or under limit, the whole request's by default). Files already at or
  * under TRANSPORT_SAFE_BYTES pass through untouched (the server pipeline does
  * the real work). Larger files are decoded and re-encoded to JPEG in-browser.
  * If the browser cannot decode the format (e.g. HEIC outside Safari), the
  * original file is returned and the caller's error path reports honestly.
  */
-export async function prepareImageForUpload(file: File): Promise<File> {
-  if (file.size <= TRANSPORT_SAFE_BYTES) return file
+export async function prepareImageForUpload(file: File, limit: number = TRANSPORT_SAFE_BYTES): Promise<File> {
+  if (file.size <= limit) return file
   if (typeof createImageBitmap !== 'function') return file
 
   let bitmap: ImageBitmap
@@ -59,7 +67,7 @@ export async function prepareImageForUpload(file: File): Promise<File> {
       if (!ctx) return file
       ctx.drawImage(bitmap, 0, 0, w, h)
       const blob = await canvasToBlob(canvas, step.quality)
-      if (blob && blob.size <= TRANSPORT_SAFE_BYTES) {
+      if (blob && blob.size <= limit) {
         const name = file.name.replace(/\.[a-z0-9]+$/i, '') + '.jpg'
         return new File([blob], name, { type: 'image/jpeg' })
       }

@@ -31,6 +31,7 @@
  *   no-plaintext-credential    no tracked file contains a plaintext credential
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
+ *   sender-mode-one-path       the sender's mode is written in the code only by the admin switch (car D, 19 November 2026)
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
@@ -3475,6 +3476,10 @@ const GUARDS = [
   // NOTHING GOES ONLINE UNLESS VERIFIED ON ITS REAL SOURCE (Lawal, 15 November 2026, 06:03): freshness rests only on
   // agreeing reads, 24 hours; no listing check is dated by the clock instead of its read.
   'scripts/guards/same-day-reads.mjs',
+
+  // Car D (the PM's 03:38 of 19 November 2026): the sender's mode is written in the code only by the admin switch, and the
+  // sender's own trigger records every change by any path (20261119040001_sender_mode_record.sql).
+  'scripts/guards/sender-mode-one-path.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

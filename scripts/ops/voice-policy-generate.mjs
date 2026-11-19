@@ -49,7 +49,7 @@ try {
   const s = JSON.parse(readFileSync(STANDARD, 'utf8'))
   const list = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => typeof x === 'string' && x.length > 0)
   if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.actions) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
-  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead }
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}) }
 } catch (e) {
   unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
 }

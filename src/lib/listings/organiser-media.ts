@@ -49,6 +49,13 @@ function refusalOf(error: { code: string; message: string }): MediaAnswer {
   throw new Error(`the organiser's media change was not saved: ${error.message}`)
 }
 
+/**
+ * The image pipeline's own refusal, in its own words (too small, too many megapixels, not an image). Carried to the
+ * person whole: on 18 November 2026 at 23:50 Asia Oasis' festival photo was refused as too small for a cover, and the
+ * page told her 'That image could not be read. Try a JPEG or PNG.' about a good JPEG (the PM's 09:45 of 19 November).
+ */
+export class ImageRefusal extends Error {}
+
 function chosen(file: File | null): file is File {
   return file instanceof File && file.size > 0
 }
@@ -72,8 +79,8 @@ export async function storeImage(
     const bytes = await file.arrayBuffer()
     image = await deps.process(bytes)
     hashes = await deps.hash(bytes)
-  } catch {
-    return { refused: 'That image could not be read. Try a JPEG or PNG.' }
+  } catch (fault) {
+    return { refused: fault instanceof ImageRefusal ? fault.message : 'That image could not be read. Try a JPEG or PNG.' }
   }
   if (await photoLockedElsewhere(hashes, eventId, deps)) return { refused: PHOTO_ALREADY_USED }
   const path = `${folder}/${randomUUID()}.${image.extension}`
@@ -166,13 +173,17 @@ export async function withdrawOrganiserYes(input: { userId: string; permissionId
 }
 
 /** The deps as the platform holds them: the image pipeline, the organiser-media bucket, the database's functions. */
-export function mediaDeps(): MediaDeps {
+/**
+ * The real dependencies. role 'cover' (the default) holds the cover's width floor; the photo page passes 'gallery' and
+ * judges the photo by the event page's own box instead (photo-permission.ts, fitsEventPhotoBox).
+ */
+export function mediaDeps(role: 'cover' | 'gallery' = 'cover'): MediaDeps {
   const admin = createAdminClient()
   return {
     hash: (bytes) => photoHashes(Buffer.from(bytes)),
     async process(bytes) {
-      const result = await processEventImage(bytes, { role: 'cover' })
-      if (!result.ok) throw new Error(result.error)
+      const result = await processEventImage(bytes, { role })
+      if (!result.ok) throw new ImageRefusal(result.error)
       return { buffer: result.image.buffer, extension: result.image.ext, contentType: result.image.contentType, width: result.image.width, height: result.image.height }
     },
     async store(path, image) {

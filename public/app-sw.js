@@ -8,8 +8,10 @@
  * at a venue with bad reception saw the browser's dinosaur.
  *
  * WHAT IT DOES, and nothing else:
- *   - a NAVIGATION is passed straight to the network. When the network REFUSES,
- *     the precached /offline document is served instead.
+ *   - a NAVIGATION is left to the browser while the browser is online. Only when
+ *     navigator.onLine is false does the worker take it: the network is still
+ *     asked first, and when it refuses the precached /offline document is
+ *     served (the P0 of 19 November 2026: an online visitor was shown it).
  *   - a /_next/static/ asset is served cache-first, because Next names those by
  *     content hash, so a cached copy can never be the wrong copy.
  *   - every other request, every POST, every server action, every other origin,
@@ -148,11 +150,22 @@ self.addEventListener('fetch', function (event) {
   if (url.pathname.indexOf('/scan/') === 0) return
 
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(function () {
-        return offlineDocument()
-      }),
-    )
+    /*
+     * ONLY WHEN THE BROWSER SAYS IT IS OFFLINE (the P0 of 19 November 2026, 11:33). Lawal, online on his phone at
+     * 11:14 (Wi-Fi and signal showing), opened a live event page and was shown "You are offline": this branch used to
+     * take EVERY navigation and answer any rejected fetch with the offline document, and a fetch rejects online too
+     * (a network change, a reset or refused connection, a protocol error), with no retry, where Chrome itself would
+     * have retried. Now the worker takes a navigation only when navigator.onLine is false, and even then asks the
+     * network first; online, it never answers a navigation, so a slow or failing page is the browser's own, exactly as
+     * with no worker at all, and never our offline page.
+     */
+    if (self.navigator && self.navigator.onLine === false) {
+      event.respondWith(
+        fetch(request).catch(function () {
+          return offlineDocument()
+        }),
+      )
+    }
     return
   }
 

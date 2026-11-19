@@ -70,4 +70,14 @@ describe("an organiser's record", () => {
     expect(recordOf({ ...base, unsubscribes: [{ email: 'INFO@hoptemple.com.au', created_at: '2026-11-09T00:00:00Z', reason: null }] }).mayWrite).toBe(false)
     expect(recordOf({ ...base, organiser: { ...base.organiser, acquisition_state: 'suppressed' } }).mayWrite).toBe(false)
   })
+
+  it('names each message by its one category (Law 24) and counts them apart from the stage', () => {
+    const m = (id: string, state: string, cat: string, sub: string, sent: string | null = null) => ({ id, contact_id: 'c1', step: 1, state, subject: 'Hello', drafted_at: '2026-11-18T00:0' + id.slice(1) + ':00Z', sent_at: sent, void_reason: null, held_because: null, failed_reason: null, comms_category: cat, comms_subtype: sub })
+    const r = recordOf({ ...base, touches: [m('t1', 'held', 'PERM', 'PERM-IMAGE'), m('t2', 'sent', 'ACQ', 'ACQ-FIRST', '2026-11-18T01:00:00Z'), m('t3', 'void', 'ACQ', 'ACQ-FIRST'), m('t4', 'held', 'ACQ', 'ACQ-FOLLOWUP')] })
+    expect(r.byCategory).toEqual([{ category: 'ACQ', messages: 2 }, { category: 'PERM', messages: 1 }])
+    expect(r.lines.some((l) => l.words === 'PERM-IMAGE: First message drafted to info@hoptemple.com.au: "Hello"')).toBe(true)
+    expect(r.lines.some((l) => l.words === 'ACQ-FIRST: First message sent to info@hoptemple.com.au')).toBe(true)
+    expect(r.stage).toBe(recordOf(base).stage)
+    expect(recordOf(base).byCategory).toEqual([])
+  })
 })

@@ -382,21 +382,24 @@ async function collectProduction() {
  * message says it twice: once at the top where it cannot be missed, and once in
  * its own section.
  */
-async function collectBusiness(env = process.env) {
+async function collectBusiness(env = process.env, { morning = false } = {}) {
   const secret = env.CRON_SECRET
   const site = env.STATE_REPORT_SITE_URL?.trim() || DEFAULT_SITE
   if (!secret) throw new Error('CRON_SECRET is not set on this runner, so the platform counts could not be read')
   // On a Melbourne Monday the morning email also carries last week's report (order 4, Release 3): the platform adds it
   // only when asked (?weekly=1), so the hourly stall check never pays for it.
   const monday = new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'Australia/Melbourne' }).format(new Date()) === 'Monday'
-  const res = await fetch(`${site}/api/ops/state${monday ? '?weekly=1' : ''}`, {
+  // THE 08:00 REPORT'S SEVEN PARTS (car D, part 2; the operating model, section 10): asked for on the morning run only,
+  // so the hourly stall check never pays for them.
+  const ask = [monday ? 'weekly=1' : null, morning ? 'business=1' : null].filter(Boolean).join('&')
+  const res = await fetch(`${site}/api/ops/state${ask ? `?${ask}` : ''}`, {
     headers: { Authorization: `Bearer ${secret}` },
     signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) throw new Error(`${site}/api/ops/state answered ${res.status}`)
   const body = await res.json()
   if (!body?.ok) throw new Error(`${site}/api/ops/state reported ${body?.error ?? 'a fault it did not name'}`)
-  return body.weekly ? { ...body.counts, weekly: body.weekly } : body.counts
+  return { ...body.counts, ...(body.weekly ? { weekly: body.weekly } : {}), ...(body.business ? { areas: body.business } : {}) }
 }
 
 /**
@@ -522,7 +525,7 @@ const DEFAULT_READERS = {
   lastPush: ({ token, repo }) => collectLastPush(token, repo),
   failingBranches: ({ token, repo, since }) => collectFailingBranches(token, repo, since),
   production: () => collectProduction(),
-  business: () => collectBusiness(),
+  business: (ctx) => collectBusiness(process.env, { morning: ctx?.morning === true }),
 }
 
 /**
@@ -558,9 +561,10 @@ const DEFAULT_READERS = {
  * @typedef {Record<string, (ctx?: any) => Promise<any>>} StateReaders
  */
 
-/** @param {{ nowIso: string, fromWatchdog?: boolean, alertedBand?: number|null, checkPeriodHours?: number, readers?: StateReaders, env?: Record<string, string|undefined>, resolveToken?: Function }} options */
+/** @param {{ nowIso: string, morning?: boolean, fromWatchdog?: boolean, alertedBand?: number|null, checkPeriodHours?: number, readers?: StateReaders, env?: Record<string, string|undefined>, resolveToken?: Function }} options */
 async function collect({
   nowIso,
+  morning = false,
   fromWatchdog,
   alertedBand,
   checkPeriodHours,
@@ -584,7 +588,7 @@ async function collect({
       return fallback(resolved.reason)
     }
     try {
-      return await read({ token: resolved.token, repo, since, nowIso })
+      return await read({ token: resolved.token, repo, since, nowIso, morning })
     } catch (err) {
       const why = err instanceof Error ? err.message : String(err)
       unreadable.push({ what, why })
@@ -703,6 +707,7 @@ async function main() {
   const alertedBand = args.alertedBand ?? readAlertedBand(args.stateFile)
   const state = await collect({
     nowIso,
+    morning: !args.stall,
     fromWatchdog: args.fromWatchdog,
     alertedBand,
     checkPeriodHours: args.checkPeriodHours,

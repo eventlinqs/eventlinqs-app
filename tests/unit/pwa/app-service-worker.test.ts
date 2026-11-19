@@ -29,7 +29,7 @@ type FakeEvent = {
   waitUntil: ReturnType<typeof vi.fn>
 }
 
-function boot(opts: { network?: (url: string) => Promise<Response>; cached?: Map<string, Response> } = {}) {
+function boot(opts: { network?: (url: string) => Promise<Response>; cached?: Map<string, Response>; online?: boolean; source?: string } = {}) {
   const handlers: Record<string, Handler> = {}
   const cached = opts.cached ?? new Map<string, Response>()
   const puts: string[] = []
@@ -69,13 +69,15 @@ function boot(opts: { network?: (url: string) => Promise<Response>; cached?: Map
       handlers[name] = fn
     },
     location: { origin: ORIGIN },
+    // WorkerNavigator.onLine: offline unless a case says online (the offline cases below are the offline story).
+    navigator: { onLine: opts.online ?? false },
     skipWaiting: vi.fn(async () => undefined),
     clients: { claim: vi.fn(async () => undefined) },
   }
   const fetch = vi.fn((req: { url: string }) =>
     (opts.network ?? (async () => new Response('from the network', { status: 200 })))(req.url),
   )
-  new Function('self', 'caches', 'fetch', 'Response', 'URL', 'Request', source)(
+  new Function('self', 'caches', 'fetch', 'Response', 'URL', 'Request', opts.source ?? source)(
     self,
     caches,
     fetch,
@@ -180,12 +182,43 @@ describe('what it does when the network is gone', () => {
     expect(body).toContain('EventLinqs')
   })
 
-  test('the network is still asked first, every time', async () => {
+  test('offline, the network is still asked first, every time', async () => {
     const { handlers, fetch } = boot()
     const e = fetchEvent('GET', '/events/x', 'navigate')
     handlers.fetch(e)
     await answered(e)
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+/*
+ * THE P0 OF 19 NOVEMBER 2026, 11:33. Lawal, online on his phone at 11:14, opened a live event page and was shown "You
+ * are offline": the worker took every navigation and answered any rejected fetch with the offline document. Online,
+ * the worker now never answers a navigation, so a slow or failing page is the browser's own, never our offline page.
+ */
+describe('an online visitor is never shown the offline page', () => {
+  test('online, a navigation is left to the browser, even one whose fetch would fail', () => {
+    const { handlers, fetch } = boot({ online: true, network: async () => Promise.reject(new TypeError('net::ERR_NETWORK_CHANGED')) })
+    const e = fetchEvent('GET', '/events/colours-of-asia-garden-of-wonders-asia-oasis-2026-11-21', 'navigate')
+    handlers.fetch(e)
+    expect(e.respondWith).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  test('online, a content-hashed asset is still served cache first', () => {
+    const { handlers } = boot({ online: true })
+    const e = fetchEvent('GET', '/_next/static/chunks/app.js', 'no-cors')
+    handlers.fetch(e)
+    expect(e.respondWith).toHaveBeenCalledTimes(1)
+  })
+  test('DRILL: without the online check (the worker as it was on 19 November) that visitor got the offline page', async () => {
+    const check = 'if (self.navigator && self.navigator.onLine === false) {'
+    expect(source.split(check)).toHaveLength(2)
+    const old = source.replace(check, 'if (true) {')
+    const cached = new Map<string, Response>([[`${ORIGIN}/offline`, new Response('the offline page', { status: 200 })]])
+    const { handlers } = boot({ online: true, cached, source: old, network: async () => Promise.reject(new TypeError('net::ERR_NETWORK_CHANGED')) })
+    const e = fetchEvent('GET', '/events/colours-of-asia-garden-of-wonders-asia-oasis-2026-11-21', 'navigate')
+    handlers.fetch(e)
+    expect(await (await answered(e)).text()).toBe('the offline page')
   })
 })
 

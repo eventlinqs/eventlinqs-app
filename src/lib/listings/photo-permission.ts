@@ -5,6 +5,7 @@ import { proofMatches } from '@/lib/outreach/photo-link'
 import { readTheirNights } from '@/lib/outreach/their-nights'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { addAsset, decideAsset, pendingAssetId } from '@/lib/social/store'
+import { EVENT_PHOTO_BOX, fitsEventPhotoBox } from '@/lib/media/limits'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { storeImage, type MediaDeps } from './organiser-media'
 import { grantWording, nightNamedBy, permittedUsesWords, type PhotoUses } from './photo-permission-math'
@@ -132,6 +133,16 @@ export async function givePhotos(
     if (input.uses !== 'site' && stored.width !== undefined && stored.width < POSTS_MIN_WIDTH) {
       await deps.remove([stored.path])
       refused.push(`${file.name || 'An image'}: it is ${stored.width} pixels wide; a photo for posts needs at least ${POSTS_MIN_WIDTH}.`)
+      continue
+    }
+    // THE EVENT PAGE'S OWN BOX (the PM's 09:45 of 19 November 2026, item 1 (c); src/lib/media/limits.ts): a photo for the
+    // page is kept when the page draws it whole without enlarging it, so a good 973 x 695 festival photo is never refused
+    // as it was on 18 November at 23:50; one too small for that is refused in words that say what would fit.
+    if (input.uses !== 'social' && stored.width !== undefined && stored.height !== undefined && !fitsEventPhotoBox(stored.width, stored.height)) {
+      await deps.remove([stored.path])
+      refused.push(
+        `${file.name || 'An image'}: it is ${stored.width} x ${stored.height} pixels, so your event page would have to enlarge it; a photo at least ${EVENT_PHOTO_BOX.height} pixels tall, or ${EVENT_PHOTO_BOX.width} wide, shows sharp.`,
+      )
       continue
     }
     const done = await addAsset(db, {
