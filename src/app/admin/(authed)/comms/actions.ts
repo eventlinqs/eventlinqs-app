@@ -33,6 +33,7 @@ export async function approveAndSendAction(formData: FormData): Promise<void> {
   if (!parsed.success) redirect(back('refused', 'The reply needs a greeting name and its words.'))
   const db = createAdminClient()
   const sender = await db.from('outreach_sender').select('from_address').eq('id', true).single()
+  if (sender.error) redirect(back('refused', `The outreach mailbox could not be read, so nothing was sent: ${sender.error.message}`))
   const cfg = sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
   if (!cfg) redirect(back('refused', 'The outreach mailbox is not connected to Graph here, so nothing was sent.'))
   const answer = await approveAndSend(db, cfg, { ...parsed.data, by: session.email || session.userId, origin: getSiteUrl() })

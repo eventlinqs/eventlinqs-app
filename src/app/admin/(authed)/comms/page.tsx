@@ -58,10 +58,10 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
   const withPhotos = decisions.filter((d) => d.outcome === 'photographs' && d.sourceMessageId)
   if (withPhotos.length > 0) {
     const sender = await db.from('outreach_sender').select('from_address').eq('id', true).single()
-    const cfg = sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
+    const cfg = !sender.error && sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
     for (const d of withPhotos) {
       if (!cfg) {
-        photos.set(d.replyId, 'The outreach mailbox is not connected here, so the photographs cannot be shown.')
+        photos.set(d.replyId, sender.error ? `The outreach mailbox could not be read: ${sender.error.message}` : 'The outreach mailbox is not connected here, so the photographs cannot be shown.')
         continue
       }
       try {

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 /**
  * WHAT WAITS FOR LAWAL'S DECISION IN THE COMMUNICATIONS CENTRE (law 30, the CRM directive's section 5: "the organiser
@@ -58,7 +59,9 @@ export async function readDecisions(db: Admin, limit = 25): Promise<Decision[]> 
   ])
   if (contacts.error) throw new Error(`their contacts could not be read: ${contacts.error.message}`)
   if (touches.error) throw new Error(`the messages they answered could not be read: ${touches.error.message}`)
-  const orgIds = [...new Set((contacts.data ?? []).map((c) => c.organiser_id as string | null).filter((x): x is string => Boolean(x)))]
+  // The platform's own listings organisation is never named as the organiser who wrote (growth-reads-skip-the-platform).
+  const platform = await readPlatformOrganiserIds(db)
+  const orgIds = [...new Set((contacts.data ?? []).map((c) => c.organiser_id as string | null).filter((x): x is string => Boolean(x) && !platform.has(x as string)))]
   const orgs = orgIds.length ? await db.from('organisers').select('id, name').in('id', orgIds) : { data: [] as { id: string; name: string }[], error: null }
   if (orgs.error) throw new Error(`their organisers could not be read: ${orgs.error.message}`)
   const contactOf = new Map((contacts.data ?? []).map((c) => [c.id as string, c]))

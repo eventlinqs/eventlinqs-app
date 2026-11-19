@@ -26,6 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     db.from('outreach_replies').select('source_message_id').eq('id', replyId).maybeSingle(),
     db.from('outreach_sender').select('from_address').eq('id', true).single(),
   ])
+  if (reply.error || sender.error) return NextResponse.json({ error: 'the reply or the mailbox could not be read' }, { status: 503 })
   const theirs = reply.data?.source_message_id as string | null | undefined
   const cfg = sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
   if (!theirs || !cfg) return NextResponse.json({ error: 'not_found' }, { status: 404 })
