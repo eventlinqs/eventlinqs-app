@@ -213,7 +213,9 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect(ahead.slides.filter((s) => s.t === 'feature').map((s) => (s as { eventId: string; photo: string }).eventId)).toEqual([geelongWeek[0].eventId])
     // Any other photograph on any piece is the approved one or a stand-in of the night's kind, served from our own origin.
     for (const p of pieces) for (const s of p.slides) if ('photo' in s && s.photo) expect(s.photo === APPROVED || s.photo.startsWith(`${ORIGIN}/social/stand-ins/`), s.photo).toBe(true)
-    expect(ahead.caption).toContain('Photo: Jo Bloggs for The Barwon Club')
+    // The photograph is the organiser's, its right recorded; no caption carries a credit line (CAPTION_PHOTO_CREDITS, the
+    // PM's round 3 verdict of 19 November 2026).
+    expect(ahead.caption).not.toContain('Photo: Jo Bloggs for The Barwon Club')
     expect(JSON.stringify(pieces)).not.toContain('/stock/')
   })
 
