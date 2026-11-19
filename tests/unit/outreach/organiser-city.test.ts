@@ -20,6 +20,7 @@ function fakeDb(tables: Rows) {
         is: (col: string, value: unknown) => ((rows = rows.filter((r) => (r[col] ?? null) === value)), chain),
         gt: () => chain,
         not: () => chain,
+        or: () => chain,
         order: () => chain,
         limit: () => chain,
         then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok),
@@ -71,6 +72,12 @@ describe("each organiser's city by the first road that has one", () => {
     )
     expect(Object.fromEntries(out)).toEqual({ linked: 'geelong', 'found-event': 'bendigo', 'found-venue': 'geelong', own: 'ballarat' })
     expect(out.has('none')).toBe(false)
+  })
+
+  it('reads a night under their own account through the one listing window, never a raw date bound', () => {
+    const src = readFileSync('src/lib/outreach/organiser-city.ts', 'utf8')
+    expect(src).toContain('.or(listingWindowOrPredicate(now))')
+    expect(src).not.toMatch(/\.(gt|gte)\('(start|end)_date'/)
   })
 
   it('reads nothing for no organisers', async () => {

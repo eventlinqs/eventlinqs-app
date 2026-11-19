@@ -13,6 +13,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 type Admin = SupabaseClient<Database>
 
@@ -75,7 +76,8 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
     if (city) out.set(x.id, city)
   }
 
-  // 3. A published night under their own account that has not ended (a night is current until it ends), the soonest first.
+  // 3. A published night under their own account still listed (the one listing window, src/lib/events/listing-window.ts:
+  // a night is current until it ends), the soonest first.
   const accounts = organisers.filter((o) => !out.has(o.id) && o.organisation_id)
   if (accounts.length > 0) {
     const nights = await db
@@ -83,7 +85,7 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
       .select('organisation_id, city_primary, start_date, end_date')
       .in('organisation_id', accounts.map((o) => o.organisation_id as string))
       .eq('status', 'published')
-      .gt('end_date', now.toISOString())
+      .or(listingWindowOrPredicate(now))
       .not('city_primary', 'is', null)
       .order('start_date')
       .limit(500)
