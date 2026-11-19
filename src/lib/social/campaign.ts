@@ -229,6 +229,10 @@ export function lockRefusal(slides: readonly Slide[]): string | null {
   // still the older planner poster after #304, none redrawn, because a poster slide with no family D look passed here): a
   // daily poster drawn without its look never posts, and the hourly run draws it again in family D.
   if (slides.some((s) => s.t === 'poster' && !s.look)) return 'It is the older planner daily poster (law 26: it never posts), so the hourly run draws it again in family D.'
+  // FAMILY G (the PM's 23:38 of 18 November 2026; law 26): the organiser campaign posts Lawal's approved offer file. The
+  // older drawn offer slide carries words he never approved (its third step, 'we send you a post of your own to share',
+  // read on production at 17:02 on 19 November 2026 with 44 partner kits and none ever sent), so it never posts.
+  if (slides.some((s) => s.t === 'offer')) return 'It is the older drawn organiser offer (law 26: family G posts the approved offer file), so the hourly run draws it again.'
   return null
 }
 
@@ -1288,6 +1292,16 @@ const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five']
 const countWord = (k: number): string => COUNT_WORDS[k] ?? String(k)
 
 /**
+ * The tonight slide's tap line in plain English for any count (production's Geelong piece read 'All two on EventLinqs',
+ * 19 November 2026): one is 'On EventLinqs', two 'Both on EventLinqs', more 'All three on EventLinqs'. Pure.
+ */
+export function allOnLine(n: number): string {
+  if (n <= 1) return 'On EventLinqs'
+  if (n === 2) return 'Both on EventLinqs'
+  return `All ${countWord(n).toLowerCase()} on EventLinqs`
+}
+
+/**
  * A SPOTLIGHT HOLDS ONLY ITS KIND (the PM's 23:45 of 17 November 2026, fix (b)): a music spotlight takes music nights only
  * (Melbourne's carried 'An Evening with Alastair Campbell', a talk filed as music), and a talk is spotlit only as a talk.
  */
@@ -1758,7 +1772,7 @@ export function planCampaign(input: {
             composition: 'close',
             eyebrow: `${local(rows[0].startDate, rows[0].timezone, { weekday: 'long', day: 'numeric', month: 'short' }).replace(/,/g, '')} \u00b7 ${city.name}`,
             rows: rows.map((n) => ({ eventId: n.eventId, startDate: n.startDate, when: clockOf(n.startDate, n.timezone), sub: null, title: n.title, place: n.venueName ?? city.name, free: false })),
-            tap: `All ${countWord(rows.length).toLowerCase()} on EventLinqs`,
+            tap: allOnLine(rows.length),
             photo: stand ? standInUrl(origin, stand) : null,
             credit: stand ? standInCredit(stand) : null,
           }],

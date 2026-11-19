@@ -69,6 +69,8 @@ const LANGUAGE: readonly { readonly test: (s: string) => string | null }[] = [
   { test: (s) => (/\b[A-Za-z0-9]+- [A-Z][^,.\n]{0,30}/.exec(s)?.[0] ?? null) },
   { test: (s) => (/\S - \S/.exec(s) ? s.slice(0, 80) : null) },
   { test: (s) => (/\b([A-Z][a-z]{2,})\b[^,.\n]{0,60}?, \1\b/.exec(s)?.[0] ?? null) },
+  // 'All two on EventLinqs' (production's tonight piece for Geelong, 19 November 2026): two is 'both', one is never 'all'.
+  { test: (s) => (/\bAll (one|two|1|2) (on|are)\b/i.exec(s)?.[0] ?? null) },
 ]
 
 /**
