@@ -3,7 +3,8 @@ import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
-import { socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
     )
     for (const h of [...scheduled.held, ...published.held]) console.log(`[cron/social-publish] held: ${h}`)
+    // The operating model's A1: a day with nothing to post is named, never faked (the 08:00 report reads these).
+    for (const f of scheduled.floor) console.log(`[cron/social-publish] floor: ${f}`)
     // Every post Blotato accepted is read back until its public URL is known; a failed read never stops the run.
     try {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
@@ -56,6 +59,23 @@ export async function GET(request: NextRequest) {
       for (const m of held.missing) console.log(`[cron/social-publish] held, not found on Blotato: ${m}`)
     } catch (error) {
       console.error('[cron/social-publish] the posts waiting for their URL could not be read back:', error instanceof Error ? error.message : error)
+    }
+
+    /* CAR C, MEASURE (the PM's 21:00 and 23:09 of 18 November 2026): once a day, the first run on or after 06:40 in
+       Melbourne, the platforms' own figures for every post that went, read from Blotato and kept by the report's one
+       writer. A failure here is said and never stops the run (law 23). */
+    try {
+      const analytics = socialAnalyticsFromEnv()
+      if (analytics) {
+        const read = await recordBlotatoFigures(db, analytics, now)
+        if (read.state === 'read') {
+          console.log(`[cron/social-publish] figures read: ${read.written} kept for ${read.matched.length} post(s); ${read.unmatched.length} not matched`)
+          for (const x of read.matched) console.log(`[cron/social-publish] measured: ${x.pieceId} on ${x.platform} by its ${x.how}: ${x.postUrl ?? 'no address'}`)
+          for (const u of read.unmatched) console.log(`[cron/social-publish] not matched, never guessed: ${u.id} on ${u.platform} (${u.postUrl ?? 'no address'}): ${u.why}`)
+        }
+      }
+    } catch (error) {
+      console.error('[cron/social-publish] the figures could not be read:', error instanceof Error ? error.message : error)
     }
     /* The release checklist F5: a publish by the machine is audited as a person's press is, one row per run that
        published or held anything; a run that only says what would go writes nothing. */

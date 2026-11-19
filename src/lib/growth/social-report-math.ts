@@ -28,6 +28,146 @@ export type PlatformMetric = 'reach' | 'watch_time_seconds' | 'saves' | 'shares'
 export const PLATFORMS: readonly Platform[] = ['instagram', 'facebook']
 export const PLATFORM_METRICS: readonly PlatformMetric[] = ['reach', 'watch_time_seconds', 'saves', 'shares']
 
+/**
+ * CAR C, MEASURE (the PM's 21:00 and 23:09 of 18 November 2026; migration 20261118230001): a platform's figures for a
+ * piece that went are also read once a day from Blotato's published analytics, as the platform reported them (ENTERED,
+ * never added to a counted figure: K14). Blotato's metric names and the figure each becomes.
+ */
+export type FigureMetric = PlatformMetric | 'impressions' | 'views' | 'likes' | 'comments' | 'clicks'
+export const BLOTATO_METRICS: Readonly<Record<string, FigureMetric>> = {
+  reachCount: 'reach',
+  impressionsCount: 'impressions',
+  viewsCount: 'views',
+  likesCount: 'likes',
+  commentsCount: 'comments',
+  savesCount: 'saves',
+  sharesCount: 'shares',
+  clicksCount: 'clicks',
+}
+
+/** A piece's post that went on a platform: by the hourly run (published), or accepted by Blotato while held. */
+export type WentPost = { readonly pieceId: string; readonly platform: Platform; readonly postUrl: string | null; readonly wentAt: string; readonly captions: readonly string[] }
+/** A post as Blotato's analytics list reads it (src/lib/social/blotato-publisher.ts BlotatoAnalyticsItem). */
+export type ReadPost = { readonly id: string; readonly platform: string; readonly content: string; readonly postUrl: string | null; readonly fetchedAt: string | null; readonly metrics: Readonly<Record<string, number>> }
+export type BlotatoFigureRow = { readonly pieceId: string; readonly platform: Platform; readonly metric: FigureMetric; readonly value: number; readonly readAt: string; readonly platformPostId: string; readonly postUrl: string | null }
+export type Matched = { readonly rows: readonly BlotatoFigureRow[]; readonly matched: readonly { pieceId: string; platform: Platform; postUrl: string | null; how: 'url' | 'caption' }[]; readonly unmatched: readonly { id: string; platform: string; postUrl: string | null; why: string }[] }
+
+/** The names a family is said by on the results card. */
+export const FAMILY_NAMES: Readonly<Record<string, string>> = {
+  week_ahead: "the week's carousel",
+  weekend_carousel: 'the weekend list',
+  tonight_tomorrow: 'Friday and Saturday',
+  coming_up: 'coming up',
+  category_spotlight: 'the category spotlight',
+  discovery_reel: 'the week as stories',
+  venue_spotlight: "a venue's week",
+  daily_poster: 'the single event poster',
+  organiser_campaign: 'the organiser offer',
+  brand_campaign: 'the brand post',
+  free_week: 'free this week',
+  tonight: 'the Tonight story',
+}
+/** Learning reads this many days back (the PM's 21:00: 'rank by clicks per reach over 14 days'). */
+export const LEARN_DAYS = 14
+
+/** One figure a platform reported, with its piece's family. */
+export type LearnFigure = { readonly pieceId: string; readonly kind: string; readonly platform: Platform; readonly metric: string; readonly value: number; readonly readAt: string }
+
+/**
+ * WHAT WORKED (car C, learn; the PM's 21:00 of 18 November 2026; law 29, section 8): each family's median of the platforms'
+ * own clicks per reach over the last 14 days, each post's newest figures only, a family compared only over
+ * MIN_PIECES_PER_KIND posts or more. Platform figures only: an EventLinqs count is never divided by a platform's (K14).
+ * Pure; the line is shown, and the day's mix that leans on it is car D's.
+ */
+export function learnFromFigures(figures: readonly LearnFigure[], now: Date): { line: string; best: { kind: string; perHundred: number; posts: number } | null; measured: number } {
+  const from = now.getTime() - LEARN_DAYS * 86_400_000
+  const newest = new Map<string, LearnFigure>()
+  for (const f of figures) {
+    if (Date.parse(f.readAt) < from) continue
+    const key = `${f.pieceId}|${f.platform}|${f.metric}`
+    const had = newest.get(key)
+    if (!had || Date.parse(f.readAt) > Date.parse(had.readAt)) newest.set(key, f)
+  }
+  const perPiece = new Map<string, { kind: string; clicks: number; reach: number }>()
+  for (const f of newest.values()) {
+    const p = perPiece.get(f.pieceId) ?? { kind: f.kind, clicks: 0, reach: 0 }
+    if (f.metric === 'clicks') p.clicks += f.value
+    if (f.metric === 'reach') p.reach += f.value
+    perPiece.set(f.pieceId, p)
+  }
+  const byKind = new Map<string, number[]>()
+  for (const p of perPiece.values()) if (p.reach > 0) byKind.set(p.kind, [...(byKind.get(p.kind) ?? []), p.clicks / p.reach])
+  const measured = [...byKind.values()].reduce((n, v) => n + v.length, 0)
+  const ranked = [...byKind.entries()].filter(([, v]) => v.length >= MIN_PIECES_PER_KIND).map(([kind, v]) => ({ kind, rate: median(v), posts: v.length })).sort((a, b) => b.rate - a.rate)
+  if (ranked.length === 0) {
+    return { line: `Not enough measured posts yet: ${measured} with a reach in the last ${LEARN_DAYS} days; a family is compared over ${MIN_PIECES_PER_KIND} posts or more.`, best: null, measured }
+  }
+  const top = ranked[0]
+  const perHundred = Math.round(top.rate * 1000) / 10
+  return {
+    line: `Over the last ${LEARN_DAYS} days ${FAMILY_NAMES[top.kind] ?? top.kind} led: ${perHundred} clicks for every 100 people reached, over ${top.posts} posts (the platforms' own figures).`,
+    best: { kind: top.kind, perHundred, posts: top.posts },
+    measured,
+  }
+}
+
+/** A post's address as one key: no scheme, no www, no query or fragment, no trailing slash, lower case. */
+export function postKey(url: string | null): string | null {
+  if (!url) return null
+  const m = url.trim().match(/^https?:\/\/(?:www\.)?([^/?#]+)([^?#]*)/i)
+  return m ? `${m[1].toLowerCase()}${m[2].replace(/\/+$/, '')}` : null
+}
+
+/**
+ * EACH BLOTATO POST TO THE PIECE THAT WENT, NEVER GUESSED (the PM's 23:09): by its URL first; else by its exact caption,
+ * only when exactly one piece on that platform carries it; otherwise it stays unmatched and is named (a wrong match would
+ * credit the wrong family and teach the planner the wrong lesson). A figure is read when Blotato fetched it, never before
+ * its post went. Pure.
+ */
+export function matchBlotatoPosts(posts: readonly ReadPost[], went: readonly WentPost[], now: Date): Matched {
+  const rows: BlotatoFigureRow[] = []
+  const matched: { pieceId: string; platform: Platform; postUrl: string | null; how: 'url' | 'caption' }[] = []
+  const unmatched: { id: string; platform: string; postUrl: string | null; why: string }[] = []
+  const taken = new Set<string>()
+  for (const post of posts) {
+    const platform = post.platform as Platform
+    if (!PLATFORMS.includes(platform)) {
+      unmatched.push({ id: post.id, platform: post.platform, postUrl: post.postUrl, why: 'not an Instagram or Facebook post' })
+      continue
+    }
+    const mine = went.filter((w) => w.platform === platform && !taken.has(`${w.pieceId}|${w.platform}`))
+    const key = postKey(post.postUrl)
+    const byUrl = key ? mine.filter((w) => postKey(w.postUrl) === key) : []
+    let hit: WentPost | null = byUrl.length === 1 ? byUrl[0] : null
+    let how: 'url' | 'caption' = 'url'
+    if (!hit) {
+      const text = post.content.trim()
+      const byCaption = text ? [...new Set(mine.filter((w) => w.captions.some((c) => c.trim() === text)).map((w) => w.pieceId))] : []
+      if (byCaption.length === 1) {
+        hit = mine.find((w) => w.pieceId === byCaption[0]) ?? null
+        how = 'caption'
+      } else {
+        unmatched.push({ id: post.id, platform, postUrl: post.postUrl, why: byCaption.length === 0 ? 'no piece that went carries its address or its caption' : `${byCaption.length} pieces carry its caption, so none is guessed` })
+        continue
+      }
+    }
+    if (!hit) continue
+    const readAt = post.fetchedAt && !Number.isNaN(Date.parse(post.fetchedAt)) ? new Date(Math.min(Date.parse(post.fetchedAt), now.getTime())).toISOString() : now.toISOString()
+    if (Date.parse(readAt) < Date.parse(hit.wentAt)) {
+      unmatched.push({ id: post.id, platform, postUrl: post.postUrl, why: 'its figures were read before its post went' })
+      continue
+    }
+    taken.add(`${hit.pieceId}|${hit.platform}`)
+    matched.push({ pieceId: hit.pieceId, platform, postUrl: post.postUrl, how })
+    for (const [name, metric] of Object.entries(BLOTATO_METRICS)) {
+      const value = post.metrics[name]
+      if (value === undefined) continue
+      rows.push({ pieceId: hit.pieceId, platform, metric, value, readAt, platformPostId: post.id, postUrl: post.postUrl })
+    }
+  }
+  return { rows, matched, unmatched }
+}
+
 /** At most this many changes a week (the 13:54 order: "up to three recommendations with their data"). */
 export const MAX_RECOMMENDATIONS = 3
 /** Earlier campaigns shown beside this one. */

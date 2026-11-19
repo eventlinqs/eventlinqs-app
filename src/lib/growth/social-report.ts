@@ -7,8 +7,15 @@ import { readGrowthRows } from './weekly'
 import { figuresFor, weekOf, type Rows, type Week } from './weekly-math'
 import {
   buildSocialReport,
+  LEARN_DAYS,
+  learnFromFigures,
+  matchBlotatoPosts,
   PLATFORM_METRICS,
+  type LearnFigure,
   PLATFORMS,
+  type Matched,
+  type ReadPost,
+  type WentPost,
   type CampaignRow,
   type FigureRow,
   type PieceRow,
@@ -306,6 +313,96 @@ export async function enterPieceFigure(
     entered_by: input.by,
   })
   return error ? { state: 'refused', reason: refusal(error.message) } : { state: 'kept' }
+}
+
+/** When the day's read of Blotato's figures may run: the first social run on or after 06:40 on Melbourne's clock. */
+const MEASURE_FROM_MINUTE = 6 * 60 + 40
+
+/**
+ * CAR C, THE DAY'S READ OF THE PLATFORMS' OWN FIGURES (the PM's 21:00 and 23:09 of 18 November 2026; migration
+ * 20261118230001). Once a day, in the first hourly social run on or after 06:40 Melbourne with no Blotato figure entered
+ * that day: every post that went in the last 30 days (published by the run, or accepted by Blotato while our database
+ * held it), Blotato's published posts with their latest figures read, each matched by its URL, else by its exact caption
+ * when exactly one piece carries it, and its figures kept with the post's own id and address. The one writer of
+ * social_piece_figures (the guard social-measured-apart). Never posts; Blotato is only read.
+ */
+export async function recordBlotatoFigures(
+  db: Db,
+  list: (q: { readonly platform: 'instagram' | 'facebook'; readonly since: string }) => Promise<readonly ReadPost[]>,
+  now: Date,
+): Promise<{ state: 'read' | 'not_today'; written: number; matched: Matched['matched']; unmatched: Matched['unmatched']; why?: string }> {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map((p) => [p.type, p.value]))
+  const minute = Number(parts.hour) * 60 + Number(parts.minute)
+  if (minute < MEASURE_FROM_MINUTE) return { state: 'not_today', written: 0, matched: [], unmatched: [], why: 'before 06:40 in Melbourne' }
+  // The day's start in Melbourne, from the offset Melbourne's clock shows now.
+  const local = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute))
+  const dayStart = new Date(now.getTime() - (local - Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))) - (now.getTime() % 60_000))
+  // Once a day, kept in the day's run (social_measure_runs), so a day with no post matched is read once too.
+  const { data: today, error: terr } = await db.from('social_measure_runs').select('id').gte('ran_at', dayStart.toISOString()).limit(1)
+  if (terr) throw new Error(`the day's read of the figures: ${terr.message}`)
+  if ((today ?? []).length > 0) return { state: 'not_today', written: 0, matched: [], unmatched: [], why: 'read already today' }
+
+  const since = new Date(now.getTime() - 30 * 86_400_000).toISOString()
+  const { data: sched, error: serr } = await db
+    .from('social_piece_schedules')
+    .select('piece_id, platform, state, published_ref, published_at, go_at, held_reason')
+    .gte('go_at', since)
+    .in('state', ['published', 'held'])
+    .limit(2000)
+  if (serr) throw new Error(`the posts that went: ${serr.message}`)
+  const goneRows = (sched ?? []).filter((s) => s.state === 'published' || /^Sent as blotato:|social_piece_schedules_published_ref_check/.test(String(s.held_reason ?? '')))
+  const pieceIds = [...new Set(goneRows.map((s) => s.piece_id as string))]
+  // Every revision of those pieces, paged (no-silent-row-ceiling: a read with no bound stops at 1,000 rows and says nothing).
+  const revs = pieceIds.length > 0
+    ? await readEveryRow<{ piece_id: string; version: number; caption: string | null; versions: unknown }>('the captions that went', (from, to) =>
+        db.from('social_piece_revisions').select('piece_id, version, caption, versions').in('piece_id', pieceIds).order('id', { ascending: true }).range(from, to),
+      )
+    : []
+  // Every caption a piece ever carried on its platform, so a post is matched by the words it went with.
+  const captionsOf = (pieceId: string, platform: string): string[] =>
+    (revs ?? [])
+      .filter((v) => v.piece_id === pieceId)
+      .flatMap((v) => [String(v.caption ?? ''), String(((v.versions ?? {}) as Record<string, { caption?: string } | null>)[platform]?.caption ?? '')])
+      .filter((c) => c.trim() !== '')
+  const went: WentPost[] = goneRows.map((s) => ({
+    pieceId: s.piece_id as string,
+    platform: s.platform as Platform,
+    postUrl: typeof s.published_ref === 'string' && /^https:/.test(s.published_ref) ? s.published_ref : null,
+    wentAt: String(s.state === 'published' ? (s.published_at ?? s.go_at) : s.go_at),
+    captions: captionsOf(s.piece_id as string, s.platform as string),
+  }))
+  const posts = [...(await list({ platform: 'instagram', since })), ...(await list({ platform: 'facebook', since }))]
+  const m = matchBlotatoPosts(posts, went, now)
+  if (m.rows.length > 0) {
+    const { error } = await db.from('social_piece_figures').insert(
+      m.rows.map((x) => ({ piece_id: x.pieceId, platform: x.platform, metric: x.metric, value: x.value, read_at: x.readAt, source: 'blotato', platform_post_id: x.platformPostId, post_url: x.postUrl })),
+    )
+    if (error) throw new Error(`the day's figures could not be kept: ${refusal(error.message)}`)
+  }
+  const { error: runErr } = await db.from('social_measure_runs').insert({ ran_at: now.toISOString(), kept: m.rows.length, matched: m.matched, unmatched: m.unmatched })
+  if (runErr) throw new Error(`the day's read could not be kept: ${refusal(runErr.message)}`)
+  return { state: 'read', written: m.rows.length, matched: m.matched, unmatched: m.unmatched }
+}
+
+/**
+ * WHAT WORKED, FOR THE RESULTS CARD (car C, learn): the line learnFromFigures writes from the platforms' own figures of the
+ * last 14 days, and the newest day's posts left unmatched, named (the PM's 23:09: never guessed).
+ */
+export async function readSocialLearning(db: Db, now: Date): Promise<{ line: string; ranAt: string | null; unmatched: Matched['unmatched'] }> {
+  const since = new Date(now.getTime() - LEARN_DAYS * 86_400_000).toISOString()
+  const { data: figs, error } = await db.from('social_piece_figures').select('piece_id, platform, metric, value, read_at, social_pieces(kind)').gte('read_at', since).limit(5000)
+  if (error) throw new Error(`the platforms' figures: ${error.message}`)
+  const figures: LearnFigure[] = (figs ?? []).map((f) => ({
+    pieceId: f.piece_id as string,
+    kind: String(((f.social_pieces ?? {}) as { kind?: string }).kind ?? 'unknown'),
+    platform: f.platform as Platform,
+    metric: f.metric as string,
+    value: Number(f.value),
+    readAt: f.read_at as string,
+  }))
+  const { data: runs } = await db.from('social_measure_runs').select('ran_at, unmatched').order('ran_at', { ascending: false }).limit(1)
+  const run = (runs ?? [])[0] as { ran_at: string; unmatched: Matched['unmatched'] } | undefined
+  return { line: learnFromFigures(figures, now).line, ranAt: run?.ran_at ?? null, unmatched: run?.unmatched ?? [] }
 }
 
 /** G4: a person's answer to one recommendation of a campaign's report, with the words and evidence shown now. */

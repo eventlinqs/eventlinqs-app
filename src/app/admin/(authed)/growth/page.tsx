@@ -27,6 +27,7 @@ import { readWeeklyReport } from '@/lib/growth/weekly-report'
 import { WeeklyReportSection } from '@/components/admin/weekly-report-section'
 import { readMarketingResults } from '@/lib/growth/marketing-results'
 import { MarketingResultsSection } from '@/components/admin/marketing-results-section'
+import { readSocialLearning } from '@/lib/growth/social-report'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -97,6 +98,12 @@ export default async function AdminGrowthPage() {
     (value) => ({ ok: true as const, value }),
     (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
   )
+  // Car C, learn (the PM's 21:00 and 23:09 of 18 November 2026): the best family from the platforms' own figures and the
+  // posts the day's read could not match. A failed read is said in its own words and never stops the page.
+  const learning = await readSocialLearning(createAdminClient(), new Date()).then(
+    (value) => ({ ok: true as const, value }),
+    (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
+  )
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
   const lastSunday = new Date(new Date(g.last.to).getTime() - 1).toISOString()
@@ -144,11 +151,25 @@ export default async function AdminGrowthPage() {
           </div>
           <div>
             <dt className="text-white/50">Best post</dt>
-            <dd data-best="post" data-stage="next" className="mt-1 text-white/70">
-              Next stage, ready: named here once the week&apos;s posts are recorded by the social engine.
+            <dd data-best="post" className="mt-1 text-white">
+              {learning.ok ? learning.value.line : `Not read just now: ${learning.why}`}
             </dd>
           </div>
         </dl>
+        {learning.ok && learning.value.unmatched.length > 0 ? (
+          <div data-section="posts-not-matched" className="mt-5 text-sm">
+            <p className="text-white/70">
+              Posts the day&apos;s read could not match to a piece, so none was credited (never guessed):
+            </p>
+            <ul className="mt-2 space-y-1 text-white/80">
+              {learning.value.unmatched.map((u) => (
+                <li key={u.id}>
+                  {u.platform === 'facebook' ? 'Facebook' : u.platform === 'instagram' ? 'Instagram' : u.platform}, {u.postUrl ?? `post ${u.id}`}: {u.why}.
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <Dimension title="Relevance" lead="What people could find: listings live and still to come at the week's end, and the listings published during it.">

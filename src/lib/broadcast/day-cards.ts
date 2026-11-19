@@ -22,6 +22,12 @@ export type WeekCoverWords = { range: string; lines: readonly [string, string, s
 export type FeatureWords = { eyebrow: string; title: string; accent: string | null; chip: string | null; credit: string | null }
 /** Family D's name card (the master's 11 LANY): the eyebrow, the name in gold, the accent, one cream timed card. */
 export type NameCardWords = { eyebrow: string; name: string; accent: string; row: DayRow; credit: string | null }
+/** Family B's Tonight story (master 01): the day and the city, its nights as cream timed cards, the line its tap opens. */
+/** Family C's organiser spotlight (master 17): the organiser, the night's two gold lines, the flyer whole. */
+export type SpotlightWords = { presenter: string; nightLines: readonly [string, string]; credit: string | null }
+export type TonightWords = { eyebrow: string; rows: readonly DayRow[]; tap: string; credit: string | null }
+/** Family B's free week (master 02): the range, the count and its three lines, the nights on one white card. */
+export type FreeWeekWords = { range: string; pill: string; count: number; lines: readonly [string, string, string]; rows: readonly DayRow[]; credit: string | null }
 export type AskWords = { count: number; three: readonly DayRow[] }
 
 /** A photograph ready for satori: a data URI and its drawn size. */
@@ -80,6 +86,7 @@ const wordmark = (k: number, color: string, dot: string = GOLD) =>
 const pill = (k: number, words: string, fill: string, ink: string) =>
   text(words, { fontFamily: 'Manrope', fontWeight: 800, fontSize: 30 * k, letterSpacing: 1.5 * k, color: ink, background: fill, borderRadius: 999, padding: `${12 * k}px ${26 * k}px`, lineHeight: 1 })
 const eyebrow = (k: number, words: string, color: string) => wrap(words.toUpperCase(), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 36 * k, letterSpacing: 3 * k, color, lineHeight: 1.2 })
+const bookmark = (k: number, color: string) => svg(56 * k, 56 * k, '0 0 24 24', [{ d: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z', stroke: color, sw: 2.4 }])
 const plane = (k: number, color: string) => svg(60 * k, 60 * k, '0 0 24 24', [{ d: 'M22 2 11 13', stroke: color, sw: 2 }, { d: 'M22 2 15 22 11 13 2 9 22 2Z', stroke: color, sw: 2 }])
 const arrowRight = (k: number, color: string) => svg(88 * k, 42 * k, '0 0 42 20', [{ d: 'M2 10h36M30 2l8 8-8 8', stroke: color, sw: 3 }])
 const arrowDown = (k: number, color: string) => svg(50 * k, 66 * k, '0 0 24 32', [{ d: 'M12 2v26M4 20l8 8 8-8', stroke: color, sw: 2.6 }])
@@ -400,6 +407,97 @@ export function nameCardElement(f: DayFormat, words: NameCardWords, photo: Drawn
       f === 'story'
         ? h('div', { flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: 40 * k, gap: 30 * k }, askLine(k, WHITE), exit(k, f, GOLD))
         : h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 40 * k, gap: 24 * k }, askLine(k, WHITE), exit(k, f, GOLD))))
+}
+
+/**
+ * FAMILY B, TONIGHT (the master set's 01; WINDOW 6's tonight in locked-look-4.ts): a story. A photograph of the night's
+ * kind across the top below the wordmark's navy strip (Lawal's D3), its credit at the band's edge; the day and the city in
+ * gold; 'Tonight' filling the width in gold; the nights as cream timed cards; the line the tap opens and its arrow.
+ */
+export function tonightElement(words: TonightWords, photo: DrawnPhoto | null, bandH: number = Math.round(SIZE.story.h * 0.4)): El {
+  const f: DayFormat = 'story'
+  const { w, h: H, k } = SIZE[f]
+  const pad = 64 * k
+  const top = bandTop(f, 'days')
+  return h('div', { width: w, height: H, background: NAVY, position: 'relative' },
+    photo ? band(w, bandH, photo, top) : null,
+    h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', alignItems: 'center', padding: `${SAFE + pad * 0.6}px ${pad}px ${SAFE + pad * 0.4}px` },
+      wordmark(k, WHITE),
+      h('div', { flexGrow: 1 }),
+      photo && words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginBottom: 14 * k }, creditMark(k, words.credit)) : null,
+      eyebrow(k, words.eyebrow, GOLD),
+      text('Tonight', { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: 320 * k, color: GOLD, lineHeight: 1.0, marginTop: 4 * k, marginBottom: 46 * k }),
+      h('div', { flexDirection: 'column', width: '100%', gap: 20 * k }, ...words.rows.map((r) => timedCard(k * 1.05, r, w - 2 * pad, true))),
+      text(words.tap, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 52 * k, color: GOLD, marginTop: 40 * k }),
+      h('div', { marginTop: 12 * k }, arrowDown(k, GOLD))))
+}
+
+/**
+ * FAMILY B, THE FREE WEEK (the master set's 02; WINDOW 6's freeThings): a feed post on Lawal's gold. A photograph of a free
+ * night's kind across the top below a gold strip that carries the wordmark and the pill (Lawal's D3: the wordmark on its
+ * own design band); the range in navy; the count and its three lines; the nights on one white card; the save ask and the
+ * way out.
+ */
+export function freeWeekElement(f: DayFormat, words: FreeWeekWords, photo: DrawnPhoto | null, bandH: number = Math.round(SIZE[f].h * (f === 'square' ? 0.31 : f === 'story' ? 0.37 : 0.36))): El {
+  const { w, h: H, k } = SIZE[f]
+  const pad = 64 * k
+  const topPad = f === 'story' ? SAFE : 0
+  const strip = bandTop(f, 'days')
+  const line = (x: string) => text(x, { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: (f === 'square' ? 76 : f === 'story' ? 100 : 120) * k, color: INK, lineHeight: 0.92, whiteSpace: 'nowrap' })
+  return h('div', { width: w, height: H, background: GOLD, position: 'relative' },
+    photo
+      ? h('div', { position: 'absolute', top: strip, left: 0, width: w, height: Math.max(1, bandH - strip) },
+          img(photo.uri, w, Math.max(1, bandH - strip), { position: 'absolute', top: 0, left: 0, objectFit: 'cover' }))
+      : null,
+    h('div', { position: 'absolute', top: 0, left: 0, width: w, height: H, flexDirection: 'column', padding: `${topPad + pad * 0.8}px ${pad}px ${f === 'story' ? SAFE + 16 * k : pad * 0.8}px` },
+      h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%' }, wordmark(k, INK, NAVY), pill(k, words.pill, NAVY, WHITE)),
+      h('div', { flexGrow: 1 }),
+      photo && words.credit ? h('div', { justifyContent: 'flex-end', width: '100%', marginBottom: 14 * k }, text(words.credit, { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 26 * k, color: 'rgba(10,22,40,0.7)' })) : null,
+      eyebrow(k, words.range, INK),
+      h('div', { alignItems: 'center', marginTop: 10 * k },
+        text(String(words.count), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: (f === 'square' ? 240 : f === 'story' ? 330 : 430) * k, color: INK, lineHeight: 0.84, marginRight: 50 * k }),
+        h('div', { flexDirection: 'column' }, ...words.lines.map(line))),
+      h('div', { flexDirection: 'column', width: '100%', marginTop: 24 * k, background: WHITE, borderRadius: 26 * k, padding: `${8 * k}px ${30 * k}px` },
+        ...words.rows.flatMap((r, i) => [
+          i > 0 ? h('div', { height: 2 * k, background: MIST, width: '100%' }) : null,
+          h('div', { alignItems: 'center', padding: `${(f === 'square' ? 10 : f === 'story' ? 24 : 16) * k}px 0` },
+            h('div', { flexDirection: 'column', width: 270 * k, flexShrink: 0 },
+              text(r.when.toUpperCase(), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 54 * k, color: INK, lineHeight: 1 }),
+              r.sub ? text(r.sub.toUpperCase(), { fontFamily: 'Manrope', fontWeight: 800, fontSize: 27 * k, color: INK, marginTop: 4 * k, letterSpacing: 1 * k }) : null),
+            h('div', { flexDirection: 'column', flexShrink: 1 },
+              wrap(keepTogether(r.title, 22), { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 38 * k, color: INK, lineHeight: 1.16 }),
+              wrap(keepTogether(r.place, 22), { fontFamily: 'Hanken Grotesk', fontWeight: 500, fontSize: 32 * k, color: INK, lineHeight: 1.25, marginTop: 2 * k }))),
+        ])),
+      h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 24 * k },
+        h('div', { alignItems: 'center', gap: 18 * k, flexShrink: 1 }, bookmark(k, INK), wrap('Save this for the week', { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 48 * k, color: INK, lineHeight: 1.05, flexShrink: 1 })),
+        f === 'story' ? null : exit(k, f, INK)),
+      f === 'story' ? h('div', { marginTop: 26 * k, justifyContent: 'center', width: '100%' }, exit(k, f, INK)) : null))
+}
+
+/**
+ * FAMILY C, THE ORGANISER SPOTLIGHT (the master set's 17 GroovyTown; WINDOW 6's spotlight in locked-look-4.ts): the wordmark
+ * and the ORGANISER SPOTLIGHT pill on the navy band (D3), the organiser's flyer whole in its gold frame with its credit,
+ * PRESENTED BY and the organiser's name, the night's name and its day, time and place in gold, the send ask and the way out.
+ */
+export function spotlightElement(f: DayFormat, words: SpotlightWords, flyer: DrawnPhoto | null): El {
+  const { w, h: H, k } = SIZE[f]
+  const { pad, css } = padOf(f, k)
+  const longest = words.presenter.split(' ').reduce((a, b) => (b.length > a.length ? b : a), '')
+  const nameSize = Math.min(f === 'story' ? 200 : 168, fitLine(longest, 999, (w - 2 * pad) / k, true)) * k
+  return h('div', { width: w, height: H, background: NAVY, flexDirection: 'column', justifyContent: 'space-between', padding: css },
+    h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%' }, wordmark(k, WHITE), pill(k, 'ORGANISER SPOTLIGHT', GOLD, NAVY)),
+    flyer
+      ? h('div', { width: '100%', flexDirection: 'column', alignItems: 'center' },
+          img(flyer.uri, flyer.width, flyer.height, { borderRadius: 18 * k, border: `${3 * k}px solid ${GOLD}` }),
+          words.credit ? text(words.credit, { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 30 * k, color: MIST, marginTop: 10 * k, alignSelf: 'flex-end' }) : null)
+      : null,
+    h('div', { flexDirection: 'column' },
+      text('PRESENTED BY', { fontFamily: 'Manrope', fontWeight: 800, fontSize: 36 * k, color: GOLD, letterSpacing: 3 * k }),
+      wrap(words.presenter.toUpperCase(), { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: nameSize, color: WHITE, lineHeight: 0.9, marginTop: 8 * k }),
+      h('div', { flexDirection: 'column', marginTop: 18 * k }, ...words.nightLines.map((l) => wrap(l, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: (f === 'story' ? 50 : 46) * k, color: GOLD, lineHeight: 1.12 })))),
+    f === 'story'
+      ? h('div', { flexDirection: 'column', alignItems: 'center', width: '100%', gap: 26 * k }, askLine(k, WHITE), exit(k, f, GOLD))
+      : h('div', { justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 24 * k }, askLine(k, WHITE), exit(k, f, GOLD)))
 }
 
 export type VenueWords = { venue: string; eyebrow: string; accent: string; rows: readonly DayRow[]; credit: string | null }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { compositionFor, creativeRefusals, dayInWeek, hostOf, pieceRefusal, venueOf, planCampaign, selectNights, weekStartOf, type CampaignCity, type CampaignNight, type PiecePlan } from '@/lib/social/campaign'
+import { compositionFor, creativeRefusals, ORGANISER_OFFER_FILE, dayInWeek, hostOf, pieceRefusal, venueOf, planCampaign, selectNights, weekStartOf, type CampaignCity, type CampaignNight, type PiecePlan } from '@/lib/social/campaign'
 import { captionMarkFaults } from '@/lib/social/caption-marks'
 
 /*
@@ -88,6 +88,18 @@ describe('the week', () => {
 describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
   const { pieces, imageRequests } = plan()
 
+  // Caption standard version 2 for the brand post too (read on production at 02:42 on 19 November 2026: it was the one
+  // caption still drawn with blank lines after #304).
+  it('the brand post takes caption standard version 2: no blank line, its ticket link line, hashtags last', () => {
+    const [brand] = of(pieces, 'brand_campaign')
+    for (const c of [brand.caption, brand.versions.instagram.caption, brand.versions.facebook.caption]) {
+      expect(c).not.toMatch(/\n\s*\n/)
+      expect(c.trim().split('\n').at(-1)).toBe('#VictoriaEvents #EventLinqs')
+    }
+    expect(brand.versions.instagram.caption).toContain("\u{1F39F} What's on: link in our bio")
+    expect(brand.versions.facebook.caption).toContain(`\u{1F39F} What's on:\n${ORIGIN}/events`)
+  })
+
   it('Monday: the week ahead per city with two or more nights, to /city/<city>', () => {
     const [ahead] = of(pieces, 'week_ahead', 'geelong')
     expect(ahead.link).toBe(`${ORIGIN}/city/geelong`)
@@ -127,16 +139,16 @@ describe('one campaign, not loose posts (B2, C4 to C9, J11)', () => {
     expect([o.nextStep, o.caption, o.versions.instagram.caption, o.versions.facebook.caption, JSON.stringify(o.slides)].join(' ')).not.toContain('/for-organisers')
   })
 
-  it('the organiser campaign promises only what the planner does: a kit when a night is featured, never every week', () => {
+  // Family G (the PM's 23:38 of 18 November 2026, item 3): the organiser campaign is the approved organiser offer, posted as
+  // Lawal approved it, with his approved words; it promises nothing the approved post does not.
+  it('the organiser campaign is the approved offer with Lawal approved words, and promises nothing more', () => {
     const [o] = of(pieces, 'organiser_campaign')
+    expect(o.slides[0]).toMatchObject({ t: 'file', url: ORGANISER_OFFER_FILE })
+    expect(o.caption).toContain("List your event on EventLinqs: get discovered on your city's guide, sell tickets, promote it with your launch kit, and keep every attendee relationship yours.")
     expect(o.caption).not.toMatch(/each week we send|every week we send/i)
-    expect(o.caption).toContain('When we feature your night, we send you a post of your own to share')
-    // The PM's 06:39 of 18 November 2026, item 3: no claim that a link counts who it sends until the openers count is
-    // proved to count people; the slide and both captions read the one line.
-    for (const text of [o.caption, o.versions.instagram.caption, o.versions.facebook.caption,...((o.slides[0] as { points?: string[] }).points ?? [])])
-      expect(text).not.toMatch(/counts who|who it sends/i)
-    expect((o.slides[0] as { points?: string[] }).points).toContain('When we feature your night, we send you a post of your own to share.')
-    /* And the planner does send it: every host featured this week has its own kit. */
+    // The PM's 06:39 of 18 November 2026, item 3: no claim that a link counts who it sends.
+    for (const text of [o.caption, o.versions.instagram.caption, o.versions.facebook.caption]) expect(text).not.toMatch(/counts who|who it sends/i)
+    /* And the launch kit it names is real: every host featured this week has its own kit. */
     expect(of(pieces, 'partner_kit').length).toBeGreaterThan(0)
   })
 

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import sharp from 'sharp'
 import { ctaFor } from '@/lib/events/cta'
-import { nightKind, type CampaignNight } from '@/lib/social/campaign'
+import { lockRefusal, nightKind, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { dailyPosterPieces, posterLook } from '@/lib/social/daily-posters'
 import { standInOf } from '@/lib/social/stand-ins'
-import { pieceQuality } from '@/lib/social/piece-quality'
+import { pieceCorrections, pieceQuality } from '@/lib/social/piece-quality'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 
 /*
@@ -119,4 +119,17 @@ describe('every daily poster is planned in family D, never the older planner pos
     const faults = await visualFaults(posterOf('lany')!.slides, 'feed', new Map([[0, null]]))
     expect(faults.some((f) => /bare ground/.test(f))).toBe(true)
   }, 120_000)
+})
+
+// LAW 26 NAMES THE PLAIN DAILY POSTER (read on production at 02:43 on 19 November 2026: every daily poster of the week was
+// still the older planner poster after #304, because a poster slide with no family D look passed the lock).
+describe('an older planner daily poster never posts and is drawn again in family D', () => {
+  it('the lock refuses a poster slide with no look, and passes one planned in family D', () => {
+    const planned = posterOf('lany')!.slides
+    expect(lockRefusal(planned)).toBeNull()
+    const older = planned.map((s) => (s.t === 'poster' ? ({ ...s, look: undefined } as Slide) : s))
+    expect(lockRefusal(older)).toMatch(/older planner daily poster/)
+    // So the hourly sweep's corrections name it, and it is drawn again by the code in force.
+    expect(pieceCorrections({ slides: older, caption: posterOf('lany')!.caption, madeAt: new Date().toISOString() }).some((c) => c.startsWith('[look]'))).toBe(true)
+  })
 })

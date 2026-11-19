@@ -128,3 +128,58 @@ export function makeBlotatoReader(config: BlotatoConfig, fetchImpl: typeof fetch
     return { status: String(json.status ?? '').toLowerCase(), publicUrl: typeof json.publicUrl === 'string' ? json.publicUrl : null }
   }
 }
+
+/**
+ * BLOTATO'S PUBLISHED POSTS WITH THEIR LATEST FIGURES (car C, measure; the PM's 21:00 of 18 November 2026). GET
+ * /v2/analytics, as backend.blotato.com/openapi.json describes it (read 18 November 2026, 23:04): 'List top performing
+ * posts', the user's published posts over since and until (since defaults to 30 days ago), filtered by platform, sorted
+ * by likes, comments, views or reach, at most 100; each item { id, content, postUrl, platform, createdAt, mediaUrls,
+ * latestMetrics: { fetchedAt, metrics } }, every count a string. It 'does not trigger a re-fetch'. A read only: it sends
+ * nothing and changes nothing on Blotato.
+ */
+export type BlotatoAnalyticsItem = {
+  readonly id: string
+  readonly platform: string
+  readonly content: string
+  readonly postUrl: string | null
+  readonly createdAt: string
+  readonly fetchedAt: string | null
+  /** Blotato's own metric names (reachCount, likesCount, ...), each a whole number; a count Blotato did not give is absent. */
+  readonly metrics: Readonly<Record<string, number>>
+}
+export type BlotatoAnalyticsList = (q: { readonly platform: 'instagram' | 'facebook'; readonly since: string }) => Promise<readonly BlotatoAnalyticsItem[]>
+
+/** Blotato's counts are strings ('120'); each becomes a whole number, and anything else is left out, never guessed. */
+export function blotatoCounts(metrics: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!metrics || typeof metrics !== 'object') return out
+  for (const [k, v] of Object.entries(metrics as Record<string, unknown>)) {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d{1,12}$/.test(v.trim()) ? Number(v.trim()) : NaN
+    if (Number.isInteger(n) && n >= 0) out[k] = n
+  }
+  return out
+}
+
+export function makeBlotatoAnalytics(config: BlotatoConfig, fetchImpl: typeof fetch = fetch): BlotatoAnalyticsList {
+  return async ({ platform, since }) => {
+    const q = new URLSearchParams({ platform, since, sortBy: 'reach_count', limit: '100' })
+    const res = await fetchImpl(`${BLOTATO_BASE}/analytics?${q}`, { method: 'GET', headers: { 'blotato-api-key': config.apiKey } })
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    if (!res.ok) throw new BlotatoRefusal(`Blotato refused GET /analytics: ${typeof json.message === 'string' ? json.message : `HTTP ${res.status}`}`)
+    const items = Array.isArray(json.items) ? (json.items as Array<Record<string, unknown>>) : []
+    return items
+      .filter((i) => typeof i.id === 'string' && i.id !== '')
+      .map((i) => {
+        const latest = (i.latestMetrics && typeof i.latestMetrics === 'object' ? i.latestMetrics : {}) as Record<string, unknown>
+        return {
+          id: String(i.id),
+          platform: String(i.platform ?? platform),
+          content: String(i.content ?? ''),
+          postUrl: typeof i.postUrl === 'string' && i.postUrl ? i.postUrl : null,
+          createdAt: String(i.createdAt ?? ''),
+          fetchedAt: typeof latest.fetchedAt === 'string' ? latest.fetchedAt : null,
+          metrics: blotatoCounts(latest.metrics),
+        }
+      })
+  }
+}

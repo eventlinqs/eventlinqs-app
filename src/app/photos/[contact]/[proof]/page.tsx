@@ -94,6 +94,18 @@ export default async function PhotoPage({
                 />
                 <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP, each under 10MB. Shown whole, never cropped.</p>
               </div>
+              {/* The PM's 23:38 of 18 November 2026: a flyer is shown whole in an organiser spotlight, a photograph in an event poster. */}
+              <fieldset className="space-y-2">
+                <legend className={LABEL}>Is this a photograph or your event&apos;s flyer?</legend>
+                <label className={CHECK}>
+                  <input type="radio" name="kind" value="photo" defaultChecked className="mt-0.5 h-5 w-5 shrink-0" />
+                  <span>A photograph</span>
+                </label>
+                <label className={CHECK}>
+                  <input type="radio" name="kind" value="flyer" className="mt-0.5 h-5 w-5 shrink-0" />
+                  <span>Our event&apos;s flyer</span>
+                </label>
+              </fieldset>
               <fieldset className="space-y-2">
                 <legend className={LABEL}>Where EventLinqs may use them</legend>
                 <label className={CHECK}>
