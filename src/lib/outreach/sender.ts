@@ -25,12 +25,14 @@ import { buildOutreachMime, mimeForGraph, newMessageId } from './mime'
 import { graphSendMime, type GraphConfig } from './graph'
 import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 import { firstLetterBlocked, organisationDomain, type LetterRecord } from './one-first-letter'
+import { mailboxFor } from './addresses'
 
 type Admin = SupabaseClient<Database>
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
 export type SenderMode = 'hold' | 'test' | 'live'
-export type OutgoingEmail = { to: string; base64Mime: string; messageId: string }
+/** One message as it leaves: `from` is the mailbox it goes from (law 33 (a), ./addresses.ts mailboxFor). */
+export type OutgoingEmail = { to: string; base64Mime: string; messageId: string; from?: string }
 export type OutreachTransport = { kind: 'graph' | 'recorded'; send: (m: OutgoingEmail) => Promise<void> }
 
 export class OutsideTestDomain extends Error {
@@ -60,13 +62,13 @@ export function transportForMode(mode: SenderMode, testDomain: string, graph: Gr
       kind: graph ? 'graph' : 'recorded',
       send: async (m) => {
         if (!atDomain(m.to, testDomain)) throw new OutsideTestDomain(m.to, testDomain)
-        if (graph) await graphSendMime(graph, m.base64Mime, fetchImpl)
+        if (graph) await graphSendMime(m.from ? { ...graph, mailbox: m.from } : graph, m.base64Mime, fetchImpl)
         else recorded.push(m)
       },
     }
   }
   if (!graph) return null
-  return { kind: 'graph', send: (m) => graphSendMime(graph, m.base64Mime, fetchImpl) }
+  return { kind: 'graph', send: (m) => graphSendMime(m.from ? { ...graph, mailbox: m.from } : graph, m.base64Mime, fetchImpl) }
 }
 
 /** True from 9:00 to before 17:00, Monday to Friday, in the given zone. */
@@ -93,6 +95,8 @@ type Queued = {
   id: string
   contact_id: string
   step: number | null
+  purpose: string | null
+  comms_category: string | null
   subject: string | null
   body: string
   in_reply_to: string | null
@@ -202,7 +206,7 @@ export async function runOutreachSender(
 
   const due = await db
     .from('outreach_touches')
-    .select('id, contact_id, step, subject, body, in_reply_to, outreach_templates(key)')
+    .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, outreach_templates(key)')
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
     .order('scheduled_for', { ascending: true })
@@ -250,6 +254,13 @@ export async function runOutreachSender(
       continue
     }
     // The claim: the database runs every check here, or refuses and the message stays queued.
+    // ITS ADDRESS FIRST (law 33 (a)): a message whose type has no address is refused before it is claimed, never sent
+    // from a guessed mailbox; it stays queued with the refusal said.
+    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '' })
+    if ('refused' in from) {
+      report.refused.push({ id: t.id, reason: from.refused })
+      continue
+    }
     const claim = await db.from('outreach_touches').update({ state: 'sending' }).eq('id', t.id).eq('state', 'queued').select('id').maybeSingle()
     if (claim.error || !claim.data) {
       report.refused.push({ id: t.id, reason: claim.error?.message.replace(/^refused: /, '') ?? 'taken by another run' })
@@ -262,7 +273,7 @@ export async function runOutreachSender(
     try {
       if (contact.error) throw new Error(`the contact: ${contact.error.message}`)
       const mime = buildOutreachMime({
-        fromAddress: sender.data.from_address,
+        fromAddress: from.mailbox,
         fromName: deps.fromName ?? 'Lawal Adams',
         to: contact.data.address,
         subject: t.subject ?? '',
@@ -274,7 +285,7 @@ export async function runOutreachSender(
         origin: deps.origin,
         unsubscribeToken: contact.data.unsubscribe_token,
       })
-      await transport.send({ to: contact.data.address, base64Mime: mimeForGraph(mime), messageId })
+      await transport.send({ to: contact.data.address, base64Mime: mimeForGraph(mime), messageId, from: from.mailbox })
     } catch (error) {
       const reason = (error as Error).message.slice(0, 500)
       await db.from('outreach_touches').update({ state: 'failed', failed_reason: reason }).eq('id', t.id).eq('state', 'sending')

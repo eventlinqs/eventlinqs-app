@@ -25,7 +25,7 @@ function fakeDb() {
     if (call.table === 'outreach_sender') return { data: { mode: 'test', from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) {
-      return { data: [{ id: 'q-1', contact_id: 'c-1', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null }], error: null }
+      return { data: [{ id: 'q-1', comms_category: 'PERM', contact_id: 'c-1', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null }], error: null }
     }
     if (call.table === 'outreach_touches' && call.op === 'select') return { data: [], error: null }
     if (call.table === 'organiser_contacts') return { data: { organiser_id: 'o1', address: 'sam@eventlinqs.com', unsubscribe_token: TOKEN }, error: null }

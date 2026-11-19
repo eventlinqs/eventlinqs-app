@@ -74,7 +74,7 @@ describe('the sender holds the rule at the one send path', () => {
       if (call.table === 'outreach_sender') return { data: { mode: 'test', from_address: 'hello@eventlinqs.com', test_domain: 'asiaoasis.com.au' }, error: null }
       if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
       if (call.table === 'outreach_touches' && call.op === 'select' && has(call, 'eq:state', 'queued')) {
-        return { data: [{ id: 't-second', contact_id: 'c-partner', step: 1, subject: 'Helping more people find Colours of Asia: Garden of Wonders on 22 November', body: 'Hi Asia Oasis team,\n/events/colours-of-asia-garden-of-wonders-asia-oasis-2026-11-22', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } }], error: null }
+        return { data: [{ id: 't-second', comms_category: 'PERM', contact_id: 'c-partner', step: 1, subject: 'Helping more people find Colours of Asia: Garden of Wonders on 22 November', body: 'Hi Asia Oasis team,\n/events/colours-of-asia-garden-of-wonders-asia-oasis-2026-11-22', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } }], error: null }
       }
       if (call.table === 'organiser_contacts' && has(call, 'eq:id', 'c-partner')) return { data: { id: 'c-partner', organiser_id: 'o-asia', address: PARTNERSHIP.address }, error: null }
       if (call.table === 'organiser_contacts') return { data: [{ id: 'c-info', organiser_id: 'o-asia', address: INFO.address }, { id: 'c-partner', organiser_id: 'o-asia', address: PARTNERSHIP.address }], error: null }
