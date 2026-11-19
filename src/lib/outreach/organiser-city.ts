@@ -8,7 +8,7 @@
  * EventLinqs venue page it was found on. The same three roads, in this order, each a row the platform holds:
  *   1. a venue linked to them (organiser_venues), as before;
  *   2. the EventLinqs page they were found on (organisers.found_on): an event's own city, or a venue's;
- *   3. a published night under their own account (events.organisation_id), the soonest upcoming first.
+ *   3. a published night under their own account (events.organisation_id) that has not ended, the soonest first.
  * Never a guess from a name or an address: no row, no city, and a letter that needs one stays held.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -75,15 +75,15 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
     if (city) out.set(x.id, city)
   }
 
-  // 3. A published night under their own account, the soonest upcoming first.
+  // 3. A published night under their own account that has not ended (a night is current until it ends), the soonest first.
   const accounts = organisers.filter((o) => !out.has(o.id) && o.organisation_id)
   if (accounts.length > 0) {
     const nights = await db
       .from('events')
-      .select('organisation_id, city_primary, start_date')
+      .select('organisation_id, city_primary, start_date, end_date')
       .in('organisation_id', accounts.map((o) => o.organisation_id as string))
       .eq('status', 'published')
-      .gt('start_date', now.toISOString())
+      .gt('end_date', now.toISOString())
       .not('city_primary', 'is', null)
       .order('start_date')
       .limit(500)

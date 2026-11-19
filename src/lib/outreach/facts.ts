@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { venueSlugify } from '@/lib/venues/venue-slug'
 import { organiserCitySlugs } from './organiser-city'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 type Admin = SupabaseClient<Database>
 
@@ -63,7 +64,10 @@ export async function factsForContact(db: Admin, contactId: string, origin: stri
   // they run, 'events', since no phrase is claimed here that was not read on their own page.
   const organiser = await db.from('organisers').select('id, name, found_on, organisation_id').eq('id', contact.data.organiser_id).single()
   if (organiser.error) throw new Error(`the organiser: ${organiser.error.message}`)
-  facts.organiser = organiser.data.name?.trim() || null
+  // The platform's own listings organisation, or a test organiser, is never written to as an organiser: its name stays
+  // unfilled, so a letter to it is held (readPlatformOrganiserIds, the one reader of them).
+  const platform = await readPlatformOrganiserIds(db)
+  facts.organiser = platform.has(organiser.data.id) ? null : organiser.data.name?.trim() || null
   facts['what they run, or events'] = 'events'
   const citySlug = (await organiserCitySlugs(db, [organiser.data], new Date())).get(organiser.data.id) ?? null
   if (citySlug) {

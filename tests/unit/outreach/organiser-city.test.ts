@@ -53,7 +53,7 @@ describe("each organiser's city by the first road that has one", () => {
     ],
     events: [
       { slug: 'bso-messiah-2026-12-12', city_primary: 'bendigo', organisation_id: null, status: 'published' },
-      { slug: 'own-night', city_primary: 'ballarat', organisation_id: 'org-own', status: 'published' },
+      { slug: 'own-night', city_primary: 'ballarat', organisation_id: 'org-own', status: 'published', end_date: '2026-11-21T00:00:00Z' },
     ],
   })
 
@@ -85,12 +85,13 @@ describe('the planner and the drafter use it', () => {
     const start = whole.indexOf('export async function planPlays')
     const src = whole.slice(start, whole.indexOf('export async function', start + 1))
     expect(src).toContain('const cities = await organiserCitySlugs(db, real, deps.now)')
-    expect(src).toContain('const real = (rows.data ?? []).filter((o) => !o.is_test && !named.has(o.id))')
+    expect(src).toContain('const real = (rows.data ?? []).filter((o) => !platform.has(o.id) && !named.has(o.id))')
+    expect(src).toContain('const platform = await readPlatformOrganiserIds(db)')
     expect(src).not.toContain(".from('organiser_venues').select('organiser_id').in('venue_id'")
   })
   it("the drafter fills the letter's organiser, city, slug and its own fallback for what they run", () => {
     const src = readFileSync('src/lib/outreach/facts.ts', 'utf8')
-    expect(src).toContain('facts.organiser = organiser.data.name?.trim() || null')
+    expect(src).toContain('facts.organiser = platform.has(organiser.data.id) ? null : organiser.data.name?.trim() || null')
     expect(src).toContain("facts['what they run, or events'] = 'events'")
     expect(src).toContain("facts['city slug'] = city.data?.name ? citySlug : null")
     expect(src).toContain("facts['city slug'] = city.data?.name ? venue.city_slug : null")
