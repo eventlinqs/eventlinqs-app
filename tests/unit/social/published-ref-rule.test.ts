@@ -85,6 +85,21 @@ describe('every post Blotato accepted is read back to its public URL', () => {
     expect(d.updates).toEqual([])
   })
 
+  it('asks for the posts waiting by their prefix, never by a text range a collation can empty (production found 0 of 4 that way, 20 November 2026)', async () => {
+    const calls: [string, unknown[]][] = []
+    const link: object = new Proxy({}, {
+      get(_t, key) {
+        if (key === 'then') return (ok: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok)
+        return (...args: unknown[]) => (calls.push([String(key), args]), link)
+      },
+    })
+    const d = { from: (table: string) => (calls.push(['from', [table]]), link) }
+    await readBackPendingPosts(d as never, vi.fn())
+    expect(calls).toContainEqual(['from', ['social_piece_schedules']])
+    expect(calls).toContainEqual(['like', ['published_ref', 'blotato:%']])
+    expect(calls.filter(([k]) => ['gt', 'gte', 'lt', 'lte'].includes(k))).toEqual([])
+  })
+
   it('with no Blotato key there is nothing to read', async () => {
     expect(await readBackPendingPosts(db([]) as never, null)).toEqual({ read: 0, filled: [], pending: [] })
   })
