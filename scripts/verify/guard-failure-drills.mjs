@@ -11378,6 +11378,18 @@ const DRILLS = [
     expect: 'reads the organisers with no readPlatformOrganiserIds',
   },
   /*
+   * growth-reads-skip-the-platform, its test organiser rule (the PM's 02:39 of 20 November 2026, item 5). The shape a
+   * later reader would take: the daily twenty keeping the acceptance tests' organiser, so it would be written to.
+   */
+  {
+    name: 'growth: the daily twenty keeps the test organisers, so a test record would be written to as a host',
+    guard: `${GUARDS}/growth-reads-skip-the-platform.mjs`,
+    file: 'src/lib/outreach/daily-twenty-read.ts',
+    find: '    await readPlatformOrganiserIds(db),',
+    replace: '    await readPlatformOrganiserIds(db, { keepTests: true }),',
+    expect: 'keeps the test organisers',
+  },
+  /*
    * presses-are-not-people (18 November 2026; the PM's 02:38 item 5). The shape the organiser's reach page had: the week's
    * outbound presses said as people sent to their tickets.
    */

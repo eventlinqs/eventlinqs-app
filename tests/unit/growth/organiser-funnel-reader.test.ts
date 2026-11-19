@@ -62,6 +62,8 @@ function world(over: Partial<Record<string, Answer>> = {}): Resolver {
       case 'organisers':
         // The platform's own listings organisation (L) has its organisers row too (20261101132001): oL, never counted.
         if (has(ops, 'in', 'organisation_id')) return ok([{ id: 'oL' }])
+        // No record made for the acceptance tests in this world (organisers.is_test, 20261120040001).
+        if (has(ops, 'eq', 'is_test')) return ok([])
         return ok([
           { id: 'o1', organisation_id: 'A' },
           { id: 'o2', organisation_id: null },
@@ -135,6 +137,14 @@ describe('readOrganiserFunnel', () => {
     // oL has an organisation, a contact with a basis and a night in the window; counted, it would read 4, 3, 3 and 2.
     expect([stageCount(f, 'found'), stageCount(f, 'qualified'), stageCount(f, 'claimed'), stageCount(f, 'publishing')]).toEqual([3, 2, 2, 1])
     expect(seen.some((s) => s.table === 'organisations' && has(s.ops, 'eq', 'slug'))).toBe(true)
+  })
+
+  it('never counts a record made for the acceptance tests (the PM\'s 02:39 of 20 November 2026, item 5)', async () => {
+    // o3 marked as a test record: it has an organisation, a contact with a basis, a sent report and a night in the window.
+    const base = world()
+    h.resolve = (table, ops) => (table === 'organisers' && has(ops, 'eq', 'is_test') ? ok([{ id: 'o3' }]) : base(table, ops))
+    const f = await readOrganiserFunnel(NOW)
+    expect([stageCount(f, 'found'), stageCount(f, 'qualified'), stageCount(f, 'claimed'), stageCount(f, 'publishing')]).toEqual([2, 1, 1, 0])
   })
 
   it('reads the reports stage only through message 8 and hand-sent reports, the publishing stage only through the listing window', async () => {

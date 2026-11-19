@@ -16,18 +16,33 @@ import { LISTINGS_ORGANISATION_SLUG } from '@/lib/listings/shown-organiser'
 
 type Db = SupabaseClient<Database>
 
-/** The organisers rows of the platform's own listings organisation; empty where that organisation is not on this database. */
-export async function readPlatformOrganiserIds(db: Db): Promise<Set<string>> {
+/**
+ * The organisers rows that are not hosts to recruit or count: the platform's own listings organisation's, and, unless
+ * keepTests, every record made for the acceptance tests (organisers.is_test; the PM's 02:39 of 20 November 2026, item 5,
+ * migration 20261120040001). Test records are left out BY DEFAULT, so a reader written later leaves them out without
+ * knowing they exist; only the CRM's own record of an organiser and the communications centre pass keepTests, so a test
+ * reply is read, matched and answered there like a real one. Empty where neither is on this database.
+ */
+export async function readPlatformOrganiserIds(db: Db, opts: { readonly keepTests?: boolean } = {}): Promise<Set<string>> {
+  const ids = new Set<string>()
   // Neither link is declared unique, so both reads are paged in full rather than bounded by a guess.
   const orgs = await readEveryRow<{ id: string }>('the platform listings organisation', (f, t) =>
     db.from('organisations').select('id').eq('slug', LISTINGS_ORGANISATION_SLUG).order('id', { ascending: true }).range(f, t),
   )
   const orgIds = orgs.map((o) => o.id)
-  if (orgIds.length === 0) return new Set()
-  const rows = await readEveryRow<{ id: string }>("the platform organisation's organisers rows", (f, t) =>
-    db.from('organisers').select('id').in('organisation_id', orgIds).order('id', { ascending: true }).range(f, t),
-  )
-  return new Set(rows.map((r) => r.id))
+  if (orgIds.length > 0) {
+    const rows = await readEveryRow<{ id: string }>("the platform organisation's organisers rows", (f, t) =>
+      db.from('organisers').select('id').in('organisation_id', orgIds).order('id', { ascending: true }).range(f, t),
+    )
+    for (const r of rows) ids.add(r.id)
+  }
+  if (opts.keepTests !== true) {
+    const tests = await readEveryRow<{ id: string }>('the test organisers', (f, t) =>
+      db.from('organisers').select('id').eq('is_test', true).order('id', { ascending: true }).range(f, t),
+    )
+    for (const r of tests) ids.add(r.id)
+  }
+  return ids
 }
 
 /** The rows that are real organisers, in their order: every row whose organiser is not the platform's own. */
