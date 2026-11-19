@@ -198,6 +198,26 @@ export function standInOf(url: string | null | undefined): StandIn | null {
 }
 
 /**
+ * STOCK STAND-INS ARE OUT OF THE PLAN (the PM's 15:55 of 19 November 2026, items 3 and 5, on Lawal's ruling of 11:36 that
+ * day, 'You don't put no photo credit', and law 7's photo rules A1 to A5, one photo, one subject): every family goes out
+ * with the organiser's or venue's own permitted photograph, or in the type only design (Lawal's A and A of 18 November),
+ * never a stock picture and never its credit line. A switch, never a deletion (law 13): the photographs, their register
+ * rows and the chooser stay, and true draws them again.
+ */
+export const STAND_INS_IN_PLAN = false
+
+/** A piece's stand-in chooser, as standInChooser returns one. */
+export type StandInPick = (kind: NightKind | null, use?: 'venue', sport?: Sport | null, how?: { stageOnly?: boolean; avoid?: ReadonlySet<string> }) => StandIn | null
+
+/** The chooser while STAND_INS_IN_PLAN is off: it never picks, so every slide is drawn with a night's own photograph or in type. */
+export const NO_STAND_INS: StandInPick = () => null
+
+/** True when a caption names a stock photograph (picturedLine's words, or any line crediting Pexels). Pure. */
+export function namesAStandIn(caption: string): boolean {
+  return /\bPictured on slides? \d|\bfrom Pexels\b/i.test(caption)
+}
+
+/**
  * A chooser for one piece: each call takes the next stand-in of the kind asked, so no photograph is used twice in a piece
  * while another of its kind is unused (the photo system's P1, one photograph, one place).
  */

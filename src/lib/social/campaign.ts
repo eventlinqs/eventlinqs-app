@@ -6,8 +6,8 @@ import { carriesBannedWord, quotableSummary } from './words'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
-import { captionMarkFaults, holdsAtPublishing } from './caption-marks'
-import { STAND_INS, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
+import { captionMarkFaults, holdsAtPublishing, emojiCount, MAX_EMOJI } from './caption-marks'
+import { NO_STAND_INS, namesAStandIn, STAND_INS, STAND_INS_IN_PLAN, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -1020,6 +1020,9 @@ export function lockedListSlides(
 ): Slide[] {
   const ordered = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
   const chooser = weekPick ?? standInChooser(`${ordered[0]?.citySlug ?? ''} ${lines.join(' ')}`)
+  /* A kind has a stand-in to draw only while the chooser may pick one (stand-ins.ts STAND_INS_IN_PLAN): with none, the
+     day slides are grouped as the type design groups them. */
+  const can = (kind: NightKind | null) => chooser !== NO_STAND_INS && hasStandIn(kind)
   /* The post's own shot families (the PM's 03:45 fix 4): a pyrotechnic shot once, and a family already drawn in this
      post passed over while another is free, so no post shows two near identical crowds. */
   const postShots = new Set<string>()
@@ -1035,7 +1038,7 @@ export function lockedListSlides(
   const firstPicked = (ns: readonly CampaignNight[]): { night: CampaignNight; standIn: StandIn } | null => {
     for (const n of [...ns].sort(byDraw)) {
       const kind = nightKindOf(n)
-      if (!hasStandIn(kind)) continue
+      if (!can(kind)) continue
       // A cover stands over the night it is led by: a seated night takes a stage or room, never a crowd (03:45 fix 2).
       const s = pick(kind, undefined, kind === 'sport' ? sportOf(n) : null, !standingNight(n))
       if (s) return { night: n, standIn: s }
@@ -1073,7 +1076,7 @@ export function lockedListSlides(
   /* The PM's 22:41 fix 1: every day slide carries a photograph of its LEAD kind, as A-LOCK-2 to A-LOCK-5 do: the slide's
      first night by draw whose kind has a licensed stand-in; the stand-in stands over that night, which its card names.
      A slide with no such night stays in type and joins a neighbour in type (fix 4 of 18:45). */
-  const ofOneKind = (ns: readonly CampaignNight[]) => ns.some((n) => hasStandIn(nightKindOf(n)))
+  const ofOneKind = (ns: readonly CampaignNight[]) => ns.some((n) => can(nightKindOf(n)))
   /* The PM's 02:25 fix 1: a day slide's band is of the kind most of its nights share, the first night as the slide
      lists them breaking a tie; a standing crowd (a gig's, a festival's) never stands over seated nights (a talk, a
      recital, theatre) as many as its own. A kind with no stand-in left this week passes to the next. Out-12's 01 put a
@@ -1081,7 +1084,7 @@ export function lockedListSlides(
   const bandStandIn = (listed: readonly CampaignNight[]) => {
     const kinds = listed.map((n) => nightKindOf(n))
     const count = new Map<NightKind, number>()
-    for (const k of kinds) if (k && hasStandIn(k)) count.set(k, (count.get(k) ?? 0) + 1)
+    for (const k of kinds) if (k && can(k)) count.set(k, (count.get(k) ?? 0) + 1)
     const seated = listed.filter((n) => seatedNight(n)).length
     const standing = listed.filter((n) => standingNight(n)).length
     // The PM's 03:45 fixes 2 and 3: a crowd only when every row stands; beside a seated night, a stage or room.
@@ -1589,12 +1592,15 @@ export function planCampaign(input: {
    * is the whole week.
    */
   spotlightsFrom?: number
+  /** False draws no stock stand-in anywhere in the week (stand-ins.ts STAND_INS_IN_PLAN); true or absent, as before. */
+  standIns?: boolean
 }): CampaignPlan {
   const { origin, weekStart } = input
   const spotlightsFrom = input.spotlightsFrom ?? 0
   const site = siteOf(origin)
   // One chooser for the whole week's feed (the PM's 22:41 fix 2): no stand-in photograph twice in a week.
-  const weekPick = standInChooser('the week')
+  // Off in production (store.ts planNow passes STAND_INS_IN_PLAN): the PM's 15:55 of 19 November 2026, never a stock picture.
+  const weekPick = input.standIns === false ? NO_STAND_INS : standInChooser('the week')
   const nightsIn = input.nights.map((n) => ({ ...n, sourceTitle: n.sourceTitle ?? n.title, title: postTitle(n.title, n.venueName) }))
   const inWeek = nightsIn
     .map((n) => ({ n, day: dayInWeek(n, weekStart) }))
@@ -2103,6 +2109,10 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     if (tags.length > MAX_TAGS) issues.push(`The ${name} words carry ${tags.length} tags, over ${MAX_TAGS}.`)
     // At approval and publishing only the marks that were holds before caption standard version 2 hold (caption-marks.ts).
     for (const fault of captionMarkFaults(v.caption).filter(holdsAtPublishing)) issues.push(`The ${name} words: ${fault.replace(/^\[caption\] /, '')}`)
+    // The PM's 15:55 of 19 November 2026, item 6: no caption goes with more than five emoji, each caption judged alone.
+    const emoji = emojiCount(v.caption)
+    if (emoji > MAX_EMOJI) issues.push(`The ${name} words carry ${emoji} emoji, over ${MAX_EMOJI}.`)
+    if (!STAND_INS_IN_PLAN && namesAStandIn(v.caption)) issues.push(`The ${name} words name a stock photograph; none goes out.`)
     if (!v.cta?.trim()) issues.push(`The ${name} version has no call to action.`)
   }
   for (const s of rev.slides) {
@@ -2110,6 +2120,14 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     const night = nights.get(s.eventId)
     if (!night) continue
     if (night.venueName && !s.meta.startsWith(night.venueName)) issues.push(`${s.title}: its place on the slide is not the night's venue, ${night.venueName}.`)
+  }
+  /* The PM's 15:55 of 19 November 2026, item 6: while stand-ins are out of the plan, a slide never goes with a stock
+     photograph or a stock photograph's credit line; it goes with the night's own permitted photograph or in type. */
+  if (!STAND_INS_IN_PLAN) {
+    rev.slides.forEach((s, i) => {
+      if ('photo' in s && standInOf(s.photo)) issues.push(`Slide ${i + 1} carries a stock photograph; it goes with the night's own permitted photograph or in type.`)
+      else if ('credit' in s && typeof s.credit === 'string' && /pexels/i.test(s.credit)) issues.push(`Slide ${i + 1} carries a stock photograph's credit line.`)
+    })
   }
   /* The locked look's cards: the place a card names is the night's venue (its venue row's own name, or the listing's). */
   const squash = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, '')

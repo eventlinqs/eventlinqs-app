@@ -21,7 +21,7 @@ import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/br
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
-import { standInOf } from './stand-ins'
+import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
 import type { BlotatoPostReader, BlotatoPublishedSearch } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
@@ -960,7 +960,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart) })
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked

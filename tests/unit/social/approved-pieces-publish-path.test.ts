@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { APPROVED_FILE_PREFIX, isApprovedFileUrl } from '@/lib/social/campaign'
 import { imageFacts } from '@/lib/social/destination-specs'
+import { namesAStandIn, standInOf } from '@/lib/social/stand-ins'
 
 /*
  * THE WHOLE PUBLISH PATH ON EVERY APPROVED PIECE, AS PRODUCTION HOLDS IT (the PM's 15:33 of 18 November 2026, items (a)
@@ -134,6 +135,24 @@ async function runPath(fetcher: ((url: string) => Promise<Response>) | undefined
   const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher })
   return { out, given, schedules }
 }
+/**
+ * The schedules whose newest revision carries a stock stand-in photograph or a caption naming one (the PM's 15:55 of 19
+ * November 2026, item 6: none goes out), read from the rows themselves, never listed by hand.
+ */
+function stockFor(schedules: Row[]): Set<string> {
+  const revs = fixture.social_piece_revisions ?? []
+  return new Set(
+    schedules
+      .filter((s) => {
+        const rev = revs.filter((r) => r.piece_id === s.piece_id).sort((a, b) => Number(b.version) - Number(a.version))[0]
+        const slides = (rev.slides ?? []) as { photo?: string | null }[]
+        const captions = Object.values((rev.versions ?? {}) as Record<string, { caption?: string }>).map((v) => v.caption ?? '')
+        return slides.some((sl) => Boolean(standInOf(sl.photo ?? null))) || captions.some(namesAStandIn)
+      })
+      .map((s) => String(s.id)),
+  )
+}
+
 /** The Facebook schedules whose newest revision's file is taller than 4:5, read from the files (Lawal's 20:08 ruling holds them). */
 function tooTallFor(schedules: Row[]): Set<string> {
   const revs = fixture.social_piece_revisions ?? []
@@ -181,9 +200,14 @@ describe('the whole publish path on every approved piece', () => {
     // reaches the publisher. Which pieces those are is read from the files themselves, never listed by hand.
     const tooTall = tooTallFor(schedules)
     if (!LIVE) expect(tooTall.size).toBe(2)
-    expect(out.held.length).toBe(tooTall.size)
-    for (const h of out.held) expect(h).toMatch(/does not fit facebook: it is 1440x1920, ratio 0\.750, outside facebook feed's 0\.800 to 1\.910/)
-    const reaching = schedules.filter((s) => !tooTall.has(String(s.id)))
+    // The PM's 15:55 of 19 November 2026, item 6: a piece carrying a stock photograph or naming one is held too.
+    const stock = stockFor(schedules)
+    const heldIds = new Set([...tooTall, ...stock])
+    expect(out.held.length).toBe(heldIds.size)
+    for (const h of out.held) expect(h).toMatch(/does not fit facebook: it is 1440x1920, ratio 0\.750, outside facebook feed's 0\.800 to 1\.910|stock photograph/)
+    // Each stock schedule is held for its stock photograph, which the gate names before a file's fit (one is also too tall).
+    if (!LIVE) expect(out.held.filter((h) => /stock photograph/.test(h)).length).toBe(stock.size)
+    const reaching = schedules.filter((s) => !heldIds.has(String(s.id)))
     expect(given.length).toBe(reaching.length)
     expect(new Set(given.map((g) => `${g.pieceId} ${g.platform}`)).size).toBe(reaching.length)
     for (const s of reaching) {
@@ -218,7 +242,7 @@ describe('the whole publish path on every approved piece', () => {
       expect(given.some((g) => lanyPieces.has(g.pieceId))).toBe(false)
       expect(out.held.filter((h) => h.includes('its ticket page refuses our reader (403) and its booking link reads dead')).length).toBe(3)
       const all = fixture.social_piece_schedules ?? []
-      const heldIds = new Set([...all.filter((x) => lanyPieces.has(String(x.piece_id))).map((x) => String(x.id)), ...tooTallFor(all)])
+      const heldIds = new Set([...all.filter((x) => lanyPieces.has(String(x.piece_id))).map((x) => String(x.id)), ...tooTallFor(all), ...stockFor(all)])
       expect(given.length).toBe(all.length - heldIds.size)
     } finally {
       link!.availability = before
@@ -250,11 +274,11 @@ describe('the whole publish path on every approved piece', () => {
       return { ref: `blotato:${submission}`, submission }
     })
     const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
-    const tooTall = tooTallFor(schedules)
-    expect(publisher).toHaveBeenCalledTimes(schedules.length - tooTall.size)
+    const notSent = new Set([...tooTallFor(schedules), ...stockFor(schedules)])
+    expect(publisher).toHaveBeenCalledTimes(schedules.length - notSent.size)
     // Every row held, and each one the publisher sent keeps the reference that names the post, so it can be read back.
     expect(out.held.length).toBe(schedules.length)
-    for (const s of schedules.filter((x) => !tooTall.has(String(x.id)))) {
+    for (const s of schedules.filter((x) => !notSent.has(String(x.id)))) {
       const id = String(s.id)
       const submission = `sub-${String(s.piece_id).slice(0, 8)}-${String(s.platform)}`
       const mine = writes.filter((w) => w.where.some(([k, v]) => k === 'id' && v === id))

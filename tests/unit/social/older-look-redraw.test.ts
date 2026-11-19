@@ -87,9 +87,11 @@ describe('the week drawn again in the locked look', () => {
   })
 
   it('a draft already in the locked look is never drawn again', () => {
-    const ahead = fresh.find((p) => p.kind === 'week_ahead')!
+    // As production plans it: no stock stand-in (store.ts planNow passes STAND_INS_IN_PLAN, off since 19 November).
+    const plain = planCampaign({ nights, cities: CITIES, weekStart: WEEK, origin: ORIGIN, standIns: false }).pieces
+    const ahead = plain.find((p) => p.kind === 'week_ahead')!
     expect(lockRefusal(ahead.slides)).toBeNull()
-    const { redraw } = olderLookRedraws([row({ id: 'g', kind: 'week_ahead', slides: ahead.slides })], fresh)
+    const { redraw } = olderLookRedraws([row({ id: 'g', kind: 'week_ahead', slides: ahead.slides })], plain)
     expect(redraw).toEqual([])
   })
 
