@@ -1595,6 +1595,27 @@ const DRILLS = [
     expect: "without the table's socialPhaseAt",
   },
   /*
+   * timetable-is-the-one-schedule, its two rules of the PM's 04:51 of 20 November 2026 (no phase is silent), one drill
+   * each: a ride's route recording itself under another ride's name, and the verify phase left with only a ride that
+   * never fires in its window (the shape the walk found: no run between 04:20 and 04:40).
+   */
+  {
+    name: 'the booking link check records its run as another ride, so verify has no row from it',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'src/app/api/cron/booking-link-check/route.ts',
+    find: "ride: 'linkCheck'",
+    replace: "ride: 'listings'",
+    expect: "never records its run with ride: 'linkCheck'",
+  },
+  {
+    name: 'the verify phase rides only a run that never fires between 04:20 and 04:40',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'src/lib/ops/timetable.ts',
+    find: "unit: 'night', rides: ['listings', 'linkCheck']",
+    replace: "unit: 'night', rides: ['listings']",
+    expect: 'has no ride firing inside its window',
+  },
+  /*
    * stories-post-as-stories (the PM's 04:40 of 20 November 2026, item 4), two drills: the fault as it was found (the
    * story type set for Instagram alone, so a Facebook story posts to the Page's feed), and the Meta route's Facebook
    * story refusal taken out.

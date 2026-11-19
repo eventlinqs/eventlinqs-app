@@ -10,6 +10,7 @@ import { discoveryDayStore } from '@/lib/listings/discovery-day-store'
 import { walkHolds, type WalkOutcome } from '@/lib/listings/hold-walk-run'
 import { closeFalseChanges } from '@/lib/listings/false-changes'
 import { collectionDeadline, scoutMayStart, scoutSkippedLine } from '@/lib/listings/collect-budget'
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,9 +37,15 @@ const melbourneHour = (at: Date) =>
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
   if (denied) return denied
+  // THE TIMETABLE'S COLLECT PHASE, MEASURED ON ITS OWN READ (the PM's 04:51 of 20 November 2026: the 03:25 run read its
+  // sources and wrote no row, because only the listings run recorded 'collect'). Each run records itself, the sources it
+  // read as its units, a failed run too, so no phase is silent.
+  const runStarted = new Date()
+  const record = (units: number, result: string, failed: boolean) =>
+    recordPhaseRun(createAdminClient(), { phase: 'collect', ride: 'collection', startedAt: runStarted, endedAt: new Date(), units, result, failed })
 
   try {
-    const started = Date.now()
+    const started = runStarted.getTime()
     // On the scout's turn the collection stops early enough to leave the scout its time (collect-budget.ts; gap 1).
     const scoutTurn = melbourneHour(new Date(started)) === SCOUT_HOUR
     const result = await runCollection(collectionStore(createAdminClient()), fetch, new Date(started), collectionDeadline(started, RUN_BUDGET_MS, scoutTurn))
@@ -126,9 +133,17 @@ export async function GET(request: NextRequest) {
         console.error('[cron/collection-run] day line failed:', err)
       }
     }
+    const sourcesFailed = result.sources.filter((s) => s.outcome.startsWith('failed')).length
+    await record(
+      result.read,
+      `${result.read} source(s) read, ${result.skipped} not read, ${result.landed} event(s) new, ${result.queued} for review, ${sourcesFailed} failed` +
+        (result.notReached > 0 ? `; ${result.notReached} not reached inside the budget, still due` : ''),
+      sourcesFailed > 0,
+    )
     return NextResponse.json({ ok: true, ...result, scout, organisers, holds, changes, line })
   } catch (err) {
     console.error('[cron/collection-run] failed:', err)
+    await record(0, `the collection run failed: ${err instanceof Error ? err.message : String(err)}`, true)
     return NextResponse.json({ error: 'collection run failed' }, { status: 500 })
   }
 }

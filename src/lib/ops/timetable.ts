@@ -24,7 +24,9 @@ export const RIDES = {
   social: { path: '/api/cron/social-publish', schedule: '40 * * * *' },
   outreach: { path: '/api/cron/outreach-run', schedule: '*/15 * * * *' },
   heartbeat: { path: '/api/cron/health-heartbeat', schedule: '0 21 * * *' },
-  linkCheck: { path: '/api/cron/booking-link-check', schedule: '0 18 * * *' },
+  // 04:20 Melbourne in daylight time, inside verify (04:20 to 04:40); it ran at 05:00, after verify's cutoff, so verify
+  // had no run in its window (the PM's 04:51 of 20 November 2026). The same one run a day, moved, never added.
+  linkCheck: { path: '/api/cron/booking-link-check', schedule: '20 17 * * *' },
 } as const
 export type Ride = keyof typeof RIDES
 
