@@ -380,6 +380,13 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'A system health check went critical or recovered.',
   },
   {
+    // The 08:00 report (the mandate's section 14; law 25), sent by the daily heartbeat cron to Lawal's own mailbox.
+    type: 'platform_morning_report',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: 'The 08:00 report: each of the seven business areas, yesterday and today, read from production.',
+  },
+  {
     /*
      * THE ORGANISER'S OWN "YOUR EVENT IS LIVE" EMAIL (the PM's ruling of 8 November 2026, 15:00, item 3): the organiser who
      * sent the event in hears, once, that it is live, with its link, in Lawal's format and only through the gateway's
