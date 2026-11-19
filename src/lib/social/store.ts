@@ -1295,6 +1295,29 @@ export function policyPieces(
     .map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
 }
 
+export type PolicyDryRow = { readonly id: string; readonly label: string; readonly eligible: boolean; readonly reasons: readonly string[] }
+
+/**
+ * THE STANDING POLICY, AS A DRY RUN (the PM's 13:50 of 19 November 2026, item 3, on Lawal's 13:47: "do not make the post.
+ * Wait till 6 pm"): every drafted piece of the week the policy may approve, each with the same checks the approval runs
+ * (pieceDependencies), eligible or not and why. Writes nothing; the two kinds that never post are left out as the policy
+ * leaves them out.
+ */
+export async function standingPolicyDryRun(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<PolicyDryRow[] | null> {
+  const campaign = await readCampaign(db, input.now)
+  if (campaign === null) return null
+  const rows: PolicyDryRow[] = []
+  for (const p of policyPieces(campaign.pieces).filter((x) => x.state === 'drafted')) {
+    try {
+      const reasons = await pieceDependencies(db, p.id, input.now, { siteOrigin: input.siteOrigin })
+      rows.push({ id: p.id, label: p.label, eligible: reasons.length === 0, reasons })
+    } catch (fault) {
+      rows.push({ id: p.id, label: p.label, eligible: false, reasons: [`The check could not run: ${fault instanceof Error ? fault.message : String(fault)}`] })
+    }
+  }
+  return rows
+}
+
 export async function approveUnderStandingPolicy(
   db: Db,
   input: { readonly by: string; readonly now: Date; readonly siteOrigin: string },

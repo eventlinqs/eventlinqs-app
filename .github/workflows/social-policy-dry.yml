@@ -1,0 +1,33 @@
+# THE STANDING PUBLISHING POLICY, AS A DRY RUN (the PM's 13:50 of 19 November 2026, item 3; Lawal at 13:47: "do not make
+# the post. Wait till 6 pm"). Started by hand. It calls production's own social run with ?policy=dry and the secret only
+# this repository's Actions hold; the run answers, for every drafted piece of the week the policy may approve, whether it
+# is eligible and why, and approves, schedules and publishes nothing. The answer names pieces and reasons, never a
+# person's address (this log is public).
+name: social policy dry run
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-policy-dry
+  cancel-in-progress: false
+
+jobs:
+  dry:
+    name: the standing policy, dry
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's social run for its dry run
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 'https://www.eventlinqs.com.au/api/cron/social-publish?policy=dry' \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]

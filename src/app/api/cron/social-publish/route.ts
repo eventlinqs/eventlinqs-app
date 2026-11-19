@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
@@ -29,6 +29,18 @@ function melbourneHour(now: Date): number {
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
   if (denied) return denied
+
+  // THE STANDING POLICY AS A DRY RUN (the PM's 13:50 item 3): with ?policy=dry the run only answers, for every drafted
+  // piece the policy may approve, whether it is eligible and why; it approves, schedules and publishes nothing.
+  if (request.nextUrl.searchParams.get('policy') === 'dry') {
+    const rows = await standingPolicyDryRun(createAdminClient(), { now: new Date(), siteOrigin: getSiteUrl() })
+    return NextResponse.json({
+      dryRun: true,
+      eligible: rows?.filter((r) => r.eligible).length ?? 0,
+      outside: rows?.filter((r) => !r.eligible).length ?? 0,
+      pieces: rows ?? [],
+    })
+  }
 
   try {
     const db = createAdminClient()
