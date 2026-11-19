@@ -138,6 +138,33 @@ function ownPart(text: string): string {
 const linesOf = (text: string) => text.split('\n').map((l) => l.trim()).filter(Boolean)
 
 /** Every reason the message may not be held as approved, scheduled or sent; empty when it passes. */
+/**
+ * A MESSAGE'S WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2: a letter carrying the founder
+ * sentence went at 9.30 am that day, drafted from a template version the platform had not been taught to refuse). The
+ * word rules of voiceProblems that need nothing but the words, in its own words: the founder sentence anywhere in the
+ * body; before the closing, the internal words and the unproved claims. The sender runs it on every queued message.
+ * Pure.
+ */
+export function wordsProblems(body: string, policy: VoicePolicy): string[] {
+  const r: string[] = []
+  const std = policy.standard
+  for (const words of std.founderSentence ?? []) {
+    if (body.toLowerCase().includes(words.toLowerCase())) r.push(`the founder sentence is out of every message (Lawal, 11:31): found ${JSON.stringify(words)}`)
+  }
+  const L = linesOf(ownPart(toText(body)))
+  const k = L.indexOf('Kind regards,')
+  const before = (k === -1 ? L.slice(1) : L.slice(1, k)).join(' ')
+  for (const pat of std.internalWords) {
+    const m = before.match(new RegExp(pat, 'i'))
+    if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)
+  }
+  for (const pat of std.unprovedClaims) {
+    const m = before.match(new RegExp(pat, 'i'))
+    if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
+  }
+  return r
+}
+
 export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] {
   const r: string[] = []
   const cat = msg.category

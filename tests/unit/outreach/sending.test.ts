@@ -139,11 +139,11 @@ const QUEUED = [
   { id: 'q-refused', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
 ]
 
-function standardDb(mode: string, opts: { refuse?: string[]; address?: string } = {}) {
+function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[] } = {}) {
   return fakeDb((call) => {
     if (call.table === 'outreach_sender') return { data: { mode, from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
-    if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: QUEUED, error: null }
+    if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: opts.queued ?? QUEUED, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select') return { data: [], error: null }
     if (call.table === 'organiser_contacts' && call.op === 'select') return { data: { organiser_id: 'o1', address: opts.address ?? 'sam@eventlinqs.com', unsubscribe_token: TOKEN }, error: null }
     if (call.table === 'organiser_venues') return { data: [], error: null }
@@ -249,5 +249,32 @@ describe('one send path, no doubles', () => {
     const route = readFileSync('src/app/api/cron/outreach-run/route.ts', 'utf8')
     expect(route.indexOf('await syncSentItems(')).toBeGreaterThan(-1)
     expect(route.indexOf('await syncSentItems(')).toBeLessThan(route.indexOf('await runOutreachSender('))
+  })
+})
+
+/*
+ * ITS WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2): a letter carrying the founder sentence
+ * went at 9.30 am that day. Every queued message passes the voice gate's word rules at the one send path.
+ */
+describe('its words, read again at send time', () => {
+  beforeEach(() => clearRecordedOutreachMail())
+  const SENTENCE = "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists."
+  test('a queued letter carrying the founder sentence is voided with why and never sent; the clean one goes', async () => {
+    const queued = [{ ...QUEUED[0], id: 'q-v1', body: `Hi Sam,\n${SENTENCE}\nEventLinqs.` }, { ...QUEUED[0], id: 'q-clean' }]
+    const { db, calls } = standardDb('test', { queued })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.sent).toEqual(['q-clean'])
+    expect(r.refused.map((x) => x.id)).toEqual(['q-v1'])
+    expect(r.refused[0].reason).toMatch(/founder sentence/)
+    const voided = calls.find((c) => c.op === 'update' && (c.payload as { state: string }).state === 'void')
+    expect(voided?.filters).toContainEqual(['eq:id', 'q-v1'])
+    expect(voided?.filters).toContainEqual(['eq:state', 'queued'])
+    expect(recordedOutreachMail()).toHaveLength(1)
+  })
+  test('the drill: the same letter without it is sent', async () => {
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], id: 'q-v2' }] })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.sent).toEqual(['q-v2'])
+    expect(r.refused).toEqual([])
   })
 })

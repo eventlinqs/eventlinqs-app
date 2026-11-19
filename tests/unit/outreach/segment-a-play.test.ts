@@ -33,11 +33,12 @@ vi.mock('@/lib/outreach/drafts', () => ({ draftFromTemplate: vi.fn(async () => d
 const { draftSegmentALetter } = await import('@/lib/outreach/segment-a-play')
 
 type Held = { id: string; contact_id: string; outreach_templates: { key: string } | null }
-// The play's mechanics are tested on the first letter WITHOUT the founder sentence (Lawal, 18 November 2026, 11:31): version 1
+// The play's mechanics are tested on version 2 (today-v2, without the founder sentence; Lawal, 18 November 2026, 11:31): version 1
 // carries it and is held by the voice gate, as the last test here proves, until its next version is approved (law 21).
 const FOUNDER_SENTENCE = "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. "
-const V1_BODY = renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body
-const CLEAN_BODY = V1_BODY.replace(FOUNDER_SENTENCE, '')
+const CLEAN_BODY = renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body
+// Version 1's own words, the founder sentence where version 2 says "We'd love to help more people discover".
+const V1_BODY = CLEAN_BODY.replace("We'd love to help more people discover", `${FOUNDER_SENTENCE}I'd love to help more people find`)
 
 function fakeDb(body: string, opts: { refuseQueue?: string; held?: Held[] } = {}) {
   const updates: { payload: Record<string, unknown>; filters: [string, unknown][] }[] = []

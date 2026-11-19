@@ -72,17 +72,15 @@ describe('the first letter', () => {
         "Hi Her Majesty's Theatre Ballarat team,",
         "I hope you're well.",
         'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page.',
-        "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. I'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
-        "Send me one image of your next show you're happy for us to use, and I'll add it for you. Your tickets stay exactly where they are.",
+        "We'd love to help more people discover Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
+        "Send us one image of your next show you're happy for us to use, and we'll add it for you. Your tickets stay exactly where they are.",
         `Could you reply with one image, or add it here? ${PHOTO}`,
       ].join('\n\n'),
     )
     expect(rendered.heldBecause).toEqual([])
     expect(ruleFailures(rendered)).toEqual([])
-    // Version 1 carries the founder sentence Lawal ruled out (18 November 2026, 11:31): the platform holds it as gateway.py
-    // does, for that alone, until its next version is approved (law 21).
-    expect(voice.length, rendered.body).toBe(2)
-    expect(voice.every((v) => v.startsWith('the founder sentence is out of every message')), voice.join(' | ')).toBe(true)
+    // Version 2, today-v2 (Lawal's APPROVE PERM of 18 November 2026): every CRM rule and the gateway pass.
+    expect(voice, rendered.body).toEqual([])
   })
   it('never states people sent on to a booking page, and never calls EventLinqs a ticketing platform', () => {
     const { rendered } = judged(SEGMENT_A_FIRST, IAN)
@@ -103,13 +101,11 @@ describe('the first letter', () => {
     const free = { ...IAN, listedWithBooking: 0, night: { ...IAN.night, hasBooking: false, categorySlug: 'food-drink', title: 'Bendigo Community Farmers Market' } }
     const f = segmentAFields(free)
     expect(f['listed line']).toBe('Your events are already listed on EventLinqs at no cost to you.')
-    expect(f['image line']).toBe("Send me one image of your next event you're happy for us to use, and I'll add it for you.")
+    expect(f['image line']).toBe("Send us one image of your next event you're happy for us to use, and we'll add it for you.")
     const { rendered, voice } = judged(SEGMENT_A_FIRST, free)
     expect(rendered.body).not.toMatch(/booking page|tickets stay/)
-    // Version 1 carries the founder sentence Lawal ruled out (18 November 2026, 11:31): the platform holds it as gateway.py
-    // does, for that alone, until its next version is approved (law 21).
-    expect(voice.length, rendered.body).toBe(2)
-    expect(voice.every((v) => v.startsWith('the founder sentence is out of every message')), voice.join(' | ')).toBe(true)
+    // Version 2, today-v2 (Lawal's APPROVE PERM of 18 November 2026): every CRM rule and the gateway pass.
+    expect(voice, rendered.body).toEqual([])
   })
   it("some listed events without a booking page: 'each' is left out", () => {
     expect(segmentAFields({ ...IAN, listedWithBooking: 12 })['listed line']).toMatch(/^Your events are already listed on EventLinqs at no cost to you, with a button straight to your own booking page\./)
