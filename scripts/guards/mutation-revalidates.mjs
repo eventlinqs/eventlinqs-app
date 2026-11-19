@@ -117,7 +117,7 @@ for (const file of files) {
       )
       return write.test(action.body)
     })
-    const through = PUBLIC_WRITERS.filter((fn) => new RegExp(String.raw`${fn}\s*\(`).test(action.body))
+    const through = PUBLIC_WRITERS.filter((fn) => new RegExp(String.raw`\b${fn}\s*\(`).test(action.body))
     if (writes.length === 0 && through.length === 0) continue
     if (through.length > 0 && !/revalidateEventSurfaces(?:ById)?\s*\(/.test(action.body)) {
       mutatingActions += 1

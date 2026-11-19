@@ -52,8 +52,8 @@ describe("each organiser's city by the first road that has one", () => {
       { id: 'v-belmont', slug: 'archive-wine-bar', city_slug: 'geelong', removed_at: null },
     ],
     events: [
-      { slug: 'bso-messiah-2026-12-12', city_primary: 'bendigo', organisation_id: null },
-      { slug: 'own-night', city_primary: 'ballarat', organisation_id: 'org-own' },
+      { slug: 'bso-messiah-2026-12-12', city_primary: 'bendigo', organisation_id: null, status: 'published' },
+      { slug: 'own-night', city_primary: 'ballarat', organisation_id: 'org-own', status: 'published' },
     ],
   })
 
@@ -80,8 +80,10 @@ describe("each organiser's city by the first road that has one", () => {
 
 describe('the planner and the drafter use it', () => {
   it("a play's cities cohort reads each organiser's city by the three roads, leaving out test organisers and those another approved play names", () => {
-    const src = readFileSync('src/lib/outreach/planner.ts', 'utf8')
-    expect(src).toContain("import { organiserCitySlugs } from './organiser-city'")
+    const whole = readFileSync('src/lib/outreach/planner.ts', 'utf8')
+    expect(whole).toContain("import { organiserCitySlugs } from './organiser-city'")
+    const start = whole.indexOf('export async function planPlays')
+    const src = whole.slice(start, whole.indexOf('export async function', start + 1))
     expect(src).toContain('const cities = await organiserCitySlugs(db, real, deps.now)')
     expect(src).toContain('const real = (rows.data ?? []).filter((o) => !o.is_test && !named.has(o.id))')
     expect(src).not.toContain(".from('organiser_venues').select('organiser_id').in('venue_id'")
