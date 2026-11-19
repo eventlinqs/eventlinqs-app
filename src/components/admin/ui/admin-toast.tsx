@@ -38,7 +38,7 @@ export function AdminToast({ said, tone }: { said: string | null; tone: 'ok' | '
   if (!said || !open || !mounted) return null
   const ok = tone === 'ok'
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6">
+    <div className="admin-light pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6">
       <div
         role={ok ? 'status' : 'alert'}
         data-toast={tone}
