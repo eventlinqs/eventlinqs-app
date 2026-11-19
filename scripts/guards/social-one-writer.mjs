@@ -93,7 +93,9 @@ for (const file of sources) {
   if (!SOCIAL_DIRS.some((d) => rel.startsWith(`${d}/`))) continue
   read += 1
   const { code } = readSource(join(ROOT, file))
-  const m = VANITY.exec(code)
+  // A query's like operator (.like( and .ilike(, a text pattern match) counts nothing; it is taken out before the read,
+  // so the read back may ask its posts by prefix (WINDOW 5A, 20 November 2026), and a like counted still fails.
+  const m = VANITY.exec(code.replace(/\.i?like\(/g, '.('))
   if (m) failures.push(`${rel}:${lineAt(code, m.index)} names "${m[0]}"; a post is judged by tickets, arrivals and presses out, never likes`)
 }
 
