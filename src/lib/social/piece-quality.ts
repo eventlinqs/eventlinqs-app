@@ -1,4 +1,4 @@
-import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, ORGANISER_OFFER_FILE, ORGANISER_OFFER_SHOWS_UNTIL, type CampaignNight, type Slide } from './campaign'
+import { CAPTION_PHOTO_CREDITS, clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, notAStreet, OLDER_LOOK_IN_PLAN, ORGANISER_OFFER_FILE, ORGANISER_OFFER_SHOWS_UNTIL, type CampaignNight, type Slide } from './campaign'
 import { namesAStandIn, STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
 import { getAllCities } from '@/lib/cities/data'
@@ -252,6 +252,16 @@ export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' 
   // the code in force, which draws none while STAND_INS_IN_PLAN is off (stand-ins.ts).
   if (!STAND_INS_IN_PLAN && (input.slides.some((s) => 'photo' in s && standInOf(s.photo)) || (input.captions ?? [input.caption]).some(namesAStandIn))) {
     out.push("[photo] It is drawn with a stock photograph or names one in its caption; drawn again with the night's own photograph or in type.")
+  }
+  // The PM's round 3 verdicts of 19 November 2026 (items 3 and 4): a card naming a bare street address, and a caption
+  // carrying a photo credit line, are drawn again by the code in force (campaign.ts notAStreet, CAPTION_PHOTO_CREDITS).
+  for (const sl of input.slides) {
+    for (const r of ('rows' in sl && Array.isArray(sl.rows) ? sl.rows : []) as { place?: string | null }[]) {
+      if (r.place && notAStreet(r.place) !== r.place.replace(/\s+/g, ' ').trim()) out.push(`[place] A card names the street address '${r.place}'; drawn again with its suburb.`)
+    }
+  }
+  if (!CAPTION_PHOTO_CREDITS && (input.captions ?? [input.caption]).some((c) => /^\s*(Photos?|Photograph(?: by)?|Illustrative photo)\s*:/im.test(c))) {
+    out.push('[caption] It carries a photo credit line; drawn again without it.')
   }
   return out
 }
