@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Slide } from '../../../src/lib/social/campaign'
-import { blotatoConfigFrom, BlotatoRefusal, makeBlotatoPublisher } from '../../../src/lib/social/blotato-publisher'
+import { blotatoConfigFrom, blotatoMediaType, BlotatoRefusal, makeBlotatoPublisher } from '../../../src/lib/social/blotato-publisher'
 
 /*
  * ROUTE B, BLOTATO (Lawal's yes of 15 November 2026, 13:55). The publisher against Blotato's recorded shapes
@@ -68,6 +68,21 @@ describe('route B, Blotato', () => {
     await publish({ pieceId: 'p2', platform: 'instagram', slides: [story(1)], caption: 'Tonight' })
     const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
     expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'instagram', mediaType: 'story' })
+  })
+
+  // A STORY POSTS AS A STORY, ON EVERY NETWORK (the PM's 04:40 of 20 November 2026, item 4): Blotato's reference takes
+  // mediaType 'story' on Facebook too ("Set 'story' for Stories"); without it a Facebook story posted to the Page's feed.
+  test('a Facebook story is sent as mediaType story, to the one Page', async () => {
+    const b = blotato({ accounts: [{ id: 101, platform: 'facebook' }], pages: [{ id: '555' }] })
+    const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
+    await publish({ pieceId: 'p4', platform: 'facebook', slides: [story(1)], caption: 'Tonight' })
+    const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
+    expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'facebook', pageId: '555', mediaType: 'story' })
+  })
+
+  test('the story type follows the format on every network, and a feed piece carries none', () => {
+    expect(blotatoMediaType('story')).toBe('story')
+    expect(blotatoMediaType('feed')).toBeNull()
   })
 
   test("Facebook posts to the account's one Page", async () => {

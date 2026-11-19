@@ -1595,6 +1595,27 @@ const DRILLS = [
     expect: "without the table's socialPhaseAt",
   },
   /*
+   * stories-post-as-stories (the PM's 04:40 of 20 November 2026, item 4), two drills: the fault as it was found (the
+   * story type set for Instagram alone, so a Facebook story posts to the Page's feed), and the Meta route's Facebook
+   * story refusal taken out.
+   */
+  {
+    name: "a Facebook story goes to Blotato without its story type, as it once did",
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/blotato-publisher.ts',
+    find: '    if (mediaType) target.mediaType = mediaType',
+    replace: "    if (mediaType && platform === 'instagram') target.mediaType = mediaType",
+    expect: 'set under a network test',
+  },
+  {
+    name: "the Meta route no longer refuses a Facebook story, so it could post to the Page's feed",
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/meta-publisher.ts',
+    find: "    if (format === 'story') throw new MetaRefusal(",
+    replace: "    if (format === 'reel') throw new MetaRefusal(",
+    expect: 'no longer refused first',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *

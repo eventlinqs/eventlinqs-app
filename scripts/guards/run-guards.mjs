@@ -252,6 +252,8 @@
  *                              and /pricing all agree with the configuration
  *   timetable-is-the-one-schedule  the daily timetable's rides scheduled in vercel.json exactly as
  *                              src/lib/ops/timetable.ts says, the phase routes reading its phase
+ *   stories-post-as-stories    a story posts as a story or not at all: Blotato's story type
+ *                              follows the format on every network, Meta refuses Facebook stories
  *   same-day-reads             nothing online unless verified on its source: freshness from
  *                              agreeing reads only, 24 hours; every check timed at its read
  *   offer-is-one-rule          LAW 24 as ruled: the offer is defined once, rendered in src,
@@ -3486,6 +3488,9 @@ const GUARDS = [
   // Train Y (the daily timetable, locked 20 November 2026): one table holds every phase's slot and cutoff; vercel.json
   // schedules each run the phases ride exactly as src/lib/ops/timetable.ts says.
   'scripts/guards/timetable-is-the-one-schedule.mjs',
+  // The PM's 04:40 of 20 November 2026, item 4: no story piece reaches a publisher call without its story type (a
+  // Facebook story once went to Blotato with none, so it would have posted to the Page's feed).
+  'scripts/guards/stories-post-as-stories.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
