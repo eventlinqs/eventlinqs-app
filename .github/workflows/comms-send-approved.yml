@@ -1,0 +1,41 @@
+# THE PLATFORM SENDS AN APPROVED DRAFT (the PM's 11:55 of 19 November 2026; Lawal at 11:43: "Go send it right now").
+# Started by hand or by the approval workflow (scripts/ops/comms-approve.mjs --send) once the gateway has cleared a draft
+# and its approval is recorded in comms_send_approvals. It calls production's own route with the secret only this
+# repository's Actions hold; the route sends the draft from the outreach mailbox by its Graph id, only when its words are
+# the cleared ones, and answers with state and ids, never the letter's words (this log is public).
+name: comms send approved
+
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: "The draft's Graph message id (an approval record must name it)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comms-send-approved
+  cancel-in-progress: false
+
+jobs:
+  send:
+    name: send the approved draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Send it through the platform
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRAFT_ID: ${{ inputs.id }}
+        run: |
+          set -euo pipefail
+          case "$DRAFT_ID" in *[!A-Za-z0-9+/=_-]*|'') echo "REFUSED: not a draft id"; exit 1;; esac
+          printf '{"id":"%s"}' "$DRAFT_ID" > body.json
+          code=$(curl -sS -o answer.json -w '%{http_code}' -X POST https://www.eventlinqs.com.au/api/ops/comms/send-approved \
+            -H "Authorization: Bearer $CRON_SECRET" -H 'Content-Type: application/json' --data @body.json)
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]

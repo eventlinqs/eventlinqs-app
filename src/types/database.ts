@@ -710,6 +710,62 @@ export type Database = {
         }
         Relationships: []
       }
+      comms_send_approvals: {
+        Row: {
+          approval_words: string
+          approved_at: string
+          approved_by: string
+          contact_id: string | null
+          content_sha256: string
+          gateway_policy_version: string
+          gateway_verdict: string
+          graph_message_id: string
+          id: string
+          internet_message_id: string | null
+          mailbox: string
+          refused_because: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          approval_words: string
+          approved_at?: string
+          approved_by: string
+          contact_id?: string | null
+          content_sha256: string
+          gateway_policy_version: string
+          gateway_verdict: string
+          graph_message_id: string
+          id?: string
+          internet_message_id?: string | null
+          mailbox: string
+          refused_because?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          approval_words?: string
+          approved_at?: string
+          approved_by?: string
+          contact_id?: string | null
+          content_sha256?: string
+          gateway_policy_version?: string
+          gateway_verdict?: string
+          graph_message_id?: string
+          id?: string
+          internet_message_id?: string | null
+          mailbox?: string
+          refused_because?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_send_approvals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           created_at: string
