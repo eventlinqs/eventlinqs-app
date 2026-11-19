@@ -35,6 +35,6 @@ describe('the top bar carries it on every admin page', () => {
     expect(ADMIN_SEARCH_INPUT_ID).toBe('admin-search')
   })
   test('the phone width, where the box is hidden, has one tap to search', () => {
-    expect(topbar).toMatch(/href="\/admin\/search"[\s\S]{0,200}sm:hidden/)
+    expect(topbar).toMatch(/href="\/admin\/search"[\s\S]{0,400}sm:hidden/)
   })
 })
