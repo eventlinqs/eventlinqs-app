@@ -4,7 +4,7 @@
  * EventLinqs ... Every communication must have exactly one primary category. Subtypes must identify the specific purpose").
  *
  * This module is the one map from a message's source to its category and subtype. The database holds the same map
- * (migration 20261118103501_comms_categories.sql: comms_category_of_template and the social, report, digest and notice
+ * (migration 20261119125001_comms_categories.sql: comms_category_of_template and the social, report, digest and notice
  * columns), and tests/unit/comms/categories.test.ts reads that migration and fails if the two ever disagree.
  */
 export const COMMS_CATEGORIES = {

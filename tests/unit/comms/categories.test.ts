@@ -15,7 +15,7 @@ import {
 
 // Law 24 (Lawal's master communications directive of 18 November 2026, section 1): one category and one subtype on
 // every message record. The code's map and the migration's map are one map: this file reads the migration.
-const MIGRATION = readFileSync(join(process.cwd(), 'supabase/migrations/20261118103501_comms_categories.sql'), 'utf8').replace(/\r\n/g, '\n')
+const MIGRATION = readFileSync(join(process.cwd(), 'supabase/migrations/20261119125001_comms_categories.sql'), 'utf8').replace(/\r\n/g, '\n')
 
 function migrationTemplateMap(): Record<string, string> {
   const block = MIGRATION.slice(MIGRATION.indexOf('select m.subtype from (values'), MIGRATION.indexOf(') as m(key, subtype)'))

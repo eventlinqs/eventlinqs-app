@@ -18,7 +18,7 @@ import {
 
 /**
  * THE GROWTH AND COMMUNICATIONS CENTRE, READ FROM THE DATABASE ONLY (Law 24; the directive's section 7). Every figure
- * is counted from the rows each message record holds, by the one category migration 20261118103501 records on them;
+ * is counted from the rows each message record holds, by the one category migration 20261119125001 records on them;
  * the counting is centre-math.ts. Nothing is estimated, and nothing here writes.
  */
 type Db = SupabaseClient
