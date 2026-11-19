@@ -95,10 +95,10 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
     <form
       method="post"
       onSubmit={onSubmit}
-      className="space-y-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+      className="space-y-4 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6"
     >
       <div>
-        <label htmlFor="email" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
+        <label htmlFor="email" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)]">
           Email
         </label>
         <input
@@ -107,12 +107,12 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
           type="email"
           autoComplete="username"
           required
-          className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+          className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
         />
       </div>
 
       <div>
-        <label htmlFor="password" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
+        <label htmlFor="password" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)]">
           Password
         </label>
         <input
@@ -121,13 +121,13 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+          className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
         />
       </div>
 
       {!useRecovery ? (
         <div>
-          <label htmlFor="totp" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
+          <label htmlFor="totp" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)]">
             6-digit code
           </label>
           <input
@@ -139,15 +139,15 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
             maxLength={6}
             autoComplete="one-time-code"
             placeholder="123456"
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm tracking-[0.4em] text-white outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm tracking-[0.4em] text-[var(--admin-ink)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
-          <p className="mt-2 text-[11px] text-white/40">
+          <p className="mt-2 text-[11px] text-[var(--admin-muted)]">
             Skip on first sign in. You will be asked to enrol next.
           </p>
         </div>
       ) : (
         <div>
-          <label htmlFor="recovery" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
+          <label htmlFor="recovery" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)]">
             Recovery code
           </label>
           <input
@@ -156,7 +156,7 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
             type="text"
             autoComplete="off"
             placeholder="abcd-efg-hij"
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </div>
       )}
@@ -164,13 +164,13 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
       <button
         type="button"
         onClick={() => setUseRecovery(v => !v)}
-        className="text-[11px] uppercase tracking-[0.2em] text-white/50 transition hover:text-white"
+        className="text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)] transition hover:text-[var(--admin-ink)]"
       >
         {useRecovery ? 'Use 6-digit code' : 'Use recovery code'}
       </button>
 
       {error ? (
-        <div role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <div role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-800">
           {error}
         </div>
       ) : null}

@@ -51,25 +51,25 @@ export default async function GoogleVenuePhotosPage({ searchParams }: { searchPa
   const look = lookId ? await lookAtVenue(db, lookId) : null
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 text-white sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 text-[var(--admin-ink)] sm:px-6">
       <h1 className="font-display text-2xl font-semibold">Google venue photos</h1>
-      <p className="mt-2 max-w-2xl text-sm text-white/60">
+      <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
         A venue&apos;s Google photos show on its event pages only after you look and approve. Each look asks Google afresh and counts against the day&apos;s Google quota.
       </p>
       {sp.status && NOTICES[sp.status] ? (
-        <p role="status" className="mt-4 rounded-md border border-white/15 bg-white/[0.04] px-3 py-2 text-sm">
+        <p role="status" className="mt-4 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm">
           {NOTICES[sp.status]}
-          {sp.why ? <span className="block text-xs text-white/60">{sp.why}</span> : null}
+          {sp.why ? <span className="block text-xs text-[var(--admin-soft)]">{sp.why}</span> : null}
         </p>
       ) : null}
       <ul className="mt-6 space-y-3">
         {rows.map((v) => (
-          <li key={v.id} data-venue={v.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+          <li key={v.id} data-venue={v.id} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 sm:p-5">
             <h2 className="font-display text-lg font-semibold">{v.name}</h2>
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-[var(--admin-soft)]">
               {v.address ?? 'No address held'} &middot; {v.upcoming} upcoming {v.upcoming === 1 ? 'night' : 'nights'}
             </p>
-            <p className="mt-1 text-sm text-white/80">{state(v)}</p>
+            <p className="mt-1 text-sm text-[var(--admin-ink)]">{state(v)}</p>
             {lookId === v.id && look ? (
               look.ok ? (
                 <figure className="mt-3">
@@ -78,7 +78,7 @@ export default async function GoogleVenuePhotosPage({ searchParams }: { searchPa
                   {/* Google's credit rules (places/web-service/policies, read 31 October 2026): the author 'using all available
                       resources (avatar, name, and profile link) when space allows'; the text 'Google Maps' unmodified, 12 to
                       16 sp, white, black or gray; and 'access to view the individual source photo ... on Google Maps'. */}
-                  <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white">
+                  <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--admin-ink)]">
                     <span className="inline-flex items-center gap-2">
                       {look.photo.authors.map((a, i) => (
                         <span key={a.displayName + i} className="inline-flex items-center gap-1.5">
@@ -101,31 +101,31 @@ export default async function GoogleVenuePhotosPage({ searchParams }: { searchPa
                   </figcaption>
                 </figure>
               ) : (
-                <p className="mt-2 text-xs text-amber-200">{look.reason}</p>
+                <p className="mt-2 text-xs text-amber-800">{look.reason}</p>
               )
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <form action={findVenueOnGoogleAction}>
                 <input type="hidden" name="id" value={v.id} />
-                <button className={`${CONTROL} rounded-md border border-white/15 bg-white/[0.06] px-3 text-xs`}>{v.placeId ? 'Find again' : 'Find on Google'}</button>
+                <button className={`${CONTROL} rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint-strong)] px-3 text-xs`}>{v.placeId ? 'Find again' : 'Find on Google'}</button>
               </form>
               {v.placeId ? (
-                <a href={`/admin/venues/google-photos?look=${v.id}`} className={`${CONTROL} rounded-md border border-white/15 px-3 text-xs underline-offset-2 hover:underline`}>
+                <a href={`/admin/venues/google-photos?look=${v.id}`} className={`${CONTROL} rounded-md border border-[var(--admin-line)] px-3 text-xs underline-offset-2 hover:underline`}>
                   Look at its photo
                 </a>
               ) : null}
               {v.placeId && !v.approvedAt ? (
                 <form action={approveVenueGoogleAction}>
                   <input type="hidden" name="id" value={v.id} />
-                  <button className={`${CONTROL} rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 text-xs text-emerald-100`}>Approve</button>
+                  <button className={`${CONTROL} rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 text-xs text-emerald-800`}>Approve</button>
                 </form>
               ) : null}
               {v.placeId ? (
                 <form action={refuseVenueGoogleAction} className="flex gap-2">
                   <input type="hidden" name="id" value={v.id} />
                   <label className="sr-only" htmlFor={`r-${v.id}`}>Why it is refused</label>
-                  <input id={`r-${v.id}`} name="reason" required minLength={3} maxLength={300} placeholder="Why it is refused" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-xs text-white" />
-                  <button className={`${CONTROL} rounded-md border border-white/15 bg-white/[0.06] px-3 text-xs`}>Refuse</button>
+                  <input id={`r-${v.id}`} name="reason" required minLength={3} maxLength={300} placeholder="Why it is refused" className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-xs text-[var(--admin-ink)]" />
+                  <button className={`${CONTROL} rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint-strong)] px-3 text-xs`}>Refuse</button>
                 </form>
               ) : null}
             </div>

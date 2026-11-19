@@ -30,13 +30,13 @@ export default async function AdminVenuesPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-display text-3xl font-bold tracking-tight text-white">Venue revenue</h1>
-      <div className="mt-6 rounded-xl border border-white/15 bg-[#131A2A] p-6">
-        <p className="text-sm font-semibold text-white">
+      <h1 className="font-display text-3xl font-bold tracking-tight text-[var(--admin-ink)]">Venue revenue</h1>
+      <div className="mt-6 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <p className="text-sm font-semibold text-[var(--admin-ink)]">
           The Venue Revenue Sharing Program was removed by founder decision on
           5 July 2026.
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-white/70">
+        <p className="mt-3 text-sm leading-relaxed text-[var(--admin-soft)]">
           Standard ticketing economics apply: organisers receive face value,
           EventLinqs keeps its full fee, and no venue share accrues or is paid.
           The pricing_rules rate row is zeroed (append-only version, migration
@@ -46,7 +46,7 @@ export default async function AdminVenuesPage() {
         </p>
         <Link prefetch={false}
           href="/admin"
-          className="mt-5 inline-flex rounded-md bg-white/90 px-4 py-2 text-sm font-semibold text-[#0A0F1A] hover:bg-white"
+          className="mt-5 inline-flex rounded-md bg-[var(--admin-ink)] px-4 py-2 text-sm font-semibold text-[var(--admin-paper)] hover:bg-[var(--admin-ink)]"
         >
           Back to admin
         </Link>

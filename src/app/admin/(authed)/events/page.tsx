@@ -54,7 +54,7 @@ const STATUS_CHIP: Record<string, { tone: ChipTone; word: string }> = {
   completed: { tone: 'off', word: 'Ended' },
   archived: { tone: 'off', word: 'Archived' },
 }
-const QUIET = 'inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/15 px-4 text-sm font-medium text-white/85 transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
+const QUIET = 'inline-flex min-h-[44px] items-center justify-center rounded-full border border-[var(--admin-line)] px-4 text-sm font-medium text-[var(--admin-ink)] transition hover:bg-[var(--admin-tint-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
 
 /**
  * Event moderation - pause / resume / cancel (scope 3.7).
@@ -102,23 +102,23 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
 
       <NoticeBanner notice={sp.notice} action={sp.action} />
 
-      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 md:grid-cols-4">
+      <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 md:grid-cols-4">
         <label className="block md:col-span-2">
-          <span className="mb-1.5 block text-xs font-medium text-white/60">Search</span>
+          <span className="mb-1.5 block text-xs font-medium text-[var(--admin-soft)]">Search</span>
           <input
             type="text"
             name="q"
             placeholder="Title or slug"
             defaultValue={search ?? ''}
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-white/60">Status</span>
+          <span className="mb-1.5 block text-xs font-medium text-[var(--admin-soft)]">Status</span>
           <select
             name="status"
             defaultValue={statusFilter}
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           >
             {EVENT_STATUS_FILTERS.map((s) => (
               <option key={s} value={s}>{s === 'all' ? 'All statuses' : (STATUS_CHIP[s]?.word ?? s)}</option>
@@ -171,10 +171,10 @@ function EventRow({ row }: { row: AdminEventRow }) {
       <td className={ADMIN_CELL_NAME}>
         {/* The name's line sits at the row's top with its organiser, status and date (the PM's 05:37 fix 3): the link keeps
             its 44 px target, its words at the top of it. */}
-        <Link prefetch={false} href={`/admin/events/${row.id}`} className="inline-flex min-h-11 items-start font-medium text-white hover:underline">{row.title}</Link>
-        <div className="text-[11px] text-white/40">{row.slug}</div>
+        <Link prefetch={false} href={`/admin/events/${row.id}`} className="inline-flex min-h-11 items-start font-medium text-[var(--admin-ink)] hover:underline">{row.title}</Link>
+        <div className="text-[11px] text-[var(--admin-muted)]">{row.slug}</div>
       </td>
-      <td className={`${ADMIN_CELL} text-white/70`}>
+      <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
         <span className={ADMIN_CELL_LABEL}>Organiser</span>
         {row.organisationName ?? '-'}
       </td>
@@ -182,7 +182,7 @@ function EventRow({ row }: { row: AdminEventRow }) {
         <span className={ADMIN_CELL_LABEL}>Status</span>
         <StatusChip tone={STATUS_CHIP[row.status]?.tone ?? 'info'}>{STATUS_CHIP[row.status]?.word ?? row.status}</StatusChip>
       </td>
-      <td className={`${ADMIN_CELL} whitespace-nowrap text-white/60`}>
+      <td className={`${ADMIN_CELL} whitespace-nowrap text-[var(--admin-soft)]`}>
         <span className={ADMIN_CELL_LABEL}>Starts</span>
         {dayTime(row.startDate)}
       </td>
@@ -208,20 +208,20 @@ function NoticeBanner({ notice, action }: { notice?: string; action?: string }) 
       delete: 'deleted. Nothing of it remains',
     }
     return (
-      <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
         Event {verb[action ?? ''] ?? 'updated'}.
       </div>
     )
   }
   if (notice === 'stale') {
     return (
-      <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+      <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
         That event changed since the page loaded. The current state is shown below.
       </div>
     )
   }
   return (
-    <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
       {notice === 'invalid' ? 'That request was not valid.' : 'Could not apply that change. Try again.'}
     </div>
   )
@@ -242,7 +242,7 @@ function Pager({
   const next = hasMore ? buildReturnTo(statusFilter, search, page + 1) : null
   return (
     <div className="mt-4 flex items-center justify-between">
-      <span className="text-xs text-white/50">Page {page}</span>
+      <span className="text-xs text-[var(--admin-muted)]">Page {page}</span>
       <div className="flex gap-2">
         {prev ? (
           <Link prefetch={false} href={prev} className={QUIET}>

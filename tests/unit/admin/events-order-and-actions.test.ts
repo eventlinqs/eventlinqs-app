@@ -45,7 +45,7 @@ describe("the events list's default order (fix 3)", () => {
 
   it("each row's name sits on the row's top line, its link still 44 px tall", () => {
     const page = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/events/page.tsx'), 'utf8')
-    expect(page).toContain('className="inline-flex min-h-11 items-start font-medium text-white hover:underline"')
+    expect(page).toContain('className="inline-flex min-h-11 items-start font-medium text-[var(--admin-ink)] hover:underline"')
   })
 })
 
@@ -89,8 +89,8 @@ describe("the PM's 07:30 polish (ADMIN 3 at 9.5, for the next train)", () => {
     expect(today).toContain('className="mb-8 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-4"')
   })
   it('(c) the slug is a short grey line that wraps after its hyphens, never a monospace block', () => {
-    expect(detail).toContain('<dd data-slug className="text-[12px] leading-5 text-white/50">')
+    expect(detail).toContain('<dd data-slug className="text-[12px] leading-5 text-[var(--admin-muted)]">')
     expect(detail).toContain('<wbr />')
-    expect(detail).not.toContain('font-mono text-[12px] text-white/70">{event.slug}')
+    expect(detail).not.toContain('font-mono text-[12px] text-[var(--admin-soft)]">{event.slug}')
   })
 })

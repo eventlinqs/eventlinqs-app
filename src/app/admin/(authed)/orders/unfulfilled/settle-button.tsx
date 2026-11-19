@@ -56,13 +56,13 @@ export function SettleButton({
   if (outcome?.ok) {
     return (
       <div className="flex flex-col items-start gap-2">
-        <span className="inline-block rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+        <span className="inline-block rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800">
           {outcome.message}
         </span>
         <button
           type="button"
           onClick={() => router.refresh()}
-          className="min-h-[44px] rounded-md border border-white/10 px-3 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+          className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-3 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
         >
           Reload the list
         </button>
@@ -74,7 +74,7 @@ export function SettleButton({
     <div className="flex flex-col items-start gap-2">
       {confirming ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-white/70">
+          <span className="text-xs text-[var(--admin-soft)]">
             Refund {amountLabel} to {buyerLabel}?
           </span>
           <button
@@ -89,7 +89,7 @@ export function SettleButton({
             type="button"
             onClick={() => setConfirming(false)}
             disabled={pending}
-            className="min-h-[44px] rounded-md border border-white/10 px-3 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-60"
+            className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-3 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)] disabled:opacity-60"
           >
             Cancel
           </button>
@@ -98,14 +98,14 @@ export function SettleButton({
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="min-h-[44px] rounded-md border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)] transition hover:bg-[var(--brand-accent)]/20"
+          className="min-h-[44px] rounded-md border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)] transition hover:bg-[var(--brand-accent)]/20"
         >
           Refund and close
         </button>
       )}
 
       {outcome && !outcome.ok ? (
-        <p role="alert" className="max-w-sm text-xs text-red-200">
+        <p role="alert" className="max-w-sm text-xs text-red-800">
           {outcome.message}
         </p>
       ) : null}

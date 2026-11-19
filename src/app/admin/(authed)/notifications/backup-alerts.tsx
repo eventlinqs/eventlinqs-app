@@ -30,15 +30,15 @@ export function BackupAlerts({ armed }: { armed: number }) {
               : `${armed} device${armed === 1 ? '' : 's'} armed.`
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-      <p className="font-display text-sm uppercase tracking-widest text-white/60">Backup channel</p>
-      <p className="mt-2 text-sm text-white/60">
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+      <p className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">Backup channel</p>
+      <p className="mt-2 text-sm text-[var(--admin-soft)]">
         Notifications are emailed. If email fails three times, they are pushed to the devices armed
         here instead. Push does not share a vendor, a domain or a rate limit with email, so the two
         cannot fail together for the same reason.
       </p>
       <p
-        className={`mt-3 text-sm ${status === 'error' || armed === 0 ? 'text-amber-300' : 'text-white/50'}`}
+        className={`mt-3 text-sm ${status === 'error' || armed === 0 ? 'text-amber-800' : 'text-[var(--admin-muted)]'}`}
         role={status === 'error' ? 'alert' : undefined}
       >
         {note}
@@ -48,7 +48,7 @@ export function BackupAlerts({ armed }: { armed: number }) {
           <button
             type="button"
             onClick={disable}
-            className="inline-flex h-11 items-center rounded-lg border border-white/15 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none transition hover:bg-white/[0.08] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+            className="inline-flex h-11 items-center rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-4 text-sm font-semibold text-[var(--admin-ink)] outline-none transition hover:bg-[var(--admin-tint-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
           >
             Disarm this device
           </button>
@@ -63,7 +63,7 @@ export function BackupAlerts({ armed }: { armed: number }) {
               status === 'unconfigured' ||
               status === 'denied'
             }
-            className="inline-flex h-11 items-center rounded-lg bg-[var(--brand-accent)] px-4 text-sm font-semibold text-ink-900 outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center rounded-lg bg-[var(--brand-accent)] px-4 text-sm font-semibold text-ink-900 outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--admin-ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === 'working' ? 'Arming' : 'Arm backup alerts on this device'}
           </button>

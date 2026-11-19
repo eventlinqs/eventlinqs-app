@@ -62,25 +62,25 @@ export function DisbursePanel({
   // One panel in both states, its status line in one fixed place: a disbursement that empties the balance refreshes
   // the page into the blocked state, and the line that says what moved must stay and be read out (WCAG 2.2, 4.1.3).
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-lg font-semibold text-white">Disburse</h2>
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Disburse</h2>
       {blockedReason ? (
-        <p className="mt-2 text-sm text-white/60">{blockedReason}</p>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">{blockedReason}</p>
       ) : (
         <>
-          <p className="mt-1 text-sm text-white/60">Held balance {money(availableCents, currency)}</p>
-          <p className="mt-1 text-xs text-white/40">
+          <p className="mt-1 text-sm text-[var(--admin-soft)]">Held balance {money(availableCents, currency)}</p>
+          <p className="mt-1 text-xs text-[var(--admin-muted)]">
             Funds are held by the platform and disburse automatically after each event. This forces
             a disbursement now for every matured event past its buffer.
           </p>
         </>
       )}
 
-      <p role="status" className={done ? 'mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200' : ''}>
+      <p role="status" className={done ? 'mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800' : ''}>
         {done ?? ''}
       </p>
       {error ? (
-        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
 
       {blockedReason ? null : step === 'idle' ? (
@@ -95,7 +95,7 @@ export function DisbursePanel({
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-[var(--admin-soft)]">
             Transfer this organiser&apos;s matured event funds (net of fee and reserve) from the
             platform balance to their connected account. This moves money and cannot be undone.
           </p>
@@ -112,7 +112,7 @@ export function DisbursePanel({
               type="button"
               disabled={submitting}
               onClick={() => setStep('idle')}
-              className="min-h-[44px] rounded-md border border-white/10 px-4 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+              className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-4 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
             >
               Back
             </button>
@@ -145,11 +145,11 @@ export function VoidPayoutButton({ payoutId, status }: { payoutId: string; statu
         type="button"
         disabled={submitting}
         onClick={onVoid}
-        className="min-h-[36px] rounded-md border border-white/10 px-3 text-[11px] uppercase tracking-[0.16em] text-white/70 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+        className="min-h-[36px] rounded-md border border-[var(--admin-line)] px-3 text-[11px] uppercase tracking-[0.16em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)] disabled:opacity-50"
       >
         {submitting ? 'Voiding' : 'Void'}
       </button>
-      {error ? <span className="mt-1 text-[11px] text-red-300">{error}</span> : null}
+      {error ? <span className="mt-1 text-[11px] text-red-800">{error}</span> : null}
     </span>
   )
 }
@@ -204,18 +204,18 @@ export function FasterPayoutPanel({
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-lg font-semibold text-white">Faster payouts</h2>
-      <p className="mt-1 text-sm text-white/60">
+    <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Faster payouts</h2>
+      <p className="mt-1 text-sm text-[var(--admin-soft)]">
         {on
           ? `On: paid ${bufferDays} day${bufferDays === 1 ? '' : 's'} after each event, instead of ${platformBufferDays}.`
           : reason ?? 'Off.'}
       </p>
-      <p className="mt-1 text-xs text-white/40">
+      <p className="mt-1 text-xs text-[var(--admin-muted)]">
         Only for a Tier 3 organiser with five events, $50,000 lifetime gross, no disputes and a Stripe account paying out.
       </p>
       {error ? (
-        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {on ? (
@@ -223,13 +223,13 @@ export function FasterPayoutPanel({
             type="button"
             disabled={submitting}
             onClick={() => act('off')}
-            className="min-h-[44px] rounded-md border border-white/10 px-4 text-xs uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/[0.06] hover:text-white"
+            className="min-h-[44px] rounded-md border border-[var(--admin-line)] px-4 text-xs uppercase tracking-[0.18em] text-[var(--admin-soft)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]"
           >
             Switch off
           </button>
         ) : (
           <>
-            <label className="flex items-center gap-2 text-sm text-white/70">
+            <label className="flex items-center gap-2 text-sm text-[var(--admin-soft)]">
               Days after the event
               <input
                 type="number"
@@ -237,7 +237,7 @@ export function FasterPayoutPanel({
                 max={Math.max(0, platformBufferDays - 1)}
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
-                className="min-h-[44px] w-20 rounded-md border border-white/10 bg-transparent px-3 text-white"
+                className="min-h-[44px] w-20 rounded-md border border-[var(--admin-line)] bg-transparent px-3 text-[var(--admin-ink)]"
               />
             </label>
             <button

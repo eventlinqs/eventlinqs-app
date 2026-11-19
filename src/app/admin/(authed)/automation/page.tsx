@@ -66,10 +66,10 @@ function SwitchControl({ card, audit }: { card: AutomationCard; audit: { social:
   const sw = card.switch
   if (sw.kind === 'flag') {
     return (
-      <form action={setSocialAutoPublishAction} className="mt-5 border-t border-white/[0.06] pt-4">
+      <form action={setSocialAutoPublishAction} className="mt-5 border-t border-[var(--admin-line)] pt-4">
         <input type="hidden" name="on" value={sw.on ? 'false' : 'true'} />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-white/75">Publishing by itself is <strong className="text-white">{sw.on ? 'on' : 'off'}</strong>.</p>
+          <p className="text-sm text-[var(--admin-soft)]">Publishing by itself is <strong className="text-[var(--admin-ink)]">{sw.on ? 'on' : 'off'}</strong>.</p>
           <PendingButton pending={sw.on ? 'Stopping' : 'Switching on'} className={sw.on ? SECONDARY : PRIMARY}>
             {sw.on ? 'Stop publishing' : 'Switch publishing on'}
           </PendingButton>
@@ -81,11 +81,11 @@ function SwitchControl({ card, audit }: { card: AutomationCard; audit: { social:
   if (sw.kind === 'sender') {
     const live = sw.mode === 'live'
     return (
-      <form action={setSenderModeAction} className="mt-5 border-t border-white/[0.06] pt-4">
+      <form action={setSenderModeAction} className="mt-5 border-t border-[var(--admin-line)] pt-4">
         <input type="hidden" name="mode" value={live ? 'hold' : 'live'} />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-white/75">
-            The sender is <strong className="text-white">{sw.mode === 'live' ? 'live' : sw.mode === 'test' ? 'in test' : 'on hold'}</strong>; SPF, DKIM and DMARC{' '}
+          <p className="text-sm text-[var(--admin-soft)]">
+            The sender is <strong className="text-[var(--admin-ink)]">{sw.mode === 'live' ? 'live' : sw.mode === 'test' ? 'in test' : 'on hold'}</strong>; SPF, DKIM and DMARC{' '}
             {sw.dnsOk ? 'pass' : 'do not pass yet'}
             {sw.dnsCheckedAt ? `, checked ${when(sw.dnsCheckedAt)}` : ''}.
           </p>
@@ -97,7 +97,7 @@ function SwitchControl({ card, audit }: { card: AutomationCard; audit: { social:
       </form>
     )
   }
-  return <p className="mt-5 border-t border-white/[0.06] pt-4 text-sm text-white/60">{sw.note}</p>
+  return <p className="mt-5 border-t border-[var(--admin-line)] pt-4 text-sm text-[var(--admin-soft)]">{sw.note}</p>
 }
 
 export default async function AdminAutomationPage({ searchParams }: { searchParams: Promise<{ said?: string; tone?: string }> }) {
@@ -131,7 +131,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
 
       <section data-section="three-numbers" aria-label="The three numbers" className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {'failed' in numbers ? (
-          <p className="text-sm text-white/70">The numbers could not be read: {numbers.failed}</p>
+          <p className="text-sm text-[var(--admin-soft)]">The numbers could not be read: {numbers.failed}</p>
         ) : (
           <>
             <StatCard label="Organisers selling this month" value={numbers.organisersSelling} progress={numbers.organisersSelling / TARGETS.organisersSelling} sub={`Target ${TARGETS.organisersSelling} by ${TARGETS.by}`} />
@@ -144,17 +144,17 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
       <div id="needs-you" data-section="needs-you" className="mb-8 scroll-mt-6">
         <Panel title={line.heading}>
           {line.total === 0 && unread.length === 0 ? (
-            <p className="flex items-center gap-3 text-sm text-white/75"><StatusChip tone="ok">All clear</StatusChip> Every task ran by itself.</p>
+            <p className="flex items-center gap-3 text-sm text-[var(--admin-soft)]"><StatusChip tone="ok">All clear</StatusChip> Every task ran by itself.</p>
           ) : (
-            <ul className="divide-y divide-white/[0.06]">
+            <ul className="divide-y divide-[var(--admin-line)]">
               {line.groups.map((s) => (
                 <li key={s.key} data-needs={s.key} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-white">{s.title}</span>
+                      <span className="font-semibold text-[var(--admin-ink)]">{s.title}</span>
                       <StatusChip tone="waits">Waits for you</StatusChip>
                     </div>
-                    <p className="mt-1 text-sm text-white/70">{countOf(s.items.length, 'thing')}, the oldest first on Today</p>
+                    <p className="mt-1 text-sm text-[var(--admin-soft)]">{countOf(s.items.length, 'thing')}, the oldest first on Today</p>
                   </div>
                   <Link prefetch={false} href="/admin/today" className={SECONDARY}>Open today</Link>
                 </li>
@@ -163,10 +163,10 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
                 <li key={c.key} data-needs={c.key} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-white">{c.title}</span>
+                      <span className="font-semibold text-[var(--admin-ink)]">{c.title}</span>
                       <StatusChip tone="fault">Could not be read</StatusChip>
                     </div>
-                    <p className="mt-1 text-sm text-white/70">{`Its figures could not be read: ${c.readFailed}`}</p>
+                    <p className="mt-1 text-sm text-[var(--admin-soft)]">{`Its figures could not be read: ${c.readFailed}`}</p>
                   </div>
                   {c.link ? <Link prefetch={false} href={c.link.href} className={SECONDARY}>{c.link.label}</Link> : null}
                 </li>
@@ -178,32 +178,32 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
 
       <section aria-label="Every task" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {cards.map((c) => (
-          <article key={c.key} data-card={c.key} className="flex flex-col rounded-xl border border-white/[0.08] bg-[#131A2A] p-5 sm:p-6">
+          <article key={c.key} data-card={c.key} className="flex flex-col rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-white">{c.title}</h2>
+              <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{c.title}</h2>
               <span data-state={c.state}><StatusChip tone={STATE[c.state].tone}>{STATE[c.state].words}</StatusChip></span>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-white/70">{c.does}</p>
-            <dl className="mt-4 grid grid-cols-1 gap-1 text-xs text-white/60">
+            <p className="mt-2 text-sm leading-relaxed text-[var(--admin-soft)]">{c.does}</p>
+            <dl className="mt-4 grid grid-cols-1 gap-1 text-xs text-[var(--admin-soft)]">
               {c.schedules.map((s) => (
                 <div key={`${s.path} ${s.cron}`} className="flex flex-wrap gap-x-2">
-                  <dt className="font-medium text-white/70">Next run</dt>
+                  <dt className="font-medium text-[var(--admin-soft)]">Next run</dt>
                   <dd>{when(s.next)} ({s.where === 'github' ? 'GitHub Actions' : 'Vercel'}, <span className="font-mono">{s.cron}</span> UTC)</dd>
                 </div>
               ))}
               <div className="flex flex-wrap gap-x-2">
-                <dt className="font-medium text-white/70">Last run</dt>
+                <dt className="font-medium text-[var(--admin-soft)]">Last run</dt>
                 <dd>{c.lastRun ? `${when(c.lastRun.at)}, ${c.lastRun.what}` : 'not recorded by this task'}</dd>
               </div>
             </dl>
             {c.readFailed ? (
-              <p className="mt-4 text-sm text-rose-300">Its figures could not be read: {c.readFailed}</p>
+              <p className="mt-4 text-sm text-rose-800">Its figures could not be read: {c.readFailed}</p>
             ) : [...c.queue, ...c.results].length > 0 ? (
               <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {[...c.queue, ...c.results].map((f) => (
-                  <div key={f.label} className="rounded-lg bg-white/[0.04] px-3 py-2">
-                    <dt className="text-[11px] text-white/55">{f.label}</dt>
-                    <dd className="font-display text-lg font-bold text-white">{f.value}</dd>
+                  <div key={f.label} className="rounded-lg bg-[var(--admin-tint)] px-3 py-2">
+                    <dt className="text-[11px] text-[var(--admin-muted)]">{f.label}</dt>
+                    <dd className="font-display text-lg font-bold text-[var(--admin-ink)]">{f.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -211,7 +211,7 @@ export default async function AdminAutomationPage({ searchParams }: { searchPara
             <div className="mt-auto">
               <SwitchControl card={c} audit={audit} />
               {c.link ? (
-                <Link prefetch={false} href={c.link.href} className="mt-3 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-2 hover:underline">{c.link.label}</Link>
+                <Link prefetch={false} href={c.link.href} className="mt-3 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] underline-offset-2 hover:underline">{c.link.label}</Link>
               ) : null}
             </div>
           </article>

@@ -11,11 +11,11 @@ import { proofWords, type WeeklyReport } from '@/lib/growth/weekly-report-math'
 
 const share = (part: number, whole: number) => (whole === 0 ? 'none yet' : `${Math.round((part / whole) * 100)} percent`)
 
-const SECTION = 'mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6'
-const HEAD = 'font-display text-lg font-semibold text-white'
-const SUB = 'mt-5 font-display text-sm font-semibold uppercase tracking-[0.12em] text-white/50'
-const ROW = 'mt-2 text-sm text-white'
-const QUIET = 'mt-2 text-sm text-white/60'
+const SECTION = 'mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6'
+const HEAD = 'font-display text-lg font-semibold text-[var(--admin-ink)]'
+const SUB = 'mt-5 font-display text-sm font-semibold uppercase tracking-[0.12em] text-[var(--admin-muted)]'
+const ROW = 'mt-2 text-sm text-[var(--admin-ink)]'
+const QUIET = 'mt-2 text-sm text-[var(--admin-soft)]'
 
 export function WeeklyReportSection({ report }: { report: { ok: true; value: WeeklyReport } | { ok: false; why: string } }) {
   if (!report.ok) {
@@ -32,7 +32,7 @@ export function WeeklyReportSection({ report }: { report: { ok: true; value: Wee
   return (
     <section data-section="weekly-report" className={SECTION}>
       <h2 className={HEAD}>The weekly report</h2>
-      <p className="mt-2 max-w-2xl text-sm text-white/60">
+      <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
         What moved organisers along the line last week and what proved each move, how far the line converts to date, and
         what is late or failed. Sales and activated organisers are the six numbers, counted from transactions.
       </p>
@@ -70,7 +70,7 @@ export function WeeklyReportSection({ report }: { report: { ok: true; value: Wee
         <ul data-overdue className="mt-1">
           {r.overdueTasks.map((t, i) => (
             <li key={`${t.title}-${i}`} className={ROW}>
-              {t.title} <span className="text-white/60">(due {t.dueAt})</span>
+              {t.title} <span className="text-[var(--admin-soft)]">(due {t.dueAt})</span>
             </li>
           ))}
         </ul>
@@ -84,7 +84,7 @@ export function WeeklyReportSection({ report }: { report: { ok: true; value: Wee
           {r.failedJobs.map((t, i) => (
             <li key={`${t.title}-${i}`} className={ROW}>
               {t.title}
-              {t.failureReason ? <span className="text-white/60">: {t.failureReason}</span> : null}
+              {t.failureReason ? <span className="text-[var(--admin-soft)]">: {t.failureReason}</span> : null}
             </li>
           ))}
         </ul>

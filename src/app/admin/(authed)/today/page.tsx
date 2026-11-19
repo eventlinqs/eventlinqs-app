@@ -148,67 +148,67 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       {/* THE COMMAND CENTRE (the Growth OS directive, section 5): the kept tasks, overdue first, each with its status, owner,
           due date and link; failed jobs stay here until fixed. Approving in one press arrives with Release 2, where an
           approval sends; until then each task opens the page that acts on it. */}
-      <section data-section="command-centre" aria-label="Command Centre" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4 sm:p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Command Centre</h2>
+      <section data-section="command-centre" aria-label="Command Centre" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 sm:p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Command Centre</h2>
         {/* THE PLAN'S GATES (Lawal's master plan, 'full-time in six months'; the PM's 09:19 item 3): each with its target,
             its day and what each week still needs, counted by the platform's own rules (src/lib/growth/plan-gates-math.ts). */}
         <div data-section="plan-gates" className="mt-3">
-          <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-white/60">The plan&apos;s gates</h3>
+          <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-[var(--admin-soft)]">The plan&apos;s gates</h3>
           {gates.ok ? (
             <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {gates.g.map((s, _i, all) => (
-                <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-white/[0.08] p-3">
+                <li key={s.gate.key} data-gate={s.gate.key} className="rounded-lg border border-[var(--admin-line)] p-3">
                   {/* Two gates of one measure are named by their order and day (the PM's 05:37 fix 5). */}
                   {gateNames(all.map((x) => x.gate)).get(s.gate.key) ? (
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-accent)]">{gateNames(all.map((x) => x.gate)).get(s.gate.key)}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-accent-strong)]">{gateNames(all.map((x) => x.gate)).get(s.gate.key)}</p>
                   ) : null}
-                  <p className="text-sm font-semibold text-white">{s.gate.label}</p>
-                  <p className="mt-1 font-display text-xl font-bold text-white">
-                    {count.format(s.value)} <span className="text-sm font-normal text-white/60">of {count.format(s.gate.target)}{s.gate.due ? ` by ${dayDate(s.gate.due)}` : ' a day'}</span>
+                  <p className="text-sm font-semibold text-[var(--admin-ink)]">{s.gate.label}</p>
+                  <p className="mt-1 font-display text-xl font-bold text-[var(--admin-ink)]">
+                    {count.format(s.value)} <span className="text-sm font-normal text-[var(--admin-soft)]">of {count.format(s.gate.target)}{s.gate.due ? ` by ${dayDate(s.gate.due)}` : ' a day'}</span>
                   </p>
-                  <p className={`mt-1 text-xs ${s.met ? 'text-emerald-300' : s.late ? 'text-amber-200' : 'text-white/60'}`}>
+                  <p className={`mt-1 text-xs ${s.met ? 'text-emerald-800' : s.late ? 'text-amber-800' : 'text-[var(--admin-soft)]'}`}>
                     {s.met ? 'Met' : s.late ? `Past its day by ${countOf(-(s.daysLeft ?? 0), 'day')}` : s.perWeek !== null ? `${s.perWeek} more a week, ${countOf(s.daysLeft ?? 0, 'day')} left` : `${s.gate.target - s.value} more today`}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm text-amber-200">The plan&apos;s gates could not be read just now ({gates.why}).</p>
+            <p className="mt-2 text-sm text-amber-800">The plan&apos;s gates could not be read just now ({gates.why}).</p>
           )}
         </div>
         {centre.state === 'not_landed' ? (
-          <p className="mt-2 text-sm text-amber-200">The task list is not on this database yet: its migration (20261111230001) waits for Lawal to apply it.</p>
+          <p className="mt-2 text-sm text-amber-800">The task list is not on this database yet: its migration (20261111230001) waits for Lawal to apply it.</p>
         ) : centre.state === 'failed' ? (
-          <p className="mt-2 text-sm text-amber-200">The task list could not be read just now ({centre.reason}). Nothing in it is lost.</p>
+          <p className="mt-2 text-sm text-amber-800">The task list could not be read just now ({centre.reason}). Nothing in it is lost.</p>
         ) : (
           <>
             {/* No approval count here: the task list copies the posts and plays waiting for approval and lags them, so
                 'Waiting for approval' above is the one figure (16 November 2026, ADMIN 2: the strip's own approval 0
                 stood beside 'Waiting for approval 8'). */}
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-              <div><dt className="text-white/50">Overdue</dt><dd className="font-display text-xl font-bold text-white">{centre.overdue}</dd></div>
-              <div><dt className="text-white/50">Failed</dt><dd className="font-display text-xl font-bold text-white">{centre.failed}</dd></div>
-              <div><dt className="text-white/50">Done in the last day</dt><dd className="font-display text-xl font-bold text-white">{centre.doneLastDay}</dd></div>
+              <div><dt className="text-[var(--admin-muted)]">Overdue</dt><dd className="font-display text-xl font-bold text-[var(--admin-ink)]">{centre.overdue}</dd></div>
+              <div><dt className="text-[var(--admin-muted)]">Failed</dt><dd className="font-display text-xl font-bold text-[var(--admin-ink)]">{centre.failed}</dd></div>
+              <div><dt className="text-[var(--admin-muted)]">Done in the last day</dt><dd className="font-display text-xl font-bold text-[var(--admin-ink)]">{centre.doneLastDay}</dd></div>
             </dl>
             {centre.open.length === 0 ? (
-              <p className="mt-3 text-sm text-white/60">No task is open.</p>
+              <p className="mt-3 text-sm text-[var(--admin-soft)]">No task is open.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-white/[0.06]">
+              <ul className="mt-4 divide-y divide-[var(--admin-line)]">
                 {centre.open.map((t) => {
                   const href = hrefOf.get(t.source_key) ?? null
                   return (
                     <li key={t.id} data-task={t.source_key} className="py-3">
-                      <p className="text-sm font-semibold text-white">{t.title}</p>
-                      <p className="mt-1 text-xs text-white/60">
+                      <p className="text-sm font-semibold text-[var(--admin-ink)]">{t.title}</p>
+                      <p className="mt-1 text-xs text-[var(--admin-soft)]">
                         {t.status === 'waiting_approval' ? 'Waiting for approval' : t.status === 'failed' ? 'Failed' : 'Open'}
                         {', '}
                         {t.due_on ? (isOverdue(t, now) ? `Overdue since ${t.due_on}` : `Due ${t.due_on}`) : 'No due date'}
                         {', '}
                         Owner: {t.owner_id ? 'a staff member' : 'Lawal'}
                       </p>
-                      {t.failure_reason ? <p className="mt-1 text-sm text-amber-200">{t.failure_reason}</p> : t.next_action ? <p className="mt-1 text-sm text-white/60">{t.next_action}</p> : null}
+                      {t.failure_reason ? <p className="mt-1 text-sm text-amber-800">{t.failure_reason}</p> : t.next_action ? <p className="mt-1 text-sm text-[var(--admin-soft)]">{t.next_action}</p> : null}
                       {href ? (
-                        <Link prefetch={false} href={href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline">
+                        <Link prefetch={false} href={href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] underline-offset-4 hover:underline">
                           Open
                         </Link>
                       ) : null}
@@ -222,7 +222,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       </section>
 
       {said === undefined ? null : (
-        <p role="status" data-said className="mb-4 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+        <p role="status" data-said className="mb-4 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
           {said}
         </p>
       )}
@@ -231,10 +231,10 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       <PostsSection view={threePosts} />
 
       {queue.sections.map((section) => (
-        <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">
+        <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">
             {section.title}
-            <span className="ml-2 text-sm font-normal text-white/50">{section.items.length}</span>
+            <span className="ml-2 text-sm font-normal text-[var(--admin-muted)]">{section.items.length}</span>
           </h2>
           {section.key === 'pieces' && section.items.length > 1 ? (
             // Every piece waiting, in one press (order 4, Release 1 item 3): the studio's own week approval, each piece through
@@ -248,18 +248,18 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           ) : null}
 
           {section.items.length > 0 ? (
-            <ul className="mt-4 divide-y divide-white/[0.06]">
+            <ul className="mt-4 divide-y divide-[var(--admin-line)]">
               {section.items.map((item) => (
                 <li key={item.id} data-item={item.id} className="py-3">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                    <p className="text-sm font-semibold text-white">{item.what}</p>
-                    <p className="shrink-0 text-xs text-white/50">Since {formatPlatformDateTime(item.since)}</p>
+                    <p className="text-sm font-semibold text-[var(--admin-ink)]">{item.what}</p>
+                    <p className="shrink-0 text-xs text-[var(--admin-muted)]">Since {formatPlatformDateTime(item.since)}</p>
                   </div>
-                  <p className="mt-1 text-sm text-white/60">{item.why}</p>
+                  <p className="mt-1 text-sm text-[var(--admin-soft)]">{item.why}</p>
                   {item.href ? (
                     <Link prefetch={false}
                       href={item.href}
-                      className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                      className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                     >
                       Open
                     </Link>
@@ -277,13 +277,13 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
               ))}
             </ul>
           ) : section.unread.length === 0 ? (
-            <p className="mt-3 text-sm text-white/60">Nothing here.</p>
+            <p className="mt-3 text-sm text-[var(--admin-soft)]">Nothing here.</p>
           ) : null}
 
           {section.unread.length > 0 ? (
             <ul className="mt-3 space-y-1">
               {section.unread.map((line) => (
-                <li key={line} className="text-sm text-amber-200">
+                <li key={line} className="text-sm text-amber-800">
                   {line}
                 </li>
               ))}
@@ -294,7 +294,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
 
       <section data-section="by-exception" aria-label="By exception" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">By exception</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           What failed and what waits for you first, then what is scheduled, what made measurable value and what the platform has done. Only what is counted and above
           zero is listed; a figure that could not be read is named at the end, never shown as 0.
         </p>
@@ -304,23 +304,23 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           <ExceptionBlock title="Needs your approval" kind="approve" figures={exceptions.needsApproval} empty="Nothing waits for your approval." count={count} />
           <ExceptionBlock title="Scheduled" kind="scheduled" figures={exceptions.scheduled} empty="Nothing is scheduled." count={count} />
           <ExceptionBlock title="Made measurable value" kind="value" figures={exceptions.value} empty="No counted value in these windows yet." count={count} />
-          <section data-exception="completed" aria-label="Completed by the platform" className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-            <h3 className="font-display text-base font-semibold text-white">Completed by the platform</h3>
+          <section data-exception="completed" aria-label="Completed by the platform" className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+            <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">Completed by the platform</h3>
             {exceptions.completed.length > 0 ? (
               <ul className="mt-3 space-y-1">
                 {exceptions.completed.map((line) => (
-                  <li key={line} className="text-sm text-white/80">
+                  <li key={line} className="text-sm text-[var(--admin-ink)]">
                     {line}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-white/60">Nothing recorded as done this week yet.</p>
+              <p className="mt-3 text-sm text-[var(--admin-soft)]">Nothing recorded as done this week yet.</p>
             )}
           </section>
         </div>
         {exceptions.notCounted.length > 0 ? (
-          <p data-exception="not-counted" className="mt-4 text-sm text-amber-200">
+          <p data-exception="not-counted" className="mt-4 text-sm text-amber-800">
             Not counted: {exceptions.notCounted.map((f) => `${f.label}${f.note ? ` (${f.note})` : ''}`).join('; ')}.
           </p>
         ) : null}
@@ -328,7 +328,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
 
       <section data-section="six-numbers" aria-label="The six numbers, week on week" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">The six numbers, week on week</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Internal only. Each is last week beside the week before, marked real or estimated, with the rows it is counted from. A press out to another seller is never a
           sale, and contribution is what was kept, never what was sold.
         </p>
@@ -337,24 +337,24 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
             {growth.g.six.last.map((f, i) => {
               const before = growth.g.six.before[i]
               return (
-                <li key={f.key} data-six={f.key} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
+                <li key={f.key} data-six={f.key} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                    <h3 className="font-display text-base font-semibold text-white">{f.label}</h3>
-                    <span className={`shrink-0 text-xs font-semibold uppercase tracking-[0.12em] ${f.basis === 'real' ? 'text-emerald-300' : 'text-amber-200'}`}>{f.basis}</span>
+                    <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">{f.label}</h3>
+                    <span className={`shrink-0 text-xs font-semibold uppercase tracking-[0.12em] ${f.basis === 'real' ? 'text-emerald-800' : 'text-amber-800'}`}>{f.basis}</span>
                   </div>
-                  <p className="mt-2 text-sm text-white">
+                  <p className="mt-2 text-sm text-[var(--admin-ink)]">
                     <span className="font-semibold">{f.display ?? (f.value === null ? 'Not counted' : count.format(f.value))}</span>
-                    <span className="text-white/60"> last week; </span>
+                    <span className="text-[var(--admin-soft)]"> last week; </span>
                     <span>{before ? (before.display ?? (before.value === null ? 'not counted' : count.format(before.value))) : 'not counted'}</span>
-                    <span className="text-white/60"> the week before</span>
+                    <span className="text-[var(--admin-soft)]"> the week before</span>
                   </p>
-                  <p className="mt-2 text-xs text-white/50">Counted from {f.source}.</p>
+                  <p className="mt-2 text-xs text-[var(--admin-muted)]">Counted from {f.source}.</p>
                 </li>
               )
             })}
           </ul>
         ) : (
-          <p data-six="not-read" className="mt-4 text-sm text-amber-200">
+          <p data-six="not-read" className="mt-4 text-sm text-amber-800">
             Not counted: the growth rows could not be read ({growth.why}). No figure is shown as 0.
           </p>
         )}
@@ -362,7 +362,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
 
       <section data-section="rhythm" aria-label="Daily, weekly and monthly" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">Daily, weekly, monthly</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Every figure once, in the rhythm it is read: daily for accuracy, responses, failures and what is about to post; weekly for approvals, acquisition, supply
           and conversion; monthly for retention, contribution, costs and readiness to grow.
         </p>
@@ -380,19 +380,19 @@ function figureValue(f: DashboardFigure, count: Intl.NumberFormat): string {
 
 function ExceptionBlock({ title, kind, figures, empty, count }: { title: string; kind: string; figures: readonly DashboardFigure[]; empty: string; count: Intl.NumberFormat }) {
   return (
-    <section data-exception={kind} aria-label={title} className={`rounded-xl border bg-[#131A2A] p-5 ${kind === 'next' && figures.length > 0 ? 'border-amber-300/60' : 'border-white/[0.08]'}`}>
-      <h3 className="font-display text-base font-semibold text-white">{title}</h3>
+    <section data-exception={kind} aria-label={title} className={`rounded-xl border bg-[var(--admin-paper)] p-5 ${kind === 'next' && figures.length > 0 ? 'border-amber-300/60' : 'border-[var(--admin-line)]'}`}>
+      <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">{title}</h3>
       {figures.length > 0 ? (
-        <ul className="mt-3 divide-y divide-white/[0.06]">
+        <ul className="mt-3 divide-y divide-[var(--admin-line)]">
           {figures.map((f) => (
             <li key={f.label} data-figure={f.label} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
-              <span className="text-sm text-white/80">{f.label}</span>
-              <span className="font-display text-lg font-semibold text-white">{figureValue(f, count)}</span>
-              {f.note ? <span className="w-full text-xs text-white/60">{f.note}</span> : null}
+              <span className="text-sm text-[var(--admin-ink)]">{f.label}</span>
+              <span className="font-display text-lg font-semibold text-[var(--admin-ink)]">{figureValue(f, count)}</span>
+              {f.note ? <span className="w-full text-xs text-[var(--admin-soft)]">{f.note}</span> : null}
               {f.href ? (
                 <Link prefetch={false}
                   href={f.href}
-                  className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                  className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                 >
                   Open
                 </Link>
@@ -401,7 +401,7 @@ function ExceptionBlock({ title, kind, figures, empty, count }: { title: string;
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-white/60">{empty}</p>
+        <p className="mt-3 text-sm text-[var(--admin-soft)]">{empty}</p>
       )}
     </section>
   )
@@ -409,17 +409,17 @@ function ExceptionBlock({ title, kind, figures, empty, count }: { title: string;
 
 function RhythmGroup({ title, cadence, figures, open, count }: { title: string; cadence: string; figures: readonly DashboardFigure[]; open: boolean; count: Intl.NumberFormat }) {
   return (
-    <details data-cadence={cadence} open={open} className="mt-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-      <summary className="flex min-h-[44px] cursor-pointer items-center font-display text-lg font-semibold text-white">
+    <details data-cadence={cadence} open={open} className="mt-4 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+      <summary className="flex min-h-[44px] cursor-pointer items-center font-display text-lg font-semibold text-[var(--admin-ink)]">
         {title}
-        <span className="ml-2 text-sm font-normal text-white/50">{figures.length}</span>
+        <span className="ml-2 text-sm font-normal text-[var(--admin-muted)]">{figures.length}</span>
       </summary>
       <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {figures.map((f) => (
-          <li key={f.label} data-figure={f.label} className="rounded-lg border border-white/[0.06] p-4">
-            <p className="text-xs text-white/50">{f.label}</p>
-            <p className="mt-1 font-display text-2xl font-semibold text-white">{figureValue(f, count)}</p>
-            {f.note ? <p className="mt-1 text-xs text-white/60">{f.note}</p> : null}
+          <li key={f.label} data-figure={f.label} className="rounded-lg border border-[var(--admin-line)] p-4">
+            <p className="text-xs text-[var(--admin-muted)]">{f.label}</p>
+            <p className="mt-1 font-display text-2xl font-semibold text-[var(--admin-ink)]">{figureValue(f, count)}</p>
+            {f.note ? <p className="mt-1 text-xs text-[var(--admin-soft)]">{f.note}</p> : null}
           </li>
         ))}
       </ul>

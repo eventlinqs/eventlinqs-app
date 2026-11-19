@@ -29,7 +29,7 @@ export function AdminNavGroups({ groups, onFollow }: { groups: AdminNavGroupLink
         const Icon = ICONS[g.key]
         return (
           <li key={g.key} data-nav-group={g.key}>
-            <p className="flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
+            <p className="flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--admin-muted)]">
               <Icon aria-hidden className="h-3.5 w-3.5" />
               {g.label}
             </p>
@@ -44,8 +44,8 @@ export function AdminNavGroups({ groups, onFollow }: { groups: AdminNavGroupLink
                       aria-current={on ? 'page' : undefined}
                       className={`flex min-h-[40px] items-center rounded-md px-3 text-sm transition ${
                         on
-                          ? 'bg-[var(--brand-accent)]/15 font-semibold text-[var(--brand-accent)]'
-                          : 'text-white/75 hover:bg-white/[0.06] hover:text-white'
+                          ? 'bg-[var(--brand-accent)]/15 font-semibold text-[var(--brand-accent-strong)]'
+                          : 'text-[var(--admin-soft)] hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]'
                       }`}
                     >
                       {i.label}

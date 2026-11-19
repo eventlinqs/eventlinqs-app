@@ -115,12 +115,12 @@ export function FoundingTerms({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         {offerOpen ? (
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-[var(--admin-soft)]">
             {holders} fee-free windows are on record. Every organiser holds {initialMonths} months from registration;
             grant opens {initialMonths} months from today, extend adds {referralMonths} months to wherever the window stands.
           </p>
         ) : (
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-[var(--admin-soft)]">
             {holders} fee-free windows are on record, all from organisations registered before {closedOnLabel}; each is
             kept to its date. The offer closed that day: every newer organiser pays the fee from their first paid
             ticket, and no window is granted or extended.
@@ -129,12 +129,12 @@ export function FoundingTerms({
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-white/15 bg-[#131A2A] px-4 py-6 text-sm text-white/60">
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-6 text-sm text-[var(--admin-soft)]">
           No organisations to show yet.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-white/15 bg-[#131A2A]">
-          <ul className="divide-y divide-white/5">
+        <div className="overflow-hidden rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)]">
+          <ul className="divide-y divide-[var(--admin-line)]">
             {rows.map(r => {
               const outcome = state[r.id]
               const until = outcome && !outcome.failed ? outcome.until : r.feeFreeUntil
@@ -142,13 +142,13 @@ export function FoundingTerms({
               return (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{r.name}</p>
-                    <p className="truncate text-xs text-white/50">
+                    <p className="text-sm font-semibold text-[var(--admin-ink)]">{r.name}</p>
+                    <p className="truncate text-xs text-[var(--admin-muted)]">
                       {badgeName}{founding ? ' · invite or hand grant on record' : ''} · fee free until {formatUntil(until)} ·{' '}
                       {r.referralsConfirmed} referral{r.referralsConfirmed === 1 ? '' : 's'} counted
                     </p>
                     {outcome?.message ? (
-                      <p className={`mt-1 text-xs ${outcome.failed ? 'text-red-400' : 'text-emerald-400'}`}>
+                      <p className={`mt-1 text-xs ${outcome.failed ? 'text-red-800' : 'text-emerald-800'}`}>
                         {outcome.message}
                       </p>
                     ) : null}
@@ -167,7 +167,7 @@ export function FoundingTerms({
                       type="button"
                       onClick={() => run(r.id, 'extend')}
                       disabled={isPending}
-                      className="inline-flex min-h-[40px] items-center rounded-full border border-white/25 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                      className="inline-flex min-h-[40px] items-center rounded-full border border-[var(--admin-line-strong)] px-4 py-2 text-sm font-semibold text-[var(--admin-ink)] transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
                       Extend
                     </button>
@@ -175,7 +175,7 @@ export function FoundingTerms({
                       type="button"
                       onClick={() => run(r.id, 'revoke')}
                       disabled={isPending}
-                      className="inline-flex min-h-[40px] items-center rounded-full border border-white/25 px-4 py-2 text-sm font-semibold text-white/80 transition-opacity hover:opacity-90 disabled:opacity-50"
+                      className="inline-flex min-h-[40px] items-center rounded-full border border-[var(--admin-line-strong)] px-4 py-2 text-sm font-semibold text-[var(--admin-ink)] transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
                       Revoke
                     </button>

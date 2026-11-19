@@ -21,9 +21,9 @@ export const metadata = {
  * here as a draft and put live by one press, when its public page goes up labelled Partner.
  */
 
-const FIELD = 'mt-1 block min-h-[44px] w-full rounded-lg border border-white/15 bg-white/[0.02] px-3 text-sm text-white'
+const FIELD = 'mt-1 block min-h-[44px] w-full rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)]'
 const BUTTON = 'inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]'
-const QUIET = 'inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-4 text-sm font-semibold text-white/70 hover:border-white/40 hover:text-white'
+const QUIET = 'inline-flex min-h-[44px] items-center rounded-full border border-[var(--admin-line)] px-4 text-sm font-semibold text-[var(--admin-soft)] hover:border-[var(--admin-line-strong)] hover:text-[var(--admin-ink)]'
 
 export default async function AdminPartnersPage({ searchParams }: { searchParams: Promise<{ said?: string }> }) {
   const session = await requireAdminSession()
@@ -36,7 +36,7 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
     return (
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight">Partners</h1>
-        <p data-state="refusal" className="mt-4 max-w-2xl text-sm text-white/70">
+        <p data-state="refusal" className="mt-4 max-w-2xl text-sm text-[var(--admin-soft)]">
           The enquiries and partner records could not be read. If migration 20261027140501 is not yet applied, this page reads nothing until it is.
         </p>
       </div>
@@ -46,40 +46,40 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Partners</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">Enquiries from the partner form, and the partners whose pages are public, each labelled Partner.</p>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">Enquiries from the partner form, and the partners whose pages are public, each labelled Partner.</p>
       </header>
 
       {said === undefined ? null : (
-        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-white">
+        <p role="status" data-said className="mb-6 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
           {said}
         </p>
       )}
 
-      <section data-section="enquiries" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Enquiries</h2>
+      <section data-section="enquiries" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Enquiries</h2>
         {enquiries.length === 0 ? (
-          <p data-state="empty" className="mt-3 text-sm text-white/70">
+          <p data-state="empty" className="mt-3 text-sm text-[var(--admin-soft)]">
             No enquiries yet.
           </p>
         ) : (
           <ul className="mt-4 space-y-4">
             {enquiries.map((e) => (
-              <li key={e.id} data-enquiry={e.id} data-status={e.status} className="rounded-lg border border-white/[0.08] p-4">
+              <li key={e.id} data-enquiry={e.id} data-status={e.status} className="rounded-lg border border-[var(--admin-line)] p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-semibold text-white">
-                    {e.organisation} <span className="font-normal text-white/60">({PARTNER_KIND_WORDS[e.kind]})</span>
+                  <p className="font-semibold text-[var(--admin-ink)]">
+                    {e.organisation} <span className="font-normal text-[var(--admin-soft)]">({PARTNER_KIND_WORDS[e.kind]})</span>
                   </p>
-                  <p className="text-xs text-white/50">{formatPlatformDateTime(e.createdAt)}</p>
+                  <p className="text-xs text-[var(--admin-muted)]">{formatPlatformDateTime(e.createdAt)}</p>
                 </div>
-                <p className="mt-1 text-sm text-white/70">
+                <p className="mt-1 text-sm text-[var(--admin-soft)]">
                   {e.name},{' '}
                   <a href={`mailto:${e.email}`} className="underline underline-offset-2">
                     {e.email}
                   </a>
                 </p>
-                <p className="mt-2 whitespace-pre-line break-words text-sm text-white">{e.message}</p>
+                <p className="mt-2 whitespace-pre-line break-words text-sm text-[var(--admin-ink)]">{e.message}</p>
                 {e.status === 'new' ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <form action={enquiryStatusAction}>
@@ -98,7 +98,7 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
                     </form>
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-white/50">{e.status === 'answered' ? 'Answered' : 'Closed'}</p>
+                  <p className="mt-2 text-xs text-[var(--admin-muted)]">{e.status === 'answered' ? 'Answered' : 'Closed'}</p>
                 )}
               </li>
             ))}
@@ -106,19 +106,19 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
         )}
       </section>
 
-      <section data-section="partners" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Partner records</h2>
+      <section data-section="partners" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Partner records</h2>
         {partners.length === 0 ? (
-          <p data-state="empty" className="mt-3 text-sm text-white/70">
+          <p data-state="empty" className="mt-3 text-sm text-[var(--admin-soft)]">
             No partners yet. Make the first below.
           </p>
         ) : (
           <ul className="mt-4 space-y-3">
             {partners.map((p) => (
-              <li key={p.id} data-partner={p.slug} data-status={p.status} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/[0.08] p-4">
+              <li key={p.id} data-partner={p.slug} data-status={p.status} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--admin-line)] p-4">
                 <div>
-                  <p className="font-semibold text-white">{p.name}</p>
-                  <p className="text-sm text-white/60">
+                  <p className="font-semibold text-[var(--admin-ink)]">{p.name}</p>
+                  <p className="text-sm text-[var(--admin-soft)]">
                     {PARTNER_KIND_WORDS[p.kind]}, {p.status === 'live' ? 'live' : 'draft'}
                     {p.status === 'live' ? (
                       <>
@@ -143,15 +143,15 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
         )}
 
         <form action={savePartnerAction} data-form="partner" className="mt-6 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="text-sm text-white/70">
+          <label className="text-sm text-[var(--admin-soft)]">
             Name
             <input name="name" required className={FIELD} />
           </label>
-          <label className="text-sm text-white/70">
+          <label className="text-sm text-[var(--admin-soft)]">
             Address on EventLinqs
             <input name="slug" required placeholder="beavs-bar" className={FIELD} />
           </label>
-          <label className="text-sm text-white/70">
+          <label className="text-sm text-[var(--admin-soft)]">
             Kind
             <select name="kind" className={FIELD}>
               {PARTNER_KINDS.map((k) => (
@@ -161,11 +161,11 @@ export default async function AdminPartnersPage({ searchParams }: { searchParams
               ))}
             </select>
           </label>
-          <label className="text-sm text-white/70">
+          <label className="text-sm text-[var(--admin-soft)]">
             Website
             <input name="website" type="url" placeholder="https://" className={FIELD} />
           </label>
-          <label className="text-sm text-white/70 sm:col-span-2">
+          <label className="text-sm text-[var(--admin-soft)] sm:col-span-2">
             Who they are, in a line
             <input name="summary" required className={FIELD} />
           </label>

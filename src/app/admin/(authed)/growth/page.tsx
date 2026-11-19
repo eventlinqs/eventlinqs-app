@@ -71,9 +71,9 @@ const percent = (share: number) => `${Math.round(share * 100)} percent`
 
 function Dimension({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
   return (
-    <section data-dimension={title.toLowerCase().replace(/\s+/g, '-')} className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-lg font-semibold text-white">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm text-white/60">{lead}</p>
+    <section data-dimension={title.toLowerCase().replace(/\s+/g, '-')} className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">{lead}</p>
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{children}</div>
     </section>
   )
@@ -113,9 +113,9 @@ export default async function AdminGrowthPage() {
       {marketing.ok ? (
         <MarketingResultsSection results={marketing.value} readAt={formatPlatformDate(new Date().toISOString())} />
       ) : (
-        <section data-section="organiser-marketing-results" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">Organiser Marketing results</h2>
-          <p className="mt-2 text-sm text-white/70">Not read just now: {marketing.why}</p>
+        <section data-section="organiser-marketing-results" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Organiser Marketing results</h2>
+          <p className="mt-2 text-sm text-[var(--admin-soft)]">Not read just now: {marketing.why}</p>
         </section>
       )}
       {/* The growth desk first (Law 8): today's tasks and the plan against the actual, then last week's detail. */}
@@ -124,9 +124,9 @@ export default async function AdminGrowthPage() {
       <CoverageDeskSection desk={coverage} />
 
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Last week</h1>
-        <p data-week={g.last.monday} className="mt-2 max-w-2xl text-sm text-white/60">
+        <p data-week={g.last.monday} className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Monday {formatPlatformDate(g.last.from)} to Sunday {formatPlatformDate(lastSunday)}, on the platform&apos;s clock, beside the week before. Every
           figure is counted from the platform&apos;s own records; seed listings are never counted.
         </p>
@@ -134,34 +134,34 @@ export default async function AdminGrowthPage() {
 
       <WeeklyReportSection report={weekly} />
 
-      <section data-section="learning-loop" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">What worked last week</h2>
+      <section data-section="learning-loop" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">What worked last week</h2>
         <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <dt className="text-white/50">Best city</dt>
-            <dd data-best="city" className="mt-1 text-white">{bestWords(g.best.city, 'city', cityName)}</dd>
+            <dt className="text-[var(--admin-muted)]">Best city</dt>
+            <dd data-best="city" className="mt-1 text-[var(--admin-ink)]">{bestWords(g.best.city, 'city', cityName)}</dd>
           </div>
           <div>
-            <dt className="text-white/50">Best category</dt>
-            <dd data-best="category" className="mt-1 text-white">{bestWords(g.best.category, 'category')}</dd>
+            <dt className="text-[var(--admin-muted)]">Best category</dt>
+            <dd data-best="category" className="mt-1 text-[var(--admin-ink)]">{bestWords(g.best.category, 'category')}</dd>
           </div>
           <div>
-            <dt className="text-white/50">Best channel</dt>
-            <dd data-best="channel" className="mt-1 text-white">{bestWords(g.best.channel, 'channel', channelName)}</dd>
+            <dt className="text-[var(--admin-muted)]">Best channel</dt>
+            <dd data-best="channel" className="mt-1 text-[var(--admin-ink)]">{bestWords(g.best.channel, 'channel', channelName)}</dd>
           </div>
           <div>
-            <dt className="text-white/50">Best post</dt>
-            <dd data-best="post" className="mt-1 text-white">
+            <dt className="text-[var(--admin-muted)]">Best post</dt>
+            <dd data-best="post" className="mt-1 text-[var(--admin-ink)]">
               {learning.ok ? learning.value.line : `Not read just now: ${learning.why}`}
             </dd>
           </div>
         </dl>
         {learning.ok && learning.value.unmatched.length > 0 ? (
           <div data-section="posts-not-matched" className="mt-5 text-sm">
-            <p className="text-white/70">
+            <p className="text-[var(--admin-soft)]">
               Posts the day&apos;s read could not match to a piece, so none was credited (never guessed):
             </p>
-            <ul className="mt-2 space-y-1 text-white/80">
+            <ul className="mt-2 space-y-1 text-[var(--admin-ink)]">
               {learning.value.unmatched.map((u) => (
                 <li key={u.id}>
                   {u.platform === 'facebook' ? 'Facebook' : u.platform === 'instagram' ? 'Instagram' : u.platform}, {u.postUrl ?? `post ${u.id}`}: {u.why}.
@@ -242,9 +242,9 @@ export default async function AdminGrowthPage() {
         <AdminStatTile label="Margin" value={g.victoria.marginPositive ? 'Positive' : 'Not positive'} hint="last week" status={met(g.victoria.marginPositive)} />
       </Dimension>
 
-      <section data-section="supply-by-city" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Supply by city, this week</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+      <section data-section="supply-by-city" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Supply by city, this week</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Verified upcoming means published, still listed, starting in the next {HORIZON_DAYS} days and checked against its source recently enough to
           stay listed. Expiring means that check lapses within {WEEK_DAYS} days. Images counted are the organiser&apos;s own, never a library
           photograph or a cover EventLinqs set in type. Seed listings are never counted.
@@ -267,38 +267,38 @@ export default async function AdminGrowthPage() {
             <tbody className={ADMIN_TBODY}>
               {supply.cities.map((c) => (
                 <tr key={c.city} data-city={c.city} className={ADMIN_ROW}>
-                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-white`}>
+                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-[var(--admin-ink)]`}>
                     {cityName(c.city)}
                   </th>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Verified upcoming</span>
                     {number(c.verifiedUpcoming)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>New</span>
                     {number(c.newThisWeek)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Expiring</span>
                     {number(c.expiringSoon)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Cancelled</span>
                     {number(c.cancelledThisWeek)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Awaiting check</span>
                     {number(c.awaitingVerification)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Own images</span>
                     {number(c.withApprovedImagery)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Organisers</span>
                     {number(c.activeOrganisers)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Recurring</span>
                     {number(c.recurringSuppliers)}
                   </td>
@@ -308,37 +308,37 @@ export default async function AdminGrowthPage() {
           </table>
         </div>
         {supply.waitingWithNoCity > 0 ? (
-          <p data-state="waiting-with-no-city" className="mt-3 text-sm text-amber-300">
+          <p data-state="waiting-with-no-city" className="mt-3 text-sm text-amber-800">
             {number(supply.waitingWithNoCity)} collected {supply.waitingWithNoCity === 1 ? 'event waits' : 'events wait'} from a source with no city, so{' '}
             {supply.waitingWithNoCity === 1 ? 'it is' : 'they are'} not in any row above.
           </p>
         ) : null}
 
-        <h3 className="mt-8 font-display text-base font-semibold text-white">Gaps: categories with nothing verified upcoming</h3>
+        <h3 className="mt-8 font-display text-base font-semibold text-[var(--admin-ink)]">Gaps: categories with nothing verified upcoming</h3>
         <ul className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           {supply.cities.map((c) => (
-            <li key={c.city} data-gaps={c.city} className="rounded-lg border border-white/[0.06] p-4">
-              <p className="font-medium text-white">{cityName(c.city)}</p>
-              <p className="mt-1 text-white/60">{c.gaps.length === 0 ? 'Every category has a verified upcoming night.' : c.gaps.join(', ')}</p>
+            <li key={c.city} data-gaps={c.city} className="rounded-lg border border-[var(--admin-line)] p-4">
+              <p className="font-medium text-[var(--admin-ink)]">{cityName(c.city)}</p>
+              <p className="mt-1 text-[var(--admin-soft)]">{c.gaps.length === 0 ? 'Every category has a verified upcoming night.' : c.gaps.join(', ')}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      <section data-section="organiser-funnel" className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Organisers, from found to reported</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+      <section data-section="organiser-funnel" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Organisers, from found to reported</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Each organiser counts at the stages recorded for them, read now from the table that stage&apos;s owner keeps. One who claimed without an invitation
           counts at claimed and not at invited, so a step can read over 100 percent. A stage whose table is not on this database is not counted, never 0.
         </p>
         <ol className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           {funnel.steps.map((step, i) => (
-            <li key={step.stage} data-stage={step.stage} className="rounded-lg border border-white/[0.06] p-4">
-              <p className="text-white/50">
+            <li key={step.stage} data-stage={step.stage} className="rounded-lg border border-[var(--admin-line)] p-4">
+              <p className="text-[var(--admin-muted)]">
                 {i + 1}. {step.words}
               </p>
-              <p className="mt-1 font-display text-2xl font-semibold text-white">{step.organisers === null ? 'Not counted' : number(step.organisers)}</p>
-              <p className="mt-1 text-white/60">
+              <p className="mt-1 font-display text-2xl font-semibold text-[var(--admin-ink)]">{step.organisers === null ? 'Not counted' : number(step.organisers)}</p>
+              <p className="mt-1 text-[var(--admin-soft)]">
                 {step.organisers === null
                   ? 'Its table is not on this database yet.'
                   : step.fromBefore === null
@@ -351,8 +351,8 @@ export default async function AdminGrowthPage() {
           ))}
         </ol>
 
-        <h3 className="mt-8 font-display text-base font-semibold text-white">Events per active organiser</h3>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <h3 className="mt-8 font-display text-base font-semibold text-[var(--admin-ink)]">Events per active organiser</h3>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           An organiser is active in a month when a public night of theirs starts in it. Organisations that hold their own nights only: the EventLinqs listings
           account, which holds every curated night whatever its host, and seed listings are left out.
         </p>
@@ -369,19 +369,19 @@ export default async function AdminGrowthPage() {
             <tbody className={ADMIN_TBODY}>
               {funnel.months.map((m) => (
                 <tr key={m.month} data-month={m.month} className={ADMIN_ROW}>
-                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-white`}>
+                  <th scope="row" className={`${ADMIN_CELL_NAME} text-left font-medium text-[var(--admin-ink)]`}>
                     {monthWords(m.month)}
                     {m.month === thisMonth ? ', so far' : ''}
                   </th>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Active organisers</span>
                     {number(m.activeOrganisers)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Public nights</span>
                     {number(m.nights)}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/80`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Per active organiser</span>
                     {m.perActive === null ? 'No organiser active' : m.perActive.toFixed(1)}
                   </td>
@@ -392,13 +392,13 @@ export default async function AdminGrowthPage() {
         </div>
       </section>
 
-      <p data-state="qa-presses" className="mb-4 text-sm text-white/50">
+      <p data-state="qa-presses" className="mb-4 text-sm text-[var(--admin-muted)]">
         QA presses in the last 7 days, made by test drives with a verified marker and left out of every figure on this
         page: {number(qa.shareEvents)} on share links and booking buttons, {number(qa.goPresses)} on /go.
       </p>
 
       {g.unreadVisitRows > 0 ? (
-        <p data-state="unread-rows" className="text-sm text-amber-300">
+        <p data-state="unread-rows" className="text-sm text-amber-800">
           {number(g.unreadVisitRows)} page view {g.unreadVisitRows === 1 ? 'row' : 'rows'} could not be read as an event, a visitor and a day, and {g.unreadVisitRows === 1 ? 'is' : 'are'} left out.
         </p>
       ) : null}

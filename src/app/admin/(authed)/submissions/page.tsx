@@ -70,8 +70,8 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
           role={notice.tone === 'ok' ? 'status' : 'alert'}
           className={
             notice.tone === 'ok'
-              ? 'mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
-              : 'mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'
+              ? 'mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800'
+              : 'mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800'
           }
         >
           {notice.text}
@@ -81,28 +81,28 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
       {/* A count only when the list was read (the PM's 02:45 fix 5: '(0)' beside 'could not be read' contradicted itself). */}
       <h2 className="mb-3 font-display text-lg font-semibold">{unreadable ? 'Waiting for review' : `Waiting for review (${waiting.length})`}</h2>
       {unreadable ? (
-        <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-sm text-amber-200">
+        <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-sm text-amber-800">
           The submissions could not be read just now. Refresh in a minute.
         </p>
       ) : waiting.length === 0 ? (
-        <p className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-6 text-sm text-white/60">Nothing is waiting.</p>
+        <p className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-4 py-6 text-sm text-[var(--admin-soft)]">Nothing is waiting.</p>
       ) : (
         <ul className="space-y-4">
           {waiting.map((s) => (
-            <li key={s.id} data-submission={s.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <li key={s.id} data-submission={s.id} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 sm:p-5">
               <div className="flex flex-col gap-4 md:flex-row">
                 {s.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a staff preview through a ten minute signed address to a private bucket, never a public image
                   <img src={s.photoUrl} alt={`The photo sent with ${s.title}`} className="h-40 w-full rounded-lg bg-black/30 object-contain md:w-56" />
                 ) : (
-                  <p data-no-photo className="flex h-40 w-full items-center justify-center rounded-lg border border-white/10 px-3 text-center text-xs text-white/50 md:w-56">
+                  <p data-no-photo className="flex h-40 w-full items-center justify-center rounded-lg border border-[var(--admin-line)] px-3 text-center text-xs text-[var(--admin-muted)] md:w-56">
                     {s.photoSent ? 'The photo could not be shown' : 'No photo sent. Design it from the details.'}
                   </p>
                 )}
-                <div className="min-w-0 flex-1 text-sm text-white/70">
-                  <h3 className="font-display text-lg font-semibold text-white">{s.title}</h3>
+                <div className="min-w-0 flex-1 text-sm text-[var(--admin-soft)]">
+                  <h3 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{s.title}</h3>
                   {s.heldBecause ? (
-                    <p data-held className="mt-1 font-medium text-amber-200">
+                    <p data-held className="mt-1 font-medium text-amber-800">
                       Held by the self-listing checks: {s.heldBecause}
                     </p>
                   ) : null}
@@ -118,12 +118,12 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                     {s.priceFromCents !== null ? `, from ${formatMoneyDisplay(s.priceFromCents, 'AUD')}` : ''}
                   </p>
                   <p className="mt-1 break-all">
-                    <a href={s.bookingUrl} target="_blank" rel="noopener noreferrer" className={`${CONTROL} underline underline-offset-2 hover:text-white`}>
+                    <a href={s.bookingUrl} target="_blank" rel="noopener noreferrer" className={`${CONTROL} underline underline-offset-2 hover:text-[var(--admin-ink)]`}>
                       {s.bookingUrl}
                     </a>
                   </p>
-                  {s.description && <p className="mt-2 whitespace-pre-line text-white/60">{s.description}</p>}
-                  <p className="mt-3 text-xs text-white/50">
+                  {s.description && <p className="mt-2 whitespace-pre-line text-[var(--admin-soft)]">{s.description}</p>}
+                  <p className="mt-3 text-xs text-[var(--admin-muted)]">
                     From {s.name} ({SUBMISSION_ROLE_WORDS[s.role]}),{' '}
                     <a href={`mailto:${s.email}`} className="underline underline-offset-2">
                       {s.email}
@@ -136,7 +136,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                     <input type="hidden" name="id" value={s.id} />
                     <button
                       type="submit"
-                      className={`${CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300/60`}
+                      className={`${CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:border-emerald-300/60`}
                     >
                       Publish now
                     </button>
@@ -149,7 +149,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                     <select
                       id={`reason-${s.id}`}
                       name="reason"
-                      className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-xs text-white"
+                      className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-xs text-[var(--admin-ink)]"
                       defaultValue={SUBMISSION_REFUSALS[0]}
                     >
                       {SUBMISSION_REFUSALS.map((r) => (
@@ -160,7 +160,7 @@ export default async function AdminSubmissionsPage({ searchParams }: { searchPar
                     </select>
                     <button
                       type="submit"
-                      className={`${CONTROL} w-full justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white transition hover:border-amber-300/40 hover:text-amber-200`}
+                      className={`${CONTROL} w-full justify-center rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint-strong)] px-3 py-2 text-xs font-medium text-[var(--admin-ink)] transition hover:border-amber-300/40 hover:text-amber-800`}
                     >
                       Refuse
                     </button>

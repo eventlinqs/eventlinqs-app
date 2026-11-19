@@ -53,7 +53,7 @@ it('renders every TEST organiser with its state, its score parts and its cohort 
   const states = await query(`select acquisition_state as s, count(*)::int as n from public.organisers where ${REAL} group by 1`)
   for (const { s, n } of states as unknown as { s: string; n: number }[]) {
     const words = (await import('@/lib/outreach/acquisition-states')).STATE_WORDS[s as 'discovered']
-    expect(html).toContain(`<span class="font-semibold text-white">${n}</span> ${words.replace(/&/g, '&amp;')}`)
+    expect(html).toContain(`<span class="font-semibold text-[var(--admin-ink)]">${n}</span> ${words.replace(/&/g, '&amp;')}`)
   }
   expect(html).toMatch(/of 100 picked/)
   console.log(`rendered ${rowsRendered} organiser rows of ${organisers}; states ${JSON.stringify(states)}; ${html.length} characters of HTML`)

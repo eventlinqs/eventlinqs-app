@@ -21,10 +21,10 @@ function date(iso: string | null): string {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  attendee: 'border-white/15 bg-white/[0.04] text-white/60',
-  organiser: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent)]',
-  admin: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  super_admin: 'border-red-500/30 bg-red-500/10 text-red-200',
+  attendee: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
+  organiser: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent-strong)]',
+  admin: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  super_admin: 'border-red-500/30 bg-red-500/10 text-red-800',
 }
 
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,20 +48,20 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Accounts</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Accounts</p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-3xl font-bold tracking-tight">{name}</h1>
           <span className={`rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${ROLE_BADGE[user.role] ?? ROLE_BADGE.attendee}`}>
             {user.role}
           </span>
           {user.suspended ? (
-            <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-red-200">Suspended</span>
+            <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-red-800">Suspended</span>
           ) : (
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-emerald-200">Active</span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-emerald-800">Active</span>
           )}
         </div>
-        <p className="mt-2 text-sm text-white/60">{user.email}</p>
-        <Link prefetch={false} href="/admin/users" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">Back to users</Link>
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">{user.email}</p>
+        <Link prefetch={false} href="/admin/users" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]">Back to users</Link>
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -77,8 +77,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">Identity</h2>
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Identity</h2>
           <dl className="mt-4 space-y-2 text-sm">
             <Row label="Full name" value={user.fullName ?? '-'} />
             <Row label="Display name" value={user.displayName ?? '-'} />
@@ -102,9 +102,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] pb-2 last:border-0">
-      <dt className="text-white/50">{label}</dt>
-      <dd className="text-right text-white/80">{value}</dd>
+    <div className="flex items-center justify-between gap-4 border-b border-[var(--admin-line)] pb-2 last:border-0">
+      <dt className="text-[var(--admin-muted)]">{label}</dt>
+      <dd className="text-right text-[var(--admin-ink)]">{value}</dd>
     </div>
   )
 }

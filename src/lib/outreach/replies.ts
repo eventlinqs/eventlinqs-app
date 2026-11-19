@@ -24,7 +24,19 @@ type Admin = SupabaseClient<Database>
 
 export const CLEAR = 0.9
 
-export type ReplyOutcome = 'yes' | 'no' | 'stop' | 'take_down' | 'later' | 'question' | 'referred' | 'unclear'
+export type ReplyOutcome = 'yes' | 'no' | 'stop' | 'take_down' | 'later' | 'question' | 'referred' | 'unclear' | 'photographs' | 'correction' | 'permission'
+
+/**
+ * THE THREE CLASSES AN ORGANISER'S ANSWER TO A LISTING OFTEN IS (law 30, the CRM directive's section 4: A, photographs;
+ * C, a correction; and the permission they give). Aria's reply of 19 November 2026 held all three ("I've attached three
+ * images ... We're also happy for EventLinqs to share these images ... Just one small correction") and was read as
+ * 'referred' at 0.6, because her signature names a place. Each is a decision about an organiser's listing or images,
+ * so it is held for Lawal with its class named, never answered by itself; the class tells the panel what to show.
+ */
+export const DECISION_CLASSES: readonly ReplyOutcome[] = ['photographs', 'correction', 'permission']
+const PHOTO_WORDS = /\b(photos?|photographs?|images?|pictures?|pics|flyers?|posters?|artwork|attached)\b/i
+const CORRECTION_WORDS = /\b(correction|correct (the|our|it)|incorrect|wrong|update the (venue|date|time|price|title|address|listing)|should (be|read|say)|typo|change the (venue|date|time|title|address))\b/i
+const PERMISSION_WORDS = /\b(happy for (you|eventlinqs) to (use|share|post)|you (can|may) (use|share|post)|feel free to (use|share|post)|(you have|with) our permission|permission to (use|share|post)|go ahead and (use|share|post))\b/i
 
 export type ReplyKind =
   | { kind: 'bounce'; hard: boolean }
@@ -46,7 +58,7 @@ const ANSWERS: { key: string; outcome: 'question' | 'later'; pattern: RegExp }[]
   { key: 'reply_not_now', outcome: 'later', pattern: /\b(not (right )?now|maybe later|another time|too busy|after (the )?(season|christmas|summer|new year))\b/i },
 ]
 
-export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text' | 'headers'>): ReplyKind {
+export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text' | 'headers' | 'hasAttachments'>): ReplyKind {
   const auto = (m.headers['auto-submitted'] ?? '').toLowerCase()
   const isDaemon = /^(mailer-daemon|postmaster)@/i.test(m.fromAddress)
   if (isDaemon || /^(undeliverable|delivery status notification \(failure\)|mail delivery failed|returned mail)/i.test(m.subject)) {
@@ -71,6 +83,11 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   // A stop or a take down wins over anything else in the same reply: honouring a stop is never the wrong reading.
   const stop = hits.find((h) => h.outcome === 'stop') ?? hits.find((h) => h.outcome === 'take_down')
   if (stop) return { kind: 'reply', outcome: stop.outcome, confidence: short ? 0.95 : 0.9, answerKey: stop.key }
+  // Then the decision classes, in the order the work goes: the photographs first (they wait on a decision), then a
+  // correction to the listing, then a permission given; each outranks 'referred', which a signature can trip.
+  if (m.hasAttachments && PHOTO_WORDS.test(text)) return { kind: 'reply', outcome: 'photographs', confidence: 0.95, answerKey: null }
+  if (CORRECTION_WORDS.test(text)) return { kind: 'reply', outcome: 'correction', confidence: 0.9, answerKey: null }
+  if (PERMISSION_WORDS.test(text)) return { kind: 'reply', outcome: 'permission', confidence: 0.9, answerKey: null }
   const distinct = [...new Map(hits.map((h) => [h.outcome + (h.key ?? ''), h])).values()]
   if (distinct.length === 1) {
     const h = distinct[0]
@@ -154,7 +171,7 @@ export async function handleInbox(
         objection: objectionOf(kind),
         classified_by: 'rules',
         confidence: kind.confidence,
-        needs_lawal: !clear || kind.outcome === 'take_down',
+        needs_lawal: !clear || kind.outcome === 'take_down' || DECISION_CLASSES.includes(kind.outcome),
         source_message_id: m.internetMessageId || null,
         logged_by: deps.actingUser,
       })

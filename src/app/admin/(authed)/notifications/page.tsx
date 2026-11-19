@@ -45,17 +45,17 @@ function AlertCard({ label, count, description, href }: Alert) {
   return (
     <Link prefetch={false}
       href={href}
-      className="block rounded-xl border border-white/[0.08] bg-[#131A2A] p-5 outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+      className="block rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">{label}</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{label}</p>
         <span
           aria-hidden
           className={`mt-1.5 h-2 w-2 rounded-full ${unreachable ? 'bg-rose-500' : needsAttention ? 'bg-amber-400' : 'bg-emerald-400'}`}
         />
       </div>
-      <p className="mt-3 font-display text-3xl font-bold text-white">{unreachable ? '-' : count}</p>
-      <p className="mt-2 text-xs text-white/50">{unreachable ? 'unreachable, retry' : description}</p>
+      <p className="mt-3 font-display text-3xl font-bold text-[var(--admin-ink)]">{unreachable ? '-' : count}</p>
+      <p className="mt-2 text-xs text-[var(--admin-muted)]">{unreachable ? 'unreachable, retry' : description}</p>
     </Link>
   )
 }
@@ -109,9 +109,9 @@ export default async function AdminNotificationsPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Operations inbox</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Operations inbox</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Notifications</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           {totalOpen > 0
             ? 'Items that need an operator. Open a queue to action them.'
             : 'All clear. Nothing needs an operator right now. New alerts appear here as they arise.'}
@@ -127,13 +127,13 @@ export default async function AdminNotificationsPage() {
       {undelivered != null && undelivered > 0 && (
         <div
           role="status"
-          className="mt-8 rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 text-sm text-rose-100"
+          className="mt-8 rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 text-sm text-rose-800"
         >
           <p className="font-display text-base font-semibold">
             {undelivered} notification{undelivered === 1 ? '' : 's'} could not be delivered on any
             channel.
           </p>
-          <p className="mt-2 text-rose-100/80">
+          <p className="mt-2 text-rose-800">
             Email failed and the backup push channel could not be used. They are listed below with
             the reason. Nothing is lost: the record is here whether or not the message arrived.
           </p>
@@ -145,21 +145,21 @@ export default async function AdminNotificationsPage() {
       </div>
 
       <section className="mt-8">
-        <h2 className="font-display text-sm uppercase tracking-widest text-white/60">
+        <h2 className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">
           What happened on the platform
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/50">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-muted)]">
           Every new organiser, every Stripe onboarding, every event published and every paid order,
           in the order it happened. Each one is emailed as well; this is the record.
         </p>
 
         {feed == null ? (
-          <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-5 text-sm text-rose-200">
+          <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-5 text-sm text-rose-800">
             The notification feed is unreachable. The records are still being written; only this view
             is failing. Retry, and if it persists check the platform_notifications table.
           </p>
         ) : feed.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-5 text-sm text-white/50">
+          <p className="mt-4 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 text-sm text-[var(--admin-muted)]">
             Nothing yet. The next organiser to sign up, connect Stripe, publish an event or take a
             payment appears here within a minute, and lands in your inbox at the same time.
           </p>
@@ -173,30 +173,30 @@ export default async function AdminNotificationsPage() {
                   className={`rounded-xl border p-5 ${
                     failed
                       ? 'border-rose-500/40 bg-rose-500/[0.06]'
-                      : 'border-white/[0.08] bg-[#131A2A]'
+                      : 'border-[var(--admin-line)] bg-[var(--admin-paper)]'
                   }`}
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">
                       {KIND_LABEL[row.kind]}
                     </p>
-                    <p className="text-xs text-white/40">{formatMoment(row.occurred_at)}</p>
+                    <p className="text-xs text-[var(--admin-muted)]">{formatMoment(row.occurred_at)}</p>
                   </div>
                   <Link prefetch={false}
                     href={row.admin_path}
-                    className="mt-2 block font-display text-lg font-semibold text-white outline-none hover:text-[var(--brand-accent)] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                    className="mt-2 block font-display text-lg font-semibold text-[var(--admin-ink)] outline-none hover:text-[var(--brand-accent-strong)] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
                   >
                     {row.summary}
                   </Link>
                   <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                     {factsFor(row).map(([label, value]) => (
                       <div key={label} className="flex gap-2">
-                        <dt className="text-white/40">{label}</dt>
-                        <dd className="text-white/80">{value}</dd>
+                        <dt className="text-[var(--admin-muted)]">{label}</dt>
+                        <dd className="text-[var(--admin-ink)]">{value}</dd>
                       </div>
                     ))}
                   </dl>
-                  <p className={`mt-3 text-xs ${failed ? 'text-rose-200' : 'text-white/40'}`}>
+                  <p className={`mt-3 text-xs ${failed ? 'text-rose-800' : 'text-[var(--admin-muted)]'}`}>
                     {row.delivery_state === 'sent' && `Emailed${row.channel === 'digest' ? ' in a digest' : ''}`}
                     {row.delivery_state === 'escalated' && 'Email failed, pushed to an armed device'}
                     {row.delivery_state === 'pending' && 'Queued, sending within a minute'}
@@ -210,11 +210,11 @@ export default async function AdminNotificationsPage() {
         )}
       </section>
 
-      <div className="mt-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-        <h2 className="font-display text-sm uppercase tracking-widest text-white/60">Activity</h2>
-        <p className="mt-2 text-sm text-white/50">
+      <div className="mt-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+        <h2 className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">Activity</h2>
+        <p className="mt-2 text-sm text-[var(--admin-muted)]">
           Every admin action is recorded. Review the full history in the{' '}
-          <Link prefetch={false} href="/admin/audit" className="text-[var(--brand-accent)] hover:underline">
+          <Link prefetch={false} href="/admin/audit" className="text-[var(--brand-accent-strong)] hover:underline">
             audit log
           </Link>
           .

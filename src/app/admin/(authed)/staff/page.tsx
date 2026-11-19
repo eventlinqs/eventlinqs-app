@@ -49,9 +49,9 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Access</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Access</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Admin staff</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Who can sign in to this console and what they can do. Add an admin by the email of an
           existing account, set their role, enable or disable them, and tune their capabilities.
           Every change is audit-logged. A super admin has full control and cannot be locked out.
@@ -59,52 +59,52 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
       </header>
 
       {status === 'added' && (
-        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800">
           Admin added. They can sign in at /admin/login and will be prompted to set up 2FA on first sign-in.
         </div>
       )}
       {status === 'add_error' && (
-        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div role="alert" className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800">
           {msg ? decodeURIComponent(msg) : 'Could not add that admin.'}
         </div>
       )}
       {status === 'add_invalid' && (
-        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div role="alert" className="mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
           Check the email is valid and a role is selected.
         </div>
       )}
 
       {/* Add admin */}
-      <section className="mb-10 rounded-lg border border-white/[0.08] bg-[#131A2A] p-5">
+      <section className="mb-10 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
         <h2 className="mb-1 font-display text-lg font-semibold">Add an admin</h2>
-        <p className="mb-4 text-sm text-white/50">
+        <p className="mb-4 text-sm text-[var(--admin-muted)]">
           The person must already have an EventLinqs account (signed up with this email). Granting
           admin does not change their member account.
         </p>
         <form action={addAdminAction} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1.5 lg:col-span-2">
-            <label htmlFor="add-email" className="text-[11px] uppercase tracking-wider text-white/50">Account email</label>
+            <label htmlFor="add-email" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Account email</label>
             <input id="add-email" name="email" type="email" required placeholder="person@example.com"
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none" />
+              className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="add-role" className="text-[11px] uppercase tracking-wider text-white/50">Role</label>
+            <label htmlFor="add-role" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Role</label>
             <select id="add-role" name="role" defaultValue="support"
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none">
+              className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none">
               {creatableRoles.map((r) => (
                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="add-name" className="text-[11px] uppercase tracking-wider text-white/50">Display name (optional)</label>
+            <label htmlFor="add-name" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Display name (optional)</label>
             <input id="add-name" name="displayName" type="text" maxLength={120}
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none" />
+              className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none" />
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             <ConfirmSubmitButton
               confirmMessage="Grant admin console access to this account with the selected role?"
-              className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white"
+              className="rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-sm font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]"
             >
               Add admin
             </ConfirmSubmitButton>
@@ -118,7 +118,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
       <div className={`relative mb-10 ${ADMIN_TABLE_WRAP}`}>
         <table className={`${ADMIN_TABLE} lg:min-w-[760px]`}>
           <thead className={ADMIN_THEAD}>
-            <tr className="border-b border-white/[0.08] text-left text-white/50">
+            <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
               <th scope="col" className="px-4 py-3 font-medium">Admin</th>
               <th scope="col" className="px-4 py-3 font-medium">Role</th>
               <th scope="col" className="px-4 py-3 font-medium">Status</th>
@@ -131,8 +131,8 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
             {staff.map((s) => (
               <tr key={s.id} className={`${ADMIN_ROW} align-middle`}>
                 <td className={ADMIN_CELL_NAME}>
-                  <div className="font-medium text-white">{s.displayName}</div>
-                  <div className="text-[12px] text-white/50">{s.email}</div>
+                  <div className="font-medium text-[var(--admin-ink)]">{s.displayName}</div>
+                  <div className="text-[12px] text-[var(--admin-muted)]">{s.email}</div>
                 </td>
                 <td className={ADMIN_CELL}>
                   <span className={ADMIN_CELL_LABEL}>Role</span>
@@ -141,23 +141,23 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
                 <td className={ADMIN_CELL}>
                   <span className={ADMIN_CELL_LABEL}>Status</span>
                   {s.disabled ? (
-                    <span className="rounded bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-red-300">Disabled</span>
+                    <span className="rounded bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-red-800">Disabled</span>
                   ) : (
-                    <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">Active</span>
+                    <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-800">Active</span>
                   )}
                 </td>
-                <td className={`${ADMIN_CELL} text-white/70`}>
+                <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                   <span className={ADMIN_CELL_LABEL}>2FA</span>
                   {s.totpEnrolled ? 'Enrolled' : 'Pending'}
                 </td>
-                <td className={`${ADMIN_CELL} text-white/50`}>
+                <td className={`${ADMIN_CELL} text-[var(--admin-muted)]`}>
                   <span className={ADMIN_CELL_LABEL}>Last sign-in</span>
                   {fmtDate(s.lastLoginAt)}
                 </td>
                 <td className={ADMIN_CELL_ACTIONS}>
                   <Link prefetch={false}
                     href={`/admin/staff/${s.id}`}
-                    className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white`}
+                    className={`${ADMIN_ROW_CONTROL} justify-center rounded-md border border-[var(--admin-line)] px-3 py-1.5 text-sm text-[var(--admin-ink)] transition hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]`}
                   >
                     Manage
                   </Link>
@@ -171,7 +171,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
       {/* Role capability matrix */}
       <section>
         <h2 className="mb-1 font-display text-lg font-semibold">Role capability matrix</h2>
-        <p className="mb-4 max-w-2xl text-sm text-white/50">
+        <p className="mb-4 max-w-2xl text-sm text-[var(--admin-muted)]">
           The baseline each role carries. Per-admin overrides (set on a staff member) tune this for
           one person; a super admin always has everything.
         </p>
@@ -180,7 +180,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
         <div className={`relative ${ADMIN_TABLE_WRAP}`}>
           <table className={`${ADMIN_TABLE} lg:min-w-[680px]`}>
             <thead className={ADMIN_THEAD}>
-              <tr className="border-b border-white/[0.08] text-left text-white/50">
+              <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
                 <th scope="col" className="px-4 py-3 font-medium">Capability</th>
                 {ASSIGNABLE_ADMIN_ROLES.map((r) => (
                   <th key={r} scope="col" className="px-4 py-3 text-center font-medium">{ROLE_LABELS[r]}</th>
@@ -191,16 +191,16 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
               {ALL_CAPABILITIES.map((cap) => (
                 <tr key={cap} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <div className="text-white">{CAPABILITY_LABELS[cap]}</div>
-                    <div className="font-mono text-[11px] text-white/40">{cap}</div>
+                    <div className="text-[var(--admin-ink)]">{CAPABILITY_LABELS[cap]}</div>
+                    <div className="font-mono text-[11px] text-[var(--admin-muted)]">{cap}</div>
                   </td>
                   {ASSIGNABLE_ADMIN_ROLES.map((r: AdminRole) => (
                     <td key={r} className={`${ADMIN_CELL} lg:text-center`}>
                       <span className={ADMIN_CELL_LABEL}>{ROLE_LABELS[r]}</span>
                       {roleCapabilities(r).has(cap) ? (
-                        <span className="text-emerald-300" aria-label="yes">&#10003;</span>
+                        <span className="text-emerald-800" aria-label="yes">&#10003;</span>
                       ) : (
-                        <span className="text-white/20" aria-label="no">&middot;</span>
+                        <span className="text-[var(--admin-muted)]" aria-label="no">&middot;</span>
                       )}
                     </td>
                   ))}
@@ -209,9 +209,9 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
             </tbody>
           </table>
         </div>
-        <ul className="mt-4 space-y-1 text-xs text-white/45">
+        <ul className="mt-4 space-y-1 text-xs text-[var(--admin-muted)]">
           {ASSIGNABLE_ADMIN_ROLES.map((r) => (
-            <li key={r}><span className="font-semibold text-white/70">{ROLE_LABELS[r]}:</span> {ROLE_DESCRIPTIONS[r]}</li>
+            <li key={r}><span className="font-semibold text-[var(--admin-soft)]">{ROLE_LABELS[r]}:</span> {ROLE_DESCRIPTIONS[r]}</li>
           ))}
         </ul>
       </section>

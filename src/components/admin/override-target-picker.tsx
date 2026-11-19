@@ -94,12 +94,12 @@ export function OverrideTargetPicker() {
       <input type="hidden" name="targetId" value={selected?.id ?? ''} />
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="ov-scope" className="text-[11px] uppercase tracking-wider text-white/50">Scope</label>
+        <label htmlFor="ov-scope" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Scope</label>
         <select
           id="ov-scope"
           value={kind}
           onChange={(e) => changeKind(e.target.value as Kind)}
-          className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+          className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
         >
           <option value="organisation">Organisation</option>
           <option value="event">Event</option>
@@ -107,7 +107,7 @@ export function OverrideTargetPicker() {
       </div>
 
       <div ref={boxRef} className="relative flex flex-col gap-1.5">
-        <label htmlFor="ov-search" className="text-[11px] uppercase tracking-wider text-white/50">
+        <label htmlFor="ov-search" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">
           Find {labelForKind}
         </label>
         <input
@@ -121,29 +121,29 @@ export function OverrideTargetPicker() {
             if (selected) setSelected(null)
           }}
           onFocus={() => results.length > 0 && setOpen(true)}
-          className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+          className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none"
         />
         {open && (results.length > 0 || loading) && (
-          <ul className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-white/15 bg-[#0F1626] shadow-xl">
-            {loading && <li className="px-3 py-2 text-sm text-white/40">Searching...</li>}
+          <ul className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] shadow-xl">
+            {loading && <li className="px-3 py-2 text-sm text-[var(--admin-muted)]">Searching...</li>}
             {results.map((r) => (
               <li key={r.id}>
                 <button
                   type="button"
                   onClick={() => choose(r)}
-                  className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-white/[0.06]"
+                  className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-[var(--admin-tint-strong)]"
                 >
-                  <span className="text-sm text-white">{r.label}</span>
-                  <span className="font-mono text-[11px] text-white/40">{r.sub}</span>
+                  <span className="text-sm text-[var(--admin-ink)]">{r.label}</span>
+                  <span className="font-mono text-[11px] text-[var(--admin-muted)]">{r.sub}</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
         {selected ? (
-          <p className="text-[11px] text-emerald-300/80">Selected: {selected.label}</p>
+          <p className="text-[11px] text-emerald-800">Selected: {selected.label}</p>
         ) : (
-          <p className="text-[11px] text-white/40">Pick {article} {labelForKind} from the list.</p>
+          <p className="text-[11px] text-[var(--admin-muted)]">Pick {article} {labelForKind} from the list.</p>
         )}
       </div>
     </div>

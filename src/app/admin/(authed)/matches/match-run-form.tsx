@@ -56,7 +56,7 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
       <input type="hidden" name="event_id" value={eventId} />
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[16rem] flex-1">
-          <label htmlFor="event_nav" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+          <label htmlFor="event_nav" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             Published event
           </label>
           <select
@@ -66,7 +66,7 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
               setEventId(e.target.value)
               router.push(e.target.value ? `/admin/matches?event=${e.target.value}` : '/admin/matches')
             }}
-            className="mt-2 h-11 w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+            className="mt-2 h-11 w-full rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] focus:border-[var(--brand-accent)] focus:outline-none"
           >
             <option value="">Choose an event</option>
             {events.map(event => (
@@ -78,7 +78,7 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
         </div>
 
         <div className="w-40">
-          <label htmlFor="cap" className="block text-[11px] uppercase tracking-[0.16em] text-white/50">
+          <label htmlFor="cap" className="block text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             Cap
           </label>
           <input
@@ -88,7 +88,7 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
             min={1}
             step={1}
             defaultValue={defaultCap || undefined}
-            className="mt-2 h-11 w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white focus:border-[var(--brand-accent)] focus:outline-none"
+            className="mt-2 h-11 w-full rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 text-sm text-[var(--admin-ink)] focus:border-[var(--brand-accent)] focus:outline-none"
           />
         </div>
 
@@ -102,14 +102,14 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
       </div>
 
       {!matcherEnabled && (
-        <p role="status" className="text-sm text-amber-200">
+        <p role="status" className="text-sm text-amber-800">
           The matcher is switched off, so no new run can be produced. The runs already stored are
           still here and still readable.
         </p>
       )}
 
       {state && (
-        <p role="status" className={state.ok ? 'text-sm text-emerald-200' : 'text-sm text-rose-200'}>
+        <p role="status" className={state.ok ? 'text-sm text-emerald-800' : 'text-sm text-rose-800'}>
           {state.message}
         </p>
       )}

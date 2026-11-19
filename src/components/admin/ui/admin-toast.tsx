@@ -38,17 +38,17 @@ export function AdminToast({ said, tone }: { said: string | null; tone: 'ok' | '
   if (!said || !open || !mounted) return null
   const ok = tone === 'ok'
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6">
+    <div className="admin-light pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6">
       <div
         role={ok ? 'status' : 'alert'}
         data-toast={tone}
         className={`pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl ${
-          ok ? 'border-emerald-400/30 bg-[#0F2A22] text-emerald-50' : 'border-rose-400/40 bg-[#2A1218] text-rose-50'
+          ok ? 'border-emerald-400/30 bg-emerald-50 text-emerald-800' : 'border-rose-400/40 bg-red-50 text-rose-800'
         }`}
       >
-        {ok ? <CircleCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /> : <CircleAlert aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" />}
+        {ok ? <CircleCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-emerald-800" /> : <CircleAlert aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-rose-800" />}
         <p className="min-w-0 flex-1 text-sm leading-relaxed">{said}</p>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Close this message" className="-m-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white">
+        <button type="button" onClick={() => setOpen(false)} aria-label="Close this message" className="-m-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--admin-soft)] hover:bg-[var(--admin-tint-strong)] hover:text-[var(--admin-ink)]">
           <X aria-hidden className="h-4 w-4" />
         </button>
       </div>

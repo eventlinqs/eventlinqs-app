@@ -71,75 +71,75 @@ export default async function CampaignProofPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-3xl">
       <header className="mb-10">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Campaign proof</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Campaign proof</p>
         <h1 className="mt-2 font-display text-2xl font-bold tracking-tight">{campaign.name}</h1>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           {campaign.organisationName}, {campaign.eventTitle}. Measured from{' '}
           {formatPlatformDate(campaign.windowFrom)}, the day this campaign was created, to now.
         </p>
       </header>
 
       {unsourced.length > 0 && (
-        <p role="alert" className="mb-8 rounded-xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
+        <p role="alert" className="mb-8 rounded-xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-sm text-rose-800">
           This page is holding back {unsourced.join(', ')}, because it could not name where the
           figure came from. Nothing on this page is shown without its source.
         </p>
       )}
 
       {nothingHasLeft ? (
-        <section className="rounded-2xl border border-white/[0.08] bg-[#131A2A] p-10 text-center">
-          <h2 className="font-display text-xl font-semibold text-white">This campaign has not sent anything yet</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/60">
+        <section className="rounded-2xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-10 text-center">
+          <h2 className="font-display text-xl font-semibold text-[var(--admin-ink)]">This campaign has not sent anything yet</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[var(--admin-soft)]">
             There is nothing to prove until a message has left. Approve the segment on the campaign
             screen and run the pacing once, and this page fills itself from the sales that follow.
           </p>
         </section>
       ) : (
         <>
-          <section className="rounded-2xl border border-white/[0.08] bg-[#131A2A] px-8 py-10">
-            <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">{headline.label}</p>
+          <section className="rounded-2xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-8 py-10">
+            <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">{headline.label}</p>
             {headline.unavailable ? (
-              <p className="mt-4 text-lg leading-relaxed text-white/80">{headline.display}</p>
+              <p className="mt-4 text-lg leading-relaxed text-[var(--admin-ink)]">{headline.display}</p>
             ) : (
-              <p className="mt-3 font-display text-5xl font-bold leading-none tracking-tight text-white sm:text-6xl">
+              <p className="mt-3 font-display text-5xl font-bold leading-none tracking-tight text-[var(--admin-ink)] sm:text-6xl">
                 {headline.display}
               </p>
             )}
 
-            <div className="mt-8 border-t border-white/[0.08] pt-6">
-              <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">{fee.label}</p>
+            <div className="mt-8 border-t border-[var(--admin-line)] pt-6">
+              <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">{fee.label}</p>
               {fee.unavailable ? (
                 <>
-                  <p className="mt-3 text-base leading-relaxed text-amber-200">{fee.display}</p>
-                  {fee.border && <p className="mt-2 text-xs text-white/40">{fee.border}</p>}
+                  <p className="mt-3 text-base leading-relaxed text-amber-800">{fee.display}</p>
+                  {fee.border && <p className="mt-2 text-xs text-[var(--admin-muted)]">{fee.border}</p>}
                 </>
               ) : (
-                <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-[var(--brand-accent)]">
+                <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-[var(--brand-accent-strong)]">
                   {fee.display}
                 </p>
               )}
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/60">
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--admin-soft)]">
                 {feeBasisSentence(commissionPercent)}
               </p>
             </div>
 
-            <details className="group mt-6 border-t border-white/[0.08] pt-5">
-              <summary className="min-h-[44px] cursor-pointer list-none py-2 text-sm text-white/70 outline-none transition hover:text-white focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]">
+            <details className="group mt-6 border-t border-[var(--admin-line)] pt-5">
+              <summary className="min-h-[44px] cursor-pointer list-none py-2 text-sm text-[var(--admin-soft)] outline-none transition hover:text-[var(--admin-ink)] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]">
                 The {orders.length === 1 ? 'sale' : 'sales'} behind it
               </summary>
               {orders.length === 0 ? (
-                <p className="mt-3 text-sm text-white/55">
+                <p className="mt-3 text-sm text-[var(--admin-muted)]">
                   No sale is tied to this campaign by evidence yet.
                 </p>
               ) : (
                 <ul className="mt-3 space-y-3">
                   {orders.map(order => (
-                    <li key={order.reference} className="rounded-lg border border-white/[0.06] bg-[#0A1628] px-4 py-3">
+                    <li key={order.reference} className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-3">
                       <p className="flex flex-wrap items-baseline justify-between gap-3 text-sm">
-                        <span className="font-mono text-white/85">{order.reference}</span>
-                        <span className="text-white/90">{order.amount}</span>
+                        <span className="font-mono text-[var(--admin-ink)]">{order.reference}</span>
+                        <span className="text-[var(--admin-ink)]">{order.amount}</span>
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-white/60">{order.why}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--admin-soft)]">{order.why}</p>
                     </li>
                   ))}
                 </ul>
@@ -151,22 +151,22 @@ export default async function CampaignProofPage({ params }: Props) {
             {secondary.map(figure => (
               <details
                 key={figure.key}
-                className="rounded-xl border border-white/[0.08] bg-[#131A2A] px-5 py-4"
+                className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-5 py-4"
               >
                 <summary className="flex min-h-[44px] cursor-pointer list-none flex-wrap items-baseline justify-between gap-3 py-1 outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]">
-                  <span className="text-sm text-white/70">{figure.label}</span>
-                  <span className={figure.unavailable ? 'text-sm text-amber-200' : 'font-display text-lg text-white'}>
+                  <span className="text-sm text-[var(--admin-soft)]">{figure.label}</span>
+                  <span className={figure.unavailable ? 'text-sm text-amber-800' : 'font-display text-lg text-[var(--admin-ink)]'}>
                     {figure.unavailable ? 'Not recorded' : figure.display}
                   </span>
                 </summary>
-                <div className="mt-3 border-t border-white/[0.06] pt-3">
+                <div className="mt-3 border-t border-[var(--admin-line)] pt-3">
                   {figure.unavailable ? (
                     <>
-                      <p className="text-sm leading-relaxed text-white/70">{figure.display}</p>
-                      {figure.border && <p className="mt-2 text-xs text-white/40">{figure.border}</p>}
+                      <p className="text-sm leading-relaxed text-[var(--admin-soft)]">{figure.display}</p>
+                      {figure.border && <p className="mt-2 text-xs text-[var(--admin-muted)]">{figure.border}</p>}
                     </>
                   ) : (
-                    <p className="text-sm leading-relaxed text-white/60">
+                    <p className="text-sm leading-relaxed text-[var(--admin-soft)]">
                       {figure.sourceSentence}. {figure.rowCount === 1 ? 'One row' : `${figure.rowCount} rows`}.
                     </p>
                   )}
@@ -177,9 +177,9 @@ export default async function CampaignProofPage({ params }: Props) {
                           key={`${reversal.reference}-${reversal.reason}`}
                           className="flex flex-wrap items-baseline justify-between gap-3 text-sm"
                         >
-                          <span className="font-mono text-white/80">{reversal.reference}</span>
-                          <span className="text-white/60">{reversal.reason}</span>
-                          <span className="text-white/85">{reversal.amount}</span>
+                          <span className="font-mono text-[var(--admin-ink)]">{reversal.reference}</span>
+                          <span className="text-[var(--admin-soft)]">{reversal.reason}</span>
+                          <span className="text-[var(--admin-ink)]">{reversal.amount}</span>
                         </li>
                       ))}
                     </ul>
@@ -188,8 +188,8 @@ export default async function CampaignProofPage({ params }: Props) {
                     <ul className="mt-3 space-y-2">
                       {result.sendsByChannel.map(channel => (
                         <li key={channel.channelCode} className="flex items-baseline justify-between gap-3 text-sm">
-                          <span className="text-white/70">{channel.channelCode}</span>
-                          <span className="text-white/85">{channel.dispatched}</span>
+                          <span className="text-[var(--admin-soft)]">{channel.channelCode}</span>
+                          <span className="text-[var(--admin-ink)]">{channel.dispatched}</span>
                         </li>
                       ))}
                     </ul>

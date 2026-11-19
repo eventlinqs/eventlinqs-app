@@ -83,7 +83,7 @@ describe('Graph', () => {
     expect(seen[0].prefer).toBe('outlook.body-content-type="text"')
     expect(seen[0].url).toContain('internetMessageHeaders')
     expect(seen[1].url).toBe('https://graph.microsoft.com/next')
-    expect(got).toEqual([{ graphId: '1', internetMessageId: '<r1@venue>', subject: 'Re: x', fromAddress: 'sam@venue.example', fromName: 'Sam', receivedAt: '2026-10-29T01:00:00Z', text: 'Yes please', headers: { 'in-reply-to': '<abc@eventlinqs.com>' } }])
+    expect(got).toEqual([{ graphId: '1', internetMessageId: '<r1@venue>', subject: 'Re: x', fromAddress: 'sam@venue.example', fromName: 'Sam', receivedAt: '2026-10-29T01:00:00Z', text: 'Yes please', headers: { 'in-reply-to': '<abc@eventlinqs.com>' }, hasAttachments: false }])
   })
 })
 

@@ -26,11 +26,11 @@ function date(iso: string): string {
 }
 
 const PAYOUT_BADGE: Record<string, string> = {
-  paid: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  pending: 'border-white/15 bg-white/[0.04] text-white/60',
-  in_transit: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent)]',
-  failed: 'border-red-500/30 bg-red-500/10 text-red-200',
-  canceled: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+  paid: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
+  pending: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
+  in_transit: 'border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/10 text-[var(--brand-accent-strong)]',
+  failed: 'border-red-500/30 bg-red-500/10 text-red-800',
+  canceled: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
 }
 
 export default async function AdminOrgPayoutPage({ params }: { params: Promise<{ orgId: string }> }) {
@@ -65,24 +65,24 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Finance / Payouts</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Finance / Payouts</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{detail.name}</h1>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           Payout status: {detail.payoutStatus} | Connected account: {detail.stripeAccountConnected ? 'yes' : 'no'}
         </p>
-        <Link prefetch={false} href="/admin/payouts" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+        <Link prefetch={false} href="/admin/payouts" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]">
           Back to payouts
         </Link>
       </header>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Available</p>
-          <p className="mt-2 font-display text-3xl font-bold text-white">{money(detail.availableCents)}</p>
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Available</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[var(--admin-ink)]">{money(detail.availableCents)}</p>
         </div>
-        <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">On reserve hold</p>
-          <p className="mt-2 font-display text-3xl font-bold text-white">{money(detail.onHoldCents)}</p>
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">On reserve hold</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[var(--admin-ink)]">{money(detail.onHoldCents)}</p>
         </div>
       </div>
 
@@ -106,37 +106,37 @@ export default async function AdminOrgPayoutPage({ params }: { params: Promise<{
             />
           ) : null}
 
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h2 className="font-display text-lg font-semibold text-white">Reserve holds</h2>
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Reserve holds</h2>
             {activeHolds.length === 0 ? (
-              <p className="mt-2 text-sm text-white/60">No active reserve holds.</p>
+              <p className="mt-2 text-sm text-[var(--admin-soft)]">No active reserve holds.</p>
             ) : (
               <ul className="mt-4 space-y-2">
                 {activeHolds.map(h => (
-                  <li key={h.id} className="flex items-center justify-between rounded-md border border-white/[0.08] px-3 py-2 text-sm">
-                    <span className="text-white/80">{money(h.amountCents, h.currency)}</span>
-                    <span className="text-white/50">releases {date(h.releaseAt)}</span>
+                  <li key={h.id} className="flex items-center justify-between rounded-md border border-[var(--admin-line)] px-3 py-2 text-sm">
+                    <span className="text-[var(--admin-ink)]">{money(h.amountCents, h.currency)}</span>
+                    <span className="text-[var(--admin-muted)]">releases {date(h.releaseAt)}</span>
                   </li>
                 ))}
               </ul>
             )}
             {releasedHolds.length > 0 ? (
-              <p className="mt-3 text-xs text-white/40">{countOf(releasedHolds.length, 'released hold')} not shown.</p>
+              <p className="mt-3 text-xs text-[var(--admin-muted)]">{countOf(releasedHolds.length, 'released hold')} not shown.</p>
             ) : null}
           </section>
         </div>
 
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-          <h2 className="font-display text-lg font-semibold text-white">Payout history</h2>
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+          <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Payout history</h2>
           {detail.payouts.length === 0 ? (
-            <p className="mt-2 text-sm text-white/60">No payouts yet for this organiser.</p>
+            <p className="mt-2 text-sm text-[var(--admin-soft)]">No payouts yet for this organiser.</p>
           ) : (
             <ul className="mt-4 space-y-2">
               {detail.payouts.map(p => (
-                <li key={p.id} className="flex items-center justify-between gap-3 rounded-md border border-white/[0.08] px-3 py-2.5 text-sm">
+                <li key={p.id} className="flex items-center justify-between gap-3 rounded-md border border-[var(--admin-line)] px-3 py-2.5 text-sm">
                   <div>
-                    <span className="text-white/80">{money(p.amountCents, p.currency)}</span>
-                    <span className="ml-2 text-white/40">{date(p.createdAt)}</span>
+                    <span className="text-[var(--admin-ink)]">{money(p.amountCents, p.currency)}</span>
+                    <span className="ml-2 text-[var(--admin-muted)]">{date(p.createdAt)}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${PAYOUT_BADGE[p.status] ?? PAYOUT_BADGE.pending}`}>

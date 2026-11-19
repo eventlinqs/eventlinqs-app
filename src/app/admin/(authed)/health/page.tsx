@@ -43,7 +43,7 @@ export const metadata = {
  * This page used `text-ink-500` and `border-ink-50` seven times. globals.css
  * defines ink-950, 900, 800, 600, 400, 200 and 100, and NEITHER of those two. An
  * undefined utility paints nothing, so the element inherits, and the admin shell
- * sets `text-white`. Measured in a real browser at 390 rather than reasoned
+ * sets `text-[var(--admin-ink)]`. Measured in a real browser at 390 rather than reasoned
  * about:
  *
  *     colour rgb(255,255,255) on rgb(255,255,255)  "Fix: Open docs/payments/..."
@@ -58,7 +58,7 @@ export const metadata = {
  * whole of close-out UX2.5.
  *
  * Fixed here, on the surface this item owns: muted text on the dark shell now
- * uses the admin's own `text-white/60` (its idiom, 98 other uses), and text on a
+ * uses the admin's own `text-[var(--admin-soft)]` (its idiom, 98 other uses), and text on a
  * white card uses ink-600 (#4A4A4A, 8.6:1) or ink-400 (#6B7280, 4.83:1).
  *
  * NOT FIXED HERE, AND REPORTED INSTEAD: `ink-500` is used 80 times across src/
@@ -115,12 +115,12 @@ export default async function HealthStatusPage() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-baseline justify-between">
         {/* No colour override. The admin shell paints #0A0F1A and sets
-            text-white; this heading used to force text-ink-900, which is the
+            text-[var(--admin-ink)]; this heading used to force text-ink-900, which is the
             brand NAVY, giving 1.05:1 against that background - a heading
             nobody could read, on the screen the owner opens when something is
             wrong. Every sibling admin page inherits the shell instead. */}
         <h1 className="font-display text-2xl font-bold tracking-tight">Platform health</h1>
-        <p className="text-xs text-white/60">
+        <p className="text-xs text-[var(--admin-soft)]">
           Checked {checkedAt.toLocaleString('en-AU')} · env {process.env.VERCEL_ENV || process.env.NODE_ENV || 'local'}
         </p>
       </div>
@@ -176,17 +176,17 @@ export default async function HealthStatusPage() {
         <h2 id="sentinel-heading" className="font-display text-lg font-bold tracking-tight">The visitor sentinel&rsquo;s last run</h2>
         {sentinel.run ? (
           <>
-            <p className="mt-1 mb-4 text-xs text-white/60">
+            <p className="mt-1 mb-4 text-xs text-[var(--admin-soft)]">
               Ran {new Date(sentinel.run.ranAt).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' })}{sentinel.run.dry ? ' (a dry run, nothing written)' : ''}: {sentinel.run.results.length} checks, {sentinel.run.failing === 0 ? 'every one passed' : `${sentinel.run.failing} failing`}. It reads the live home page, every guide and every published upcoming night&rsquo;s booking links every 6 hours.
             </p>
             <ChecksTable results={sentinel.run.results} label="Visitor sentinel checks" />
           </>
         ) : (
-          <p className="mt-1 text-sm text-white/80">{sentinel.note}</p>
+          <p className="mt-1 text-sm text-[var(--admin-ink)]">{sentinel.note}</p>
         )}
       </section>
 
-      <p className="mt-6 text-xs text-white/60">
+      <p className="mt-6 text-xs text-[var(--admin-soft)]">
         The sentinel also runs on a schedule and after every deployment, emailing the founder on any CRITICAL fault and a
         daily heartbeat. Canonical site: {getSiteUrl()}. Runbook: docs/ops/HEALTH-ALERTS.md.
       </p>

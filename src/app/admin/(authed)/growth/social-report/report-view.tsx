@@ -55,9 +55,9 @@ function against(now: number, then: WeekCounted | null, key: (typeof COUNTED)[nu
 
 function Section({ name, title, lead, children }: { name: string; title: string; lead: string; children: React.ReactNode }) {
   return (
-    <section data-section={name} className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-      <h2 className="font-display text-lg font-semibold text-white">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm text-white/60">{lead}</p>
+    <section data-section={name} className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">{lead}</p>
       <div className="mt-5">{children}</div>
     </section>
   )
@@ -67,15 +67,15 @@ function EnteredGrid({ totals }: { totals: EnteredTotals }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {PLATFORMS.map((platform) => (
-        <div key={platform} data-platform={platform} className="rounded-lg border border-white/[0.08] p-4">
-          <h3 className="font-display text-sm font-semibold text-white">{PLATFORM_NAMES[platform]}</h3>
+        <div key={platform} data-platform={platform} className="rounded-lg border border-[var(--admin-line)] p-4">
+          <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">{PLATFORM_NAMES[platform]}</h3>
           <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
             {PLATFORM_METRICS.map((metric) => {
               const t = totals[platform][metric]
               return (
                 <div key={metric}>
-                  <dt className="text-white/50">{METRIC_NAMES[metric]}</dt>
-                  <dd data-entered={`${platform}.${metric}`} className="mt-1 text-white">
+                  <dt className="text-[var(--admin-muted)]">{METRIC_NAMES[metric]}</dt>
+                  <dd data-entered={`${platform}.${metric}`} className="mt-1 text-[var(--admin-ink)]">
                     {t === null ? 'Not entered' : `${number(t.value)} over ${t.pieces} ${t.pieces === 1 ? 'piece' : 'pieces'}`}
                   </dd>
                 </div>
@@ -90,39 +90,39 @@ function EnteredGrid({ totals }: { totals: EnteredTotals }) {
 
 function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceReport; campaignId: string; readAtDefault: string; enterFigure: (f: FormData) => Promise<void> }) {
   return (
-    <li data-piece={p.id} data-kind={p.kind} className="rounded-lg border border-white/[0.08] p-4">
+    <li data-piece={p.id} data-kind={p.kind} className="rounded-lg border border-[var(--admin-line)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-sm font-semibold text-white">
+        <h3 className="font-display text-sm font-semibold text-[var(--admin-ink)]">
           {kindName(p.kind)}, {cityName(p.city)}
           {p.partnerName ? `, ${p.partnerName}` : ''}
         </h3>
-        <span data-went={p.posted ? 'yes' : 'no'} className="text-xs text-white/60">
+        <span data-went={p.posted ? 'yes' : 'no'} className="text-xs text-[var(--admin-soft)]">
           {p.posted && p.postedAt ? `Went ${formatPlatformDateTime(p.postedAt)}` : 'Not gone yet'}
         </span>
       </div>
-      <p className="mt-1 text-xs text-white/50">
+      <p className="mt-1 text-xs text-[var(--admin-muted)]">
         For {p.audience}, {p.objective === 'organiser_growth' ? 'organiser growth' : 'audience growth'}. Measured by: {p.outcome}.
       </p>
       <div className="mt-3 grid grid-cols-1 gap-3 text-sm lg:grid-cols-2">
         <div data-piece-counted>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Counted by EventLinqs</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Counted by EventLinqs</p>
           {p.counted === null ? (
-            <p className="mt-1 text-white/70">{p.countedWords}</p>
+            <p className="mt-1 text-[var(--admin-soft)]">{p.countedWords}</p>
           ) : (
-            <p className="mt-1 text-white">
+            <p className="mt-1 text-[var(--admin-ink)]">
               {number(p.counted.arrived)} arrived through its link, {number(p.counted.pressedOut)} pressed out to a booking site, {number(p.counted.orders)}{' '}
               {p.counted.orders === 1 ? 'order' : 'orders'} on EventLinqs ({number(p.counted.tickets)} tickets, {money(p.counted.cents)}).
             </p>
           )}
           {p.goTaps !== null && p.claimsAfter !== null ? (
-            <p data-piece-poster className="mt-1 text-white/70">
+            <p data-piece-poster className="mt-1 text-[var(--admin-soft)]">
               {number(p.goTaps)} {p.goTaps === 1 ? 'tap' : 'taps'} through /go; {number(p.claimsAfter)} {p.claimsAfter === 1 ? 'claim' : 'claims'}. {p.claimsWords}
             </p>
           ) : null}
         </div>
         <div data-piece-entered>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Entered from the apps</p>
-          <ul className="mt-1 space-y-1 text-white/80">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Entered from the apps</p>
+          <ul className="mt-1 space-y-1 text-[var(--admin-ink)]">
             {PLATFORMS.map((platform) => {
               const got = PLATFORM_METRICS.map((m) => ({ m, e: p.entered[platform][m] })).filter((x) => x.e !== null)
               return (
@@ -141,9 +141,9 @@ function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceRepo
         <form action={enterFigure} className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5" aria-label={`Enter a figure for ${kindName(p.kind)}, ${cityName(p.city)}`}>
           <input type="hidden" name="campaign" value={campaignId} />
           <input type="hidden" name="piece" value={p.id} />
-          <label className="flex flex-col gap-1 text-white/60">
+          <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
             Platform
-            <select name="platform" className="min-h-11 rounded-md bg-[#0A1628] px-2 text-white">
+            <select name="platform" className="min-h-11 rounded-md bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
               {PLATFORMS.map((x) => (
                 <option key={x} value={x}>
                   {PLATFORM_NAMES[x]}
@@ -151,9 +151,9 @@ function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceRepo
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-white/60">
+          <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
             Figure
-            <select name="metric" className="min-h-11 rounded-md bg-[#0A1628] px-2 text-white">
+            <select name="metric" className="min-h-11 rounded-md bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
               {PLATFORM_METRICS.filter((m) => m !== 'watch_time_seconds' || p.kind === 'discovery_reel').map((m) => (
                 <option key={m} value={m}>
                   {METRIC_NAMES[m]}
@@ -161,13 +161,13 @@ function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceRepo
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-white/60">
+          <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
             Number
-            <input name="value" type="number" min={0} step={1} required inputMode="numeric" className="min-h-11 rounded-md bg-[#0A1628] px-2 text-white" />
+            <input name="value" type="number" min={0} step={1} required inputMode="numeric" className="min-h-11 rounded-md bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]" />
           </label>
-          <label className="flex flex-col gap-1 text-white/60">
+          <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
             Read at
-            <input name="readAt" type="datetime-local" required defaultValue={readAtDefault} className="min-h-11 rounded-md bg-[#0A1628] px-2 text-white" />
+            <input name="readAt" type="datetime-local" required defaultValue={readAtDefault} className="min-h-11 rounded-md bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]" />
           </label>
           <button type="submit" className="min-h-11 self-end rounded-md bg-[var(--brand-accent)] px-3 font-semibold text-[#0A1628]">
             Keep figure
@@ -180,7 +180,7 @@ function PieceCard({ p, campaignId, readAtDefault, enterFigure }: { p: PieceRepo
 
 function DecisionLine({ d }: { d: Decision }) {
   return (
-    <p data-decided={d.decision} className="mt-3 text-sm text-white/70">
+    <p data-decided={d.decision} className="mt-3 text-sm text-[var(--admin-soft)]">
       {d.decision === 'approved' ? 'Approved' : 'Declined'} {formatPlatformDateTime(d.decidedAt)}. It changes nothing by itself.
     </p>
   )
@@ -203,9 +203,9 @@ export function SocialReportView({
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Weekly social report</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           What each piece of a weekly campaign did, beside the campaigns before it. What EventLinqs counted and what Instagram and Facebook reported are
           kept apart and never added together.
         </p>
@@ -216,7 +216,7 @@ export function SocialReportView({
                 key={c.id}
                 href={`/admin/growth/social-report?campaign=${c.id}`}
                 aria-current={r?.campaign.id === c.id ? 'page' : undefined}
-                className={`inline-flex min-h-11 items-center rounded-md border px-3 ${r?.campaign.id === c.id ? 'border-[var(--brand-accent)] text-white' : 'border-white/[0.12] text-white/70'}`}
+                className={`inline-flex min-h-11 items-center rounded-md border px-3 ${r?.campaign.id === c.id ? 'border-[var(--brand-accent)] text-[var(--admin-ink)]' : 'border-[var(--admin-line)] text-[var(--admin-soft)]'}`}
               >
                 Week of {formatPlatformDate(weekOf(c.weekStart).from)}
               </a>
@@ -224,19 +224,19 @@ export function SocialReportView({
           </nav>
         ) : null}
         {said ? (
-          <p role="status" data-said className="mt-4 rounded-md border border-white/[0.12] bg-[#0A1628] p-3 text-sm text-white">
+          <p role="status" data-said className="mt-4 rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] p-3 text-sm text-[var(--admin-ink)]">
             {said}
           </p>
         ) : null}
       </header>
 
       {r === null ? (
-        <p data-state="no-campaign" className="text-sm text-white/70">
+        <p data-state="no-campaign" className="text-sm text-[var(--admin-soft)]">
           No weekly campaign has been planned yet. Plan this week on the social page, and its report appears here.
         </p>
       ) : (
         <>
-          <p data-baseline={r.baseline === null ? 'none' : String(r.baseline.campaigns)} className="mb-8 max-w-2xl text-sm text-white">
+          <p data-baseline={r.baseline === null ? 'none' : String(r.baseline.campaigns)} className="mb-8 max-w-2xl text-sm text-[var(--admin-ink)]">
             {r.baselineWords}
           </p>
 
@@ -246,7 +246,7 @@ export function SocialReportView({
             lead="From the platform's own records for the campaign's week, Monday to Sunday on the platform's clock. A figure for a week that has not begun is not counted, never zero."
           >
             {r.counted === null ? (
-              <p data-counted="none" className="text-sm text-white/70">
+              <p data-counted="none" className="text-sm text-[var(--admin-soft)]">
                 Not counted: this campaign&apos;s week has not begun.
               </p>
             ) : (
@@ -271,7 +271,7 @@ export function SocialReportView({
 
           <Section name="pieces" title="Each piece" lead="One audience, one objective and one measured outcome a piece. A figure is entered only once the piece has gone.">
             {r.pieces.length === 0 ? (
-              <p className="text-sm text-white/70">This campaign has no pieces.</p>
+              <p className="text-sm text-[var(--admin-soft)]">This campaign has no pieces.</p>
             ) : (
               <ul className="space-y-3">
                 {r.pieces.map((p) => (
@@ -299,12 +299,12 @@ export function SocialReportView({
                       const cells = [p.kits, p.sent, p.used, p.visits, p.pressedOut, p.orders, p.tickets].map(number)
                       return (
                         <tr key={p.partner} data-partner={p.partner} className={ADMIN_ROW}>
-                          <td className={`${ADMIN_CELL_NAME} text-white`}>
+                          <td className={`${ADMIN_CELL_NAME} text-[var(--admin-ink)]`}>
                             <span className={ADMIN_CELL_LABEL}>{PARTNER_COLUMNS[0]}</span>
                             {p.partner}
                           </td>
                           {cells.map((v, i) => (
-                            <td key={PARTNER_COLUMNS[i + 1]} className={`${ADMIN_CELL} text-white/80`}>
+                            <td key={PARTNER_COLUMNS[i + 1]} className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                               <span className={ADMIN_CELL_LABEL}>{PARTNER_COLUMNS[i + 1]}</span>
                               {v}
                             </td>
@@ -320,7 +320,7 @@ export function SocialReportView({
 
           <Section name="earlier" title="Earlier campaigns" lead="The campaigns before this one that went, newest first, counted the same way.">
             {r.previous.length === 0 ? (
-              <p data-earlier="none" className="text-sm text-white/70">
+              <p data-earlier="none" className="text-sm text-[var(--admin-soft)]">
                 None yet.
               </p>
             ) : (
@@ -346,12 +346,12 @@ export function SocialReportView({
                       ]
                       return (
                         <tr key={c.id} data-earlier={c.weekStart} className={ADMIN_ROW}>
-                          <td className={`${ADMIN_CELL_NAME} text-white`}>
+                          <td className={`${ADMIN_CELL_NAME} text-[var(--admin-ink)]`}>
                             <span className={ADMIN_CELL_LABEL}>{EARLIER_COLUMNS[0]}</span>
                             {c.weekStart}
                           </td>
                           {cells.map((v, i) => (
-                            <td key={EARLIER_COLUMNS[i + 1]} className={`${ADMIN_CELL} text-white/80`}>
+                            <td key={EARLIER_COLUMNS[i + 1]} className={`${ADMIN_CELL} text-[var(--admin-ink)]`}>
                               <span className={ADMIN_CELL_LABEL}>{EARLIER_COLUMNS[i + 1]}</span>
                               {v}
                             </td>
@@ -371,13 +371,13 @@ export function SocialReportView({
                 {r.recommendations.map((rec) => {
                   const done = page.decisions.find((d) => d.rule === rec.rule)
                   return (
-                    <li key={rec.rule} data-rule={rec.rule} className="rounded-lg border border-white/[0.08] p-4">
-                      <p className="text-sm text-white">{rec.words}</p>
-                      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-white/60 sm:grid-cols-2">
+                    <li key={rec.rule} data-rule={rec.rule} className="rounded-lg border border-[var(--admin-line)] p-4">
+                      <p className="text-sm text-[var(--admin-ink)]">{rec.words}</p>
+                      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-[var(--admin-soft)] sm:grid-cols-2">
                         {Object.entries(rec.evidence).map(([k, v]) => (
                           <div key={k} className="flex gap-2">
                             <dt>{k}</dt>
-                            <dd className="text-white/80">{typeof v === 'number' ? number(v) : v}</dd>
+                            <dd className="text-[var(--admin-ink)]">{typeof v === 'number' ? number(v) : v}</dd>
                           </div>
                         ))}
                       </dl>
@@ -390,7 +390,7 @@ export function SocialReportView({
                           <button type="submit" name="decision" value="approved" className="min-h-11 rounded-md bg-[var(--brand-accent)] px-4 text-sm font-semibold text-[#0A1628]">
                             Approve
                           </button>
-                          <button type="submit" name="decision" value="declined" className="min-h-11 rounded-md border border-white/[0.2] px-4 text-sm text-white">
+                          <button type="submit" name="decision" value="declined" className="min-h-11 rounded-md border border-[var(--admin-line-strong)] px-4 text-sm text-[var(--admin-ink)]">
                             Decline
                           </button>
                         </form>
@@ -403,7 +403,7 @@ export function SocialReportView({
           </Section>
 
           <Section name="limits" title="What these numbers cannot see" lead="Said plainly, so no figure is read as more than it is.">
-            <ul className="list-disc space-y-1 pl-5 text-sm text-white/70">
+            <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--admin-soft)]">
               {r.limitations.map((l) => (
                 <li key={l}>{l}</li>
               ))}

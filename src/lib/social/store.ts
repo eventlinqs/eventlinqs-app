@@ -21,7 +21,7 @@ import { broadcastCta, broadcastPriceLabel, type BroadcastEvent } from '@/lib/br
 import type { Cta } from '@/lib/events/cta'
 import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
-import { standInOf } from './stand-ins'
+import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
 import type { BlotatoPostReader, BlotatoPublishedSearch } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
@@ -960,7 +960,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart) })
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
@@ -1293,6 +1293,29 @@ export function policyPieces(
   return pieces
     .filter((p) => !NEVER_POSTED_KINDS.includes(p.kind))
     .map((p) => ({ id: p.id, state: p.state, label: `${p.kind.replace(/_/g, ' ')}${p.partnerName ? `, ${p.partnerName}` : ''}, ${p.city}` }))
+}
+
+export type PolicyDryRow = { readonly id: string; readonly label: string; readonly eligible: boolean; readonly reasons: readonly string[] }
+
+/**
+ * THE STANDING POLICY, AS A DRY RUN (the PM's 13:50 of 19 November 2026, item 3, on Lawal's 13:47: "do not make the post.
+ * Wait till 6 pm"): every drafted piece of the week the policy may approve, each with the same checks the approval runs
+ * (pieceDependencies), eligible or not and why. Writes nothing; the two kinds that never post are left out as the policy
+ * leaves them out.
+ */
+export async function standingPolicyDryRun(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<PolicyDryRow[] | null> {
+  const campaign = await readCampaign(db, input.now)
+  if (campaign === null) return null
+  const rows: PolicyDryRow[] = []
+  for (const p of policyPieces(campaign.pieces).filter((x) => x.state === 'drafted')) {
+    try {
+      const reasons = await pieceDependencies(db, p.id, input.now, { siteOrigin: input.siteOrigin })
+      rows.push({ id: p.id, label: p.label, eligible: reasons.length === 0, reasons })
+    } catch (fault) {
+      rows.push({ id: p.id, label: p.label, eligible: false, reasons: [`The check could not run: ${fault instanceof Error ? fault.message : String(fault)}`] })
+    }
+  }
+  return rows
 }
 
 export async function approveUnderStandingPolicy(

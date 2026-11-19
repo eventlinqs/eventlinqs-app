@@ -31,19 +31,19 @@ export default async function AdminDashboardPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
           Today
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
           Operations dashboard
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Live numeric view of the platform: value, operations queues, and system health. Trend charts live in Analytics.
         </p>
       </header>
 
       <section aria-label="Gross merchandise value">
-        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-white/50">
+        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-[var(--admin-muted)]">
           GMV
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -60,7 +60,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section aria-label="Operations queues" className="mt-10">
-        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-white/50">
+        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-[var(--admin-muted)]">
           Queues
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -80,7 +80,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section aria-label="Bookedproof" className="mt-10">
-        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-white/50">
+        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-[var(--admin-muted)]">
           Bookedproof
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -94,7 +94,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section aria-label="System health" className="mt-10">
-        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-white/50">
+        <h2 className="mb-4 font-display text-sm uppercase tracking-widest text-[var(--admin-muted)]">
           System health
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -118,7 +118,7 @@ function dayMs() {
 }
 
 function TileSkeleton({ label }: { label: string }) {
-  return <AdminStatTile label={label} value={<span className="inline-block h-8 w-24 animate-pulse rounded bg-white/10" />} />
+  return <AdminStatTile label={label} value={<span className="inline-block h-8 w-24 animate-pulse rounded bg-[var(--admin-tint-strong)]" />} />
 }
 
 async function RefundsTile() {

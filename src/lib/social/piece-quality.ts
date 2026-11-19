@@ -1,5 +1,5 @@
 import { clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, OLDER_LOOK_IN_PLAN, ORGANISER_OFFER_FILE, ORGANISER_OFFER_SHOWS_UNTIL, type CampaignNight, type Slide } from './campaign'
-import { standInOf } from './stand-ins'
+import { namesAStandIn, STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
 import { getAllCities } from '@/lib/cities/data'
 
@@ -246,5 +246,10 @@ export function pieceCorrections(input: Pick<QualityInput, 'slides' | 'caption' 
   // Caption standard version 2's marks (caption-marks.ts): a drawing without them is drawn again by the code in force. Each
   // platform's caption is judged on its own (captions), never the joined words, whose hooks would count three times over.
   for (const c of input.captions ?? [input.caption]) if (c.trim()) out.push(...captionMarkFaults(c))
+  // The PM's 15:55 of 19 November 2026: a piece drawn with a stock stand-in, or whose caption names one, is drawn again by
+  // the code in force, which draws none while STAND_INS_IN_PLAN is off (stand-ins.ts).
+  if (!STAND_INS_IN_PLAN && (input.slides.some((s) => 'photo' in s && standInOf(s.photo)) || (input.captions ?? [input.caption]).some(namesAStandIn))) {
+    out.push("[photo] It is drawn with a stock photograph or names one in its caption; drawn again with the night's own photograph or in type.")
+  }
   return out
 }

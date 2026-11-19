@@ -107,18 +107,18 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Matches</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Who inside the consented audience should hear about one event, and the arithmetic that
           decided it. Producing a match sends nothing: it writes a ranked list and the reasons
           behind it.
         </p>
       </header>
 
-      <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Pick an event</h2>
-        <p className="mt-1 text-sm text-white/60">
+      <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Pick an event</h2>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
           Only a published event can be matched. The cap defaults to the one in the configuration.
         </p>
         <MatchRunForm
@@ -159,27 +159,27 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
           matcherEnabled={enabled}
         />
         {configError && (
-          <p role="alert" className="mt-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <p role="alert" className="mt-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-800">
             The matcher refuses to score: {configError}
           </p>
         )}
       </section>
 
       {!selected ? (
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-8 text-center">
-          <h2 className="font-display text-xl font-semibold text-white">Pick an event to match</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-white/60">
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-8 text-center">
+          <h2 className="font-display text-xl font-semibold text-[var(--admin-ink)]">Pick an event to match</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-[var(--admin-soft)]">
             Choose a published event above and press Produce a match. Nothing is listed here yet
             because a match belongs to one event: the same audience ranks differently for a Friday
             warehouse night and a Sunday family show, which is the whole point of ranking it.
           </p>
         </section>
       ) : !run ? (
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-8 text-center">
-          <h2 className="font-display text-xl font-semibold text-white">
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-8 text-center">
+          <h2 className="font-display text-xl font-semibold text-[var(--admin-ink)]">
             No match has been produced for {selected.title} yet
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-white/60">
+          <p className="mx-auto mt-3 max-w-lg text-sm text-[var(--admin-soft)]">
             Press Produce a match above. It reads the consented audience, removes the people it must
             not contact and records why, scores the rest against this event, and keeps the top of
             the list up to the cap.
@@ -213,17 +213,17 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
             />
           </div>
 
-          <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h2 className="font-display text-lg font-semibold text-white">The funnel</h2>
-            <p className="mt-1 text-sm text-white/60">
+          <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">The funnel</h2>
+            <p className="mt-1 text-sm text-[var(--admin-soft)]">
               From {run.audience_considered} in the audience to {run.returned_count} matched, and
               every person who dropped out is here with the reason they did.
             </p>
-            <ul className="mt-5 space-y-2 text-sm text-white/80">
+            <ul className="mt-5 space-y-2 text-sm text-[var(--admin-ink)]">
               {(Object.keys(SUPPRESSION_SENTENCES) as SuppressionReason[]).map(reason => (
-                <li key={reason} className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                  <span className="text-white/70">{SUPPRESSION_SENTENCES[reason]}</span>
-                  <span className="shrink-0 font-display text-base tabular-nums text-white">
+                <li key={reason} className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                  <span className="text-[var(--admin-soft)]">{SUPPRESSION_SENTENCES[reason]}</span>
+                  <span className="shrink-0 font-display text-base tabular-nums text-[var(--admin-ink)]">
                     {funnel[reason] ?? 0}
                   </span>
                 </li>
@@ -231,19 +231,19 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
             </ul>
           </section>
 
-          <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h2 className="font-display text-lg font-semibold text-white">How the score is worked out</h2>
-            <p className="mt-2 text-sm text-white/70">
+          <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">How the score is worked out</h2>
+            <p className="mt-2 text-sm text-[var(--admin-soft)]">
               Method {run.method_name} version {run.method_version}, run{' '}
               {formatPlatformDate(run.started_at)}.
             </p>
-            {config && <p className="mt-2 text-sm text-white/60">{methodSentence(config)}</p>}
+            {config && <p className="mt-2 text-sm text-[var(--admin-soft)]">{methodSentence(config)}</p>}
           </section>
 
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h2 className="font-display text-lg font-semibold text-white">The ranked list</h2>
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">The ranked list</h2>
             {(scores ?? []).length === 0 ? (
-              <p className="mt-3 text-sm text-white/60">
+              <p className="mt-3 text-sm text-[var(--admin-soft)]">
                 This run matched nobody. The funnel above says why, reason by reason.
               </p>
             ) : (
@@ -251,27 +251,27 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
                 {(scores ?? []).map(row => {
                   const breakdown = (row.breakdown ?? []) as unknown as BreakdownEntry[]
                   return (
-                    <li key={row.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                    <li key={row.id} className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)]">
                       <details>
                         <summary className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3">
-                          <span className="text-sm text-white/70">
-                            <span className="mr-3 inline-block w-8 tabular-nums text-white/40">
+                          <span className="text-sm text-[var(--admin-soft)]">
+                            <span className="mr-3 inline-block w-8 tabular-nums text-[var(--admin-muted)]">
                               {row.rank}
                             </span>
                             Audience member {row.audience_member_id.slice(0, 8)}
                           </span>
-                          <span className="font-display text-lg tabular-nums text-white">
+                          <span className="font-display text-lg tabular-nums text-[var(--admin-ink)]">
                             {decimals(Number(row.score))}
                           </span>
                         </summary>
-                        <ul className="space-y-2 border-t border-white/[0.06] px-4 py-3 text-sm text-white/70">
+                        <ul className="space-y-2 border-t border-[var(--admin-line)] px-4 py-3 text-sm text-[var(--admin-soft)]">
                           {breakdown.map(entry => (
                             <li key={entry.component} className="flex items-baseline justify-between gap-4">
                               <span>
                                 {entry.sentence}{' '}
-                                <span className="text-white/40">({entry.raw})</span>
+                                <span className="text-[var(--admin-muted)]">({entry.raw})</span>
                               </span>
-                              <span className="shrink-0 tabular-nums text-white/60">
+                              <span className="shrink-0 tabular-nums text-[var(--admin-soft)]">
                                 +{decimals(entry.contribution)}
                               </span>
                             </li>

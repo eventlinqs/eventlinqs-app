@@ -42,16 +42,16 @@ export default async function AdminOpportunityPage() {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Opportunity score</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Each event out of 100: relevance, attention, engagement, conversion and business health over the last {WINDOW_DAYS} days, 20 each,
           against the events of its own city and category. 10 in a part is the middle of its peers.
         </p>
       </header>
 
       {scored.length === 0 ? (
-        <p className="text-sm text-white/60">No event has two weeks of numbers yet.</p>
+        <p className="text-sm text-[var(--admin-soft)]">No event has two weeks of numbers yet.</p>
       ) : (
         <div className={ADMIN_TABLE_WRAP}>
           <table className={`${ADMIN_TABLE} lg:min-w-[640px]`}>
@@ -70,16 +70,16 @@ export default async function AdminOpportunityPage() {
               {scored.map((r) => (
                 <tr key={r.id} className={ADMIN_ROW}>
                   <td className={ADMIN_CELL_NAME}>
-                    <Link prefetch={false} href={`/events/${r.slug}`} className={`${ADMIN_ROW_CONTROL} text-white underline-offset-2 hover:underline`}>
+                    <Link prefetch={false} href={`/events/${r.slug}`} className={`${ADMIN_ROW_CONTROL} text-[var(--admin-ink)] underline-offset-2 hover:underline`}>
                       {r.title}
                     </Link>
                   </td>
-                  <td className={`${ADMIN_CELL} font-semibold text-white`}>
+                  <td className={`${ADMIN_CELL} font-semibold text-[var(--admin-ink)]`}>
                     <span className={ADMIN_CELL_LABEL}>Score</span>
                     {r.score}
                   </td>
                   {DIMENSIONS.map((d) => (
-                    <td key={d} className={`${ADMIN_CELL} text-white/70`}>
+                    <td key={d} className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>{LABEL[d]}</span>
                       {r.parts[d]}
                     </td>
@@ -92,7 +92,7 @@ export default async function AdminOpportunityPage() {
       )}
 
       {waiting.length > 0 ? (
-        <p className="mt-6 text-sm text-white/60">
+        <p className="mt-6 text-sm text-[var(--admin-soft)]">
           {waiting.length} {waiting.length === 1 ? 'event needs' : 'events need'} two weeks of numbers before {waiting.length === 1 ? 'it is' : 'they are'} scored.
         </p>
       ) : null}

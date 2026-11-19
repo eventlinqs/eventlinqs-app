@@ -312,7 +312,8 @@ describe('a piece that is not whole is refused (C2, J10, J11)', () => {
 })
 
 describe('the creative checks before approval (K10, K12)', () => {
-  const [ahead] = of(plan().pieces, 'week_ahead', 'geelong')
+  // The piece as production plans it (store.ts planNow passes STAND_INS_IN_PLAN, off since the PM's 15:55 of 19 November).
+  const [ahead] = of(planCampaign({ nights: [...geelongWeek, ...ballaratOne, ...outside], cities: CITIES, weekStart: WEEK, origin: ORIGIN, standIns: false }).pieces, 'week_ahead', 'geelong')
   const nights = new Map(geelongWeek.map((n) => [n.eventId, { venueName: n.venueName, title: n.title }]))
   it('a planned piece passes them', () => {
     expect(creativeRefusals(ahead, nights)).toEqual([])

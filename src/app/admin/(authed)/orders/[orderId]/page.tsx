@@ -19,10 +19,10 @@ function money(cents: number, currency: string): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  confirmed: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  partially_refunded: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  refunded: 'border-red-500/30 bg-red-500/10 text-red-200',
-  pending: 'border-white/15 bg-white/[0.04] text-white/60',
+  confirmed: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
+  partially_refunded: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  refunded: 'border-red-500/30 bg-red-500/10 text-red-800',
+  pending: 'border-[var(--admin-line)] bg-[var(--admin-tint)] text-[var(--admin-soft)]',
 }
 
 export default async function AdminOrderDetailPage({
@@ -48,7 +48,7 @@ export default async function AdminOrderDetailPage({
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Orders</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Orders</p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-3xl font-bold tracking-tight">{order.order_number}</h1>
           <span
@@ -59,10 +59,10 @@ export default async function AdminOrderDetailPage({
             {order.status.replace('_', ' ')}
           </span>
         </div>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-[var(--admin-soft)]">
           {order.event_title ?? 'Event'} | {order.buyer_email ?? 'Guest'} | {money(order.total_cents, order.currency)}
         </p>
-        <Link prefetch={false} href="/admin/orders" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-white/50 hover:text-white">
+        <Link prefetch={false} href="/admin/orders" className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]">
           Back to orders
         </Link>
       </header>
@@ -78,22 +78,22 @@ export default async function AdminOrderDetailPage({
           />
         </section>
 
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
           <h2 className="font-display text-lg font-semibold">Refund history</h2>
           {order.refunds.length === 0 ? (
-            <p className="mt-2 text-sm text-white/60">No refunds on this order yet.</p>
+            <p className="mt-2 text-sm text-[var(--admin-soft)]">No refunds on this order yet.</p>
           ) : (
             <ul className="mt-4 space-y-2">
               {order.refunds.map(r => (
                 <li
                   key={r.id}
-                  className="flex items-center justify-between rounded-md border border-white/[0.08] px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-md border border-[var(--admin-line)] px-3 py-2 text-sm"
                 >
-                  <span className="text-white/70">
+                  <span className="text-[var(--admin-soft)]">
                     {money(r.amount_cents, r.currency)}
-                    <span className="ml-2 text-white/40">{r.reason.replace(/_/g, ' ')}</span>
+                    <span className="ml-2 text-[var(--admin-muted)]">{r.reason.replace(/_/g, ' ')}</span>
                   </span>
-                  <span className="text-white/50">{r.status}</span>
+                  <span className="text-[var(--admin-muted)]">{r.status}</span>
                 </li>
               ))}
             </ul>

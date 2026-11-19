@@ -47,9 +47,9 @@ export function WaitlistBridge({ rows }: { rows: Row[] }) {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300"
+          className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-800"
         >
-          <p className="font-semibold text-emerald-200">
+          <p className="font-semibold text-emerald-800">
             {sent.length === 1 ? 'Founding invitation sent' : `${sent.length} founding invitations sent`}
           </p>
           <ul className="mt-1 space-y-0.5">
@@ -59,32 +59,32 @@ export function WaitlistBridge({ rows }: { rows: Row[] }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-emerald-300/70">
+          <p className="mt-2 text-xs text-emerald-800">
             They leave the list below because it shows only organisers who have not been invited yet.
           </p>
         </div>
       )}
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-white/15 bg-[#131A2A] px-4 py-6 text-sm text-white/60">
+        <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-6 text-sm text-[var(--admin-soft)]">
           No un-invited organiser sign-ups in the open cities right now.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-white/15 bg-[#131A2A]">
-          <ul className="divide-y divide-white/5">
+        <div className="overflow-hidden rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)]">
+          <ul className="divide-y divide-[var(--admin-line)]">
             {rows.map(r => {
               const state = done[r.id]
               return (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{r.name}</p>
-                    <p className="truncate text-xs text-white/50">{r.email} · {r.city}</p>
+                    <p className="text-sm font-semibold text-[var(--admin-ink)]">{r.name}</p>
+                    <p className="truncate text-xs text-[var(--admin-muted)]">{r.email} · {r.city}</p>
                   </div>
                   {state === 'sent' ? (
-                    <span className="text-sm font-semibold text-emerald-400">Invited</span>
+                    <span className="text-sm font-semibold text-emerald-800">Invited</span>
                   ) : (
                     <div className="flex items-center gap-3">
-                      {state && state !== 'sent' && <span className="text-xs text-red-400">{state}</span>}
+                      {state && state !== 'sent' && <span className="text-xs text-red-800">{state}</span>}
                       <button
                         type="button"
                         onClick={() => invite(r)}

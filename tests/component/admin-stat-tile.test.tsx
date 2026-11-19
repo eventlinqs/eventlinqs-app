@@ -23,7 +23,7 @@ describe('AdminStatTile', () => {
     ['ok', 'bg-emerald-400'],
     ['warn', 'bg-amber-400'],
     ['down', 'bg-rose-500'],
-    ['pending', 'bg-white/30'],
+    ['pending', 'bg-[var(--admin-line-strong)]'],
   ] as const)('maps the %s status to the %s dot', (status, expectedClass) => {
     const { container } = render(<AdminStatTile label="Stripe API latency" value="Down" status={status} />)
     const dot = container.querySelector('span[aria-hidden]')

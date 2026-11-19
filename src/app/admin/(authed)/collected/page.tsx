@@ -177,9 +177,9 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Listings</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Listings</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Collected events</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           What the daily run found on the sources whose own terms allow it and could not settle on its own. Nothing here
           is live until you accept it. An event we already list only gains its booking links, never a second card, and a
           changed time or venue always comes to you.
@@ -191,8 +191,8 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
           role={notice.tone === 'ok' ? 'status' : 'alert'}
           className={
             notice.tone === 'ok'
-              ? 'mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
-              : 'mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'
+              ? 'mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800'
+              : 'mb-6 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800'
           }
         >
           {notice.text}
@@ -201,29 +201,29 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
       )}
 
       <h2 className="mb-3 font-display text-lg font-semibold">Waiting for review ({waitingTotal})</h2>
-      <ul className="mb-4 grid grid-cols-1 gap-2 text-sm text-white/70 sm:grid-cols-3" data-horizons>
+      <ul className="mb-4 grid grid-cols-1 gap-2 text-sm text-[var(--admin-soft)] sm:grid-cols-3" data-horizons>
         {byHorizon.map(({ h, n }) => (
-          <li key={h} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2" data-horizon={h}>
-            {HORIZON_LABELS[h]}: <span className="font-display font-semibold text-white">{n}</span>
+          <li key={h} className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2" data-horizon={h}>
+            {HORIZON_LABELS[h]}: <span className="font-display font-semibold text-[var(--admin-ink)]">{n}</span>
           </li>
         ))}
       </ul>
       {(drawn < waitingTotal || beyondN > 0 || pastN > 0) && (
-        <p className="mb-4 text-sm text-white/60" data-queue-note>
+        <p className="mb-4 text-sm text-[var(--admin-soft)]" data-queue-note>
           {drawn < waitingTotal && <>Showing the first {drawn}, soonest first. </>}
           {beyondN > 0 && <>{beyondN} more than 90 days ahead. </>}
           {pastN > 0 && <>{pastN} whose night has passed {pastN === 1 ? 'is' : 'are'} not shown; the next daily run refuses them, saying so.</>}
         </p>
       )}
       {drawn === 0 ? (
-        <p className="mb-10 rounded-md border border-white/10 bg-white/[0.03] px-4 py-6 text-sm text-white/60">
+        <p className="mb-10 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-4 py-6 text-sm text-[var(--admin-soft)]">
           Nothing is waiting. The next run is tomorrow morning.
         </p>
       ) : (
         <div className={`relative mb-10 ${ADMIN_TABLE_WRAP}`}>
           <table className={`${ADMIN_TABLE} lg:min-w-[1050px]`}>
             <thead className={ADMIN_THEAD}>
-              <tr className="border-b border-white/[0.08] text-left text-white/50">
+              <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
                 <th scope="col" className="px-4 py-3 font-medium">Event</th>
                 <th scope="col" className="px-4 py-3 font-medium">Why it waits</th>
                 <th scope="col" className="px-4 py-3 font-medium">When</th>
@@ -246,12 +246,12 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                 return (
                   <tr key={c.id} className={`${ADMIN_ROW} align-top`} data-candidate={c.id} data-horizon={horizon} data-confidence={c.confidence}>
                     <td className={ADMIN_CELL_NAME}>
-                      <div className="font-medium text-white">{c.title}</div>
-                      <div className="mt-1 text-xs text-white/50">
+                      <div className="font-medium text-[var(--admin-ink)]">{c.title}</div>
+                      <div className="mt-1 text-xs text-[var(--admin-muted)]">
                         {(c.kind === 'adds_links' || c.kind === 'changes_facts') && event ? (
                           <>
                             {c.kind === 'adds_links' ? 'Adds links to' : c.change === 'venue_changed' ? 'Venue changed on' : 'Time changed on'}{' '}
-                            <Link prefetch={false} href={`/events/${event.slug}`} className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-white`}>
+                            <Link prefetch={false} href={`/events/${event.slug}`} className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-[var(--admin-ink)]`}>
                               {event.title}
                             </Link>
                           </>
@@ -260,45 +260,45 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                         )}
                       </div>
                     </td>
-                    <td className={`${ADMIN_CELL} text-white/70`}>
+                    <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>Why it waits</span>
-                      <div className="text-xs text-white/50">{HORIZON_LABELS[horizon]}</div>
+                      <div className="text-xs text-[var(--admin-muted)]">{HORIZON_LABELS[horizon]}</div>
                       {reasons.length === 0 ? (
                         <div className="text-xs">Nothing doubtful; not a partner&apos;s own feed</div>
                       ) : (
-                        <ul className="space-y-0.5 text-xs text-amber-200" data-reasons={reasons.join(' ')}>
+                        <ul className="space-y-0.5 text-xs text-amber-800" data-reasons={reasons.join(' ')}>
                           {reasons.map((r) => (
                             <li key={r}>{REASON_LABELS[r as CandidateReason] ?? 'Found before the queue judged it'}</li>
                           ))}
                         </ul>
                       )}
                     </td>
-                    <td className={`${ADMIN_CELL} whitespace-nowrap text-white/70`}>
+                    <td className={`${ADMIN_CELL} whitespace-nowrap text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>When</span>
                       {WHEN.format(new Date(c.starts_at as string))}
                     </td>
-                    <td className={`${ADMIN_CELL} text-white/70`}>
+                    <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>Where</span>
                       {c.venue_name}
-                      {c.venue_address && <div className="text-xs text-white/40">{c.venue_address}</div>}
+                      {c.venue_address && <div className="text-xs text-[var(--admin-muted)]">{c.venue_address}</div>}
                     </td>
-                    <td className={`${ADMIN_CELL} text-white/70`}>
+                    <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>Sells on</span>
                       {links.length === 0
                         ? 'No booking link on the page'
                         : links.map((l, i) => (
                             <span key={l.url}>
                               {i > 0 && ', '}
-                              <a href={l.url} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-white`}>
+                              <a href={l.url} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-[var(--admin-ink)]`}>
                                 {PROVIDER_NAMES[providerOf(l.url)] ?? hostOf(l.url)}
                               </a>
                               {l.availability === 'sold_out' && ' (sold out)'}
                             </span>
                           ))}
                     </td>
-                    <td className={`${ADMIN_CELL} text-white/70`}>
+                    <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                       <span className={ADMIN_CELL_LABEL}>Found on</span>
-                      <a href={c.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-white`}>
+                      <a href={c.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} underline underline-offset-2 hover:text-[var(--admin-ink)]`}>
                         {source?.name ?? hostOf(c.page_url as string)}
                       </a>
                     </td>
@@ -308,10 +308,10 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                           <input type="hidden" name="id" value={c.id} />
                           {c.kind === 'new' && (
                             <>
-                              <label className="text-xs text-white/60" htmlFor={`venue-${c.id}`}>
+                              <label className="text-xs text-[var(--admin-soft)]" htmlFor={`venue-${c.id}`}>
                                 Venue
                               </label>
-                              <select id={`venue-${c.id}`} name="venue" required defaultValue={matched ?? ''} className="rounded-md border border-white/15 bg-transparent px-2 py-2 text-xs text-white">
+                              <select id={`venue-${c.id}`} name="venue" required defaultValue={matched ?? ''} className="rounded-md border border-[var(--admin-line)] bg-transparent px-2 py-2 text-xs text-[var(--admin-ink)]">
                                 <option value="" disabled>
                                   Choose the held venue
                                 </option>
@@ -321,10 +321,10 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                                   </option>
                                 ))}
                               </select>
-                              <label className="text-xs text-white/60" htmlFor={`category-${c.id}`}>
+                              <label className="text-xs text-[var(--admin-soft)]" htmlFor={`category-${c.id}`}>
                                 Category
                               </label>
-                              <select id={`category-${c.id}`} name="category" required defaultValue="" className="rounded-md border border-white/15 bg-transparent px-2 py-2 text-xs text-white">
+                              <select id={`category-${c.id}`} name="category" required defaultValue="" className="rounded-md border border-[var(--admin-line)] bg-transparent px-2 py-2 text-xs text-[var(--admin-ink)]">
                                 <option value="" disabled>
                                   Choose the category
                                 </option>
@@ -338,7 +338,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                           )}
                           <button
                             type="submit"
-                            className={`${ADMIN_ROW_CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-100 transition hover:border-emerald-300/60`}
+                            className={`${ADMIN_ROW_CONTROL} w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:border-emerald-300/60`}
                           >
                             {c.kind === 'new' ? 'Accept and publish' : 'Accept'}
                           </button>
@@ -351,7 +351,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                           <select
                             id={`reason-${c.id}`}
                             name="reason"
-                            className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-xs text-white"
+                            className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-xs text-[var(--admin-ink)]"
                             defaultValue={REFUSAL_REASONS[0]}
                           >
                             {REFUSAL_REASONS.map((r) => (
@@ -362,7 +362,7 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                           </select>
                           <button
                             type="submit"
-                            className={`${ADMIN_ROW_CONTROL} w-full justify-center rounded-md border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white transition hover:border-amber-300/40 hover:text-amber-200`}
+                            className={`${ADMIN_ROW_CONTROL} w-full justify-center rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint-strong)] px-3 py-2 text-xs font-medium text-[var(--admin-ink)] transition hover:border-amber-300/40 hover:text-amber-800`}
                           >
                             Refuse
                           </button>
@@ -378,15 +378,15 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
       )}
 
       <h2 className="mb-3 mt-10 font-display text-lg font-semibold">Add a partner&apos;s own feed</h2>
-      <p className="mb-3 max-w-2xl text-sm text-white/60">
+      <p className="mb-3 max-w-2xl text-sm text-[var(--admin-soft)]">
         When an organiser says yes to us reading their calendar, put it here with their words. It is read every day; a night
         it gives at their venue, with nothing doubtful, publishes on its own, and anything else comes to the queue above.
         Their photos come through the media vault, never from the feed.
       </p>
-      <form action={addPartnerFeedAction} className="mb-10 grid max-w-3xl grid-cols-1 gap-3 rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm sm:grid-cols-2" data-partner-feed-form>
-        <label className="flex flex-col gap-1 text-white/70">
+      <form action={addPartnerFeedAction} className="mb-10 grid max-w-3xl grid-cols-1 gap-3 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm sm:grid-cols-2" data-partner-feed-form>
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
           Organiser
-          <select name="organisationId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+          <select name="organisationId" required className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
             {(partnerOrgs ?? []).map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -394,9 +394,9 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-white/70">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
           Their venue
-          <select name="venueId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+          <select name="venueId" required className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
             {(partnerVenues ?? []).map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
@@ -405,9 +405,9 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-white/70">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
           Category of their nights
-          <select name="categoryId" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+          <select name="categoryId" required className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
             {(categories ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -415,33 +415,33 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-white/70">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
           What it is
-          <select name="feedKind" required defaultValue="calendar" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white">
+          <select name="feedKind" required defaultValue="calendar" className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]">
             <option value="calendar">A calendar feed (iCal)</option>
             <option value="page">Their events page</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)] sm:col-span-2">
           The feed or page address
-          <input name="feedUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+          <input name="feedUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]" />
         </label>
-        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)] sm:col-span-2">
           Where they said yes, or publish it to subscribe
-          <input name="yesUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+          <input name="yesUrl" type="url" required placeholder="https://" className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]" />
         </label>
-        <label className="flex flex-col gap-1 text-white/70 sm:col-span-2">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)] sm:col-span-2">
           Their words, as they wrote them
-          <textarea name="yesWords" required rows={3} maxLength={2000} className="rounded-md border border-white/15 bg-[#131A2A] px-2 py-2 text-white" />
+          <textarea name="yesWords" required rows={3} maxLength={2000} className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 py-2 text-[var(--admin-ink)]" />
         </label>
-        <label className="flex flex-col gap-1 text-white/70">
+        <label className="flex flex-col gap-1 text-[var(--admin-soft)]">
           The day they said it
-          <input name="yesOn" type="date" required className="min-h-[44px] rounded-md border border-white/15 bg-[#131A2A] px-2 text-white" />
+          <input name="yesOn" type="date" required className="min-h-[44px] rounded-md border border-[var(--admin-line)] bg-[var(--admin-paper)] px-2 text-[var(--admin-ink)]" />
         </label>
         <div className="flex items-end">
           <button
             type="submit"
-            className="min-h-[44px] w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:border-emerald-300/60"
+            className="min-h-[44px] w-full justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-800 transition hover:border-emerald-300/60"
           >
             Add their feed
           </button>
@@ -449,21 +449,21 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
       </form>
 
       <h2 className="mb-3 font-display text-lg font-semibold">The source register ({(sources ?? []).length})</h2>
-      <p className="mb-3 max-w-2xl text-sm text-white/60">
+      <p className="mb-3 max-w-2xl text-sm text-[var(--admin-soft)]">
         Where events come from, in the order we grow them. Each source is read only where its own answers allow it.
       </p>
-      <ol className="mb-4 grid grid-cols-1 gap-2 text-sm text-white/70 sm:grid-cols-2 lg:grid-cols-4" data-acquisition-order>
+      <ol className="mb-4 grid grid-cols-1 gap-2 text-sm text-[var(--admin-soft)] sm:grid-cols-2 lg:grid-cols-4" data-acquisition-order>
         {ACQUISITION_PATHS.map((p) => (
-          <li key={p.order} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2" data-path={p.order}>
-            <span className="font-display font-semibold text-white">{p.order}.</span> {p.label}
-            <span className="ml-1 text-white/40">({(sources ?? []).filter((s) => s.acquisition_order === p.order).length})</span>
+          <li key={p.order} className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2" data-path={p.order}>
+            <span className="font-display font-semibold text-[var(--admin-ink)]">{p.order}.</span> {p.label}
+            <span className="ml-1 text-[var(--admin-muted)]">({(sources ?? []).filter((s) => s.acquisition_order === p.order).length})</span>
           </li>
         ))}
       </ol>
       <div className={`relative ${ADMIN_TABLE_WRAP}`}>
         <table className={`${ADMIN_TABLE} lg:min-w-[1250px]`}>
           <thead className={ADMIN_THEAD}>
-            <tr className="border-b border-white/[0.08] text-left text-white/50">
+            <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
               <th scope="col" className="px-4 py-3 font-medium">Source</th>
               <th scope="col" className="px-4 py-3 font-medium">Its terms</th>
               <th scope="col" className="px-4 py-3 font-medium">Permission</th>
@@ -483,24 +483,24 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
               return (
                 <tr key={s.id} className={`${ADMIN_ROW} align-top`} data-source={s.id} data-source-type={s.source_type}>
                   <td className={ADMIN_CELL_NAME}>
-                    <a href={s.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} font-medium text-white underline underline-offset-2`}>
+                    <a href={s.page_url as string} target="_blank" rel="noopener noreferrer" className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--admin-ink)] underline underline-offset-2`}>
                       {s.name}
                     </a>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-[var(--admin-muted)]">
                       {path ? `${path.order}. ` : ''}
                       {SOURCE_TYPE_LABELS[s.source_type as SourceType] ?? s.source_type}
                       {`, ${s.kind}`}
                       {s.city_slug ? `, ${s.city_slug}` : ''}
                     </div>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Its terms</span>
                     {s.collection === 'read' ? `Read ${s.changes}` : s.collection === 'ask' ? 'Ask them to submit' : 'Never read'}
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-[var(--admin-muted)]">
                       {s.verification === 'verified' && s.verified_on ? `Verified ${s.verified_on}` : s.verification === 'needs_recheck' ? 'Needs a recheck' : 'Not verified'}
                     </div>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Permission</span>
                     <ul className="space-y-0.5 text-xs">
                       {PERMISSION_ANSWERS.map((a) => {
@@ -509,45 +509,45 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                         const read = s[`${a.column}_read_on` as const] as string | null
                         return (
                           <li key={a.column} title={quote ?? undefined} data-answer={a.column} data-value={answer}>
-                            {a.label}: <span className={answer === 'yes' ? 'text-emerald-200' : answer === 'no' ? 'text-amber-200' : 'text-white/40'}>{answer}</span>
-                            {read ? <span className="text-white/40"> ({read})</span> : null}
+                            {a.label}: <span className={answer === 'yes' ? 'text-emerald-800' : answer === 'no' ? 'text-amber-800' : 'text-[var(--admin-muted)]'}>{answer}</span>
+                            {read ? <span className="text-[var(--admin-muted)]"> ({read})</span> : null}
                           </li>
                         )
                       })}
                     </ul>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>We may use</span>
                     {content.length === 0 ? 'Nothing' : content.join(', ')}
-                    <div className="text-xs text-white/40">Changes {s.changes}</div>
+                    <div className="text-xs text-[var(--admin-muted)]">Changes {s.changes}</div>
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Last collected</span>
                     <span data-freshness={freshness}>
                       {s.last_success_at ? WHEN.format(new Date(s.last_success_at as string)) : 'Never collected'}
-                      {freshness === 'stale' && <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-200">Stale</span>}
+                      {freshness === 'stale' && <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-800">Stale</span>}
                     </span>
                     {s.last_checked_at && (
-                      <div className="text-xs text-white/40">
+                      <div className="text-xs text-[var(--admin-muted)]">
                         Checked {WHEN.format(new Date(s.last_checked_at as string))}
                         {s.last_outcome ? `: ${s.last_outcome}` : ''}
                       </div>
                     )}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Last runs</span>
                     {lastRuns.length === 0 ? (
                       'No run yet'
                     ) : (
                       <>
                         {inARow >= FAILING_AFTER_RUNS && (
-                          <span className="mb-1 inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-200" data-failing>
+                          <span className="mb-1 inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-800" data-failing>
                             Failed {inARow} runs in a row
                           </span>
                         )}
                         <ol className="space-y-0.5 text-xs" data-runs={lastRuns.length}>
                           {lastRuns.map((run) => (
-                            <li key={run.ran_at} title={run.outcome} className={run.succeeded ? 'text-white/60' : 'text-amber-200'}>
+                            <li key={run.ran_at} title={run.outcome} className={run.succeeded ? 'text-[var(--admin-soft)]' : 'text-amber-800'}>
                               {WHEN.format(new Date(run.ran_at))}: {run.succeeded ? 'read' : 'failed'}
                             </li>
                           ))}
@@ -555,10 +555,10 @@ export default async function AdminCollectedPage({ searchParams }: { searchParam
                       </>
                     )}
                   </td>
-                  <td className={`${ADMIN_CELL} text-white/70`}>
+                  <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                     <span className={ADMIN_CELL_LABEL}>Owner</span>
                     {s.licence_owner ?? 'Not recorded'}
-                    {s.contact && <div className="break-all text-xs text-white/40">{s.contact}</div>}
+                    {s.contact && <div className="break-all text-xs text-[var(--admin-muted)]">{s.contact}</div>}
                   </td>
                 </tr>
               )

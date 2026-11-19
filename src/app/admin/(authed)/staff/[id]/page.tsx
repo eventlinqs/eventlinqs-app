@@ -70,28 +70,28 @@ export default async function AdminStaffDetailPage({
 
   return (
     <div>
-      <nav className="mb-6 text-sm text-white/50">
-        <Link prefetch={false} href="/admin/staff" className="hover:text-white">Admin staff</Link>
+      <nav className="mb-6 text-sm text-[var(--admin-muted)]">
+        <Link prefetch={false} href="/admin/staff" className="hover:text-[var(--admin-ink)]">Admin staff</Link>
         <span aria-hidden className="px-2">/</span>
-        <span className="text-white/80">{staff.displayName}</span>
+        <span className="text-[var(--admin-ink)]">{staff.displayName}</span>
       </nav>
 
       <header className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight">{staff.displayName}</h1>
-        <p className="mt-1 text-sm text-white/50">{staff.email}</p>
+        <p className="mt-1 text-sm text-[var(--admin-muted)]">{staff.email}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px]">
-          <span className="rounded bg-white/10 px-2 py-0.5 text-white/80">{ROLE_LABELS[staff.role]}</span>
+          <span className="rounded bg-[var(--admin-tint-strong)] px-2 py-0.5 text-[var(--admin-ink)]">{ROLE_LABELS[staff.role]}</span>
           {staff.disabled
-            ? <span className="rounded bg-red-500/15 px-2 py-0.5 font-semibold uppercase tracking-wider text-red-300">Disabled</span>
-            : <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-semibold uppercase tracking-wider text-emerald-300">Active</span>}
-          <span className="rounded bg-white/5 px-2 py-0.5 text-white/60">2FA {staff.totpEnrolled ? 'enrolled' : 'pending'}</span>
+            ? <span className="rounded bg-red-500/15 px-2 py-0.5 font-semibold uppercase tracking-wider text-red-800">Disabled</span>
+            : <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-semibold uppercase tracking-wider text-emerald-800">Active</span>}
+          <span className="rounded bg-[var(--admin-tint)] px-2 py-0.5 text-[var(--admin-soft)]">2FA {staff.totpEnrolled ? 'enrolled' : 'pending'}</span>
         </div>
       </header>
 
       {banner && (
         <div
           role={banner[0] === 'ok' ? 'status' : 'alert'}
-          className={`mb-6 rounded-md border px-4 py-3 text-sm ${banner[0] === 'ok' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}
+          className={`mb-6 rounded-md border px-4 py-3 text-sm ${banner[0] === 'ok' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800' : 'border-red-500/30 bg-red-500/10 text-red-800'}`}
         >
           {banner[1]}
         </div>
@@ -99,48 +99,48 @@ export default async function AdminStaffDetailPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Role */}
-        <section className="rounded-lg border border-white/[0.08] bg-[#131A2A] p-5">
+        <section className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
           <h2 className="mb-3 font-display text-lg font-semibold">Role</h2>
           {canEditRole ? (
             <form action={setRoleAction} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="id" value={staff.id} />
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="role" className="text-[11px] uppercase tracking-wider text-white/50">Assigned role</label>
+                <label htmlFor="role" className="text-[11px] uppercase tracking-wider text-[var(--admin-muted)]">Assigned role</label>
                 <select id="role" name="role" defaultValue={staff.role}
-                  className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none">
+                  className="rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1.5 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none">
                   {assignableRoles.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                 </select>
               </div>
-              <ConfirmSubmitButton confirmMessage="Change this admin's role?" className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white">
+              <ConfirmSubmitButton confirmMessage="Change this admin's role?" className="rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-sm font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]">
                 Save role
               </ConfirmSubmitButton>
             </form>
           ) : (
-            <p className="text-sm text-white/50">Only a super admin can change a super admin role.</p>
+            <p className="text-sm text-[var(--admin-muted)]">Only a super admin can change a super admin role.</p>
           )}
         </section>
 
         {/* Access */}
-        <section className="rounded-lg border border-white/[0.08] bg-[#131A2A] p-5">
+        <section className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
           <h2 className="mb-3 font-display text-lg font-semibold">Console access</h2>
           <form action={setDisabledAction} className="flex items-center gap-3">
             <input type="hidden" name="id" value={staff.id} />
             <input type="hidden" name="disabled" value={staff.disabled ? 'false' : 'true'} />
             <ConfirmSubmitButton
               confirmMessage={staff.disabled ? 'Re-enable this admin and let them sign in again?' : 'Disable this admin? They will be signed out and blocked from the console.'}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${staff.disabled ? 'bg-emerald-400/90 text-[#0A0F1A] hover:bg-emerald-300' : 'bg-red-500/90 text-white hover:bg-red-500'}`}
+              className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${staff.disabled ? 'bg-emerald-400/90 text-[#0A0F1A] hover:bg-emerald-300' : 'bg-red-500/90 text-[var(--admin-ink)] hover:bg-red-500'}`}
             >
               {staff.disabled ? 'Enable admin' : 'Disable admin'}
             </ConfirmSubmitButton>
-            <p className="text-xs text-white/45">{staff.disabled ? 'Currently blocked from signing in.' : 'Can sign in with 2FA.'}</p>
+            <p className="text-xs text-[var(--admin-muted)]">{staff.disabled ? 'Currently blocked from signing in.' : 'Can sign in with 2FA.'}</p>
           </form>
         </section>
       </div>
 
       {/* Capabilities */}
-      <section className="mt-6 rounded-lg border border-white/[0.08] bg-[#131A2A] p-5">
+      <section className="mt-6 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
         <h2 className="mb-1 font-display text-lg font-semibold">Capabilities</h2>
-        <p className="mb-4 max-w-2xl text-sm text-white/50">
+        <p className="mb-4 max-w-2xl text-sm text-[var(--admin-muted)]">
           Effective access for this admin. {targetIsSuper
             ? 'A super admin always has every capability; overrides do not apply.'
             : canEditCaps
@@ -157,7 +157,7 @@ export default async function AdminStaffDetailPage({
             <div className={ADMIN_TABLE_WRAP}>
               <table className={`${ADMIN_TABLE} lg:min-w-[620px]`}>
                 <thead className={ADMIN_THEAD}>
-                  <tr className="border-b border-white/[0.08] text-left text-white/50">
+                  <tr className="border-b border-[var(--admin-line)] text-left text-[var(--admin-muted)]">
                     <th scope="col" className="px-4 py-2.5 font-medium">Capability</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Role baseline</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Override</th>
@@ -174,17 +174,17 @@ export default async function AdminStaffDetailPage({
                     return (
                       <tr key={cap} className={ADMIN_ROW}>
                         <td className={ADMIN_CELL_NAME}>
-                          <div className="text-white">{CAPABILITY_LABELS[cap]}</div>
-                          <div className="font-mono text-[11px] text-white/40">{cap}</div>
+                          <div className="text-[var(--admin-ink)]">{CAPABILITY_LABELS[cap]}</div>
+                          <div className="font-mono text-[11px] text-[var(--admin-muted)]">{cap}</div>
                         </td>
-                        <td className={`${ADMIN_CELL} text-white/60`}>
+                        <td className={`${ADMIN_CELL} text-[var(--admin-soft)]`}>
                           <span className={ADMIN_CELL_LABEL}>Role baseline</span>
                           {baseline ? 'Allowed' : 'Not allowed'}
                         </td>
                         <td className={ADMIN_CELL}>
                           <span className={ADMIN_CELL_LABEL}>Override</span>
                           <select name={`cap.${cap}`} defaultValue={mode} aria-label={`${CAPABILITY_LABELS[cap]} permission`}
-                            className="min-h-11 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white focus:border-white/40 focus:outline-none">
+                            className="min-h-11 rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-2 py-1 text-[var(--admin-ink)] focus:border-[var(--admin-line-strong)] focus:outline-none">
                             <option value="inherit">Inherit</option>
                             <option value="grant">Grant</option>
                             <option value="revoke">Revoke</option>
@@ -196,15 +196,15 @@ export default async function AdminStaffDetailPage({
                 </tbody>
               </table>
             </div>
-            <ConfirmSubmitButton confirmMessage="Save capability overrides for this admin?" className="mt-2 rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white">
+            <ConfirmSubmitButton confirmMessage="Save capability overrides for this admin?" className="mt-2 rounded-md bg-[var(--admin-ink)] px-3 py-1.5 text-sm font-semibold text-[var(--admin-paper)] transition hover:bg-[var(--admin-ink)]">
               Save capabilities
             </ConfirmSubmitButton>
           </form>
         ) : (
           <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {staff.effectiveCapabilities.map((cap) => (
-              <li key={cap} className="flex items-center gap-2 text-sm text-white/70">
-                <span className="text-emerald-300" aria-hidden>&#10003;</span> {CAPABILITY_LABELS[cap]}
+              <li key={cap} className="flex items-center gap-2 text-sm text-[var(--admin-soft)]">
+                <span className="text-emerald-800" aria-hidden>&#10003;</span> {CAPABILITY_LABELS[cap]}
               </li>
             ))}
           </ul>

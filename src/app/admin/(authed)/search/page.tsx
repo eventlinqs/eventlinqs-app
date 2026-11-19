@@ -24,24 +24,24 @@ interface Group {
 
 function ResultGroup({ title, hits, href, allHref }: Group) {
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-[#131A2A]">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-        <h2 className="font-display text-sm uppercase tracking-widest text-white/60">
-          {title} <span className="text-white/40">({hits.length})</span>
+    <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)]">
+      <div className="flex items-center justify-between border-b border-[var(--admin-line)] px-4 py-3">
+        <h2 className="font-display text-sm uppercase tracking-widest text-[var(--admin-soft)]">
+          {title} <span className="text-[var(--admin-muted)]">({hits.length})</span>
         </h2>
-        <Link prefetch={false} href={allHref} className="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-accent)] hover:underline">
+        <Link prefetch={false} href={allHref} className="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-accent-strong)] hover:underline">
           View all
         </Link>
       </div>
       {hits.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-white/40">No matches.</p>
+        <p className="px-4 py-6 text-sm text-[var(--admin-muted)]">No matches.</p>
       ) : (
         <ul>
           {hits.map(h => (
-            <li key={h.id} className="border-t border-white/[0.04] first:border-t-0">
-              <Link prefetch={false} href={href(h.id)} className="block px-4 py-3 transition hover:bg-white/[0.03]">
-                <span className="block text-sm text-white">{h.primary}</span>
-                {h.secondary ? <span className="mt-0.5 block text-xs text-white/45">{h.secondary}</span> : null}
+            <li key={h.id} className="border-t border-[var(--admin-line)] first:border-t-0">
+              <Link prefetch={false} href={href(h.id)} className="block px-4 py-3 transition hover:bg-[var(--admin-tint)]">
+                <span className="block text-sm text-[var(--admin-ink)]">{h.primary}</span>
+                {h.secondary ? <span className="mt-0.5 block text-xs text-[var(--admin-muted)]">{h.secondary}</span> : null}
               </Link>
             </li>
           ))}
@@ -66,24 +66,24 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Search</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Search</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
           {query ? `Results for "${query}"` : 'Search'}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Find any organiser, event, or user, then open the record. Use the search box in the top bar at any time.
         </p>
       </header>
 
-      <form method="GET" action="/admin/search" className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">
+      <form method="GET" action="/admin/search" className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
         <label className="block flex-1 min-w-[240px]">
-          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Search</span>
+          <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Search</span>
           <input
             type="search"
             name="q"
             placeholder="Organiser, event, or user"
             defaultValue={query}
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+            className="w-full rounded-md border border-[var(--admin-line)] bg-[var(--admin-tint)] px-3 py-2 text-sm text-[var(--admin-ink)] outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
           />
         </label>
         <button type="submit" className="min-h-[44px] rounded-md bg-[var(--brand-accent)] px-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)]">
@@ -92,11 +92,11 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
       </form>
 
       {!query ? (
-        <p className="rounded-xl border border-white/[0.08] bg-[#131A2A] px-4 py-10 text-center text-white/50">
+        <p className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-10 text-center text-[var(--admin-muted)]">
           Type a name, title, or email above to search across the platform.
         </p>
       ) : total === 0 ? (
-        <p className="rounded-xl border border-white/[0.08] bg-[#131A2A] px-4 py-10 text-center text-white/50">
+        <p className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-10 text-center text-[var(--admin-muted)]">
           Nothing matched &quot;{query}&quot;. Try a different name, title, or email.
         </p>
       ) : (

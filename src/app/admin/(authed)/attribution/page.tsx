@@ -56,9 +56,9 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
   return (
     <div>
       <header className="mb-8">
-        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Growth</p>
+        <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Attribution</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/60">
+        <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
           Which campaign produced a sale, on what evidence, and whether it may be charged for.
           Every order carries exactly one stored decision, including the orders no campaign
           produced, which say so.
@@ -90,22 +90,22 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
         />
       </div>
 
-      <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-        <h2 className="font-display text-lg font-semibold text-white">Look up an order</h2>
-        <p className="mt-1 text-sm text-white/60">
+      <section className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+        <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">Look up an order</h2>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
           Enter the order reference a client or a buyer quoted. The method is {summary.modelName}{' '}
           {summary.modelVersion}, and the attribution window is {summary.windowDays} days unless a
           campaign sets its own.
         </p>
         <form method="get" className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex-1">
-            <span className="mb-2 block text-xs uppercase tracking-wider text-white/50">Order reference</span>
+            <span className="mb-2 block text-xs uppercase tracking-wider text-[var(--admin-muted)]">Order reference</span>
             <input
               type="text"
               name="order"
               defaultValue={lookup}
               placeholder="EL-XXXXXXXX"
-              className="w-full min-w-0 rounded-lg border border-white/10 bg-[#0A1628] px-4 py-3 font-mono text-sm text-white placeholder:text-white/30 focus:border-[var(--brand-accent)] focus:outline-none"
+              className="w-full min-w-0 rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-3 font-mono text-sm text-[var(--admin-ink)] placeholder:text-[var(--admin-muted)] focus:border-[var(--brand-accent)] focus:outline-none"
             />
           </label>
           <button
@@ -118,9 +118,9 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
       </section>
 
       {lookup && !found && (
-        <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-8 text-center">
-          <h2 className="font-display text-xl font-semibold text-white">No order with that reference</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-white/60">
+        <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-8 text-center">
+          <h2 className="font-display text-xl font-semibold text-[var(--admin-ink)]">No order with that reference</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-[var(--admin-soft)]">
             Nothing on this platform is numbered {lookup}. An order reference looks like EL followed
             by eight characters, and it is on the buyer&apos;s confirmation and on the order in the admin
             orders list.
@@ -130,77 +130,77 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
 
       {found && (
         <div className="space-y-6">
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-white">{found.orderReference}</h2>
+              <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{found.orderReference}</h2>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
                   found.billable
-                    ? 'bg-emerald-500/15 text-emerald-200'
-                    : 'bg-white/[0.06] text-white/60'
+                    ? 'bg-emerald-500/15 text-emerald-800'
+                    : 'bg-[var(--admin-tint-strong)] text-[var(--admin-soft)]'
                 }`}
               >
                 {found.billable ? 'Chargeable' : 'Not chargeable'}
               </span>
             </div>
-            <p className="mt-4 text-base leading-relaxed text-white/85">{found.explanation}</p>
-            <p className="mt-3 text-sm text-white/55">{found.billableSentence}</p>
+            <p className="mt-4 text-base leading-relaxed text-[var(--admin-ink)]">{found.explanation}</p>
+            <p className="mt-3 text-sm text-[var(--admin-muted)]">{found.billableSentence}</p>
           </section>
 
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h3 className="font-display text-base font-semibold text-white">How it was decided</h3>
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">How it was decided</h3>
             <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Decision</dt>
-                <dd className="text-right text-white/90">{found.decision === 'attributed' ? 'Credited' : 'Nothing credited'}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Decision</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.decision === 'attributed' ? 'Credited' : 'Nothing credited'}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Rung</dt>
-                <dd className="text-right text-white/90">{rungLabel(found.rung)}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Rung</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{rungLabel(found.rung)}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Method</dt>
-                <dd className="text-right text-white/90">
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Method</dt>
+                <dd className="text-right text-[var(--admin-ink)]">
                   {found.modelName} {found.modelVersion}
                 </dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Confidence</dt>
-                <dd className="text-right text-white/90">{found.confidence}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Confidence</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.confidence}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Campaign</dt>
-                <dd className="text-right text-white/90">{found.campaignName ?? 'None'}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Campaign</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.campaignName ?? 'None'}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Channel</dt>
-                <dd className="text-right text-white/90">{found.channelName ?? 'None'}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Channel</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.channelName ?? 'None'}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Partner</dt>
-                <dd className="text-right text-white/90">{found.partnerName ?? 'None'}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Partner</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.partnerName ?? 'None'}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Sent to</dt>
-                <dd className="text-right text-white/90">
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Sent to</dt>
+                <dd className="text-right text-[var(--admin-ink)]">
                   {found.recipientLabel ?? 'Nobody in particular'}
                   {found.forwarded ? ', and passed on' : ''}
                 </dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Decided</dt>
-                <dd className="text-right text-white/90">{formatPlatformDateTime(found.resolvedAt)}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Decided</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{formatPlatformDateTime(found.resolvedAt)}</dd>
               </div>
-              <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.06] pb-2">
-                <dt className="text-white/55">Order state</dt>
-                <dd className="text-right text-white/90">{found.orderStateSentence}</dd>
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+                <dt className="text-[var(--admin-muted)]">Order state</dt>
+                <dd className="text-right text-[var(--admin-ink)]">{found.orderStateSentence}</dd>
               </div>
             </dl>
           </section>
 
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h3 className="font-display text-base font-semibold text-white">Clicks considered</h3>
-            <p className="mt-1 text-sm text-white/60">
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">Clicks considered</h3>
+            <p className="mt-1 text-sm text-[var(--admin-soft)]">
               {found.candidateClicks.length === 0
                 ? 'No campaign click was on record for this event when the decision was made.'
                 : 'Every click that was weighed, including the ones that did not win, newest first.'}
@@ -210,20 +210,20 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
                 {found.candidateClicks.map(click => (
                   <li
                     key={click.clickId}
-                    className="rounded-lg border border-white/[0.06] bg-[#0A1628] px-4 py-3 text-sm"
+                    className="rounded-lg border border-[var(--admin-line)] bg-[var(--admin-paper)] px-4 py-3 text-sm"
                   >
-                    <p className="text-white/85">{click.sentence}</p>
-                    <p className="mt-1 font-mono text-xs text-white/40">{click.clickId}</p>
+                    <p className="text-[var(--admin-ink)]">{click.sentence}</p>
+                    <p className="mt-1 font-mono text-xs text-[var(--admin-muted)]">{click.clickId}</p>
                   </li>
                 ))}
               </ul>
             )}
           </section>
 
-          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
-            <h3 className="font-display text-base font-semibold text-white">Reversals</h3>
+          <section className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+            <h3 className="font-display text-base font-semibold text-[var(--admin-ink)]">Reversals</h3>
             {found.reversals.length === 0 ? (
-              <p className="mt-1 text-sm text-white/60">
+              <p className="mt-1 text-sm text-[var(--admin-soft)]">
                 Nothing has been taken back on this sale.
               </p>
             ) : (
@@ -233,10 +233,10 @@ export default async function AdminAttributionPage({ searchParams }: Props) {
                     key={reversal.id}
                     className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 text-sm"
                   >
-                    <p className="text-white/85">
+                    <p className="text-[var(--admin-ink)]">
                       {REVERSAL_REASON_SENTENCE[reversal.reason as ReversalReason] ?? reversal.reason}
                     </p>
-                    <p className="mt-1 text-xs text-white/50">
+                    <p className="mt-1 text-xs text-[var(--admin-muted)]">
                       {reversal.amountLabel} on {formatPlatformDateTime(reversal.reversedAt)}, recorded by{' '}
                       {reversal.source}
                     </p>
