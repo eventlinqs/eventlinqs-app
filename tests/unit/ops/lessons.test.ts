@@ -101,4 +101,12 @@ describe('the three lines of the 08:00 report, from production', () => {
     expect(route.indexOf('recordLesson(')).toBeLessThan(route.indexOf('morningReportEmail('))
     expect(route).toContain('learned: learnedLines(timetable, learned)')
   })
+
+  it("the report's own phase row carries the provider's id of the sent report (T10), so production's record proves it", () => {
+    const route = readFileSync(join(process.cwd(), 'src/app/api/cron/health-heartbeat/route.ts'), 'utf8')
+    expect(route).toMatch(/const sentReport = await sendEmail\(\{ to: founderDestination\(\), \.\.\.email, messageType: 'platform_morning_report'/)
+    expect(route).toContain('reportId = sentReport.id')
+    expect(route.indexOf('reportId = sentReport.id')).toBeLessThan(route.indexOf("report = 'sent'"))
+    expect(route).toContain("result: `the morning report ${report}${reportId ? `, Resend id ${reportId}` : ''}`")
+  })
 })
