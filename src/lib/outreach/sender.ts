@@ -20,6 +20,7 @@
  * The hours are EventLinqs' own choice (UNSOURCED: no rule names them); outside them a message stays queued.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { readVoicePolicy, wordsProblems } from './voice-gate'
 import type { Database } from '@/types/database'
 import { buildOutreachMime, mimeForGraph, newMessageId } from './mime'
 import { graphSendMime, type GraphConfig } from './graph'
@@ -246,6 +247,16 @@ export async function runOutreachSender(
         report.refused.push({ id: t.id, reason: why })
         continue
       }
+    }
+    // ITS WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2): every queued message passes the
+    // voice gate's word rules (voice-gate.ts wordsProblems) here, at the one send path, so no play, planner or template
+    // version can send words the gateway refuses; one that fails is voided with why, never sent, and is drafted again.
+    const words = wordsProblems(t.body ?? '', readVoicePolicy())
+    if (words.length > 0) {
+      const why = `its words fail the voice gate at send time: ${words.join('; ')}`.slice(0, 480)
+      await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')
+      report.refused.push({ id: t.id, reason: why })
+      continue
     }
     const tooClose = await segmentATooClose(db, t, deps.now)
     if (tooClose) {

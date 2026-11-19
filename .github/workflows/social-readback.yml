@@ -1,0 +1,33 @@
+# THE INSTAGRAM READ BACK, ASKED (the PM's 19:48 of 19 November 2026: 'until then no Instagram post is called live by
+# anyone'). Started by hand, never on a schedule. It calls production's own social run with ?readback=only and the secret
+# only this repository's Actions hold; the run reads Blotato for every post still held by its reference, writes each
+# public URL Blotato gives, and answers each reference with Blotato's own status. It draws, approves, schedules and
+# publishes nothing. The answer names references and statuses, never a person (this log is public).
+name: social read back
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-readback
+  cancel-in-progress: false
+
+jobs:
+  readback:
+    name: the posts' read back
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's social run for its read back
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 'https://www.eventlinqs.com.au/api/cron/social-publish?readback=only' \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]

@@ -44,7 +44,9 @@ export const SEGMENT_A_FIRST: SegmentALetter = {
       'Hi [greeting],',
       "I hope you're well.",
       '[listed line]',
-      "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. I'd love to help more people find [event] on [event day]: [event link]",
+      // VERSION 2, today-v2's own words (Lawal's APPROVE PERM of 18 November 2026, 13:46; the PM's 20:40 of 19 November):
+      // version 1's founder sentence is out of every message (Lawal, 18 November 2026, 11:31). Version 1 stays stored, retired.
+      "We'd love to help more people discover [event] on [event day]: [event link]",
       '[image line]',
       'Could you reply with one image, or add it here? [photo link]',
     ),
@@ -210,7 +212,7 @@ export function segmentAFields(f: SegmentAFacts): Record<string, string | null> 
   const kind = read !== null && SHOW_KINDS.has(read) ? 'show' : 'event'
   const tickets = f.night.hasBooking ? ' Your tickets stay exactly where they are.' : ''
   const image = f.night.hasPhoto
-    ? `Send me one image of your next ${kind} you're happy for us to use, and I'll add it for you.${tickets}`
+    ? `Send us one image of your next ${kind} you're happy for us to use, and we'll add it for you.${tickets}`
     : `Right now its listing has no photo. A real photo of the ${kind} gives people browsing the guide a reason to stop and click through${f.night.hasBooking ? ' to your tickets' : ''}. Send me one image you're happy for us to use and I'll add it for you.${tickets}`
   const link = f.night.slug ? `${f.origin.replace(/\/+$/, '')}/events/${f.night.slug}` : null
   const day = dayWords(f.night.startDate, f.night.timezone)

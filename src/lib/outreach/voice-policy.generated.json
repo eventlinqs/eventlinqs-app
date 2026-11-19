@@ -169,14 +169,30 @@
       "\\bmore (ticket )?sales\\b",
       "\\bboost\\b"
     ],
+    "founderSentence": [
+      "builds a community around every event",
+      "I'm building EventLinqs"
+    ],
     "consentBases": [
       "conspicuous_publication",
       "express_consent"
     ],
     "minDaysAhead": 3,
     "acqFirstSubjects": [
-      "^.+ on EventLinqs, at no cost to you$"
+      "^.+: more people, at no cost to you$",
+      "^Free listing for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
+      "^.+: complimentary EventLinqs listing$",
+      "^Complimentary listing in our (Melbourne|Geelong|Ballarat|Bendigo) events guide$",
+      "^More people at your (Melbourne|Geelong|Ballarat|Bendigo) events, at no cost to you$",
+      "^Free listings for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
+      "^Complimentary EventLinqs listing for .+$",
+      "^Complimentary listing in our (Melbourne|Geelong|Ballarat|Bendigo) events guide$"
     ],
-    "acqFirstNoEventSubject": "^Your events on EventLinqs, at no cost to you$"
+    "acqFirstNoEventSubjects": [
+      "^More people at your (Melbourne|Geelong|Ballarat|Bendigo) events, at no cost to you$",
+      "^Free listings for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
+      "^Complimentary EventLinqs listing for .+$",
+      "^Complimentary listing in our (Melbourne|Geelong|Ballarat|Bendigo) events guide$"
+    ]
   }
 }

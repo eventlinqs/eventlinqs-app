@@ -42,12 +42,19 @@ export interface VoiceStandard {
   readonly actions: readonly string[]
   readonly internalWords: readonly string[]
   readonly unprovedClaims: readonly string[]
+  /**
+   * THE FOUNDER SENTENCE IS OUT OF EVERY MESSAGE (Lawal, 18 November 2026, 11:31; standard.json founder_sentence, read
+   * by gateway.py): founder focused, and an unproved claim. Each is refused wherever it stands in a body.
+   */
+  readonly founderSentence?: readonly string[]
   readonly consentBases: readonly string[]
   readonly minDaysAhead: number
   /** The ACQ-FIRST letter's own offer subjects (standard.json of 18 November 11:25, the PM's ruling of 11:25). */
   readonly acqFirstSubjects?: readonly string[]
   /** The subject of the ACQ-FIRST letter that names no night: the timing rule applies only where a night is named. */
   readonly acqFirstNoEventSubject?: string
+  /** Every subject of an acquisition type that names no night (standard.json acq_types, needs_event_date false). */
+  readonly acqFirstNoEventSubjects?: readonly string[]
 }
 
 /** The lawful basis to write to this address (the standard's Part 2 rule 5, the Spam Act's conspicuous publication test). */
@@ -131,6 +138,33 @@ function ownPart(text: string): string {
 const linesOf = (text: string) => text.split('\n').map((l) => l.trim()).filter(Boolean)
 
 /** Every reason the message may not be held as approved, scheduled or sent; empty when it passes. */
+/**
+ * A MESSAGE'S WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2: a letter carrying the founder
+ * sentence went at 9.30 am that day, drafted from a template version the platform had not been taught to refuse). The
+ * word rules of voiceProblems that need nothing but the words, in its own words: the founder sentence anywhere in the
+ * body; before the closing, the internal words and the unproved claims. The sender runs it on every queued message.
+ * Pure.
+ */
+export function wordsProblems(body: string, policy: VoicePolicy): string[] {
+  const r: string[] = []
+  const std = policy.standard
+  for (const words of std.founderSentence ?? []) {
+    if (body.toLowerCase().includes(words.toLowerCase())) r.push(`the founder sentence is out of every message (Lawal, 11:31): found ${JSON.stringify(words)}`)
+  }
+  const L = linesOf(ownPart(toText(body)))
+  const k = L.indexOf('Kind regards,')
+  const before = (k === -1 ? L.slice(1) : L.slice(1, k)).join(' ')
+  for (const pat of std.internalWords) {
+    const m = before.match(new RegExp(pat, 'i'))
+    if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)
+  }
+  for (const pat of std.unprovedClaims) {
+    const m = before.match(new RegExp(pat, 'i'))
+    if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
+  }
+  return r
+}
+
 export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] {
   const r: string[] = []
   const cat = msg.category
@@ -250,13 +284,20 @@ function standardProblems(msg: VoiceMessage, std: VoiceStandard, own: string, bo
     const m = bodyBefore.match(new RegExp(pat, 'i'))
     if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
   }
+  // As gateway.py reads it: the whole body, case ignored (the founder sentence, Lawal's 11:31 of 18 November 2026).
+  for (const words of std.founderSentence ?? []) {
+    if ((msg.body ?? '').toLowerCase().includes(words.toLowerCase())) r.push(`the founder sentence is out of every message (Lawal, 11:31): found ${JSON.stringify(words)}`)
+  }
   const c = msg.consent
   if (!c || !std.consentBases.includes(c.basis)) r.push(`consent basis missing or unknown: one of ${std.consentBases.join(', ')} (standard Part 2 rule 5)`)
   else if (c.basis === 'conspicuous_publication' && !((c.publishedOnUrl ?? '').startsWith('https://') && c.noMarketingStatementChecked === true)) {
     r.push('consent by conspicuous publication needs the page it was published on and its no refusal statement checked (standard Part 2 rule 5)')
   }
   // The ACQ-FIRST letter's no event form names no night, so the timing rule has nothing to judge (gateway.py, the same).
-  const noEvent = msg.subtype === 'ACQ-FIRST' && msg.eventDate === undefined && Boolean(std.acqFirstNoEventSubject) && new RegExp(std.acqFirstNoEventSubject ?? '(?!)').test((msg.subject ?? '').trim())
+  // The no night subjects: the old single one, and every subject of a type that names no night (standard.json acq_types,
+  // needs_event_date false, as gateway.py reads it).
+  const noEventSubjects = [...(std.acqFirstNoEventSubject ? [std.acqFirstNoEventSubject] : []), ...(std.acqFirstNoEventSubjects ?? [])]
+  const noEvent = msg.subtype === 'ACQ-FIRST' && msg.eventDate === undefined && noEventSubjects.some((pat) => new RegExp(pat).test((msg.subject ?? '').trim()))
   if (noEvent) return r
   const ev = dayOf(msg.eventDate)
   const lands = dayOf(msg.landsOn)

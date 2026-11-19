@@ -33,6 +33,13 @@ vi.mock('@/lib/outreach/drafts', () => ({ draftFromTemplate: vi.fn(async () => d
 const { draftSegmentALetter } = await import('@/lib/outreach/segment-a-play')
 
 type Held = { id: string; contact_id: string; outreach_templates: { key: string } | null }
+// The play's mechanics are tested on version 2 (today-v2, without the founder sentence; Lawal, 18 November 2026, 11:31): version 1
+// carries it and is held by the voice gate, as the last test here proves, until its next version is approved (law 21).
+const FOUNDER_SENTENCE = "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. "
+const CLEAN_BODY = renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body
+// Version 1's own words, the founder sentence where version 2 says "We'd love to help more people discover".
+const V1_BODY = CLEAN_BODY.replace("We'd love to help more people discover", `${FOUNDER_SENTENCE}I'd love to help more people find`)
+
 function fakeDb(body: string, opts: { refuseQueue?: string; held?: Held[] } = {}) {
   const updates: { payload: Record<string, unknown>; filters: [string, unknown][] }[] = []
   const rendered = renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB)
@@ -72,7 +79,7 @@ describe('a segment A letter is queued only when it passes whole', () => {
   })
 
   it('passes every rule and the gateway: moved from held to queued, for its own time', async () => {
-    const { db, updates, rendered } = fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body)
+    const { db, updates, rendered } = fakeDb(CLEAN_BODY)
     expect(rendered.heldBecause).toEqual([])
     const r = await draftSegmentALetter(db, input())
     expect(r).toEqual({ state: 'queued', touchId: 't1' })
@@ -101,7 +108,7 @@ describe('a segment A letter is queued only when it passes whole', () => {
 
   it('a gateway refusal keeps it held, its reasons written on the draft: here a night too close to the day it lands', async () => {
     read.answer = { state: 'read', facts: IAN, consent: CONSENT, eventDate: '2026-11-21', eventId: 'e1' }
-    const { db, updates } = fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body)
+    const { db, updates } = fakeDb(CLEAN_BODY)
     const r = await draftSegmentALetter(db, input())
     expect(r.state).toBe('held')
     expect(heldWhy(r).some((w) => w.startsWith('timing'))).toBe(true)
@@ -110,13 +117,13 @@ describe('a segment A letter is queued only when it passes whole', () => {
 
   it('a consent basis whose no refusal statement is not checked keeps it held', async () => {
     read.answer = { state: 'read', facts: IAN, consent: { ...CONSENT, noMarketingStatementChecked: false }, eventDate: '2026-11-28', eventId: 'e1' }
-    const r = await draftSegmentALetter(fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body).db, input())
+    const r = await draftSegmentALetter(fakeDb(CLEAN_BODY).db, input())
     expect(r.state).toBe('held')
     expect(heldWhy(r).some((w) => w.includes('consent'))).toBe(true)
   })
 
   it('a move the database refuses leaves it held, in the database words', async () => {
-    const r = await draftSegmentALetter(fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body, { refuseQueue: 'the play has sent its 20 for today.' }).db, input())
+    const r = await draftSegmentALetter(fakeDb(CLEAN_BODY, { refuseQueue: 'the play has sent its 20 for today.' }).db, input())
     expect(r).toEqual({ state: 'held', touchId: 't1', why: ['the play has sent its 20 for today.'] })
   })
 })
@@ -128,7 +135,7 @@ describe('the drafts the segment A letter supersedes, and the ones it already ma
   })
 
   it("an organiser's held twenty draft (the superseded advice or offer letter) is voided with why, then the letter is drafted", async () => {
-    const { db, updates } = fakeDb(renderTemplate(SEGMENT_A_FIRST, segmentAFields(IAN), UNSUB).body, {
+    const { db, updates } = fakeDb(CLEAN_BODY, {
       held: [
         { id: 'old-advice', contact_id: 'c2', outreach_templates: { key: 'twenty_advice' } },
         { id: 'old-offer', contact_id: 'c1', outreach_templates: { key: 'twenty_offer' } },
@@ -163,5 +170,19 @@ describe("the planner's 'written to' for a segment A play", () => {
     ]
     expect([...writtenContacts(touches, true)].sort()).toEqual(['c', 'd'])
     expect([...writtenContacts(touches, false)].sort()).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('version 1 of the first letter, carrying the founder sentence', () => {
+  beforeEach(() => {
+    read.answer = { state: 'read', facts: IAN, consent: CONSENT, eventDate: '2026-11-28', eventId: 'e1', organiserId: 'o1' }
+    drafted.answer = { state: 'done', value: { id: 't1', state: 'held', heldBecause: [] } }
+  })
+  it('is held by the voice gate, never queued', async () => {
+    expect(V1_BODY).toContain(FOUNDER_SENTENCE)
+    const { db, updates } = fakeDb(V1_BODY)
+    const r = await draftSegmentALetter(db, input())
+    expect(r.state).toBe('held')
+    expect(updates.some((u) => (u.payload as { state?: string }).state === 'queued')).toBe(false)
   })
 })

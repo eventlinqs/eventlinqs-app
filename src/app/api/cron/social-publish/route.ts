@@ -42,6 +42,15 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  // THE INSTAGRAM READ BACK, ASKED (the PM's 19:48 of 19 November 2026: 'until then no Instagram post is called live by
+  // anyone'): with ?readback=only the run only reads Blotato for every post still held by its reference, writes each
+  // public URL Blotato gives (as the hourly run does), and answers every reference with Blotato's own status; it draws,
+  // approves, schedules and publishes nothing. The answer names references and statuses, never a person.
+  if (request.nextUrl.searchParams.get('readback') === 'only') {
+    const back = await readBackPendingPosts(createAdminClient(), socialPostReaderFromEnv())
+    return NextResponse.json({ readBack: true, read: back.read, filled: back.filled, pending: back.pending })
+  }
+
   try {
     const db = createAdminClient()
     const now = new Date()
