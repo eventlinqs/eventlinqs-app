@@ -33,9 +33,9 @@ function fakeDb(answer: (call: Call, shape: 'many' | 'one') => { data: unknown; 
 
 const THU_10 = new Date('2026-11-18T23:00:00Z') // Thursday 19 November, 10:00 in Melbourne
 const QUEUED = [
-  { id: 'a-close', contact_id: 'c1', subject: 'Helping more people find Close on 21 November', body: 'Hi Sam,\n\nhttps://www.eventlinqs.com.au/events/close-night', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } },
-  { id: 'a-far', contact_id: 'c1', subject: 'Helping more people find Far on 23 November', body: 'Hi Sam,\n\nhttps://www.eventlinqs.com.au/events/far-night', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } },
-  { id: 'other', contact_id: 'c1', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null, outreach_templates: { key: 'anything_coming_up' } },
+  { id: 'a-close', comms_category: 'PERM', contact_id: 'c1', subject: 'Helping more people find Close on 21 November', body: 'Hi Sam,\n\nhttps://www.eventlinqs.com.au/events/close-night', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } },
+  { id: 'a-far', comms_category: 'PERM', contact_id: 'c1', subject: 'Helping more people find Far on 23 November', body: 'Hi Sam,\n\nhttps://www.eventlinqs.com.au/events/far-night', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } },
+  { id: 'other', comms_category: 'PERM', contact_id: 'c1', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null, outreach_templates: { key: 'anything_coming_up' } },
 ]
 const NIGHTS: Record<string, string> = { 'close-night': '2026-11-21T08:00:00Z', 'far-night': '2026-11-22T08:00:00Z' }
 

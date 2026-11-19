@@ -561,7 +561,8 @@ export function askElement(f: DayFormat, words: AskWords, foot: Foot): El {
                 wrap(keepDate(r.when.toUpperCase()), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: INK, lineHeight: 1.1, width: 330 * k }),
                 wrap(keepTogether(r.title), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 44 * k, color: INK, lineHeight: 1.1, flexShrink: 1 }))))
         : null,
-      text(`All ${words.count} are on EventLinqs.`, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 56 * k, color: INK, marginTop: 32 * k }),
+      // Plain English for any count (the class of 'All two on EventLinqs', 19 November 2026): never 'All 1' or 'All 2'.
+      text(words.count === 1 ? 'It is on EventLinqs.' : words.count === 2 ? 'Both are on EventLinqs.' : `All ${words.count} are on EventLinqs.`, { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 56 * k, color: INK, marginTop: 32 * k }),
       h('div', { marginTop: 14 * k }, exit(k, f, INK))),
     h('div', { justifyContent: 'flex-end', width: '100%' }, footOf(k, foot, false)))
 }

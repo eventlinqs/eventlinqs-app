@@ -135,8 +135,8 @@ function fakeDb(answer: (call: Call, shape: 'many' | 'one') => { data: unknown; 
 
 const THURSDAY_10_MELBOURNE = new Date('2026-10-28T23:00:00Z')
 const QUEUED = [
-  { id: 'q-ok', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null },
-  { id: 'q-refused', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
+  { id: 'q-ok', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null },
+  { id: 'q-refused', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
 ]
 
 function standardDb(mode: string, opts: { refuse?: string[]; address?: string } = {}) {
@@ -223,7 +223,7 @@ describe('one send path, no doubles', () => {
   beforeEach(() => clearRecordedOutreachMail())
 
   test('a first letter to a contact already written (Lawal sent the draft himself) is voided, never sent', async () => {
-    const queued = [{ id: 'q-first', contact_id: 'c-lawal', subject: 'Helping more people find your night', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } }]
+    const queued = [{ id: 'q-first', comms_category: 'PERM', contact_id: 'c-lawal', subject: 'Helping more people find your night', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null, outreach_templates: { key: 'segment_a_first' } }]
     const { db, calls } = fakeDb((call) => {
       if (call.table === 'outreach_sender') return { data: { mode: 'test', from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
       if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }

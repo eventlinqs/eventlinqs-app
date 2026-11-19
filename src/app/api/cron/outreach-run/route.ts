@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { graphConfigFromEnv, graphReadInbox } from '@/lib/outreach/graph'
+import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox } from '@/lib/outreach/replies'
 import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { runOutreachSender } from '@/lib/outreach/sender'
@@ -64,8 +65,13 @@ export async function GET(request: NextRequest) {
     let partners: unknown = 'not drafted: no person has set the sender'
     if (sender.data.mode !== 'hold' && actingUser) {
       if (graph) {
-        const messages = await graphReadInbox(graph, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
-        inbox = await handleInbox(db, messages, { mailbox: sender.data.from_address, origin, actingUser, now })
+        // Both mailboxes (law 33 (a)): an acquisition letter goes from lawal@, so its reply comes back there.
+        const read: Record<string, unknown> = {}
+        for (const mailbox of OUR_MAILBOXES) {
+          const messages = await graphReadInbox({ ...graph, mailbox }, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
+          read[mailbox] = await handleInbox(db, messages, { mailbox, origin, actingUser, now })
+        }
+        inbox = read
       }
       // The learning loop judges each play's test once, before the plan, so the winner is drafted from the same run.
       judged = await judgePlays(db, now)
@@ -88,7 +94,11 @@ export async function GET(request: NextRequest) {
     let sentItems: unknown = 'not synced: no Graph credentials'
     if (graph) {
       try {
-        sentItems = await syncSentItems(db, graph, { sinceIso: new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString() })
+        const synced: Record<string, unknown> = {}
+        for (const mailbox of OUR_MAILBOXES) {
+          synced[mailbox] = await syncSentItems(db, { ...graph, mailbox }, { sinceIso: new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString() })
+        }
+        sentItems = synced
         console.log(`[cron/outreach-run] sent items: ${JSON.stringify(sentItems)}`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
