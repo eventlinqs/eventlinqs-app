@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
   // this cron runs daily at 08:00 Melbourne on Vercel's own scheduler, where GitHub's never started the state report's
   // daily job from 6 to 18 November. A failed read or send is named in the answer and the log, never thrown.
   let report: 'sent' | 'dry' | string = 'dry'
+  // The provider's own id for the sent report (T10, the PM's 08:08 of 20 November 2026, item 3): kept on the report's
+  // phase row, so the morning's report is proved from production's own record, never only from an inbox.
+  let reportId: string | null = null
   if (!dry) {
     const now = new Date()
     try {
@@ -77,14 +80,15 @@ export async function GET(request: NextRequest) {
       }
       const learned = await readLessons(db, new Date(midnight - 24 * 60 * 60_000), new Date(midnight)).catch((err: unknown) => ({ unread: err instanceof Error ? err.message : String(err) }))
       const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned) })
-      await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
+      const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
+      reportId = sentReport.id
       report = 'sent'
     } catch (err) {
       report = `not sent: ${err instanceof Error ? err.message : String(err)}`
       console.error('[health-heartbeat] the 08:00 report was not sent:', err)
     }
     // THE TIMETABLE'S REPORT PHASE, MEASURED (src/lib/ops/phase-runs.ts): seven areas, sent or why not.
-    await recordPhaseRun(createAdminClient(), { phase: 'report', ride: 'heartbeat', startedAt: now, endedAt: new Date(), units: 7, result: `the morning report ${report}`, failed: report !== 'sent' })
+    await recordPhaseRun(createAdminClient(), { phase: 'report', ride: 'heartbeat', startedAt: now, endedAt: new Date(), units: 7, result: `the morning report ${report}${reportId ? `, Resend id ${reportId}` : ''}`, failed: report !== 'sent' })
   }
 
   return NextResponse.json({ ok: status !== 'critical', status, sent, report, dry, checkedAt: new Date().toISOString(), checks: results })

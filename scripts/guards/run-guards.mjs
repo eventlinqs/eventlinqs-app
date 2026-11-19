@@ -254,6 +254,10 @@
  *                              src/lib/ops/timetable.ts says, the phase routes reading its phase
  *   stories-post-as-stories    a story posts as a story or not at all: Blotato's story type
  *                              follows the format on every network, Meta refuses Facebook stories
+ *   no-text-range-for-a-prefix  a prefix is asked as a prefix (like), never as a text range whose
+ *                              answer depends on the collation (the read back that read 0 of 4)
+ *   listing-holds-carry-next-action  every hold written names its next source and check time,
+ *                              as the database requires (the listings run's eight failed nights)
  *   same-day-reads             nothing online unless verified on its source: freshness from
  *                              agreeing reads only, 24 hours; every check timed at its read
  *   offer-is-one-rule          LAW 24 as ruled: the offer is defined once, rendered in src,
@@ -3491,6 +3495,11 @@ const GUARDS = [
   // The PM's 04:40 of 20 November 2026, item 4: no story piece reaches a publisher call without its story type (a
   // Facebook story once went to Blotato with none, so it would have posted to the Page's feed).
   'scripts/guards/stories-post-as-stories.mjs',
+  // WINDOW 5A, 20 November 2026 (train AD): the social read back asked a prefix as a text range and production's
+  // collation answered 0 of the 4 posts waiting; every hold a run writes names its next action, as the database requires
+  // (the occurrence run's held-series hold named none, so eight new nights were refused every hour).
+  'scripts/guards/no-text-range-for-a-prefix.mjs',
+  'scripts/guards/listing-holds-carry-next-action.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
