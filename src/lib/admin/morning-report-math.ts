@@ -7,6 +7,7 @@
  * Pure: the words are built here from the counts, so a test reads every sentence. No code name (ACQ, PERM, SOC, LIST,
  * RET, TKT, SYS) appears in any line, a test is never called delivery, and every count agrees with its noun (law 22).
  */
+import { shortfallWords } from '@/lib/outreach/acq-target'
 import { countOf } from '@/lib/text/plural'
 
 /** Law 25's business names, in law 25's order. */
@@ -35,7 +36,7 @@ export function areaOfPlay(name: string | null | undefined): 'Organiser Marketin
 
 export type MorningFacts = {
   /** Each area is null when its read failed: that row says so, and never prints a calm zero. */
-  readonly marketing: null | { readonly firstLettersSent: number; readonly positiveReplies: number; readonly readyToday: number }
+  readonly marketing: null | { readonly firstLettersSent: number; readonly positiveReplies: number; readonly readyToday: number; readonly poolToday?: number | null; readonly businessDay?: boolean }
   readonly permissions: null | { readonly requestsSent: number; readonly photosReceived: number; readonly photosApproved: number; readonly requestsDueToday: number }
   readonly social: null | { readonly published: readonly { readonly platform: string; readonly ref: string | null }[]; readonly scheduledToday: number; readonly held: number }
   readonly listings: null | { readonly published: number; readonly ended: number; readonly onToday: number }
@@ -72,7 +73,8 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
       return f.marketing && {
         area,
         yesterday: `${countOf(f.marketing.firstLettersSent, 'first letter')} sent to organisers; ${countOf(f.marketing.positiveReplies, 'positive reply', 'positive replies')}.`,
-        today: f.marketing.readyToday > 0 ? `${countOf(f.marketing.readyToday, 'first letter')} ready to go.` : 'No first letters queued for today.',
+        // The shortfall against law 24's twenty and the pool behind it (Lawal's 09:01 of 20 November 2026, item 5).
+        today: shortfallWords(f.marketing.readyToday, f.marketing.poolToday ?? null, f.marketing.businessDay ?? true),
       }
     case 'Event Photo Permissions':
       return f.permissions && {
