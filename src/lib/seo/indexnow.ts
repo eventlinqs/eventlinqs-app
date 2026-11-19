@@ -70,6 +70,13 @@ export function indexNowAnswer(status: number): string {
 export type IndexNowDeps = {
   enabled: () => Promise<boolean>
   changedSince: (since: Date) => Promise<ChangedEvent[]>
+  /**
+   * The public nights whose end fell in the window (the PM's 22:12 of 19 November 2026: 'IndexNow pinged on publish,
+   * change and end'). A night's end changes its page (it leaves every list at its end, law 16) but writes no
+   * updated_at, so changedSince never saw it. IndexNow takes a URL 'which has been added, updated, or deleted'
+   * (https://www.indexnow.org/documentation).
+   */
+  endedSince?: (since: Date, now: Date) => Promise<ChangedEvent[]>
   citySlugs: () => Promise<Map<string, string>>
   post: (body: IndexNowBody) => Promise<number>
   siteUrl: () => string
@@ -88,6 +95,20 @@ export function indexNowDeps(): IndexNowDeps {
         .limit(INDEXNOW_MAX_URLS)
       if (error) throw new Error(`the changed events could not be read: ${error.message}`)
       return ((data ?? []) as { slug: string | null; venue_city: string | null }[]).map((r) => ({ slug: r.slug, venueCity: r.venue_city }))
+    },
+    endedSince: async (since, now) => {
+      // Its stated end in the window, or, with no end stated, its start in the window (the day's end is not known).
+      const db = createAdminClient()
+      const read = (column: 'end_date' | 'start_date', noEnd: boolean) => {
+        let q = db.from('events').select('slug, venue_city').gte(column, since.toISOString()).lte(column, now.toISOString())
+          .eq('visibility', 'public').in('status', [...SENT_STATUSES])
+        if (noEnd) q = q.is('end_date', null)
+        return q.limit(INDEXNOW_MAX_URLS)
+      }
+      const [stated, open] = await Promise.all([read('end_date', false), read('start_date', true)])
+      const error = stated.error ?? open.error
+      if (error) throw new Error(`the ended events could not be read: ${error.message}`)
+      return ([...(stated.data ?? []), ...(open.data ?? [])] as { slug: string | null; venue_city: string | null }[]).map((r) => ({ slug: r.slug, venueCity: r.venue_city }))
     },
     citySlugs: async () => {
       const { data, error } = await createAdminClient().from('cities').select('name, slug')
@@ -109,12 +130,13 @@ export function indexNowDeps(): IndexNowDeps {
   }
 }
 
-/** Tells IndexNow what changed in the last 70 minutes; words for the run's log. Never throws. */
+/** Tells IndexNow what changed or ended in the last 70 minutes; words for the run's log. Never throws. */
 export async function notifyIndexNow(now: Date, deps: IndexNowDeps = indexNowDeps()): Promise<string> {
   try {
     if (!(await deps.enabled())) return 'not sent: the indexnow_ping switch is off'
-    const changed = await deps.changedSince(new Date(now.getTime() - INDEXNOW_WINDOW_MS))
-    if (changed.length === 0) return 'nothing changed in the last 70 minutes; nothing sent'
+    const since = new Date(now.getTime() - INDEXNOW_WINDOW_MS)
+    const changed = [...(await deps.changedSince(since)), ...(deps.endedSince ? await deps.endedSince(since, now) : [])]
+    if (changed.length === 0) return 'nothing changed or ended in the last 70 minutes; nothing sent'
     const site = deps.siteUrl()
     const urls = indexNowUrls(site, changed, await deps.citySlugs())
     if (urls.length === 0) return 'nothing to send'

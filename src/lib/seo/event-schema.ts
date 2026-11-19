@@ -200,6 +200,22 @@ function schemaEventType(eventCategorySlug: string | null | undefined): string {
   return 'Event'
 }
 
+/**
+ * THE POSTCODE THE RECORD ITSELF STATES (the PM's 22:12 of 19 November 2026, on Lawal's 22:07). Google's Event page
+ * asks for 'The venue's detailed street address' and gives, as its Recommended example, 'Bennelong Point, Sydney NSW
+ * 2000, Australia' (https://developers.google.com/search/docs/appearance/structured-data/event, last updated
+ * 2026-09-08, read 19 November 2026). Production read at 22:21 that day: none of five event pages carried postalCode,
+ * because every one of their venues holds postal_code null, though Geelong Racecourse's own stored address reads
+ * '99 Breakwater Rd, Breakwater VIC 3219'. So when the row's postal code is empty, the four digits that follow a
+ * state in the address the record states are its postcode; an address that states none gives none, never a guess.
+ * Pure.
+ */
+const STATED_POSTCODE = /\b(?:VIC|NSW|QLD|SA|WA|TAS|NT|ACT|Victoria|New South Wales|Queensland|South Australia|Western Australia|Tasmania|Northern Territory|Australian Capital Territory)\.?,?\s+(\d{4})\b/i
+export function statedPostcode(address: string | null | undefined): string | null {
+  const m = (address ?? '').match(STATED_POSTCODE)
+  return m ? m[1] : null
+}
+
 /** Map our event state to Schema.org eventStatus. */
 function schemaEventStatus(state: EventStatus): string {
   switch (state) {
@@ -448,7 +464,8 @@ export function buildEventSchemaPayload({
         // and SEO1 step 3 requires it. `events.venue_postal_code` has
         // existed and been loaded by this page all along; nothing read it,
         // so every event page shipped an address one field short.
-        postalCode: event.venue_postal_code,
+        // Or, when the row holds none, the postcode its own address states (statedPostcode above).
+        postalCode: event.venue_postal_code || statedPostcode(event.venue_address),
         addressCountry: countryCode(event.venue_country) ?? 'AU',
       }),
       ...(typeof event.venue_latitude === 'number' && typeof event.venue_longitude === 'number'
