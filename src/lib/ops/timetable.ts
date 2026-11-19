@@ -131,13 +131,18 @@ export function melbourneMinutes(now: Date): number {
   return get('hour') * 60 + get('minute')
 }
 
-/** A run's state for the day's board: done in time, running, late, or not yet due. Pure. */
+/**
+ * A run's state for the day's board: done in time, running, late, failed, missed (the watchdog's alarm row,
+ * src/lib/ops/missed-runs.ts: no run an hour past the cutoff), or not yet due. Pure.
+ */
 export function phaseState(
   phase: Phase,
-  run: { readonly startedAt: string; readonly endedAt: string | null } | null,
+  run: { readonly startedAt: string; readonly endedAt: string | null; readonly failed?: boolean; readonly ride?: string } | null,
   nowMinutes: number,
   endedMinutes: number | null,
-): 'done' | 'running' | 'late' | 'not yet' {
+): 'done' | 'running' | 'late' | 'failed' | 'missed' | 'not yet' {
+  if (run?.ride === 'watchdog') return 'missed'
+  if (run?.failed) return 'failed'
   if (run && run.endedAt) return endedMinutes !== null && endedMinutes > minutesOf(phase.cutoff) ? 'late' : 'done'
   if (run) return nowMinutes > minutesOf(phase.cutoff) ? 'late' : 'running'
   return nowMinutes > minutesOf(phase.cutoff) ? 'late' : 'not yet'
