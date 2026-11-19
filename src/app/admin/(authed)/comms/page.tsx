@@ -6,6 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { readCentre } from '@/lib/comms/centre'
 import type { Figures } from '@/lib/comms/centre-math'
+import { proposedReply, readDecisions } from '@/lib/comms/decisions'
+import { readVoicePolicy } from '@/lib/outreach/voice-gate'
+import { approveAndSendAction, closeWithoutReplyAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -22,7 +25,9 @@ export const metadata = {
  *
  * Seven sections, in his order, each with the ten figures he named, counted from the database by the one category every
  * message record carries (src/lib/comms/centre.ts). A figure no record can hold says so; it is never shown as a zero.
- * Nothing on this page sends, approves or changes anything.
+ * Above them, NEEDS YOUR DECISION (law 30, the CRM directive's section 5): every reply held for Lawal, with who wrote,
+ * their words and the message they answered, and the proposed reply he edits; APPROVE AND SEND sends it from the
+ * outreach mailbox in their thread once the gateway's rules pass, and CLOSE WITHOUT A REPLY sends nothing.
  */
 const FIGURES: { key: keyof Omit<Figures, 'lastUpdated'>; label: string; none: string }[] = [
   { key: 'total', label: 'Total records', none: '' },
@@ -36,12 +41,15 @@ const FIGURES: { key: keyof Omit<Figures, 'lastUpdated'>; label: string; none: s
   { key: 'withdrawn', label: 'Withdrawn, never sent', none: 'Does not apply' },
 ]
 
-export default async function AdminCommsCentrePage() {
+export default async function AdminCommsCentrePage({ searchParams }: { searchParams: Promise<{ said?: string; tone?: string }> }) {
+  const { said, tone } = await searchParams
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.comms.view', session })
 
-  const centre = await readCentre(createAdminClient(), new Date())
+  const db = createAdminClient()
+  const [centre, decisions] = await Promise.all([readCentre(db, new Date()), readDecisions(db)])
+  const signature = readVoicePolicy().replySignature
 
   return (
     <div>
@@ -52,6 +60,56 @@ export default async function AdminCommsCentrePage() {
           Every message EventLinqs sends, in its one category, counted from the database. Read {formatPlatformDateTime(centre.readAt)}.
         </p>
       </header>
+
+      {said ? (
+        <p role={tone === 'ok' ? 'status' : 'alert'} data-said className={tone === 'ok' ? 'mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-800' : 'mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-800'}>
+          {said}
+        </p>
+      ) : null}
+
+      <section id="decisions" aria-labelledby="comms-decisions" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 sm:p-6">
+        <h2 id="comms-decisions" className="font-display text-lg font-semibold text-[var(--admin-ink)]">Needs your decision</h2>
+        <p className="mt-1 text-sm text-[var(--admin-soft)]">
+          {decisions.length === 0 ? 'No reply waits for you.' : `${decisions.length} ${decisions.length === 1 ? 'reply waits' : 'replies wait'} for you, newest first.`}
+        </p>
+        <ul className="mt-4 grid gap-4">
+          {decisions.map((d) => (
+            <li key={d.replyId} data-decision={d.replyId} className="rounded-lg border border-[var(--admin-line)] p-4">
+              <p className="text-sm font-semibold text-[var(--admin-ink)]">
+                {d.organiser ?? d.address} <span className="font-normal text-[var(--admin-muted)]">({d.address}), {formatPlatformDateTime(d.receivedAt)}</span>
+              </p>
+              {d.ourSubject ? <p className="mt-1 text-sm text-[var(--admin-soft)]">Answering our message: {d.ourSubject}</p> : null}
+              <blockquote className="mt-3 whitespace-pre-wrap rounded-md bg-[var(--admin-tint)] p-3 text-sm text-[var(--admin-soft)]">{d.theirWords}</blockquote>
+              {d.channel === 'email' ? (
+                <form action={approveAndSendAction} className="mt-4 grid gap-3">
+                  <input type="hidden" name="replyId" value={d.replyId} />
+                  <label htmlFor={`greeting-${d.replyId}`} className="text-sm font-medium text-[var(--admin-ink)]">
+                    Greeting name
+                  </label>
+                  <input id={`greeting-${d.replyId}`} name="greetingName" defaultValue={d.greetingName} required maxLength={80} className="min-h-11 rounded-lg border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-3 text-sm text-[var(--admin-ink)]" />
+                  <label htmlFor={`body-${d.replyId}`} className="text-sm font-medium text-[var(--admin-ink)]">
+                    Your reply
+                  </label>
+                  <textarea id={`body-${d.replyId}`} name="body" required rows={9} maxLength={5000} defaultValue={proposedReply(d.greetingName, signature)} className="rounded-lg border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-3 py-2 text-sm text-[var(--admin-ink)]" />
+                  <div className="flex flex-wrap gap-3">
+                    <button type="submit" className="min-h-11 rounded-lg bg-[var(--admin-ink)] px-4 text-sm font-semibold text-[var(--admin-paper)]">
+                      Approve and send
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="mt-3 text-sm text-[var(--admin-soft)]">They wrote by {d.channel}; answer them there.</p>
+              )}
+              <form action={closeWithoutReplyAction} className="mt-3">
+                <input type="hidden" name="replyId" value={d.replyId} />
+                <button type="submit" className="min-h-11 rounded-lg border border-[var(--admin-line-strong)] px-4 text-sm font-medium text-[var(--admin-ink)]">
+                  Close without a reply
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <div className="grid gap-6">
         {centre.sections.map((s) => (
