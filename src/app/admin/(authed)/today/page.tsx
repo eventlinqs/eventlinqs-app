@@ -24,7 +24,10 @@ import { approvePieceAction, approveWeekAction } from '../social/actions'
 import { PageHeader, PRIMARY, StatCard } from '@/components/admin/ui/admin-kit'
 import { AdminToast } from '@/components/admin/ui/admin-toast'
 import { TimetableBoard } from '@/components/admin/timetable-board'
+import { LessonsPanel } from '@/components/admin/lessons-panel'
 import { readTimetable } from '@/lib/ops/timetable-read'
+import { readLessons } from '@/lib/ops/lessons'
+import { melbourneMinutes } from '@/lib/ops/timetable'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -91,6 +94,11 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
   // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
   const timetable = await readTimetable(createAdminClient(), now).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` }))
+  // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
+  const melbourneMidnight = now.getTime() - melbourneMinutes(now) * 60_000
+  const learned = await readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight)).catch((err: unknown) => ({
+    unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
+  }))
   const threePosts = await readThreePosts(createAdminClient(), now).then(
     (v) => ({ ok: true as const, v }),
     (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
@@ -127,6 +135,7 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
       />
 
       <TimetableBoard read={timetable} />
+      <LessonsPanel learned={learned} timetable={timetable} />
 
       {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
       {/* One card a row at 320, two from 375, four at desktop (the PM's 07:30 polish (b): two narrow columns at 320). */}

@@ -36,6 +36,11 @@ export function TimetableBoard({ read }: { read: { rows: TimetableRow[] } | { un
                 <span className="font-medium text-[var(--admin-ink)]">{r.phase.label}</span>, done by {r.phase.cutoff}
                 {r.units !== null ? `: ${r.units} ${r.units === 1 ? r.phase.unit : `${r.phase.unit}s`}${r.endedAt ? `, ended ${endWords(r.endedAt)}` : ''}` : ''}
                 <span className="block text-xs text-[var(--admin-muted)]">Starts by {plannedStartWords(r)} on measured times{r.result ? `. ${r.result}` : ''}</span>
+                {r.dayBefore ? (
+                  <span className="block text-xs text-[var(--admin-ink)]">
+                    Learned yesterday: {r.dayBefore.wentWrong} {r.dayBefore.nowDoes}
+                  </span>
+                ) : null}
               </span>
               <span className={STATE_TONE[r.state]}>{STATE_WORDS[r.state]}</span>
             </li>
