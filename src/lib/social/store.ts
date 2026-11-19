@@ -1309,7 +1309,10 @@ export async function standingPolicyDryRun(db: Db, input: { readonly now: Date; 
   const rows: PolicyDryRow[] = []
   for (const p of policyPieces(campaign.pieces).filter((x) => x.state === 'drafted')) {
     try {
-      const reasons = await pieceDependencies(db, p.id, input.now, { siteOrigin: input.siteOrigin })
+      // The policy's own bar (the PM's 03:42 of 20 November 2026, item 4) before the checks a person's press runs.
+      const rev = await newestRevision(db, p.id)
+      const own = rev ? policyRefusals(rev, await drawnAtOf(db, p.id, rev)) : ['The piece has no version to approve.']
+      const reasons = [...own, ...(await pieceDependencies(db, p.id, input.now, { siteOrigin: input.siteOrigin }))]
       rows.push({ id: p.id, label: p.label, eligible: reasons.length === 0, reasons })
     } catch (fault) {
       rows.push({ id: p.id, label: p.label, eligible: false, reasons: [`The check could not run: ${fault instanceof Error ? fault.message : String(fault)}`] })
@@ -1318,13 +1321,51 @@ export async function standingPolicyDryRun(db: Db, input: { readonly now: Date; 
   return rows
 }
 
+/**
+ * The approved files looked at full size and passed as printing no photo credit and nothing false (law 5): the PM's 03:42
+ * of 20 November 2026, items 1 and 3 (AMCF's feed and story without the printed credit, the story without its false 'Tap
+ * the link', since no link sticker reaches a story through our publisher). Every other approved file waits for a person.
+ */
+export const POLICY_READ_FILES: ReadonlySet<string> = new Set(['amcf-feed-ig45-clean.jpg', '22-amcf-story-nolink.jpg'])
+
+/**
+ * THE STANDING POLICY'S OWN BAR (the PM's 03:42 of 20 November 2026, item 4): the policy approves in the founder's name,
+ * with no person reading the piece, so it approves only a piece the code in force would not draw again (pieceCorrections:
+ * drawn before PIECE_RULES_SINCE, the older look, the language, the caption marks, a stand-in, a street address, a
+ * caption credit) and whose drawn image prints no photo credit: a photographed slide carrying a credit is drawn with it
+ * under the photograph (src/lib/broadcast/campaign-slides.tsx), and an approved file prints whatever its pixels hold, so
+ * only a file in POLICY_READ_FILES passes. Anything else waits for a person's press, its reasons said. Pure.
+ */
+export function policyRefusals(rev: Pick<Revision, 'slides' | 'caption' | 'versions'>, drawnAt: string): string[] {
+  const captions = [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].filter((c) => c.trim())
+  const out = pieceCorrections({ slides: rev.slides, caption: rev.caption, captions, madeAt: drawnAt }).map((c) => `The code in force would draw it again: ${c}`)
+  rev.slides.forEach((s, i) => {
+    if (s.t === 'file') {
+      const name = s.url.slice(s.url.lastIndexOf('/') + 1)
+      if (!POLICY_READ_FILES.has(name)) out.push(`Slide ${i + 1} is the approved file ${name}, not yet looked at and passed as printing no photo credit.`)
+      return
+    }
+    const photo = 'photo' in s ? (s as { photo?: string | null }).photo : null
+    const credit = 'credit' in s ? (s as { credit?: string | null }).credit : null
+    if (photo && typeof credit === 'string' && credit.trim()) out.push(`Slide ${i + 1} prints the photo credit '${credit.trim()}' under its photograph.`)
+  })
+  return out
+}
+
 export async function approveUnderStandingPolicy(
   db: Db,
   input: { readonly by: string; readonly now: Date; readonly siteOrigin: string },
 ): Promise<WeekApproved | null> {
   const campaign = await readCampaign(db, input.now)
   if (campaign === null) return null
-  return approveWeek(policyPieces(campaign.pieces), (pieceId) => approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin }))
+  return approveWeek(policyPieces(campaign.pieces), async (pieceId) => {
+    // The policy's own bar first (the PM's 03:42 item 4), then the same checked approval a person's press gives.
+    const rev = await newestRevision(db, pieceId)
+    if (!rev) return { state: 'refused', reason: 'The piece has no version to approve.' }
+    const own = policyRefusals(rev, await drawnAtOf(db, pieceId, rev))
+    if (own.length > 0) return { state: 'refused', reason: `Outside the standing policy until a person reads it: ${own.join(' ')}` }
+    return approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin })
+  })
 }
 
 export type Redrawn = { readonly redrawn: readonly string[]; readonly kept: readonly string[] }

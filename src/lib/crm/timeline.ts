@@ -40,7 +40,8 @@ export async function readOrganiserRecord(db: Admin, organiserId: string, now: D
   if (error) throw new RecordReadError('organiser', error.message)
   if (!org) return null
   // The platform's own listings organisation is not an organiser and has no record (src/lib/growth/platform-organiser.ts).
-  if ((await readPlatformOrganiserIds(db)).has(organiserId)) return null
+  // A test organiser keeps its record, so the acceptance tests read it as Lawal would (the PM's 02:39 of 20 November 2026).
+  if ((await readPlatformOrganiserIds(db, { keepTests: true })).has(organiserId)) return null
   const rawState = String(org.acquisition_state)
   const state = isAcquisitionState(rawState) ? rawState : 'discovered'
   const organisationId = (org.organisation_id as string | null) ?? null

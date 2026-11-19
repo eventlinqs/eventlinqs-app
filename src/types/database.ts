@@ -7153,6 +7153,7 @@ export type Database = {
           found_on: string | null
           id: string
           instagram_handle: string | null
+          is_test: boolean
           name: string
           name_key: string | null
           notes: string | null
@@ -7168,6 +7169,7 @@ export type Database = {
           found_on?: string | null
           id?: string
           instagram_handle?: string | null
+          is_test?: boolean
           name: string
           name_key?: string | null
           notes?: string | null
@@ -7183,6 +7185,7 @@ export type Database = {
           found_on?: string | null
           id?: string
           instagram_handle?: string | null
+          is_test?: boolean
           name?: string
           name_key?: string | null
           notes?: string | null

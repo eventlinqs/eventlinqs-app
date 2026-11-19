@@ -26,6 +26,12 @@ const ROOT = process.cwd()
 const THE_RULE = 'src/lib/growth/platform-organiser.ts'
 const SELECTS_ORGANISERS = /\.from\(\s*['"`]organisers['"`]\s*\)\s*\.select\(/g
 const USES_THE_RULE = /\breadPlatformOrganiserIds\s*\(/
+// A TEST ORGANISER IS NEVER A HOST TO RECRUIT OR A FIGURE (the PM's 02:39 of 20 November 2026, item 5; migration
+// 20261120040001): the rule leaves organisers.is_test out by default, and only the CRM's own record of an organiser and
+// the communications centre may keep them, so a test reply is read there like a real one. Any other file that passes
+// keepTests would put a test record into an acquisition list or a count.
+const KEEPS_TESTS = /\bkeepTests\s*:\s*true\b/g
+const MAY_KEEP_TESTS = new Set(['src/lib/crm/timeline.ts', 'src/lib/comms/decisions.ts'])
 
 const files = sourceFiles(ROOT)
 const failures = []
@@ -36,6 +42,12 @@ for (const file of files) {
   if (!rel.startsWith('src/')) continue
   if (rel === THE_RULE) { ruleSeen = true; continue }
   const code = readSource(resolve(ROOT, file)).withStrings
+  KEEPS_TESTS.lastIndex = 0
+  const kept = KEEPS_TESTS.exec(code)
+  if (kept !== null && !MAY_KEEP_TESTS.has(rel)) {
+    const line = code.slice(0, kept.index).split('\n').length
+    failures.push(`${rel}:${line} keeps the test organisers: a record made for the acceptance tests would count as a host to recruit or a figure. Only ${[...MAY_KEEP_TESTS].join(' and ')} may keep them.`)
+  }
   SELECTS_ORGANISERS.lastIndex = 0
   const m = SELECTS_ORGANISERS.exec(code)
   if (m === null) continue

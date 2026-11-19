@@ -11,8 +11,8 @@ import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growt
 
 type Call = { table: string; filters: [string, string, unknown][] }
 
-/** A client that answers the two reads the rule makes, and records them. */
-function fakeDb(orgs: { id: string; slug: string }[], organisers: { id: string; organisation_id: string | null }[]) {
+/** A client that answers the reads the rule makes, and records them. */
+function fakeDb(orgs: { id: string; slug: string }[], organisers: { id: string; organisation_id: string | null; is_test?: boolean }[]) {
   const calls: Call[] = []
   const db = {
     from(table: string) {
@@ -61,9 +61,42 @@ describe('the platform is not an organiser', () => {
 
   test('no listings organisation on this database means no organiser is left out', async () => {
     const { db, calls } = fakeDb([{ id: 'org-real', slug: 'geelong-jazz-club' }], [{ id: 'g-real', organisation_id: 'org-real' }])
-    const ids = await readPlatformOrganiserIds(db as never)
+    const ids = await readPlatformOrganiserIds(db as never, { keepTests: true })
     expect(ids.size).toBe(0)
     expect(calls.map((c) => c.table)).toEqual(['organisations'])
+  })
+
+  // A TEST ORGANISER IS NEVER A HOST TO RECRUIT OR A FIGURE (the PM's 02:39 of 20 November 2026, item 5; migration
+  // 20261120040001): left out by default, so every acquisition and growth read leaves it out without knowing it exists.
+  test('a record made for the acceptance tests is left out by default, beside the platform', async () => {
+    const { db, calls } = fakeDb(
+      [{ id: 'org-listings', slug: LISTINGS_ORGANISATION_SLUG }],
+      [
+        { id: 'g-listings', organisation_id: 'org-listings' },
+        { id: 'g-test', organisation_id: null, is_test: true },
+        { id: 'g-real', organisation_id: null, is_test: false },
+      ],
+    )
+    const ids = await readPlatformOrganiserIds(db as never)
+    expect([...ids]).toEqual(['g-listings', 'g-test'])
+    expect(calls.at(-1)).toEqual({ table: 'organisers', filters: [['eq', 'is_test', true]] })
+  })
+
+  test('with no listings organisation a test record is still left out', async () => {
+    const { db } = fakeDb([], [{ id: 'g-test', organisation_id: null, is_test: true }, { id: 'g-real', organisation_id: null }])
+    expect([...(await readPlatformOrganiserIds(db as never))]).toEqual(['g-test'])
+  })
+
+  test('keepTests keeps it, for the CRM record and the communications centre alone', async () => {
+    const { db, calls } = fakeDb(
+      [{ id: 'org-listings', slug: LISTINGS_ORGANISATION_SLUG }],
+      [
+        { id: 'g-listings', organisation_id: 'org-listings' },
+        { id: 'g-test', organisation_id: null, is_test: true },
+      ],
+    )
+    expect([...(await readPlatformOrganiserIds(db as never, { keepTests: true }))]).toEqual(['g-listings'])
+    expect(calls.some((c) => c.filters.some(([, col]) => col === 'is_test'))).toBe(false)
   })
 
   test('every other organiser stays, in its order, found hosts with no organisation included', () => {
