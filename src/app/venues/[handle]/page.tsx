@@ -27,6 +27,7 @@ import { resolveVenueProfile, venueSlugify } from '@/lib/venues/resolver'
 import { VenueSchemaJsonLd } from '@/components/features/venues/venue-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { VenueProfileHero } from '@/components/features/venues/venue-profile-hero'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities-grid'
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
 import { getSiteUrl } from '@/lib/site-url'
@@ -359,6 +360,18 @@ export default async function VenueProfilePage({ params }: Props) {
           fullAddress={fullAddress}
           venueType={venue.venueType}
         />
+
+        {/* FOLLOW THE VENUE (the CRM standard of 19 November 2026, section 3: 'FOLLOW on every organiser and venue');
+            a new night here then reaches its followers (src/app/api/cron/notify-just-announced). Only for a venue with
+            its own record, the thing a follow names. */}
+        {venue.id && (
+          <ContentSection surface="base" width="wide">
+            <div className="flex flex-wrap items-center gap-3">
+              <FollowButton type="venue" id={venue.id} />
+              <p className="text-sm text-ink-600">Hear when a new night is listed at {venue.name}.</p>
+            </div>
+          </ContentSection>
+        )}
 
         {/* The way in to a claim for the venue's own people, only while claims are on (src/lib/listings/claim-entry.ts). */}
         {showClaim && (

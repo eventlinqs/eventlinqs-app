@@ -324,6 +324,32 @@ describe('the just-announced router reads every follower', () => {
   })
 })
 
+describe('a venue\'s followers hear of a new night there (the CRM standard of 19 November 2026, section 3)', () => {
+  it('alerts every follower of the venue, and someone who follows both the organiser and the venue once', async () => {
+    seedEvent('e1', 'org-1', daysAgo(2))
+    ;(h.db.events as Record<string, unknown>[])[0].venue_id = 'v-1'
+    seedFollowers('org-1', 3)
+    for (const u of ['u-00000', 'venue-a', 'venue-b']) {
+      ;(h.db.follows ||= []).push({ followable_id: 'v-1', followable_type: 'venue', user_id: u })
+    }
+    ;(h.db.follows ||= []).push({ followable_id: 'v-2', followable_type: 'venue', user_id: 'other-venue' })
+
+    await run()
+
+    expect([...reached('e1')].sort()).toEqual(['u-00000', 'u-00001', 'u-00002', 'venue-a', 'venue-b'])
+  })
+
+  it('the drill: a night with no venue reaches only its organiser\'s followers', async () => {
+    seedEvent('e1', 'org-1', daysAgo(2))
+    seedFollowers('org-1', 2)
+    ;(h.db.follows ||= []).push({ followable_id: 'v-1', followable_type: 'venue', user_id: 'venue-a' })
+
+    await run()
+
+    expect([...reached('e1')].sort()).toEqual(['u-00000', 'u-00001'])
+  })
+})
+
 describe('the just-announced router drains its backlog', () => {
   it('sends to the tail on a later run instead of respending the cap on duplicates', async () => {
     // Isolates FAULT 2: the ceiling is effectively off, so every follower is
