@@ -57,7 +57,7 @@ export interface SocialProfile {
 
 /*
  * READ ON 19 NOVEMBER 2026 (train T): our posts publish to the Facebook Page behind profile id 61590528656810 (the
- * brand piece's own permalink, published 17:40:07), while facebook.com/eventlinqs answers 400; Lawal's own setup steps
+ * brand piece's own permalink, published that evening), while facebook.com/eventlinqs answers 400; Lawal's own setup steps
  * name the Instagram account @eventlinqs; Blotato connects only those two (src/lib/health/checks.ts
  * checkSocialDestinations), and no record names a TikTok, X or LinkedIn account of ours. So those three are not shown
  * and not asserted until one is proved ours; the LinkedIn company page exists (14 September), but existing is not ours.
