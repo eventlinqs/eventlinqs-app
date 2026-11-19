@@ -1,32 +1,19 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { requireAdminSession } from '@/lib/admin/auth'
-import { can } from '@/lib/admin/rbac'
-import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { pipelineBoard, ticketingFromOrders } from '@/lib/crm/pipeline-board'
 import { NO_TICKETING, type TicketingFacts } from '@/lib/crm/stages'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-export const metadata = {
-  title: 'Pipeline board | EventLinqs Admin',
-  robots: { index: false, follow: false },
-}
-
 /**
- * /admin/acquisition/board, THE ORGANISER PIPELINE AS A BOARD (the CRM standard of 19 November 2026, section 2 item 3;
- * the PM's 22:14 item 2). Lawal's stages in his order, each organiser a card with the state its records prove and the
- * next action its stage asks for (src/lib/crm/pipeline-board.ts). First sale and Recurring are read from paid orders on
- * the organiser's organisation; the organiser's own record (/admin/crm/organisers/[id]) reads every road in full,
- * ticketing activated included. Staff only, never indexed; nothing here writes.
+ * THE ORGANISER PIPELINE AS A BOARD, /admin/acquisition?view=board (the CRM standard of 19 November 2026, section 2
+ * item 3; the PM's 22:14 item 2). Lawal's stages in his order, each organiser a card with the state its records
+ * prove and the next action its stage asks for (src/lib/crm/pipeline-board.ts). First sale and Recurring are read
+ * from paid orders on the organiser's organisation; the organiser's own record (/admin/crm/organisers/[id]) reads
+ * every road in full, ticketing activated included. A view of the pipeline page, not a route of its own: it adds no
+ * client code. Nothing here writes.
  */
-export default async function AdminPipelineBoardPage() {
-  const session = await requireAdminSession()
-  if (!can(session, 'admin.network.manage')) redirect('/admin')
-  await recordAuditEvent({ action: 'admin.acquisition.board.view', session })
-
+/** The board itself; the page that renders it has already checked the session and written the audit row. */
+export async function PipelineBoardView() {
   const db = createAdminClient()
   const organisers = await db.from('organisers').select('id, name, acquisition_state, organisation_id')
   if (organisers.error) throw new Error(`organisers: ${organisers.error.message}`)
