@@ -216,6 +216,12 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'The health heartbeat and fault alerts, to the platform alert address.',
   },
   {
+    file: 'src/app/api/cron/health-heartbeat/route.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason: "The 08:00 report, once a day, to Lawal's own mailbox (the PM's 22:14 of 19 November 2026, item 4).",
+  },
+  {
     file: 'src/lib/notifications/platform-send.ts',
     kind: 'operations',
     purpose: 'platform_operations',

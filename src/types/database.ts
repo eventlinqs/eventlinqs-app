@@ -6032,6 +6032,45 @@ export type Database = {
           },
         ]
       }
+      ops_phase_runs: {
+        Row: {
+          created_at: string
+          ended_at: string
+          failed: boolean
+          id: string
+          phase: string
+          result: string
+          ride: string
+          started_at: string
+          unit: string
+          units: number
+        }
+        Insert: {
+          created_at?: string
+          ended_at: string
+          failed?: boolean
+          id?: string
+          phase: string
+          result: string
+          ride: string
+          started_at: string
+          unit: string
+          units: number
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string
+          failed?: boolean
+          id?: string
+          phase?: string
+          result?: string
+          ride?: string
+          started_at?: string
+          unit?: string
+          units?: number
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           addon_id: string | null

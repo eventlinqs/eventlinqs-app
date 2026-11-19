@@ -1575,6 +1575,26 @@ const DRILLS = [
     expect: 'no longer writes the sender',
   },
   /*
+   * timetable-is-the-one-schedule (the daily timetable, locked 20 November 2026), two drills: the collection's slots
+   * moved back in vercel.json alone, and the social run reading a phase from its own clock instead of the table.
+   */
+  {
+    name: 'vercel.json schedules the collection run differently from the timetable',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'vercel.json',
+    find: '"schedule": "25 4,10,16,22 * * *"',
+    replace: '"schedule": "25 */6 * * *"',
+    expect: 'the timetable says',
+  },
+  {
+    name: 'the social run records a phase from its own clock, not the table',
+    guard: `${GUARDS}/timetable-is-the-one-schedule.mjs`,
+    file: 'src/app/api/cron/social-publish/route.ts',
+    find: 'const phase = socialPhaseAt(melbourneHour(now))',
+    replace: "const phase = melbourneHour(now) === 6 ? ('live' as const) : null",
+    expect: "without the table's socialPhaseAt",
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *

@@ -7,6 +7,8 @@ import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox } from '@/lib/outreach/replies'
 import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { runOutreachSender } from '@/lib/outreach/sender'
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
+import { melbourneMinutes, outreachPhaseAt } from '@/lib/ops/timetable'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
 import { TWENTY_ADVICE_DRAFTING, draftTheTwenty, founderAccount, storeSegmentALetters } from '@/lib/outreach/twenty-drafts'
@@ -184,6 +186,21 @@ export async function GET(request: NextRequest) {
         console.error('[cron/outreach-run] the pool not read:', message)
         pool = { error: message }
       }
+    }
+    // THE TIMETABLE'S OUTREACH PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
+    // the phase this quarter hour holds, the letters this run sent as its units.
+    const outreachPhase = outreachPhaseAt(melbourneMinutes(now))
+    if (outreachPhase) {
+      const report = sent as { sent?: readonly unknown[]; failed?: readonly unknown[]; refused?: readonly unknown[]; note?: string }
+      await recordPhaseRun(db, {
+        phase: outreachPhase,
+        ride: 'outreach',
+        startedAt: now,
+        endedAt: new Date(),
+        units: report.sent?.length ?? 0,
+        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}`,
+        failed: (report.failed?.length ?? 0) > 0,
+      })
     }
     return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool })
   } catch (err) {

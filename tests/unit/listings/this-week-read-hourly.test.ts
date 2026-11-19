@@ -52,6 +52,8 @@ describe('every source at least daily, early morning; this week every 6 hours', 
   it('the collection run is scheduled every 6 hours', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as { crons: { path: string; schedule: string }[] }
     const run = vercel.crons.find((c) => c.path === '/api/cron/collection-run')
-    expect(run?.schedule).toBe('25 */6 * * *')
+    // Four runs a day, still not hourly: moved by the daily timetable (20 November 2026) to 03:25, 09:25, 15:25 and
+    // 21:25 Melbourne so a full read lands before the morning freeze; the count unchanged.
+    expect(run?.schedule).toBe('25 4,10,16,22 * * *')
   })
 })
