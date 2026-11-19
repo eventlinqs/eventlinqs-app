@@ -22,7 +22,7 @@ const FIRST = [
   "Hi Her Majesty's Theatre Ballarat team,",
   "I hope you're well.",
   'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page. So far 6 people have opened their pages on EventLinqs.',
-  "I'm Lawal Adams, and I'm building EventLinqs, a new Australian ticketing platform that builds a community around every event it lists. I'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
+  "We'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
   "Send me one image of your next show you're happy for us to use, and I'll add it for you. Your tickets stay exactly where they are.",
   'Could you reply with one image, or add it here? https://www.eventlinqs.com.au/photos/00000000-0000-0000-0000-000000000000/00000000000000000000000000000000',
   'Kind regards,\n' + SIG.join('\n'),
@@ -187,25 +187,27 @@ const ACQ_BODY = [
   'Hi Hop Temple team,',
   "I hope you're well.",
   "I'd love to help more people in Ballarat find Hop Temple Country Night on Friday 4 December.",
-  "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. We can list your events at no cost to you: we build the listing ourselves, put it in our Ballarat guide, and give it a button straight to your own booking page. Your tickets stay exactly where they are.",
+  "We can list your events at no cost to you: we build the listing ourselves, put it in our Ballarat guide, and give it a button straight to your own booking page. Your tickets stay exactly where they are.",
   "Would you like me to list Hop Temple Country Night? Just reply yes, and I'll send you the link to look over before it goes live.",
   'Kind regards,\n' + SIG.join('\n'),
   OPT,
 ].join('\n\n')
 const ACQ: VoiceMessage = {
-  channel: 'email', category: 'first_contact', from: 'hello@eventlinqs.com', to: ['info@hoptemple.com.au'], subject: 'Hop Temple Country Night on EventLinqs, at no cost to you',
+  channel: 'email', category: 'first_contact', from: 'hello@eventlinqs.com', to: ['info@hoptemple.com.au'], subject: 'Hop Temple Country Night: complimentary EventLinqs listing',
   greetingName: 'Hop Temple team', body: ACQ_BODY, consent: { basis: 'conspicuous_publication', publishedOnUrl: 'https://hoptemple.com.au/', noMarketingStatementChecked: true },
   eventDate: '2026-12-04', landsOn: '2026-11-19', subtype: 'ACQ-FIRST',
 }
 const ACQ_NO_EVENT: VoiceMessage = {
-  ...ACQ, subject: 'Your events on EventLinqs, at no cost to you', eventDate: undefined,
+  ...ACQ, subject: 'Complimentary EventLinqs listing for Hop Temple', eventDate: undefined,
   body: ACQ_BODY.replace('find Hop Temple Country Night on Friday 4 December.', 'find your events.').replace('Would you like me to list Hop Temple Country Night?', 'Would you like me to list your next event?'),
 }
 
-describe('the ACQ-FIRST letter (standard.json of 18 November 11:25)', () => {
-  it('the policy carries the ACQ-FIRST subjects and its no event subject', () => {
-    expect(POLICY.standard.acqFirstSubjects).toContain('^.+ on EventLinqs, at no cost to you$')
-    expect(POLICY.standard.acqFirstNoEventSubject).toBe('^Your events on EventLinqs, at no cost to you$')
+describe('the ACQ-FIRST letter (standard.json of 18 November 12:40: its subjects by type)', () => {
+  it('the policy carries every acquisition type\'s subjects, and the no night ones apart', () => {
+    expect(POLICY.standard.acqFirstSubjects).toContain('^.+: complimentary EventLinqs listing$')
+    expect(POLICY.standard.acqFirstSubjects).toContain('^Complimentary EventLinqs listing for .+$')
+    expect(POLICY.standard.acqFirstNoEventSubjects).toContain('^Complimentary EventLinqs listing for .+$')
+    expect(POLICY.standard.acqFirstNoEventSubjects).not.toContain('^.+: complimentary EventLinqs listing$')
   })
   it('35: an ACQ-FIRST letter naming a night passes', () => {
     expect(voiceProblems(ACQ, POLICY)).toEqual([])
@@ -226,3 +228,19 @@ describe('the ACQ-FIRST letter (standard.json of 18 November 11:25)', () => {
   })
 })
 
+describe("the founder sentence is out of every message (Lawal, 18 November 2026, 11:31; gateway.py the same)", () => {
+  const SENTENCE = "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists."
+  it('the policy carries both of its sentences from standard.json', () => {
+    expect(POLICY.standard.founderSentence).toEqual(expect.arrayContaining(['builds a community around every event', "I'm building EventLinqs"]))
+  })
+  it('a letter carrying it is refused, in every channel, wherever it stands', () => {
+    const withIt = { ...EMAIL, body: EMAIL.body.replace("We'd love to help more people find", `${SENTENCE} We'd love to help more people find`) }
+    expect(has(voiceProblems(withIt, POLICY), 'founder sentence')).toBe(true)
+    expect(has(voiceProblems({ ...DM, body: withIt.body }, POLICY), 'founder sentence')).toBe(true)
+    expect(has(voiceProblems({ ...ACQ, body: ACQ.body.replace('We can list your events', `${SENTENCE} We can list your events`) }, POLICY), 'founder sentence')).toBe(true)
+  })
+  it('the drill: the same letter without it passes', () => {
+    expect(has(voiceProblems(EMAIL, POLICY), 'founder sentence')).toBe(false)
+    expect(voiceProblems(ACQ, POLICY)).toEqual([])
+  })
+})

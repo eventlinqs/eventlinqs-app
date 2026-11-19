@@ -44,12 +44,24 @@ const hash = createHash('sha256')
 for (const b of bytes) hash.update(b)
 const [voice, law, standardText] = bytes.map((b) => b.toString('utf8'))
 if (!standardText.includes('THE QUALITY GATE IS CODE')) unavailable('the communication standard no longer states its quality gate (Part 2 rule 7)')
+// THE ACQUISITION SUBJECTS BY TYPE (standard.json of 18 November 2026, 12:40, on Lawal's adopted email of 12:35): the
+// gateway reads acq_types[type].subjects; the platform's check takes every type's subjects, so an approved acquisition
+// subject is never refused here while gateway.py passes it (19 November 2026: the stale 'on EventLinqs, at no cost to
+// you' rule would have held 'Complimentary EventLinqs listing for ...').
+// With needsEventDate false, only the types that name no night (acq_general, needs_event_date false): the gateway lets
+// those pass the timing rule, so the platform does too, known by their subject.
+const acqTypeSubjects = (types, needsEventDate = undefined) =>
+  types && typeof types === 'object'
+    ? Object.values(types)
+        .filter((t) => needsEventDate === undefined || (t && (t.needs_event_date ?? true) === needsEventDate))
+        .flatMap((t) => (t && Array.isArray(t.subjects) ? t.subjects.filter((x) => typeof x === 'string' && x.length > 0) : []))
+    : []
 let standard
 try {
   const s = JSON.parse(readFileSync(STANDARD, 'utf8'))
   const list = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => typeof x === 'string' && x.length > 0)
   if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.actions) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
-  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}) }
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}) }
 } catch (e) {
   unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
 }

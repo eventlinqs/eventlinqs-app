@@ -79,7 +79,10 @@ describe('the first letter', () => {
     )
     expect(rendered.heldBecause).toEqual([])
     expect(ruleFailures(rendered)).toEqual([])
-    expect(voice, rendered.body).toEqual([])
+    // Version 1 carries the founder sentence Lawal ruled out (18 November 2026, 11:31): the platform holds it as gateway.py
+    // does, for that alone, until its next version is approved (law 21).
+    expect(voice.length, rendered.body).toBe(2)
+    expect(voice.every((v) => v.startsWith('the founder sentence is out of every message')), voice.join(' | ')).toBe(true)
   })
   it('never states people sent on to a booking page, and never calls EventLinqs a ticketing platform', () => {
     const { rendered } = judged(SEGMENT_A_FIRST, IAN)
@@ -103,7 +106,10 @@ describe('the first letter', () => {
     expect(f['image line']).toBe("Send me one image of your next event you're happy for us to use, and I'll add it for you.")
     const { rendered, voice } = judged(SEGMENT_A_FIRST, free)
     expect(rendered.body).not.toMatch(/booking page|tickets stay/)
-    expect(voice).toEqual([])
+    // Version 1 carries the founder sentence Lawal ruled out (18 November 2026, 11:31): the platform holds it as gateway.py
+    // does, for that alone, until its next version is approved (law 21).
+    expect(voice.length, rendered.body).toBe(2)
+    expect(voice.every((v) => v.startsWith('the founder sentence is out of every message')), voice.join(' | ')).toBe(true)
   })
   it("some listed events without a booking page: 'each' is left out", () => {
     expect(segmentAFields({ ...IAN, listedWithBooking: 12 })['listed line']).toMatch(/^Your events are already listed on EventLinqs at no cost to you, with a button straight to your own booking page\./)
