@@ -1645,6 +1645,26 @@ const DRILLS = [
     expect: 'no longer refused first',
   },
   /*
+   * no-text-range-for-a-prefix and listing-holds-carry-next-action (WINDOW 5A, 20 November 2026, train AD): each fault
+   * as it stood on main: the read back asked its prefix as a text range, and the held-series hold named no next action.
+   */
+  {
+    name: "the read back asks its posts as a text range again, as it did when production read 0 of 4",
+    guard: `${GUARDS}/no-text-range-for-a-prefix.mjs`,
+    file: 'src/lib/social/store.ts',
+    find: ".like('published_ref', 'blotato:%')",
+    replace: ".gte('published_ref', 'blotato:').lt('published_ref', 'blotato;')",
+    expect: 'bounded as a text range',
+  },
+  {
+    name: "the held series' new night writes its hold without a next check, as it did when eight nights failed every hour",
+    guard: `${GUARDS}/listing-holds-carry-next-action.mjs`,
+    file: 'src/lib/listings/held-night.ts',
+    find: '    next_check_at: hold.next_check_at,',
+    replace: '',
+    expect: 'writes a hold with no next_source and next_check_at',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *

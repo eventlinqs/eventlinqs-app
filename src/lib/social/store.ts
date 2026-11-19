@@ -2147,8 +2147,11 @@ export const PUBLIC_POST_URL = /^https:\/\/(www\.)?(instagram\.com|facebook\.com
  */
 export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | null): Promise<{ readonly read: number; readonly filled: string[]; readonly pending: string[] }> {
   if (read === null) return { read: 0, filled: [], pending: [] }
-  // Every reference that begins 'blotato:' sorts at or after 'blotato:' and before 'blotato;' (';' follows ':'), and no URL does.
-  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').gte('published_ref', 'blotato:').lt('published_ref', 'blotato;').order('go_at').limit(20)
+  // Every reference that begins 'blotato:', asked by its prefix (WINDOW 5A, 20 November 2026). It was asked as the range
+  // >= 'blotato:' and < 'blotato;', which holds only in byte order; the column collates as en_US.UTF-8, and production
+  // found 0 of the 4 posts waiting that way ('like' found 4, the range in byte order 4), so no Blotato post's URL was
+  // ever read back. A prefix asked with like is the same in every collation. No URL begins 'blotato:'.
+  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').like('published_ref', 'blotato:%').order('go_at').limit(20)
   if (error) throw new Error(`the posts waiting for their URL could not be read: ${error.message}`)
   const filled: string[] = []
   const pending: string[] = []
