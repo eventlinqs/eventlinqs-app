@@ -59,7 +59,13 @@ const COLUMNS = 'id, slug, title, start_date, timezone, venue_name, is_free'
 
 export async function readTheirNights(
   db: Admin,
-  organiser: { readonly id: string; readonly organisation_id: string | null; readonly website_url: string | null },
+  organiser: {
+    readonly id: string
+    readonly organisation_id: string | null
+    readonly website_url: string | null
+    /** organisers.is_test, read by the caller on the server from the organiser's own row; never from a link or a parameter. */
+    readonly isTest?: boolean
+  },
   now: Date,
   limit: number,
 ): Promise<OwnNight[]> {
@@ -83,6 +89,26 @@ export async function readTheirNights(
   if (venues.error) throw new Error(`their venues could not be read: ${venues.error.message}`)
   await take('venue_id', (venues.data ?? []).map((v) => v.venue_id as string))
   await take('organisation_id', organiser.organisation_id ? [organiser.organisation_id] : [])
+  // THE ACCEPTANCE TESTS' OWN UNLISTED NIGHT (the PM's 05:38 of 20 November 2026, item 2): for an organiser marked is_test
+  // on its own row, and only for it, its linked venues' published UNLISTED nights are offered too, so T4 and T5 run on a
+  // night no guide, sitemap or IndexNow ever lists and whose own page (noindex, eventRobotsDirective) still shows its
+  // photograph. Every other organiser is offered public nights only, above.
+  if (organiser.isTest === true) {
+    const venueIds = (venues.data ?? []).map((v) => v.venue_id as string)
+    if (venueIds.length > 0) {
+      const own = await plain
+        .from('events')
+        .select(COLUMNS)
+        .in('venue_id', venueIds)
+        .eq('status', 'published')
+        .eq('visibility', 'unlisted')
+        .gt('end_date', now.toISOString())
+        .order('start_date', { ascending: true })
+        .limit(limit)
+      if (own.error) throw new Error(`the test organiser's unlisted nights could not be read: ${own.error.message}`)
+      rows.push(...((own.data ?? []) as Row[]))
+    }
+  }
 
   const host = ownHost(organiser.website_url)
   if (host) {
