@@ -363,6 +363,28 @@ export function weeklySectionFor(weekly) {
   return { title: 'Last week, the weekly report', lines }
 }
 
+/** Where every automation is shown, run by run (the operating model, amendment A4). */
+export const ENGINE_PAGE = 'https://www.eventlinqs.com.au/admin/engine'
+
+/**
+ * The seven business areas, yesterday and today, as the platform read them that morning (src/lib/admin/morning-report.ts).
+ * Absent (the stall run, or a platform without them) draws nothing; a failed read says so and never prints a calm zero.
+ */
+export function businessAreasSection(areas) {
+  if (!areas) return null
+  if (areas.error) return { title: 'Your business, yesterday and today (not known)', lines: [`Not known: ${areas.error}.`] }
+  const rows = Array.isArray(areas.rows) ? areas.rows : []
+  return {
+    title: 'Your business, yesterday and today',
+    lines: [
+      ...(areas.allWell ? ['Everything ran, and nothing needs you.'] : []),
+      ...rows.map((r) => `${r.area}. Yesterday: ${r.yesterday} Today: ${r.today}`),
+      ...((areas.unreadable ?? []).length > 0 ? [`Not read this morning: ${areas.unreadable.join('; ')}.`] : []),
+      `Every automation, run by run: ${ENGINE_PAGE}`,
+    ],
+  }
+}
+
 export function sectionsFor(state) {
   const sections = []
 
@@ -390,6 +412,10 @@ export function sectionsFor(state) {
       lines: unreadable.map((u) => `${u.what}: ${u.why}`),
     })
   }
+
+  // THE 08:00 REPORT'S SEVEN PARTS LEAD (car D, part 2; the operating model, section 10; law 25's names and order).
+  const areas = businessAreasSection(state.business?.areas ?? null)
+  if (areas) sections.push(areas)
 
   sections.push({
     title: 'Main',
