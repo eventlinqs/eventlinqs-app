@@ -13112,7 +13112,10 @@ export type Database = {
         Args: { p_city_slug: string; p_org_id: string }
         Returns: number
       }
-      comms_subtype_of_template_key: { Args: { p_key: string }; Returns: string }
+      comms_subtype_of_template_key: {
+        Args: { p_key: string }
+        Returns: string
+      }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
       connect_watch_guards: {
         Args: never
