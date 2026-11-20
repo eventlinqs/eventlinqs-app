@@ -1,0 +1,197 @@
+{
+  "_generated": "Copied unchanged from C:\\dev\\comms-gateway\\state\\approval-acq*.json by C:\\dev\\EVIDENCE\\EL-21NOV\\pm\\make-letter-approvals-copy.py; never edited by hand.",
+  "approvals": [
+    {
+      "id": "acq20-01",
+      "content_hash": "5e058fb930013dfa",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:09+1100"
+    },
+    {
+      "id": "acq20-02",
+      "content_hash": "eeb005316e0db78f",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:10+1100"
+    },
+    {
+      "id": "acq20-03",
+      "content_hash": "e6497dfa578104f3",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:11+1100"
+    },
+    {
+      "id": "acq20-04",
+      "content_hash": "a2da986986694f7f",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:12+1100"
+    },
+    {
+      "id": "acq20-05",
+      "content_hash": "90ea67c6f0fcfbb7",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:12+1100"
+    },
+    {
+      "id": "acq20-06",
+      "content_hash": "d615169e5c469925",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:13+1100"
+    },
+    {
+      "id": "acq20-07",
+      "content_hash": "a4fdbec62dbbb3f9",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-20T12:21:14+1100"
+    },
+    {
+      "id": "acq5-01",
+      "content_hash": "475b611fe9866c3f",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:15+1100"
+    },
+    {
+      "id": "acq5-02",
+      "content_hash": "325a5efb07f39b1a",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:16+1100"
+    },
+    {
+      "id": "acq5-03",
+      "content_hash": "9f131a8857b2910f",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:16+1100"
+    },
+    {
+      "id": "acq5-04",
+      "content_hash": "a1a64c3151156f1d",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:17+1100"
+    },
+    {
+      "id": "acq5-05",
+      "content_hash": "99f1c6e7f345f643",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:17+1100"
+    },
+    {
+      "id": "acq5-06",
+      "content_hash": "0b906f6a7e6b58a1",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:18+1100"
+    },
+    {
+      "id": "acq5-07",
+      "content_hash": "b28cf3fdbf729023",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:18+1100"
+    },
+    {
+      "id": "acq5-08",
+      "content_hash": "de71b7e522754c19",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:19+1100"
+    },
+    {
+      "id": "acq5-09",
+      "content_hash": "67dba1b3a25d180e",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:19+1100"
+    },
+    {
+      "id": "acq5-10",
+      "content_hash": "7d3ff04a2014ff50",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:19+1100"
+    },
+    {
+      "id": "acq5-11",
+      "content_hash": "3625b52216fcbc2a",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:20+1100"
+    },
+    {
+      "id": "acq5-12",
+      "content_hash": "fdcef717bb87e61d",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:20+1100"
+    },
+    {
+      "id": "acq5-13",
+      "content_hash": "c3be0479335f993f",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:21+1100"
+    },
+    {
+      "id": "acq5-14",
+      "content_hash": "a707e4facd01a4e9",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:21+1100"
+    },
+    {
+      "id": "acq5-15",
+      "content_hash": "d81e9d4f3e2ba5a7",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:22+1100"
+    },
+    {
+      "id": "acq5-16",
+      "content_hash": "5100508770675a39",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:22+1100"
+    },
+    {
+      "id": "acq5-17",
+      "content_hash": "8a0040c60337763e",
+      "policy_version": "3b9210ea627603c6",
+      "by": "lawal",
+      "authorised_send": true,
+      "at": "2026-11-18T13:50:22+1100"
+    }
+  ]
+}

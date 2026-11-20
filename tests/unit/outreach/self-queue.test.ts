@@ -9,7 +9,18 @@ vi.mock('@/lib/outreach/voice-gate', async (orig) => ({
   voiceProblems: (msg: { id: string }) => (msg.id === 'bad-words' ? ['no dashes'] : []),
 }))
 
-import { nextWindowStart, queueApprovedHeldLetters, standingApprovals, standingClear, type StandingApproval } from '@/lib/outreach/self-queue'
+import {
+  gatewayContentHash,
+  gatewayFirstLetter,
+  letterApprovals,
+  nextWindowStart,
+  ownApprovalClear,
+  queueApprovedHeldLetters,
+  standingApprovals,
+  standingClear,
+  type LetterApproval,
+  type StandingApproval,
+} from '@/lib/outreach/self-queue'
 
 /*
  * NO DAILY PRESS (the PM's item 2 of 00:05:52, 21 November 2026): a held first letter that clears under Lawal's standing
@@ -20,6 +31,7 @@ import { nextWindowStart, queueApprovedHeldLetters, standingApprovals, standingC
 const APPROVAL = standingApprovals().find((a) => a.key === 'acq_first' && a.version === 1) as StandingApproval
 const POLICY = APPROVAL.policy_version
 const TOKEN = '00000000-0000-4000-8000-000000000001'
+const ADDRESS = 'info@venue.example'
 
 /** The approved template with its fields filled, as the drafting engine fills it. */
 function letter(organiser: string, city: string, opts: { slug?: string; subject?: string; greeting?: string } = {}) {
@@ -31,7 +43,7 @@ function letter(organiser: string, city: string, opts: { slug?: string; subject?
       .replace('/city/[city]', `/city/${opts.slug ?? city.toLowerCase().replace(/ /g, '-')}`)
       .replaceAll('[city]', city)
       .replace('[unsubscribe link]', `https://www.eventlinqs.com.au/unsubscribe/outreach?t=${TOKEN}`)
-  return { template: 'acq_first v1', subject: opts.subject ?? fill(APPROVAL.subject), body: fill(APPROVAL.body) }
+  return { template: 'acq_first v1', subject: opts.subject ?? fill(APPROVAL.subject), body: fill(APPROVAL.body), to: ADDRESS }
 }
 
 describe("the gateway's standing rule, ported", () => {
@@ -97,7 +109,7 @@ describe('the self queue', () => {
         }
         if (table === 'organiser_contacts') {
           const r = rows.find((x) => `c-${x.id}` === id())
-          return { data: { basis: r?.basis === undefined ? 'conspicuous_publication' : r.basis, no_marketing_statement_checked: r?.checked ?? true, organiser_id: 'o1' }, error: null }
+          return { data: { basis: r?.basis === undefined ? 'conspicuous_publication' : r.basis, no_marketing_statement_checked: r?.checked ?? true, organiser_id: 'o1', address: ADDRESS }, error: null }
         }
         if (table === 'organiser_venues') return { data: [], error: null }
         return { data: null, error: { message: `unexpected ${call.op} on ${table}` } }
@@ -153,4 +165,65 @@ describe('the self queue', () => {
       expect(calls.some((c) => c.op === 'update')).toBe(false)
     }
   })
+
+  test("a letter off the template queues itself on Lawal's own approval of it, as the gateway's send-check clears it", async () => {
+    const geelong = letter('Next Stop Comedy', 'Geelong', { subject: 'Complimentary listing in our Geelong events guide' })
+    const own = { id: 'acq-test-02', content_hash: gatewayContentHash(gatewayFirstLetter(geelong)), policy_version: POLICY, by: 'lawal', authorised_send: true, at: '2026-11-20T12:21:12+1100' }
+    const { db, calls } = fakeDb([{ id: 'geelong', template: 'acq_first v1', mail: geelong }])
+    const r = await queueApprovedHeldLetters(db, { now: NOW, policy, letterApprovals: [own] })
+    expect(r.queued).toEqual([{ id: 'geelong', at: MONDAY_9, why: "Lawal's own approval acq-test-02 of 2026-11-20T12:21:12+1100" }])
+    expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: MONDAY_9 })
+  })
 })
+
+/*
+ * A LETTER'S OWN APPROVAL FIRST, AS THE GATEWAY'S SEND-CHECK READS IT (train AM): each of the seven held first letters
+ * carries Lawal's own approval of 12.21 pm on 20 November (C:\dev\comms-gateway\state\approval-acq20-0N.json); three are
+ * not on the standing template, so without this path they would wait though he approved them.
+ */
+describe("a letter's own approval, by the gateway's own hash", () => {
+  test("the hash is Python's json.dumps form byte for byte (a vector computed by the gateway's own chash)", () => {
+    const msg = { body: 'Hi Caf\u00e9 team,\nWe\u2019d be happy.', category: 'first_contact', channel: 'email', from: 'lawal@eventlinqs.com', greeting_name: 'Caf\u00e9 team', subject: 'S', thread_ref: null, to: null }
+    expect(gatewayContentHash(msg)).toBe('79a53346dadb89fb')
+  })
+
+  test("on this machine: every approved letter's own file hashes to its approval, and the copy is the gateway's record", () => {
+    const dir = 'C:\\dev\\EVIDENCE\\EL-20NOV\\acq\\letters-today'
+    const state = 'C:\\dev\\comms-gateway\\state'
+    if (!existsSync(dir) || !existsSync(state)) return
+    const ids = ['01', '02', '03', '04', '05', '06', '07'].map((n) => `acq20-${n}`)
+    for (const id of ids) {
+      const m = JSON.parse(readFileSync(`${dir}\\${id}.json`, 'utf8')) as Record<string, unknown>
+      const ap = JSON.parse(readFileSync(`${state}\\approval-${id}.json`, 'utf8')) as LetterApproval
+      expect([id, gatewayContentHash(m)]).toEqual([id, ap.content_hash])
+      const to = Array.isArray(m.to) ? String(m.to[0]) : null
+      expect([id, gatewayContentHash(gatewayFirstLetter({ subject: String(m.subject), body: String(m.body), to }))]).toEqual([id, ap.content_hash])
+      expect(letterApprovals().find((a) => a.id === id)).toEqual(ap)
+    }
+  })
+
+  const approvalOf = (l: { subject: string; body: string; to: string | null }, extra: Partial<LetterApproval> = {}): LetterApproval => ({
+    id: 'acq-test-01',
+    content_hash: gatewayContentHash(gatewayFirstLetter(l)),
+    policy_version: POLICY,
+    by: 'lawal',
+    authorised_send: true,
+    at: '2026-11-20T12:21:09+1100',
+    ...extra,
+  })
+
+  test('a letter off the standing template clears on its own approval; none means the standing approval decides', () => {
+    const geelong = letter('Next Stop Comedy', 'Geelong', { subject: 'Complimentary listing in our Geelong events guide' })
+    expect(ownApprovalClear(geelong, POLICY, [approvalOf(geelong)])).toEqual({ cleared: true, reason: "Lawal's own approval acq-test-01 of 2026-11-20T12:21:09+1100" })
+    expect(ownApprovalClear(geelong, POLICY, [])).toBeNull()
+  })
+
+  test('its own approval alone decides: another policy, a draft only or anyone else refuses, never falling back', () => {
+    const l = letter('Bendigo Symphony Orchestra', 'Bendigo')
+    expect(ownApprovalClear(l, POLICY, [approvalOf(l, { policy_version: 'ffffffffffffffff' })])?.cleared).toBe(false)
+    expect(ownApprovalClear(l, POLICY, [approvalOf(l, { authorised_send: false })])?.reason).toBe('approved as a draft only; sending not authorised')
+    expect(ownApprovalClear(l, POLICY, [approvalOf(l, { by: 'someone' })])?.cleared).toBe(false)
+    expect(ownApprovalClear({ ...l, body: l.body.replace('your next event', 'your next show') }, POLICY, [approvalOf(l)])).toBeNull()
+  })
+})
+

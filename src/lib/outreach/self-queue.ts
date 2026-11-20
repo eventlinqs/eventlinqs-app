@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readTouchVoice } from './daily-queue'
 import { inBusinessHours, recipientZone } from './sender'
+import { mailboxFor } from './addresses'
+import letters from './letter-approvals.generated.json'
 import standing from './standing-approvals.generated.json'
 import { readVoicePolicy, voiceProblems, type VoicePolicy } from './voice-gate'
 
@@ -16,9 +19,11 @@ import { readVoicePolicy, voiceProblems, type VoicePolicy } from './voice-gate'
  * holds, read now, and nothing here writes any of them:
  *   1. the sender is live (in test or hold mode nothing is queued, so a letter is never failed by test mode);
  *   2. its words pass every rule of the voice policy in force (voice-gate.ts voiceProblems, the gateway's validate);
- *   3. it clears under Lawal's standing approval of its exact template, by the gateway's own rule, ported here line for
- *      line (C:\dev\comms-gateway\gateway.py standing_clear and template_pattern): the approval is on, carries his words,
- *      was given under the policy in force, and the letter's subject and body are that template with only its fields
+ *   3. it is CLEARED as the gateway's send-check clears it, ported here line for line (C:\dev\comms-gateway\gateway.py):
+ *      a letter with an approval of its own (Lawal's, found by the gateway's own content hash, chash) is judged by that
+ *      approval alone: sending authorised, under the policy in force; only a letter with none clears under his standing
+ *      approval of its exact template (standing_clear, template_pattern): the approval is on, carries his words, was
+ *      given under the policy in force, and the letter's subject and body are that template with only its fields
  *      filled, each field in its one form, the guide link its own city;
  *   4. the organiser's page check is recorded by a person (organiser_contacts.no_marketing_statement_checked, the
  *      conspicuous publication basis); the engine never ticks it.
@@ -42,6 +47,83 @@ export type StandingApproval = {
 /** Lawal's standing approvals, copied unchanged from the gateway's own record (standing-approvals.generated.json). */
 export function standingApprovals(): readonly StandingApproval[] {
   return ((standing as { templates?: StandingApproval[] }).templates ?? []) as readonly StandingApproval[]
+}
+
+export type LetterApproval = {
+  readonly id: string
+  readonly content_hash: string
+  readonly policy_version: string
+  readonly by: string
+  readonly authorised_send?: boolean
+  readonly at: string
+}
+
+/** Lawal's own approvals of acquisition first letters, copied unchanged from the gateway's record. */
+export function letterApprovals(): readonly LetterApproval[] {
+  return ((letters as { approvals?: LetterApproval[] }).approvals ?? []) as readonly LetterApproval[]
+}
+
+/** One value as Python's json.dumps writes it (sort_keys, ensure_ascii, its default separators). */
+function pythonJson(value: unknown): string {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (typeof value === 'number') return String(value)
+  if (typeof value === 'string') {
+    let out = '"'
+    for (let i = 0; i < value.length; i++) {
+      const c = value.charCodeAt(i)
+      if (c === 0x22) out += '\\"'
+      else if (c === 0x5c) out += '\\\\'
+      else if (c === 0x0a) out += '\\n'
+      else if (c === 0x0d) out += '\\r'
+      else if (c === 0x09) out += '\\t'
+      else if (c === 0x08) out += '\\b'
+      else if (c === 0x0c) out += '\\f'
+      else if (c < 0x20 || c > 0x7e) out += `\\u${c.toString(16).padStart(4, '0')}`
+      else out += value[i]
+    }
+    return `${out}"`
+  }
+  if (Array.isArray(value)) return `[${value.map(pythonJson).join(', ')}]`
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries.map(([k, v]) => `${pythonJson(k)}: ${pythonJson(v)}`).join(', ')}}`
+}
+
+/** The gateway's content hash of a message (gateway.py chash), byte for byte. */
+export function gatewayContentHash(msg: Readonly<Record<string, unknown>>): string {
+  const keep: Record<string, unknown> = {}
+  for (const k of ['channel', 'category', 'from', 'to', 'subject', 'greeting_name', 'body', 'thread_ref']) keep[k] = msg[k] ?? null
+  return createHash('sha256').update(pythonJson(keep), 'utf8').digest('hex').slice(0, 16)
+}
+
+/**
+ * A held first letter as the gateway is given it: an email from lawal@ to the organiser's address (a list of one, as
+ * the approved message files carry it: C:\dev\EVIDENCE\EL-20NOV\acq\letters-today), greeted by its first line.
+ */
+export function gatewayFirstLetter(letter: { readonly subject: string; readonly body: string; readonly to: string | null }): Record<string, unknown> {
+  const from = mailboxFor({ category: 'ACQ', purpose: 'cadence' })
+  const greeting = /^Hi ([^,\n]{1,80}),$/.exec(letter.body.split('\n')[0] ?? '')?.[1] ?? null
+  return { channel: 'email', category: 'first_contact', from: 'mailbox' in from ? from.mailbox : null, to: letter.to ? [letter.to] : null, subject: letter.subject, greeting_name: greeting, body: letter.body, thread_ref: null }
+}
+
+/**
+ * The gateway's send-check on a letter's own approval (gateway.py send-check): null when the letter has none, so the
+ * standing approval decides; otherwise that approval alone decides, never the standing one.
+ */
+export function ownApprovalClear(
+  letter: { readonly subject: string; readonly body: string; readonly to: string | null },
+  policyVersion: string,
+  approvals: readonly LetterApproval[] = letterApprovals(),
+): { readonly cleared: boolean; readonly reason: string } | null {
+  const hash = gatewayContentHash(gatewayFirstLetter(letter))
+  const ap = approvals.find((a) => a.content_hash === hash)
+  if (!ap) return null
+  const why: string[] = []
+  if (ap.policy_version !== policyVersion) why.push('voice policy changed since approval: revalidated, approve again')
+  if (!ap.authorised_send) why.push('approved as a draft only; sending not authorised')
+  if (ap.by !== 'lawal') why.push('only Lawal approves a founder-voice message')
+  if (why.length > 0) return { cleared: false, reason: why.join('; ') }
+  return { cleared: true, reason: `Lawal's own approval ${ap.id} of ${ap.at}` }
 }
 
 const TEMPLATE_FIELD = /\[([^\]\n]{1,40})\]/g
@@ -141,7 +223,10 @@ export type SelfQueueReport = {
 
 type HeldFirst = { id: string; contact_id: string; subject: string | null; body: string; outreach_templates: { key: string; version: number } | null }
 
-export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[] }): Promise<SelfQueueReport> {
+export async function queueApprovedHeldLetters(
+  db: Admin,
+  deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[]; readonly letterApprovals?: readonly LetterApproval[] },
+): Promise<SelfQueueReport> {
   const report: SelfQueueReport = { queued: [], waiting: [] }
   const sender = await db.from('outreach_sender').select('mode').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
@@ -169,9 +254,10 @@ export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: 
     }
     reasons.push(...voiceProblems(voice, policy))
     const template = t.outreach_templates ? `${t.outreach_templates.key} v${t.outreach_templates.version}` : ''
-    const clear = standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
+    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked, address').eq('id', t.contact_id).maybeSingle()
+    const own = ownApprovalClear({ subject: t.subject ?? '', body: t.body, to: contact.data?.address ?? null }, policy.version, deps.letterApprovals ?? letterApprovals())
+    const clear = own ?? standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
     if (!clear.cleared) reasons.push(clear.reason)
-    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked').eq('id', t.contact_id).maybeSingle()
     if (contact.error || !contact.data) reasons.push('its contact could not be read')
     else if (!contact.data.basis) reasons.push('no basis for writing is recorded for its contact')
     else if (contact.data.basis === 'conspicuous_publication' && !contact.data.no_marketing_statement_checked) {
