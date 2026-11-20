@@ -8,7 +8,9 @@ import type { Slide } from '@/lib/social/campaign'
 /**
  * LAW 37'S ONE SLIDE, DRAWN (Lawal, 20 November 2026, 11:24, locked; src/lib/social/law37.ts). The permitted photograph is
  * the post: whole at its own shape and its own pixels, nothing printed on it (law 15, law 37 (a) to (c)). A feed image is
- * the photograph itself; only a photograph outside Instagram's 4:5 to 1.91:1 takes the nearest bound on the plain brand
+ * the photograph itself; only a photograph outside Instagram's 4:5 to 1.91:1 ("Aspect ratio: Must be within a 4:5 to
+ * 1.91:1 range", https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media, as
+ * destination-specs.ts quotes it) takes the nearest bound on the plain brand
  * ground. A story is the photograph whole across 1080 by 1920 on the same ground, with at most one small line of fact
  * beneath it, never over it (a story carries no caption). The ground and the line's cream are the cards' own (day-cards.ts
  * NAVY and CREAM); no new colour.
