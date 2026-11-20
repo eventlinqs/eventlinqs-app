@@ -87,7 +87,7 @@ export async function sendHeldFirstLetter(db: Admin, input: SendHeldInput): Prom
     fault ??
     report?.refused.find((r) => r.id === input.touchId)?.reason ??
     report?.failed.find((r) => r.id === input.touchId)?.reason ??
-    (report && report.outsideHours > 0 ? 'outside business hours in their city (Monday to Friday, 9 to 5)' : null) ??
+    (report && report.outsideHours > 0 ? 'outside the sending window in their city (law 44: Monday to Saturday, 06:00 to 09:00, unless set otherwise)' : null) ??
     report?.note ??
     'the sender did not take it'
   return refused(why)

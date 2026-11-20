@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readTouchVoice } from './daily-queue'
-import { inBusinessHours, recipientZone } from './sender'
+import { dayAndMinuteIn, DEFAULT_SEND_WINDOW, inBusinessHours, recipientZone, sendWindowOf, type SendWindow } from './sender'
+import { mailboxFor } from './addresses'
+import letters from './letter-approvals.generated.json'
 import standing from './standing-approvals.generated.json'
 import { readVoicePolicy, voiceProblems, type VoicePolicy } from './voice-gate'
 
@@ -16,9 +19,11 @@ import { readVoicePolicy, voiceProblems, type VoicePolicy } from './voice-gate'
  * holds, read now, and nothing here writes any of them:
  *   1. the sender is live (in test or hold mode nothing is queued, so a letter is never failed by test mode);
  *   2. its words pass every rule of the voice policy in force (voice-gate.ts voiceProblems, the gateway's validate);
- *   3. it clears under Lawal's standing approval of its exact template, by the gateway's own rule, ported here line for
- *      line (C:\dev\comms-gateway\gateway.py standing_clear and template_pattern): the approval is on, carries his words,
- *      was given under the policy in force, and the letter's subject and body are that template with only its fields
+ *   3. it is CLEARED as the gateway's send-check clears it, ported here line for line (C:\dev\comms-gateway\gateway.py):
+ *      a letter with an approval of its own (Lawal's, found by the gateway's own content hash, chash) is judged by that
+ *      approval alone: sending authorised, under the policy in force; only a letter with none clears under his standing
+ *      approval of its exact template (standing_clear, template_pattern): the approval is on, carries his words, was
+ *      given under the policy in force, and the letter's subject and body are that template with only its fields
  *      filled, each field in its one form, the guide link its own city;
  *   4. the organiser's page check is recorded by a person (organiser_contacts.no_marketing_statement_checked, the
  *      conspicuous publication basis); the engine never ticks it.
@@ -42,6 +47,83 @@ export type StandingApproval = {
 /** Lawal's standing approvals, copied unchanged from the gateway's own record (standing-approvals.generated.json). */
 export function standingApprovals(): readonly StandingApproval[] {
   return ((standing as { templates?: StandingApproval[] }).templates ?? []) as readonly StandingApproval[]
+}
+
+export type LetterApproval = {
+  readonly id: string
+  readonly content_hash: string
+  readonly policy_version: string
+  readonly by: string
+  readonly authorised_send?: boolean
+  readonly at: string
+}
+
+/** Lawal's own approvals of acquisition first letters, copied unchanged from the gateway's record. */
+export function letterApprovals(): readonly LetterApproval[] {
+  return ((letters as { approvals?: LetterApproval[] }).approvals ?? []) as readonly LetterApproval[]
+}
+
+/** One value as Python's json.dumps writes it (sort_keys, ensure_ascii, its default separators). */
+function pythonJson(value: unknown): string {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (typeof value === 'number') return String(value)
+  if (typeof value === 'string') {
+    let out = '"'
+    for (let i = 0; i < value.length; i++) {
+      const c = value.charCodeAt(i)
+      if (c === 0x22) out += '\\"'
+      else if (c === 0x5c) out += '\\\\'
+      else if (c === 0x0a) out += '\\n'
+      else if (c === 0x0d) out += '\\r'
+      else if (c === 0x09) out += '\\t'
+      else if (c === 0x08) out += '\\b'
+      else if (c === 0x0c) out += '\\f'
+      else if (c < 0x20 || c > 0x7e) out += `\\u${c.toString(16).padStart(4, '0')}`
+      else out += value[i]
+    }
+    return `${out}"`
+  }
+  if (Array.isArray(value)) return `[${value.map(pythonJson).join(', ')}]`
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries.map(([k, v]) => `${pythonJson(k)}: ${pythonJson(v)}`).join(', ')}}`
+}
+
+/** The gateway's content hash of a message (gateway.py chash), byte for byte. */
+export function gatewayContentHash(msg: Readonly<Record<string, unknown>>): string {
+  const keep: Record<string, unknown> = {}
+  for (const k of ['channel', 'category', 'from', 'to', 'subject', 'greeting_name', 'body', 'thread_ref']) keep[k] = msg[k] ?? null
+  return createHash('sha256').update(pythonJson(keep), 'utf8').digest('hex').slice(0, 16)
+}
+
+/**
+ * A held first letter as the gateway is given it: an email from lawal@ to the organiser's address (a list of one, as
+ * the approved message files carry it: C:\dev\EVIDENCE\EL-20NOV\acq\letters-today), greeted by its first line.
+ */
+export function gatewayFirstLetter(letter: { readonly subject: string; readonly body: string; readonly to: string | null }): Record<string, unknown> {
+  const from = mailboxFor({ category: 'ACQ', purpose: 'cadence' })
+  const greeting = /^Hi ([^,\n]{1,80}),$/.exec(letter.body.split('\n')[0] ?? '')?.[1] ?? null
+  return { channel: 'email', category: 'first_contact', from: 'mailbox' in from ? from.mailbox : null, to: letter.to ? [letter.to] : null, subject: letter.subject, greeting_name: greeting, body: letter.body, thread_ref: null }
+}
+
+/**
+ * The gateway's send-check on a letter's own approval (gateway.py send-check): null when the letter has none, so the
+ * standing approval decides; otherwise that approval alone decides, never the standing one.
+ */
+export function ownApprovalClear(
+  letter: { readonly subject: string; readonly body: string; readonly to: string | null },
+  policyVersion: string,
+  approvals: readonly LetterApproval[] = letterApprovals(),
+): { readonly cleared: boolean; readonly reason: string } | null {
+  const hash = gatewayContentHash(gatewayFirstLetter(letter))
+  const ap = approvals.find((a) => a.content_hash === hash)
+  if (!ap) return null
+  const why: string[] = []
+  if (ap.policy_version !== policyVersion) why.push('voice policy changed since approval: revalidated, approve again')
+  if (!ap.authorised_send) why.push('approved as a draft only; sending not authorised')
+  if (ap.by !== 'lawal') why.push('only Lawal approves a founder-voice message')
+  if (why.length > 0) return { cleared: false, reason: why.join('; ') }
+  return { cleared: true, reason: `Lawal's own approval ${ap.id} of ${ap.at}` }
 }
 
 const TEMPLATE_FIELD = /\[([^\]\n]{1,40})\]/g
@@ -111,23 +193,15 @@ export function standingClear(
   return { cleared: true, reason: `standing approval of ${named}: '${entry.words.trim().slice(0, 160)}'` }
 }
 
-function hourIn(at: Date, zone: string): number {
-  return Number(new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', hourCycle: 'h23' }).format(at))
-}
-
-function weekdayIn(at: Date, zone: string): boolean {
-  return !['Sat', 'Sun'].includes(new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short' }).format(at))
-}
-
-/** The next moment a business window is open in the zone, from now (law 42: from today, never a day before). */
-export function nextWindowStart(now: Date, zone: string): Date {
-  if (inBusinessHours(now, zone)) return now
+/** The next moment the sending window is open in the zone, from now (law 42: from today, never a day before; law 44). */
+export function nextWindowStart(now: Date, zone: string, window: SendWindow = DEFAULT_SEND_WINDOW): Date {
+  if (inBusinessHours(now, zone, window)) return now
   let midnight = midnightIn(now, zone)
   for (let i = 0; i < 9; i++) {
-    let nine = new Date(midnight.getTime() + 9 * 3_600_000)
-    const h = hourIn(nine, zone)
-    if (h !== 9) nine = new Date(nine.getTime() + (9 - h) * 3_600_000)
-    if (nine.getTime() > now.getTime() && weekdayIn(nine, zone)) return nine
+    let opens = new Date(midnight.getTime() + window.fromMinute * 60_000)
+    const m = dayAndMinuteIn(opens, zone).minute
+    if (m !== window.fromMinute) opens = new Date(opens.getTime() + (window.fromMinute - m) * 60_000)
+    if (opens.getTime() > now.getTime() && inBusinessHours(opens, zone, window)) return opens
     midnight = midnightIn(new Date(midnight.getTime() + 36 * 3_600_000), zone)
   }
   throw new Error(`no business window found in nine days in ${zone}`)
@@ -137,13 +211,18 @@ export type SelfQueueReport = {
   readonly note?: string
   readonly queued: { readonly id: string; readonly at: string; readonly why: string }[]
   readonly waiting: { readonly id: string; readonly reasons: readonly string[] }[]
+  /** First letters already queued for later than the window's next opening, brought to it (law 42 (b), law 44). */
+  readonly replanned?: { readonly id: string; readonly from: string; readonly to: string }[]
 }
 
 type HeldFirst = { id: string; contact_id: string; subject: string | null; body: string; outreach_templates: { key: string; version: number } | null }
 
-export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[] }): Promise<SelfQueueReport> {
+export async function queueApprovedHeldLetters(
+  db: Admin,
+  deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[]; readonly letterApprovals?: readonly LetterApproval[] },
+): Promise<SelfQueueReport> {
   const report: SelfQueueReport = { queued: [], waiting: [] }
-  const sender = await db.from('outreach_sender').select('mode').eq('id', true).single()
+  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_minute, send_until_minute').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
   if (sender.data.mode !== 'live') return { ...report, note: `the sender is ${sender.data.mode}: no letter queues itself` }
   let policy: VoicePolicy
@@ -169,9 +248,10 @@ export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: 
     }
     reasons.push(...voiceProblems(voice, policy))
     const template = t.outreach_templates ? `${t.outreach_templates.key} v${t.outreach_templates.version}` : ''
-    const clear = standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
+    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked, address').eq('id', t.contact_id).maybeSingle()
+    const own = ownApprovalClear({ subject: t.subject ?? '', body: t.body, to: contact.data?.address ?? null }, policy.version, deps.letterApprovals ?? letterApprovals())
+    const clear = own ?? standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
     if (!clear.cleared) reasons.push(clear.reason)
-    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked').eq('id', t.contact_id).maybeSingle()
     if (contact.error || !contact.data) reasons.push('its contact could not be read')
     else if (!contact.data.basis) reasons.push('no basis for writing is recorded for its contact')
     else if (contact.data.basis === 'conspicuous_publication' && !contact.data.no_marketing_statement_checked) {
@@ -181,7 +261,7 @@ export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: 
       report.waiting.push({ id: t.id, reasons })
       continue
     }
-    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id)).toISOString()
+    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id), sendWindowOf(sender.data)).toISOString()
     const moved = await db.from('outreach_touches').update({ state: 'queued', scheduled_for: at }).eq('id', t.id).eq('state', 'held').select('id').maybeSingle()
     if (moved.error || !moved.data) {
       report.waiting.push({ id: t.id, reasons: [moved.error?.message.replace(/^refused: /, '') ?? 'it was no longer held'] })
@@ -189,5 +269,19 @@ export async function queueApprovedHeldLetters(db: Admin, deps: { readonly now: 
     }
     report.queued.push({ id: t.id, at, why: clear.reason })
   }
-  return report
+  // RE PLANNED TO THE WINDOW IN FORCE (law 42 (b); law 44, Lawal's 01:16 of 21 November 2026): a first letter queued for
+  // later than the next opening of the current window, as one queued under an earlier window is, goes at that opening.
+  // Follow ups keep their own day; a letter slotted at or before the opening is never touched.
+  const window = sendWindowOf(sender.data)
+  const queued = await db.from('outreach_touches').select('id, contact_id, scheduled_for').eq('state', 'queued').eq('step', 1).eq('comms_category', 'ACQ').limit(200)
+  if (queued.error) throw new Error(`the queued first letters: ${queued.error.message}`)
+  const replanned: { id: string; from: string; to: string }[] = []
+  for (const q of (queued.data ?? []) as { id: string; contact_id: string; scheduled_for: string | null }[]) {
+    if (!q.scheduled_for) continue
+    const opens = nextWindowStart(deps.now, await recipientZone(db, q.contact_id), window)
+    if (new Date(q.scheduled_for).getTime() <= opens.getTime()) continue
+    const moved = await db.from('outreach_touches').update({ scheduled_for: opens.toISOString() }).eq('id', q.id).eq('state', 'queued').select('id').maybeSingle()
+    if (!moved.error && moved.data) replanned.push({ id: q.id, from: q.scheduled_for, to: opens.toISOString() })
+  }
+  return replanned.length > 0 ? { ...report, replanned } : report
 }

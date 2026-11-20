@@ -23,7 +23,7 @@ const IAN: SegmentAFacts = {
   origin: 'https://www.eventlinqs.com.au',
 }
 const CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://hermaj.com/contact', noMarketingStatementChecked: true }
-const THU_10 = new Date('2026-11-18T23:00:00Z') // Thursday 19 November, 10:00 in Melbourne
+const THU_7 = new Date('2026-11-18T20:00:00Z') // Thursday 19 November, 07:00 in Melbourne, inside law 44's window
 
 const read = vi.hoisted(() => ({ answer: null as unknown }))
 const drafted = vi.hoisted(() => ({ answer: null as unknown }))
@@ -70,7 +70,7 @@ function fakeDb(body: string, opts: { refuseQueue?: string; held?: Held[] } = {}
 }
 
 const heldWhy = (r: Awaited<ReturnType<typeof draftSegmentALetter>>): string[] => (r.state === 'held' ? [...r.why] : [])
-const input = (scheduledFor = THU_10) => ({ play: { id: 'p1', name: 'Segment A' }, contactId: 'c1', step: 1 as const, templateId: 'tpl1', scheduledFor, now: scheduledFor, origin: 'https://www.eventlinqs.com.au', actingUser: 'u1' })
+const input = (scheduledFor = THU_7) => ({ play: { id: 'p1', name: 'Segment A' }, contactId: 'c1', step: 1 as const, templateId: 'tpl1', scheduledFor, now: scheduledFor, origin: 'https://www.eventlinqs.com.au', actingUser: 'u1' })
 
 describe('a segment A letter is queued only when it passes whole', () => {
   beforeEach(() => {
@@ -85,12 +85,12 @@ describe('a segment A letter is queued only when it passes whole', () => {
     expect(r).toEqual({ state: 'queued', touchId: 't1' })
     expect(updates).toHaveLength(1)
     // A queued letter names its one transport, so its sent record is whole (outreach_touches_sent_is_whole; 18 November 2026).
-    expect(updates[0].payload).toEqual({ state: 'queued', scheduled_for: THU_10.toISOString(), provider: 'graph' })
+    expect(updates[0].payload).toEqual({ state: 'queued', scheduled_for: THU_7.toISOString(), provider: 'graph' })
     expect(updates[0].filters).toContainEqual(['state', 'held'])
   })
 
   it('outside a Melbourne business hour nothing is drafted: its numbers are read in the hour it goes', async () => {
-    const r = await draftSegmentALetter(fakeDb('').db, input(new Date('2026-11-21T00:00:00Z')))
+    const r = await draftSegmentALetter(fakeDb('').db, input(new Date('2026-11-20T23:00:00Z')))
     expect(r.state).toBe('not drafted')
   })
 
