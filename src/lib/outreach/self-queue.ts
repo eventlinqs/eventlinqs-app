@@ -211,6 +211,8 @@ export type SelfQueueReport = {
   readonly note?: string
   readonly queued: { readonly id: string; readonly at: string; readonly why: string }[]
   readonly waiting: { readonly id: string; readonly reasons: readonly string[] }[]
+  /** First letters already queued for later than the window's next opening, brought to it (law 42 (b), law 44). */
+  readonly replanned?: { readonly id: string; readonly from: string; readonly to: string }[]
 }
 
 type HeldFirst = { id: string; contact_id: string; subject: string | null; body: string; outreach_templates: { key: string; version: number } | null }
@@ -267,5 +269,19 @@ export async function queueApprovedHeldLetters(
     }
     report.queued.push({ id: t.id, at, why: clear.reason })
   }
-  return report
+  // RE PLANNED TO THE WINDOW IN FORCE (law 42 (b); law 44, Lawal's 01:16 of 21 November 2026): a first letter queued for
+  // later than the next opening of the current window, as one queued under an earlier window is, goes at that opening.
+  // Follow ups keep their own day; a letter slotted at or before the opening is never touched.
+  const window = sendWindowOf(sender.data)
+  const queued = await db.from('outreach_touches').select('id, contact_id, scheduled_for').eq('state', 'queued').eq('step', 1).eq('comms_category', 'ACQ').limit(200)
+  if (queued.error) throw new Error(`the queued first letters: ${queued.error.message}`)
+  const replanned: { id: string; from: string; to: string }[] = []
+  for (const q of (queued.data ?? []) as { id: string; contact_id: string; scheduled_for: string | null }[]) {
+    if (!q.scheduled_for) continue
+    const opens = nextWindowStart(deps.now, await recipientZone(db, q.contact_id), window)
+    if (new Date(q.scheduled_for).getTime() <= opens.getTime()) continue
+    const moved = await db.from('outreach_touches').update({ scheduled_for: opens.toISOString() }).eq('id', q.id).eq('state', 'queued').select('id').maybeSingle()
+    if (!moved.error && moved.data) replanned.push({ id: q.id, from: q.scheduled_for, to: opens.toISOString() })
+  }
+  return replanned.length > 0 ? { ...report, replanned } : report
 }

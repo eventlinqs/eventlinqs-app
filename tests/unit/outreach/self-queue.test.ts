@@ -92,7 +92,11 @@ describe('the next sending window, from today (laws 42 and 44)', () => {
 
 describe('the self queue', () => {
   type Call = { table: string; op: string; payload: unknown; filters: [string, unknown][] }
-  const fakeDb = (rows: { id: string; template: string; checked?: boolean; basis?: string | null; mail: ReturnType<typeof letter> }[], mode = 'live') => {
+  const fakeDb = (
+    rows: { id: string; template: string; checked?: boolean; basis?: string | null; mail: ReturnType<typeof letter> }[],
+    mode = 'live',
+    queuedRows: { id: string; contact_id: string; scheduled_for: string }[] = [],
+  ) => {
     const calls: Call[] = []
     const from = (table: string) => {
       const call: Call = { table, op: 'select', payload: null, filters: [] }
@@ -100,6 +104,7 @@ describe('the self queue', () => {
       const answer = () => {
         if (table === 'outreach_sender') return { data: { mode }, error: null }
         if (table === 'outreach_touches' && call.op === 'update') return { data: { id: id() }, error: null }
+        if (table === 'outreach_touches' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: queuedRows, error: null }
         if (table === 'outreach_touches') {
           return {
             data: rows.map((r) => {
@@ -166,6 +171,21 @@ describe('the self queue', () => {
       expect(r.note).toContain(`the sender is ${mode}`)
       expect(calls.some((c) => c.op === 'update')).toBe(false)
     }
+  })
+
+  // LAW 42 (b) and LAW 44: a first letter queued under an earlier window (AL's Monday to Friday, 9:00) goes at the
+  // current window's next opening; one already slotted at or before it is never touched.
+  test('a first letter queued for Monday 9:00 under the old window is brought to Saturday 06:00; one at 06:00 stays', async () => {
+    const { db, calls } = fakeDb([], 'live', [
+      { id: 'old-window', contact_id: 'c-old', scheduled_for: '2026-11-22T22:00:00.000Z' },
+      { id: 'in-window', contact_id: 'c-in', scheduled_for: SATURDAY_6 },
+    ])
+    const r = await queueApprovedHeldLetters(db, { now: NOW, policy })
+    expect(r.replanned).toEqual([{ id: 'old-window', from: '2026-11-22T22:00:00.000Z', to: SATURDAY_6 }])
+    const updates = calls.filter((c) => c.op === 'update')
+    expect(updates).toHaveLength(1)
+    expect(updates[0].payload).toEqual({ scheduled_for: SATURDAY_6 })
+    expect(updates[0].filters).toEqual(expect.arrayContaining([['eq:id', 'old-window'], ['eq:state', 'queued']]))
   })
 
   test("a letter off the template queues itself on Lawal's own approval of it, as the gateway's send-check clears it", async () => {
