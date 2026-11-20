@@ -5,6 +5,8 @@ import { FETCH_TIMEOUT_MS, type Fetcher } from '@/lib/listings/collect-run'
 import { scoutOrder } from '@/lib/listings/scout-engine'
 import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growth/platform-organiser'
 import { BASIS_PATHS, basisFinds, domainOf } from './basis-find'
+import { ACQ_GUIDE_CITIES } from './acq-target'
+import { organiserCitySlugs } from './organiser-city'
 
 /**
  * THE TWENTY'S POOL GROWS BY ITSELF (Lawal's 10:42 of 13 November 2026: every engine runs by itself; his 06:51: 200
@@ -28,7 +30,17 @@ export const POOL_MINUTE_FROM = 30
 export const RELEVANCE =
   'They publish and run public events; the message invites them to list their own nights on EventLinqs, which relates to that role.'
 
-export type PoolCandidate = { id: string; name: string; website: string; known: string[] }
+/** inGuideCity: placed in one of the four guide cities by organiser-city.ts's three roads, as the pool's count reads it. */
+export type PoolCandidate = { id: string; name: string; website: string; known: string[]; inGuideCity?: boolean }
+
+/**
+ * THE FOUR GUIDE CITIES FIRST (the PM's 00:59 of 21 November 2026, item 3; law 38): organisers placed in Melbourne,
+ * Geelong, Ballarat or Bendigo are read before the rest, because only they count toward the daily ten
+ * (./acq-pool.ts); each group keeps the daily rotation (scoutOrder), so every candidate is still tried in turn. Pure.
+ */
+export function poolOrder<C extends PoolCandidate>(candidates: readonly C[], day: string): C[] {
+  return [...scoutOrder(candidates.filter((c) => c.inGuideCity === true), day), ...scoutOrder(candidates.filter((c) => c.inGuideCity !== true), day)]
+}
 export type PoolOutcome = { organiser: string; outcome: string; recorded: number }
 
 export interface PoolStore {
@@ -61,7 +73,7 @@ export async function runBasisPool(
   const pause = () => (pauseMs > 0 ? new Promise((r) => setTimeout(r, pauseMs)) : Promise.resolve())
   const day = melbourneDay(now)
   const out: PoolOutcome[] = []
-  for (const o of scoutOrder(await store.candidates(), day).slice(0, cap)) {
+  for (const o of poolOrder(await store.candidates(), day).slice(0, cap)) {
     if (Date.now() >= deadline) break
     let origin: string
     try {
@@ -117,7 +129,7 @@ type Db = SupabaseClient<Database>
 export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
   return {
     async candidates() {
-      const { data, error } = await db.from('organisers').select('id, name, website_url').not('website_url', 'is', null)
+      const { data, error } = await db.from('organisers').select('id, name, website_url, found_on, organisation_id').not('website_url', 'is', null)
       if (error) throw new Error(`the CRM could not be read: ${error.message}`)
       const organisers = withoutPlatformOrganisers(data ?? [], await readPlatformOrganiserIds(db))
       const { data: contacts, error: cErr } = await db.from('organiser_contacts').select('organiser_id, address, basis').eq('channel', 'email')
@@ -128,10 +140,20 @@ export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
         list.push({ address: String(c.address), basis: String(c.basis) })
         byOrganiser.set(c.organiser_id as string, list)
       }
-      return organisers
+      const open = organisers
         .filter((o) => /^https:\/\//i.test(String(o.website_url)) && domainOf(String(o.website_url)))
         .filter((o) => !(byOrganiser.get(o.id) ?? []).some((c) => c.basis !== 'none'))
-        .map((o) => ({ id: o.id, name: String(o.name), website: String(o.website_url).trim(), known: (byOrganiser.get(o.id) ?? []).map((c) => c.address) }))
+      // Each one's city by the pool count's own three roads; a failed read places none first, and the night reads as before.
+      const cities = await organiserCitySlugs(db, open.map((o) => ({ id: o.id, found_on: o.found_on ?? null, organisation_id: o.organisation_id ?? null })), new Date()).catch(
+        () => new Map<string, string>(),
+      )
+      return open.map((o) => ({
+        id: o.id,
+        name: String(o.name),
+        website: String(o.website_url).trim(),
+        known: (byOrganiser.get(o.id) ?? []).map((c) => c.address),
+        inGuideCity: ACQ_GUIDE_CITIES.includes(cities.get(o.id) ?? ''),
+      }))
     },
 
     async record(r) {
