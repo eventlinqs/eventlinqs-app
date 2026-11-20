@@ -92,10 +92,6 @@ const idOf = (json: Record<string, unknown>, what: string): string => {
   return id
 }
 
-export function formatOfSlides(slides: readonly Slide[]): 'feed' | 'story' {
-  return slides.some((s) => s.t === 'story' || (s.t === 'file' && s.format === 'story')) ? 'story' : 'feed'
-}
-
 export function makeMetaPublisher(deps: MetaPublisherDeps): Publisher {
   const { config, graph } = deps
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
@@ -155,9 +151,11 @@ export function makeMetaPublisher(deps: MetaPublisherDeps): Publisher {
     return idOf(await graph('POST', `${config.pageId}/feed`, params), 'the Page post')
   }
 
-  return async ({ pieceId, platform, slides, caption }: { pieceId: string; platform: SocialPlatform; slides: readonly Slide[]; caption: string }) => {
+  // THE PIECE'S OWN FORMAT, NEVER ONE GUESSED FROM ITS SLIDES (WINDOW 5A's look of 20 November 2026 at 10:49, on the PM's
+  // 10:42 item 1): a tonight story's slide is of type 'tonight', so the guess read it as a feed and it would have posted
+  // as a feed image with a black band down its side.
+  return async ({ pieceId, platform, format, slides, caption }: { pieceId: string; platform: SocialPlatform; format: 'feed' | 'story'; slides: readonly Slide[]; caption: string }) => {
     if (slides.length === 0) throw new MetaRefusal('the piece has no slides')
-    const format = formatOfSlides(slides)
     if (platform === 'facebook' && format === 'story') return { ref: `facebook:${await facebook([], format, caption)}` }
     const urls = await deps.slideUrls(pieceId, slides, format)
     if (urls.length !== slides.length) throw new MetaRefusal(`only ${urls.length} of ${slides.length} slides could be drawn`)

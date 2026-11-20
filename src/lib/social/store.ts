@@ -1355,11 +1355,13 @@ export function policyRefusals(rev: Pick<Revision, 'slides' | 'caption' | 'versi
 
 export async function approveUnderStandingPolicy(
   db: Db,
-  input: { readonly by: string; readonly now: Date; readonly siteOrigin: string },
+  // ONLY what this hour's logged dry run read ELIGIBLE (the PM's 10:47 of 20 November 2026, item 1; policy-guard.ts):
+  // a piece outside it is never approved here, so a refusal of one inside it is a check that failed between the two.
+  input: { readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly only: ReadonlySet<string> },
 ): Promise<WeekApproved | null> {
   const campaign = await readCampaign(db, input.now)
   if (campaign === null) return null
-  return approveWeek(policyPieces(campaign.pieces), async (pieceId) => {
+  return approveWeek(policyPieces(campaign.pieces).filter((p) => input.only.has(p.id)), async (pieceId) => {
     // The policy's own bar first (the PM's 03:42 item 4), then the same checked approval a person's press gives.
     const rev = await newestRevision(db, pieceId)
     if (!rev) return { state: 'refused', reason: 'The piece has no version to approve.' }
@@ -2030,7 +2032,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     for (const platform of ['instagram', 'facebook'] as const) {
       let misfit: string | null
       try {
-        misfit = await slidesMisfit(d.rev.slides, platform, opts.fetcher ?? fetch)
+        misfit = await slidesMisfit(d.rev.slides, platform, d.format, opts.fetcher ?? fetch)
       } catch (e) {
         misfit = `its fit for ${platform} could not be read (${e instanceof Error ? e.message : String(e)})`
       }
@@ -2048,7 +2050,21 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
 }
 
 /** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
-export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
+/** A publisher posts a piece in its OWN format (social_pieces.format), never one guessed from its slides. */
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly format: SocialFormat; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
+
+/**
+ * A PIECE'S OWN FORMAT, as it was planned, drawn for approval and scheduled (WINDOW 5A's look of 20 November 2026 at
+ * 10:49, on the PM's 10:42 item 1): the publisher and the destination check read it here, so a tonight story, whose slide
+ * is of type 'tonight', posts as a story. Guessed from its slides it read as a feed and would have posted as a feed image
+ * with a black band. Throws when the row cannot be read or holds neither format, so the caller holds the piece.
+ */
+export async function ownFormatOf(db: Db, pieceId: string): Promise<SocialFormat> {
+  const { data, error } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
+  const format = (data as { format?: unknown } | null)?.format
+  if (error || (format !== 'feed' && format !== 'story')) throw new Error(`the piece's own format could not be read${error ? `: ${error.message}` : ''}`)
+  return format
+}
 
 export type Published = {
   readonly switchOn: boolean
@@ -2091,13 +2107,15 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     // with every one of them still due; now that piece is held with the reason and the next is read.
     let issues: string[]
     let rev: Revision | null
+    let format: SocialFormat | null
     let misfit: string | null
     try {
       issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
       rev = issues.length > 0 || opts.publisher === null ? null : await newestRevision(db, pieceId)
+      format = rev === null ? null : await ownFormatOf(db, pieceId)
       // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
       // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
-      misfit = rev === null ? null : await slidesMisfit(rev.slides, platform, opts.fetcher ?? fetch)
+      misfit = rev === null || format === null ? null : await slidesMisfit(rev.slides, platform, format, opts.fetcher ?? fetch)
     } catch (e) {
       await hold(id, `Not published: the checks before publishing could not finish (${e instanceof Error ? e.message : String(e)}).`)
       continue
@@ -2114,10 +2132,14 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       await hold(id, `Not published: ${misfit}`)
       continue
     }
+    if (rev === null || format === null) {
+      await hold(id, "Not published: the piece's newest version or its own format could not be read.")
+      continue
+    }
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
-      // 18 November 2026, item 1), set at the moment it posts.
-      const { ref, submission } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: onItsDay(rev?.versions[platform].caption ?? '', rev?.slides ?? [], now) })
+      // 18 November 2026, item 1), set at the moment it posts. It posts in its own format, never one guessed from its slides.
+      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(rev.versions[platform].caption ?? '', rev.slides, now) })
       // THE OUTSIDE ID FIRST, WHERE ONLY ITS OWN SHAPE IS CHECKED (the PM's 18:40 of 18 November 2026, item 1 (a)): Blotato's
       // submission goes to its own column while the row still reads scheduled, so a refusal of the reference below can
       // never lose it. On 18 November five accepted posts lost theirs: the only record was the refused update.

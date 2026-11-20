@@ -1657,6 +1657,27 @@ const DRILLS = [
     expect: 'no longer refused first',
   },
   /*
+   * The piece's own format (WINDOW 5A's look of 20 November 2026 at 10:49, on the PM's 10:42 item 1), two drills: the
+   * fault as it was found (the publisher guessing the format from its slides, so a tonight story posts as a feed), and
+   * the publishing run calling the publisher with a fixed format instead of the piece's own.
+   */
+  {
+    name: 'the Blotato publisher guesses the format from its slides again, so a tonight story posts as a feed',
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/blotato-publisher.ts',
+    find: '  return async ({ pieceId, platform, format, slides, caption }) => {',
+    replace: "  return async ({ pieceId, platform, slides, caption }) => {\n    const format = slides.some((s) => s.t === 'story') ? 'story' : 'feed'",
+    expect: "does not take the piece's own format",
+  },
+  {
+    name: "the publishing run gives the publisher a fixed format, never the piece's own",
+    guard: `${GUARDS}/stories-post-as-stories.mjs`,
+    file: 'src/lib/social/store.ts',
+    find: 'await opts.publisher({ pieceId, platform, format, ',
+    replace: "await opts.publisher({ pieceId, platform, format: 'feed', ",
+    expect: "the publisher is not given the piece's own format",
+  },
+  /*
    * no-text-range-for-a-prefix and listing-holds-carry-next-action (WINDOW 5A, 20 November 2026, train AD): each fault
    * as it stood on main: the read back asked its prefix as a text range, and the held-series hold named no next action.
    */

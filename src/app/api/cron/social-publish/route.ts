@@ -11,6 +11,7 @@ import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
+import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,7 +74,12 @@ export async function GET(request: NextRequest) {
        piece of the week in an approved family is given the checked approval in the founder's name (store.ts
        approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Five runs a day, 06:40
        first so the day is prepared before 07:00, because each check reads the night's booking link. A failure is said
-       and never stops the publishing below. */
+       and never stops the publishing below.
+       IT FAILS CLOSED (the PM's 10:47 of 20 November 2026, item 1; src/lib/social/policy-guard.ts): the dry run first,
+       every piece logged eligible or not; the policy approves only what it read eligible; and any approval outside it,
+       any failed check of an approved piece, or any publish error turns the switch off by code with an alarm row. */
+    let policyHour: PolicyHour | null = null
+    const policyFaults: string[] = []
     if (POLICY_HOURS.has(melbourneHour(now))) {
       try {
         const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
@@ -81,8 +87,18 @@ export async function GET(request: NextRequest) {
           const founder = await founderAccount(db)
           if (founder.id === null) {
             console.error(`[cron/social-publish] the standing policy approved nothing: ${founder.why}`)
+            policyFaults.push(`the standing policy approved nothing: ${founder.why}`)
           } else {
-            const policy = await approveUnderStandingPolicy(db, { by: founder.id, now, siteOrigin: getSiteUrl() })
+            const dry = (await standingPolicyDryRun(db, { now, siteOrigin: getSiteUrl() })) ?? []
+            const eligible = new Set(dry.filter((r) => r.eligible).map((r) => r.id))
+            for (const r of dry) console.log(`[cron/social-publish] dry run: ${r.eligible ? 'ELIGIBLE' : 'outside'} ${r.label} (${r.id})${r.eligible ? '' : `: ${r.reasons.join(' ')}`}`)
+            await recordAnonAuditEvent({
+              action: 'system.social.standing_policy_dry_run',
+              actorEmail: 'cron/social-publish',
+              metadata: { eligible: [...eligible], outside: dry.filter((r) => !r.eligible).map((r) => ({ id: r.id, reasons: r.reasons })) },
+            })
+            const policy = await approveUnderStandingPolicy(db, { by: founder.id, now, siteOrigin: getSiteUrl(), only: eligible })
+            policyHour = { eligible, approved: policy?.approved ?? [], refused: (policy?.held ?? []).map((h) => ({ id: h.id, reason: h.reason })) }
             if (policy && (policy.approved.length > 0 || policy.held.length > 0)) {
               console.log(`[cron/social-publish] standing policy: ${policy.approved.length} approved, ${policy.held.length} outside the policy`)
               for (const h of policy.held) console.log(`[cron/social-publish] outside the policy: ${h.label}: ${h.reason}`)
@@ -96,10 +112,16 @@ export async function GET(request: NextRequest) {
         }
       } catch (error) {
         console.error('[cron/social-publish] the standing policy could not approve:', error instanceof Error ? error.message : error)
+        policyFaults.push(`the standing policy could not run: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
+    // THE SWITCH GOES OFF BY CODE on any fault of this run while it reads on (policy-guard.ts), with its alarm row.
+    if (published.switchOn) {
+      const trips = [...policyFaults, ...switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })]
+      if (trips.length > 0) await switchOffByCode(db, { now, phase: socialPhaseAt(melbourneHour(now)) ?? 'schedule', trips })
+    }
     console.log(
       `[cron/social-publish] ${scheduled.scheduled.length} piece(s) scheduled; ${published.due} due; switch ${published.switchOn ? 'ON' : 'OFF'}: ` +
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),

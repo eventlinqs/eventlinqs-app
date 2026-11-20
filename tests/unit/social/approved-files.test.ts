@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { APPROVED_FILE_PREFIX, inLockedLook, isApprovedFileUrl, type Slide } from '@/lib/social/campaign'
-import { formatOfSlides } from '@/lib/social/meta-publisher'
 import { pieceQuality } from '@/lib/social/piece-quality'
 
 /*
@@ -24,10 +23,9 @@ describe('an approved file slide', () => {
     }
   })
 
-  it('is in the locked look, and posts as a story only when it is one', () => {
+  // Whether it posts as a story is the piece's own format now (store.ts ownFormatOf), never read from a slide.
+  it('is in the locked look', () => {
     expect(inLockedLook([file(`${APPROVED_FILE_PREFIX}16-lany-story.jpg`, 'story')])).toBe(true)
-    expect(formatOfSlides([file(`${APPROVED_FILE_PREFIX}16-lany-story.jpg`, 'story')])).toBe('story')
-    expect(formatOfSlides([file(`${APPROVED_FILE_PREFIX}11-lany-feed.jpg`)])).toBe('feed')
   })
 
   it('the ten approved files and their four Instagram feed fits are in the site, each at an approved address', () => {

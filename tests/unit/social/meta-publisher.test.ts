@@ -58,7 +58,7 @@ describe('Instagram', () => {
   test('one slide: the limit read first, a container with its caption, FINISHED, then published', async () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    const out = await pub({ pieceId: 'p1', platform: 'instagram', slides: [night(1)], caption: 'Saturday in Geelong' })
+    const out = await pub({ pieceId: 'p1', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'Saturday in Geelong' })
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
       `GET ${CONFIG.igUserId}/content_publishing_limit`,
       `POST ${CONFIG.igUserId}/media`,
@@ -73,7 +73,7 @@ describe('Instagram', () => {
   test('three slides: a carousel, each image a carousel item, then one CAROUSEL container with the caption', async () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await pub({ pieceId: 'p2', platform: 'instagram', slides: [night(1), night(2), night(3)], caption: 'This weekend' })
+    await pub({ pieceId: 'p2', platform: 'instagram', format: 'feed', slides: [night(1), night(2), night(3)], caption: 'This weekend' })
     const media = calls.filter((c) => c.path === `${CONFIG.igUserId}/media`)
     expect(media.slice(0, 3).map((c) => c.params)).toEqual([1, 2, 3].map((i) => ({ image_url: `https://store.example/social/p/${i}-feed.jpg`, is_carousel_item: 'true' })))
     expect(media[3].params).toEqual({ media_type: 'CAROUSEL', children: 'container-1,container-2,container-3', caption: 'This weekend' })
@@ -82,21 +82,21 @@ describe('Instagram', () => {
   test('a story: STORIES containers at 9:16, no caption', async () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await pub({ pieceId: 'p3', platform: 'instagram', slides: [story(1)], caption: 'ignored' })
+    await pub({ pieceId: 'p3', platform: 'instagram', format: 'story', slides: [story(1)], caption: 'ignored' })
     expect(calls.find((c) => c.path === `${CONFIG.igUserId}/media`)?.params).toEqual({ image_url: 'https://store.example/social/p/1-story.jpg', media_type: 'STORIES' })
   })
 
   test('the 24 hour limit reached: nothing is made, the reason is said', async () => {
     const { calls, graph } = recorded({ [`GET ${CONFIG.igUserId}/content_publishing_limit`]: [{ data: [{ quota_usage: 50, config: { quota_total: 50, quota_duration: 86400 } }] }] })
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await expect(pub({ pieceId: 'p4', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toThrow("Instagram's publishing limit is reached: 50 of 50 in 24 hours")
+    await expect(pub({ pieceId: 'p4', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow("Instagram's publishing limit is reached: 50 of 50 in 24 hours")
     expect(calls).toHaveLength(1)
   })
 
   test('a container in ERROR is never published', async () => {
     const { calls, graph } = recorded({ 'GET container-1': [{ status_code: 'ERROR', id: 'container-1' }] })
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await expect(pub({ pieceId: 'p5', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toThrow('the Instagram container container-1 is ERROR')
+    await expect(pub({ pieceId: 'p5', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow('the Instagram container container-1 is ERROR')
     expect(calls.some((c) => c.path.endsWith('/media_publish'))).toBe(false)
   })
 
@@ -104,7 +104,7 @@ describe('Instagram', () => {
     const waiting = Array.from({ length: 6 }, () => ({ status_code: 'IN_PROGRESS', id: 'container-1' }))
     const { calls, graph } = recorded({ 'GET container-1': waiting })
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await expect(pub({ pieceId: 'p6', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toThrow('Meta was still preparing')
+    await expect(pub({ pieceId: 'p6', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow('Meta was still preparing')
     expect(calls.some((c) => c.path.endsWith('/media_publish'))).toBe(false)
   })
 
@@ -112,7 +112,7 @@ describe('Instagram', () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
     const slides = Array.from({ length: 11 }, (_, i) => night(i + 1))
-    await expect(pub({ pieceId: 'p7', platform: 'instagram', slides, caption: 'x' })).rejects.toThrow('at most 10')
+    await expect(pub({ pieceId: 'p7', platform: 'instagram', format: 'feed', slides, caption: 'x' })).rejects.toThrow('at most 10')
     expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0)
   })
 })
@@ -121,7 +121,7 @@ describe('Facebook', () => {
   test('one slide: a Page photo with its caption, published; the post id is the reference', async () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    const out = await pub({ pieceId: 'p8', platform: 'facebook', slides: [night(1)], caption: 'Saturday in Geelong' })
+    const out = await pub({ pieceId: 'p8', platform: 'facebook', format: 'feed', slides: [night(1)], caption: 'Saturday in Geelong' })
     expect(calls).toEqual([{ method: 'POST', path: `${CONFIG.pageId}/photos`, params: { url: 'https://store.example/social/p/1-feed.jpg', caption: 'Saturday in Geelong', published: 'true' } }])
     expect(out.ref).toBe(`facebook:${CONFIG.pageId}_post-1`)
   })
@@ -129,7 +129,7 @@ describe('Facebook', () => {
   test('several slides: each photo unpublished, then one Page post attaching them in order', async () => {
     const { calls, graph } = recorded()
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: urlsFor, sleep: noWait })
-    await pub({ pieceId: 'p9', platform: 'facebook', slides: [night(1), night(2)], caption: 'This weekend' })
+    await pub({ pieceId: 'p9', platform: 'facebook', format: 'feed', slides: [night(1), night(2)], caption: 'This weekend' })
     expect(calls[0].params).toEqual({ url: 'https://store.example/social/p/1-feed.jpg', published: 'false' })
     expect(calls[2]).toEqual({
       method: 'POST',
@@ -142,7 +142,7 @@ describe('Facebook', () => {
     const { calls, graph } = recorded()
     let drawn = 0
     const pub = makeMetaPublisher({ config: CONFIG, graph, slideUrls: async (...a) => { drawn += 1; return urlsFor(...a) }, sleep: noWait })
-    await expect(pub({ pieceId: 'p10', platform: 'facebook', slides: [story(1)], caption: 'x' })).rejects.toThrow('a Facebook story is not on the publisher')
+    await expect(pub({ pieceId: 'p10', platform: 'facebook', format: 'story', slides: [story(1)], caption: 'x' })).rejects.toThrow('a Facebook story is not on the publisher')
     expect(calls).toHaveLength(0)
     expect(drawn).toBe(0)
   })
