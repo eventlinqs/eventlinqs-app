@@ -161,27 +161,22 @@ export async function getPayoutSummary(): Promise<PayoutSummary> {
   const db = createAdminClient()
   // Totals across the ledger and holds. At launch scale this is a bounded scan;
   // a materialised rollup is a later optimisation if org counts grow large.
-  const { data: ledger } = await db
-    .from('organiser_balance_ledger')
-    .select('delta_cents')
-    .eq('currency', PAYOUT_CURRENCY)
-  const totalAvailableCents = (ledger ?? []).reduce((s, r) => s + Number(r.delta_cents ?? 0), 0)
-
-  const { data: holds } = await db
-    .from('payout_holds')
-    .select('amount_cents')
-    .eq('currency', PAYOUT_CURRENCY)
-    .is('released_at', null)
-  const totalOnHoldCents = (holds ?? []).reduce((s, r) => s + Number(r.amount_cents ?? 0), 0)
-
-  const { count: pendingCount } = await db
-    .from('payouts')
-    .select('id', { count: 'exact', head: true })
-    .in('status', ['pending', 'in_transit'])
-  const { count: paidCount } = await db
-    .from('payouts')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'paid')
+  // The four reads start together (law 41, the speed train of 20 November 2026; they were awaited one after another),
+  // and a read that fails is said so, never shown as $0 or as no payouts.
+  const [ledgerRead, holdsRead, pendingRead, paidRead] = await Promise.all([
+    db.from('organiser_balance_ledger').select('delta_cents').eq('currency', PAYOUT_CURRENCY),
+    db.from('payout_holds').select('amount_cents').eq('currency', PAYOUT_CURRENCY).is('released_at', null),
+    db.from('payouts').select('id', { count: 'exact', head: true }).in('status', ['pending', 'in_transit']),
+    db.from('payouts').select('id', { count: 'exact', head: true }).eq('status', 'paid'),
+  ])
+  if (ledgerRead.error) throw new Error(`the held balances could not be read: ${ledgerRead.error.message}`)
+  if (holdsRead.error) throw new Error(`the reserve holds could not be read: ${holdsRead.error.message}`)
+  if (pendingRead.error) throw new Error(`the pending payouts could not be counted: ${pendingRead.error.message}`)
+  if (paidRead.error) throw new Error(`the paid payouts could not be counted: ${paidRead.error.message}`)
+  const totalAvailableCents = (ledgerRead.data ?? []).reduce((s, r) => s + Number(r.delta_cents ?? 0), 0)
+  const totalOnHoldCents = (holdsRead.data ?? []).reduce((s, r) => s + Number(r.amount_cents ?? 0), 0)
+  const pendingCount = pendingRead.count
+  const paidCount = paidRead.count
 
   return {
     totalAvailableCents,
