@@ -235,7 +235,7 @@ describe('the run', () => {
   test('an acquisition letter leaves the run from lawal@, a permission request from hello@', async () => {
     const { db } = standardDb('test', { queued: [{ ...QUEUED[0], comms_category: 'ACQ' }, { ...QUEUED[1], comms_category: 'PERM' }] })
     await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
-    const mail = recordedOutreachMail() as { from?: string }[]
+    const mail = recordedOutreachMail()
     expect(mail.map((m) => m.from)).toEqual([LAWAL_MAILBOX, HELLO_MAILBOX])
   })
 
