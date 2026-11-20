@@ -375,6 +375,7 @@ export async function fetchDigestEvents(
    * failure this whole pass is about, and a broken query must not be able to
    * look like one.
    */
+  const periodEnd = endOfLocalDayUtc(new Date(`${period.end}T12:00:00Z`), PLATFORM_TIME_ZONE)
   const data = await readOrThrow(`digest events for ${citySlug}`, () =>
     admin
     .from('events')
@@ -390,10 +391,11 @@ export async function fetchDigestEvents(
     // in-memory guard below.
     .eq('visibility', PUBLIC_VISIBILITY)
     // Still listed at `now`, by the platform's one rule (law 16: a night leaves every list at its end), never from a
-    // UTC midnight; and starting no later than the period's last day, in the city's own zone (noon UTC of an
-    // Australian date is that same date in every Australian zone).
+    // UTC midnight; and starting before the period's last day ends, in the city's own zone (endOfLocalDayUtc is the
+    // next day's first instant, an exclusive end; noon UTC of an Australian date is that same date in every Australian
+    // zone).
     .or(listingWindowOrPredicate(now))
-    .lte('start_date', endOfLocalDayUtc(new Date(`${period.end}T12:00:00Z`), PLATFORM_TIME_ZONE).toISOString())
+    .lt('start_date', periodEnd.toISOString())
     .order('start_date', { ascending: true })
     .limit(DIGEST_READ_CEILING),
   )
@@ -418,7 +420,8 @@ export async function fetchDigestEvents(
   }
 
   /* D3 (6): a venue that said no to the weekly round-up is not carried; a failed read stops the city (it throws). */
-  const rows = (data ?? []) as Row[]
+  // The generated types read the category join as a list; the many to one join answers one row (as the edition's reads).
+  const rows = (data ?? []) as unknown as Row[]
   const leftOut = nightsLeftOut(
     rows.map((e) => ({ eventId: e.id, venueId: e.venue_id ?? null })),
     await venuesOff('weekly_roundup', distributionDeps(admin)),
@@ -430,7 +433,7 @@ export async function fetchDigestEvents(
     // regression here emails a private address to a whole city.
     .filter((e) => isPubliclyDiscoverable(e.visibility) && e.is_seed_data !== true)
     // The same rule in memory as in the query, so a night that ends between the read and the send is never carried.
-    .filter((e) => isStillListed(e, now))
+    .filter((e) => isStillListed(e, now) && Date.parse(e.start_date) < periodEnd.getTime())
     .sort(
       byRelevance(
         (e) =>

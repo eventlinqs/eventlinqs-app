@@ -77,7 +77,7 @@ function stubClient(
           filters[`${name}:${String(args[0])}`] = args.length > 1 ? args[1] : true
           return builder
         }) as unknown
-      for (const method of ['select', 'eq', 'gte', 'lte', 'not', 'order', 'is', 'in', 'or']) {
+      for (const method of ['select', 'eq', 'gte', 'lte', 'lt', 'not', 'order', 'is', 'in', 'or']) {
         builder[method] = chain(method)
       }
       let window: { from: number; to: number } | null = null
@@ -170,8 +170,9 @@ describe("the practice weekend edition of 21 November 2026: only nights still li
     const keys = Object.keys(events.filters)
     expect(keys.some((k) => k.startsWith('or:end_date.gte.'))).toBe(true)
     expect(keys.some((k) => k.startsWith('gte:start_date'))).toBe(false)
-    // The last instant of Sunday 22 November in Melbourne (AEDT), as UTC.
-    expect(events.filters['lte:start_date']).toBe('2026-11-22T12:59:59.999Z')
+    // Before Monday 23 November begins in Melbourne (AEDT): Sunday's last night is the last one carried.
+    expect(events.filters['lt:start_date']).toBe('2026-11-22T13:00:00.000Z')
+    expect(events.filters['lte:start_date']).toBeUndefined()
   })
   test("THE WEEKEND's subject names its dates; THE WEEK's keeps its count", () => {
     const built = buildDigestEmailHtml({ cityName: 'Melbourne', events: [], origin: 'https://www.eventlinqs.com.au', unsubscribeUrl: 'u', edition: 'weekend', period: { start: '2026-11-21', end: '2026-11-22' } })
