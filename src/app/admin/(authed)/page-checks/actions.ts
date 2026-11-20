@@ -1,5 +1,6 @@
 'use server'
 
+import { countOf } from '@/lib/text/plural'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireAdminSession } from '@/lib/admin/auth'
@@ -23,6 +24,6 @@ export async function stopPageCheckAction(formData: FormData): Promise<void> {
   const answer = await stopPageCheck(createAdminClient(), { id, by: session.userId, reason, now: new Date() })
   await recordAuditEvent({ action: 'admin.page_checks.stop', targetType: 'organiser_page_checks', targetId: id, metadata: { ...answer, reason }, session })
   revalidatePath('/admin/page-checks')
-  if (answer.state === 'stopped') back(`Stopped. The contact is unticked; ${answer.held} waiting letter(s) went back to held.`)
+  if (answer.state === 'stopped') back(`Stopped. The contact is unticked; ${countOf(answer.held, "waiting letter")} went back to held.`)
   else back(`Not stopped: ${answer.reason}.`)
 }
