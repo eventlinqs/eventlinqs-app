@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addressesOn, basisFinds, roleRefusal } from '@/lib/outreach/basis-find'
-import { runBasisPool, type PoolStore } from '@/lib/outreach/basis-pool'
+import { poolOrder, runBasisPool, type PoolStore } from '@/lib/outreach/basis-pool'
 import { poolFoundGlance } from '@/lib/admin/today-math'
 import type { Fetcher } from '@/lib/listings/collect-run'
 
@@ -87,5 +87,24 @@ describe("the Command Centre's pool line", () => {
     expect(item.what).toBe('1 published address recorded for the twenty since yesterday')
     expect(item.why).toContain('Nothing is sent to one until you open its page and tick it when you send.')
     expect(poolFoundGlance([], 0)).toEqual([])
+  })
+})
+
+// The PM's 00:59 of 21 November 2026, item 3 (law 38): the four guide cities' organisers are read first, each group in
+// the daily rotation, so a night's reads are spent where the daily ten come from and every candidate is still tried.
+describe('the four guide cities first', () => {
+  const c = (id: string, inGuideCity?: boolean) => ({ id, name: id, website: `https://${id}.example.com.au`, known: [], inGuideCity })
+  it('every guide city organiser comes before every other, whatever the day', () => {
+    const all = [c('far-1'), c('geelong-1', true), c('far-2', false), c('bendigo-1', true), c('far-3'), c('melbourne-1', true)]
+    for (const day of ['2026-11-21', '2026-11-22', '2026-12-01']) {
+      const order = poolOrder(all, day)
+      expect(order.slice(0, 3).every((o) => o.inGuideCity === true)).toBe(true)
+      expect(order.map((o) => o.id).sort()).toEqual(all.map((o) => o.id).sort())
+    }
+  })
+  it('within the guide cities the order still rotates by day, so each is tried in turn', () => {
+    const guide = Array.from({ length: 8 }, (_, i) => c(`g${i}`, true))
+    const first = new Set(['2026-11-21', '2026-11-22', '2026-11-23', '2026-11-24'].map((d) => poolOrder(guide, d)[0].id))
+    expect(first.size).toBeGreaterThan(1)
   })
 })

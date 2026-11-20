@@ -1,8 +1,8 @@
 {
   "name": "EventLinqs growth plan",
-  "version": 7,
-  "set_on": "2026-11-15",
-  "set_by": "Lawal Adams, founder, 00:19 Melbourne time on 15 November 2026 (PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md): 'Nobody gets 6 months without any platform fee ... They pay the fee from day one ... No 3-month organiser extra ... every organiser must pay from day one.'",
+  "version": 8,
+  "set_on": "2026-11-21",
+  "set_by": "Lawal Adams, founder, 11:29 Melbourne time on 20 November 2026 (law 38 of C:\\dev\\CLAUDE.md): 'no less than 10 every day ... 10 communications every day for outreach'; written as version 8 on 21 November 2026 by the PM's item 4 of 23:57 (PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md)",
   "readable_version": "https://claude.ai/artifact/NiVfqJUKJZhu57Asoh1HLJ (EventLinqs: A against the Fever path); V3 checklist https://claude.ai/artifact/9ry6uA1DMt5RBGvHn8njnp",
   "mission": "The news of events: we know first, we publish first, and we tell people where to get the ticket. Every great event people want to go to, any kind (concerts, festivals, club nights, community and cultural nights, anything), in one place, bought through us. Australia first, then the world.",
   "model": {
@@ -57,8 +57,8 @@
     "search visits to city and category pages"
   ],
   "daily_quotas": {
-    "outreach_messages": 20,
-    "outreach_note": "Lawal's minimum since 19 October 2026, replies and follow ups counted; only where the Spam Act's inferred consent holds and the basis is recorded",
+    "outreach_messages": 10,
+    "outreach_note": "Law 38 (Lawal, 20 November 2026, 11:29): at least ten first letters to new organisers every business day while EventLinqs works Victoria, from lawal@, on the approved template, each passing every check; it replaces the twenty wherever twenty was the daily figure. Fewer than ten eligible is a fault named in the 08:00 report with its cause, and discovery and the basis read run until the pool holds ten for the next day. Only where the Spam Act's inferred consent holds and the basis is recorded.",
     "social_posts_per_open_city": 1,
     "listings_rechecked": "every event in the next 7 days and every one-off event, by risk"
   },
@@ -261,5 +261,6 @@
     ]
   },
   "changes_from_v5": "Lawal, 12 November 2026, 09:16 to 09:19: Melbourne first. The home page opens on Melbourne; outreach, social and the weekly email lead with Melbourne, then the other big cities, then the regional cities; every city stays listed. The master plan's gates become targets the Command Centre tracks.",
-  "changes_from_v6": "Lawal, 15 November 2026, 00:19 and 00:37: LAW 24 is retired. Every organiser pays the platform fee from the first paid ticket; no fee-free months and no referral months are offered from that day; the organisations registered before it keep the window they were given, to its date. The offer leads on value (the organiser offer's version 3). Only the_offer's first line and the margin note change; every target, gate and city is unchanged."
+  "changes_from_v6": "Lawal, 15 November 2026, 00:19 and 00:37: LAW 24 is retired. Every organiser pays the platform fee from the first paid ticket; no fee-free months and no referral months are offered from that day; the organisations registered before it keep the window they were given, to its date. The offer leads on value (the organiser offer's version 3). Only the_offer's first line and the margin note change; every target, gate and city is unchanged.",
+  "changes_from_v7": "daily_quotas.outreach_messages 20 to 10 and its note, by law 38 (Lawal, 20 November 2026, 11:29); nothing else changed. Version 7 kept as versions/plan-2026-11-15-v7.json."
 }

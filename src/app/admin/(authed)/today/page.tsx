@@ -28,6 +28,7 @@ import { LessonsPanel } from '@/components/admin/lessons-panel'
 import { readTimetable } from '@/lib/ops/timetable-read'
 import { readLessons } from '@/lib/ops/lessons'
 import { melbourneMinutes } from '@/lib/ops/timetable'
+import { readClock, readTimesLine } from '@/lib/admin/read-timing'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -66,32 +67,36 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   // after another behind the first five, so the page took the sum of them; now it takes the slowest. Each read that can
   // fail still says so in its own section, never a zero.
   // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
+  // EACH READ TIMED (law 41; src/lib/admin/read-timing.ts): when they settle, one log line names every read slowest first.
+  const clock = readClock('/admin/today')
+  const { timed } = clock
   const [queue, dashboard, growth, centre, automation, gates, twenty, sentRecently, timetable, learned, threePosts] = await Promise.all([
-    readTodayQueue(now),
-    readFounderDashboard(now),
-    readGrowthWeek(now).then((g) => ({ ok: true as const, g }), failed),
+    timed('queue', readTodayQueue(now)),
+    timed('dashboard', readFounderDashboard(now)),
+    timed('growth', readGrowthWeek(now)).then((g) => ({ ok: true as const, g }), failed),
     // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
-    readCommandCentre(createAdminClient(), now),
+    timed('centre', readCommandCentre(createAdminClient(), now)),
     // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
-    readAutomation(now).then(
+    timed('automation', readAutomation(now)).then(
       (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
       failed,
     ),
     // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
-    readPlanGates(now).then((g) => ({ ok: true as const, g }), failed),
+    timed('gates', readPlanGates(now)).then((g) => ({ ok: true as const, g }), failed),
     // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
-    readTwentyView(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
+    timed('twenty', readTwentyView(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
     // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
-    readSentRecently(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
+    timed('sentRecently', readSentRecently(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
     // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
-    readTimetable(createAdminClient(), now).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` })),
+    timed('timetable', readTimetable(createAdminClient(), now)).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` })),
     // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
-    readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight)).catch((err: unknown) => ({
+    timed('lessons', readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight))).catch((err: unknown) => ({
       unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
     })),
     // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
-    readThreePosts(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
+    timed('threePosts', readThreePosts(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
   ])
+  console.log(readTimesLine(clock.report()))
   const exceptions = byException(dashboard)
   // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
   const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))

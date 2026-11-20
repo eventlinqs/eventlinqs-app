@@ -16,6 +16,8 @@ export function morningReportEmail(
   when: { readonly dateWords: string; readonly adminUrl: string; readonly learned?: LearnedLines },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
+  // Each check's saved copy and Stop, on the admin's own origin (adminUrl is the report's own page, /admin/today).
+  const checkUrl = (id: string) => `${new URL('/admin/page-checks', when.adminUrl).toString()}?view=${id}#copy`
   const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const text = [
     `Good morning Lawal,`,
@@ -25,6 +27,14 @@ export function morningReportEmail(
     ...report.rows.flatMap((r, i) => [`${i + 1}. ${r.area}`, `   Yesterday: ${r.yesterday}`, `   Today: ${r.today}`, '']),
     ...(report.unreadable.length > 0 ? [`Not read this morning: ${report.unreadable.join(', ')}.`, ''] : []),
     ...(report.engine ? [`The engine: ${report.engine}`, ''] : []),
+    // LAW 43: every organiser page the engine checked, each with its saved copy and its Stop.
+    ...((report.pageChecks ?? []).length > 0
+      ? [
+          `Pages the engine checked before a first letter (open one to see the saved copy, or stop it):`,
+          ...(report.pageChecks ?? []).map((c) => `   ${c.organiser || 'An organiser'}: ${c.pageUrl}${c.stopped ? ' (stopped)' : ''} ${checkUrl(c.id)}`),
+          '',
+        ]
+      : []),
     // What the engine learned, from production (Lawal's 06:07 of 20 November 2026): the timetable, yesterday's lessons, today's changes.
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     `Everything above is read from production at the time of sending. The admin: ${when.adminUrl}`,
@@ -43,6 +53,13 @@ export function morningReportEmail(
     `<table cellpadding="0" style="width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse">${rowsHtml}</table>` +
     (report.unreadable.length > 0 ? `<p>Not read this morning: ${escape(report.unreadable.join(', '))}.</p>` : '') +
     (report.engine ? `<p>The engine: ${escape(report.engine)}</p>` : '') +
+    ((report.pageChecks ?? []).length > 0
+      ? `<p><strong>Pages the engine checked before a first letter</strong> (open one to see the saved copy, or stop it):</p><ul>` +
+        (report.pageChecks ?? [])
+          .map((c) => `<li>${escape(c.organiser || 'An organiser')}: ${escape(c.pageUrl)}${c.stopped ? ' (stopped)' : ''} <a href="${checkUrl(c.id)}">Saved copy and Stop</a></li>`)
+          .join('') +
+        `</ul>`
+      : '') +
     (when.learned
       ? `<p><strong>Today's timetable:</strong> ${escape(when.learned.timetable)}<br/><strong>Learned yesterday:</strong> ${escape(when.learned.learned)}<br/><strong>Changed today because of it:</strong> ${escape(when.learned.changed)}</p>`
       : '') +

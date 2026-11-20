@@ -6784,6 +6784,7 @@ export type Database = {
           id: string
           no_marketing_statement_checked: boolean
           organiser_id: string
+          page_checked_by: string | null
           person_name: string | null
           published_on_url: string | null
           relevance: string | null
@@ -6805,6 +6806,7 @@ export type Database = {
           id?: string
           no_marketing_statement_checked?: boolean
           organiser_id: string
+          page_checked_by?: string | null
           person_name?: string | null
           published_on_url?: string | null
           relevance?: string | null
@@ -6826,6 +6828,7 @@ export type Database = {
           id?: string
           no_marketing_statement_checked?: boolean
           organiser_id?: string
+          page_checked_by?: string | null
           person_name?: string | null
           published_on_url?: string | null
           relevance?: string | null
@@ -7042,6 +7045,56 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organiser_page_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string
+          contact_id: string
+          id: string
+          page_html: string
+          page_sha256: string
+          page_url: string
+          stopped_at: string | null
+          stopped_by: string | null
+          stopped_reason: string | null
+          verdict: Json
+        }
+        Insert: {
+          checked_at?: string
+          checked_by: string
+          contact_id: string
+          id?: string
+          page_html: string
+          page_sha256: string
+          page_url: string
+          stopped_at?: string | null
+          stopped_by?: string | null
+          stopped_reason?: string | null
+          verdict: Json
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string
+          contact_id?: string
+          id?: string
+          page_html?: string
+          page_sha256?: string
+          page_url?: string
+          stopped_at?: string | null
+          stopped_by?: string | null
+          stopped_reason?: string | null
+          verdict?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_page_checks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_contacts"
             referencedColumns: ["id"]
           },
         ]

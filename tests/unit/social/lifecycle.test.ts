@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { captionMarkFaults } from '@/lib/social/caption-marks'
+import { carriesBannedWord } from '@/lib/social/words'
 import {
   captionFor,
   cleanHandle,
@@ -211,6 +212,25 @@ describe('words: a human first line, never repeated in the window, facts short a
     expect(captionMarkFaults(fb)).toEqual([])
     const bare = captionFor({ platform: 'instagram', firstLine: 'Today is the day.', facts: { ...facts, place: null, priceLine: null, summary: null }, link: 'https://x' })
     expect(captionMarkFaults(bare)).toEqual([])
+  })
+  it("the listing's sentence is left out where it says the banned word outside the night's names (AMCF, 21 November 2026)", () => {
+    // Production's own row, read at 02:56 on 21 November 2026: both of AMCF's pieces were refused as drawn, 'The words
+    // carry a banned word. Say community.', for quoting this first sentence.
+    const title = 'African Music and Cultural Festival 2026'
+    const summary = 'Three days of African music, food and culture in the heart of Melbourne. A free, family-friendly event open to all.'
+    const facts = { title, place: 'Fed Square', dateLabel: 'Sat 21 Nov, 11am', priceLine: 'Free', summary, names: [title] }
+    for (const platform of ['instagram', 'facebook'] as const) {
+      const caption = captionFor({ platform, firstLine: 'The middle day.', facts, link: `https://x?utm_source=${platform}` })
+      expect(carriesBannedWord(caption, [title])).toBe(false)
+      expect(caption).not.toContain('Three days of African music')
+      expect(caption).toContain(title)
+      expect(captionMarkFaults(caption)).toEqual([])
+    }
+    // The drill: the sentence alone is what the one rule refuses, so a caption quoting it would be held.
+    expect(carriesBannedWord('Three days of African music, food and culture in the heart of Melbourne.', [title])).toBe(true)
+    // A sentence that says the word only inside the night's own name is still quoted.
+    const named = captionFor({ platform: 'instagram', firstLine: 'The middle day.', facts: { ...facts, summary: 'The African Music and Cultural Festival 2026 fills Fed Square for three days.' }, link: 'https://x' })
+    expect(named).toContain('fills Fed Square for three days.')
   })
   it("a story's one line is short, and names the place only when it fits", () => {
     expect(storyLine('final_day', 'Fed Square')).toBe('Last day today at Fed Square.')

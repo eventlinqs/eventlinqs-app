@@ -14,11 +14,11 @@ describe("the admin navigation in Lawal's eight groups", () => {
     expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Today', 'Events', 'Organisers', 'Outreach', 'Social', 'Automation', 'Money', 'Settings'])
   })
 
-  it('places every page once: the 37 the flat list held on 15 November, the Communications centre (Law 24, 18 November) and the engine page (A4, 19 November 2026)', () => {
+  it('places every page once: the 37 the flat list held on 15 November, the Communications centre (Law 24, 18 November), the engine page (A4, 19 November 2026) and the engine page checks (law 43, 21 November 2026)', () => {
     const hrefs = ADMIN_NAV.map((i) => i.href)
     expect(new Set(hrefs).size).toBe(hrefs.length)
-    expect(hrefs.length).toBe(39)
-    for (const h of ['/admin/automation', '/admin/engine', '/admin/today', '/admin', '/admin/submissions', '/admin/social', '/admin/acquisition', '/admin/payouts', '/admin/audit', '/admin/comms']) {
+    expect(hrefs.length).toBe(40)
+    for (const h of ['/admin/automation', '/admin/engine', '/admin/today', '/admin', '/admin/submissions', '/admin/social', '/admin/acquisition', '/admin/payouts', '/admin/audit', '/admin/comms', '/admin/page-checks']) {
       expect(hrefs).toContain(h)
     }
   })
