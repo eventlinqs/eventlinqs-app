@@ -61,12 +61,17 @@ describe('the growth plan is valid', () => {
     expect(plan().master_plan_gates.gates).toHaveLength(6)
   })
 
-  test('version 7 (Lawal 15 November 2026, 00:19: LAW 24 retired) offers the fee from the first paid ticket, never free months', () => {
-    expect(plan().version).toBe(7)
-    expect(plan().set_on).toBe('2026-11-15')
+  test('version 7 (Lawal 15 November 2026, 00:19: LAW 24 retired) offers the fee from the first paid ticket, never free months, and every later version keeps it', () => {
+    expect(plan().version).toBeGreaterThanOrEqual(7)
+    expect(plan().set_on >= '2026-11-15').toBe(true)
     const offer = JSON.stringify(plan().close_the_ticketing_gap.the_offer)
     expect(offer).toMatch(/the platform fee from the first paid ticket/)
     expect(offer).not.toMatch(/six months with no platform fee/)
+  })
+
+  test('version 8 (law 38, Lawal 20 November 2026, 11:29: no less than ten a day) sets the daily first letters to ten', () => {
+    expect(plan().version).toBeGreaterThanOrEqual(8)
+    expect(plan().daily_quotas.outreach_messages).toBe(10)
   })
 
   test('version 4 (Lawal 1 November 2026 05:39) names the focus market and its rule, and every later version keeps it', () => {
@@ -86,7 +91,7 @@ describe('the growth plan keeps every dated version', () => {
 
   test('version 1 is still kept whole beside version 2 (Law 8: a new dated version, never an overwrite)', () => {
     const ledger = JSON.parse(read('growth/versions/LEDGER.json'))
-    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(ledger.versions.map((v: { version: number }) => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     expect(JSON.parse(read('growth/versions/2026-11-01.json')).version).toBe(1)
     expect(sha256Lf(read('growth/versions/2026-11-01.json'))).toBe('2a5a09f5a31745763173629024a212050d6c686f12beb8c26f78cb372ce16ff3')
   })
