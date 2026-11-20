@@ -19,8 +19,6 @@ import { WINDOW_DAYS, scoreEvents, type Dimension, type Raw, type ScoredEvent } 
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
-// The platform's one definition of a sale, as the reach panel reads it.
-const SOLD = new Set<string>(SOLD_STATUSES)
 
 export type OpportunityRow = { id: string; title: string; slug: string; city: string | null; category: string | null } & (
   | { state: 'scored'; score: number; parts: Record<Dimension, number>; raw: Raw }
