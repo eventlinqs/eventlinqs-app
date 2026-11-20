@@ -26,6 +26,15 @@ export const WEEKEND_CHIPS: readonly WeekendChip[] = [
   { icon: '\u{1F381}', label: 'Free', href: '/events?preset=free' },
 ]
 
+/** A licensed stock picture standing for a night says so (law 46 (f), Lawal's 09:16 of 21 November 2026). */
+function IllustrativeLabel({ small = false }: { readonly small?: boolean }) {
+  return (
+    <span data-illustrative className={`absolute left-2 top-2 z-10 rounded bg-[var(--color-navy-950)]/75 font-bold text-white ${small ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[11px]'}`}>
+      Illustrative photo
+    </span>
+  )
+}
+
 export function WeekendGuide({
   datesLabel,
   featured,
@@ -79,6 +88,7 @@ export function WeekendGuide({
               <EventCardMedia src={featured.pageImage} alt={featured.pick.imageAlt} variant="bento-hero" className="absolute inset-0" title={featured.title} />
             ) : null}
             <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/90 via-[var(--color-navy-950)]/30 to-transparent" />
+            {featured.ownPhoto || !featured.pageImage ? null : <IllustrativeLabel />}
             <span className="absolute right-3 top-3 rounded-full bg-[var(--brand-accent)] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.05em] text-[var(--color-navy-950)]">This weekend&#8217;s feature</span>
             <span className="absolute inset-x-[18px] bottom-[18px] block pr-14">
               <span className="block font-display text-[28px] font-extrabold leading-[32px]">{cleanTitle(featured.title)}</span>
@@ -101,6 +111,7 @@ export function WeekendGuide({
                   <Link href={`/events/${n.slug}`} data-pick={n.slug} className="flex min-h-[44px] items-center gap-3.5 px-1 py-3">
                     <span className="relative block h-[95px] w-[130px] flex-none overflow-hidden rounded-[10px] bg-[var(--color-navy-950)]">
                       {n.pageImage ? <EventCardMedia src={n.pageImage} alt={n.pick.imageAlt} variant="rail-scene-tile" className="absolute inset-0" title={n.title} /> : null}
+                      {n.ownPhoto || !n.pageImage ? null : <IllustrativeLabel small />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-display text-base font-extrabold leading-[21px] text-[var(--color-navy-950)]">{cleanTitle(n.title)}</span>

@@ -28,6 +28,7 @@ const night = (over: Partial<ReadNight> & { id: string; slug: string; title: str
     summary: 'A night in the room.',
     citySlug: 'melbourne',
     pageImage: '/images/test/x.jpg',
+    stockImage: '/images/test/stock.jpg',
     pick: { slug: over.slug, title: over.title, categoryLabel: 'Music', categorySlug: 'music', whenLabel: 'Sat 21 Nov, 7:30pm', venue: 'A Room', priceLabel: 'Tickets on axs.com', image: null, imageAlt: `${over.title}, at A Room` },
     ...over,
   }) as ReadNight
@@ -63,6 +64,23 @@ describe('the weekend guide, as design B draws it', () => {
   it('no dash and no exclamation mark in its words', () => {
     const container = view()
     expect(container.textContent ?? '').not.toMatch(/[–—]|\s-\s|!/)
+  })
+})
+
+describe('a licensed stock picture standing for a night says so (law 46 (f))', () => {
+  it('the feature and a pick on their stock picture are labelled; a night on its own photograph is not', () => {
+    const featured = night({ id: 'e1', slug: 'jazz-night', title: 'Jazz at the Lab', ownPhoto: false })
+    const picks = [night({ id: 'e2', slug: 'own-photo', title: 'A Night With Its Photograph' }), night({ id: 'e3', slug: 'stock-pick', title: 'A Night On Stock', ownPhoto: false })]
+    const c = render(<WeekendGuide datesLabel="21 to 22 Nov 2026" featured={featured} picks={picks} hero={null} explore={null} />).container
+    expect(c.querySelector('[data-feature="jazz-night"] [data-illustrative]')?.textContent).toBe('Illustrative photo')
+    expect(c.querySelector('[data-pick="stock-pick"] [data-illustrative]')?.textContent).toBe('Illustrative photo')
+    expect(c.querySelector('[data-pick="own-photo"] [data-illustrative]')).toBeNull()
+    expect(c.querySelectorAll('[data-illustrative]').length).toBe(2)
+  })
+  it('a night of a kind with no illustrative photograph shows the brand panel with no label', () => {
+    const c = render(<WeekendGuide datesLabel="21 to 22 Nov 2026" featured={null} picks={[night({ id: 'e4', slug: 'panel', title: 'A Night On The Panel', ownPhoto: false, pageImage: null })]} hero={null} explore={null} />).container
+    expect(c.querySelector('[data-pick="panel"] img')).toBeNull()
+    expect(c.querySelector('[data-illustrative]')).toBeNull()
   })
 })
 

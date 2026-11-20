@@ -31,6 +31,8 @@ export type NlPick = {
   readonly priceLabel: string
   readonly image: string | null
   readonly imageAlt: string
+  /** A licensed stock picture standing for the night, never its own: labelled 'Illustrative photo' (law 46 (f)). */
+  readonly illustrative?: boolean
 }
 
 export type WhatsOnInput = {
@@ -115,6 +117,8 @@ function facts(rows: readonly (readonly [string, string])[], color = MUTED, size
     .join('')
 }
 
+/** The label a licensed stock picture carries wherever it stands for a night (law 46 (f)). */
+const ILLUSTRATIVE = `<div style="margin:0 0 6px 0"><span style="display:inline-block;background:rgba(10,22,40,.72);color:#FFFFFF;font:700 10px/12px ${BODY};letter-spacing:.04em;padding:3px 7px;border-radius:4px">Illustrative photo</span></div>`
 const CAL = '\u{1F4C5}'
 const PIN = '\u{1F4CD}'
 const TICKET = '\u{1F39F}\u{FE0F}'
@@ -182,11 +186,11 @@ ${featured.blurb ? `<div style="font:400 15px/22px ${BODY};color:#E3E7EE;margin-
 <tr><td class="pad" style="padding:6px 24px 8px 24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="hide-m"><tr>
 <td${img ? ` background="${esc(img.desktop)}"` : ''} bgcolor="${NAVY}" height="460" valign="middle" style="background:${NAVY}${img ? ` url('${esc(img.desktop)}') left center / cover no-repeat` : ''};height:460px;border-radius:18px;padding:0 30px">
-<table role="presentation" width="58%" cellpadding="0" cellspacing="0" border="0"><tr><td>${text}</td></tr></table></td></tr></table>
+<table role="presentation" width="58%" cellpadding="0" cellspacing="0" border="0"><tr><td>${featured.illustrative ? ILLUSTRATIVE : ''}${text}</td></tr></table></td></tr></table>
 <!--[if !mso]><!--><div class="show-m" style="display:none;max-height:0;overflow:hidden">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${NAVY}" style="border-radius:18px;overflow:hidden">
 ${img ? `<tr><td style="padding:0"><a href="${esc(href)}"><img src="${esc(img.mobile)}" width="100%" alt="${esc(featured.imageAlt)}" style="display:block;width:100%;height:auto;border-radius:18px 18px 0 0"></a></td></tr>` : ''}
-<tr><td style="padding:${img ? '4px' : '24px'} 22px 26px 22px">${text}</td></tr></table></div><!--<![endif]-->
+<tr><td style="padding:${img ? '4px' : '24px'} 22px 26px 22px">${featured.illustrative ? ILLUSTRATIVE : ''}${text}</td></tr></table></div><!--<![endif]-->
 </td></tr>`
   }
 
@@ -196,7 +200,7 @@ ${img ? `<tr><td style="padding:0"><a href="${esc(href)}"><img src="${esc(img.mo
     return `<div class="col3" style="display:inline-block;width:100%;max-width:190px;vertical-align:top;margin:0 3px 12px 3px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${WHITE}" style="border-radius:14px;border:1px solid ${LINE}">
 <tr><td${p.image ? ` background="${esc(p.image)}"` : ''} bgcolor="${NAVY}" height="150" valign="bottom" style="background:${NAVY}${p.image ? ` url('${esc(p.image)}') center / cover no-repeat` : ''};height:150px;border-radius:14px 14px 0 0;padding:0 14px 12px 14px">
-<a href="${esc(href)}" style="text-decoration:none;display:block" title="${esc(p.imageAlt)}">${p.categoryLabel ? pill(p.categoryLabel, bg, WHITE) : ''}
+<a href="${esc(href)}" style="text-decoration:none;display:block" title="${esc(p.imageAlt)}">${p.illustrative ? ILLUSTRATIVE : ''}${p.categoryLabel ? pill(p.categoryLabel, bg, WHITE) : ''}
 <div style="font:800 17px/21px ${HEAD};color:${WHITE};margin-top:6px">${esc(titleOf(p))}</div></a></td></tr>
 <tr><td style="padding:12px 14px 14px 14px"><table role="presentation" cellpadding="0" cellspacing="0" border="0">${facts([[CAL, p.whenLabel], [PIN, p.venue], [TICKET, p.priceLabel]], INK, 13)}</table>
 <div style="margin-top:8px"><a href="${esc(href)}" style="font:800 14px/20px ${BODY};color:${NAVY};text-decoration:none">See details <span style="color:${GOLD}">&rarr;</span></a></div></td></tr></table></div>`

@@ -15,6 +15,7 @@ import { endOfLocalDayUtc, isStillListed, listingWindowOrPredicate } from '@/lib
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { eventHeroMediaInput, getFeaturedHeroBackground, heroIsTypographic } from '@/lib/images/event-media'
+import { illustrativePhoto } from '@/lib/images/illustrative'
 import { shownSummary } from '@/lib/listings/placeholder-summary'
 import { nightDates } from '@/lib/social/lifecycle-plan'
 import { carriesBannedWord } from '@/lib/social/words'
@@ -67,7 +68,9 @@ export type ReadNight = EditionNight & {
   readonly citySlug: string
   /** The picture exactly as the event page's resolver returned it (a storage address or the site's own path), for the
    *  website's media components; `image` is the same picture made absolute for an email. */
-  readonly pageImage: string
+  readonly pageImage: string | null
+  /** The licensed illustrative photograph of the night's kind (law 46 (f): labelled so); null for the brand panel. */
+  readonly stockImage: string | null
 }
 
 /**
@@ -116,8 +119,10 @@ async function toNight(r: Row, cover: string | null, now: Date, origin: string):
   const typographic = heroIsTypographic(media)
   const ownPhoto = !typographic && media.image === withVenue.cover_image_url
   // A composed poster is never put in a photo slot; the page's licensed category picture is (law 46 (d)).
-  const pictured = typographic ? (await getFeaturedHeroBackground(eventHeroMediaInput({ ...r, cover_image_url: null }))).image : media.image
-  const image = pictured.startsWith('http') ? pictured : `${origin}${pictured.startsWith('/') ? '' : '/'}${pictured}`
+  // The illustrative photograph of the night's kind, looked at, no face its subject (law 46 (f)); else the brand panel.
+  const stock = illustrativePhoto(r.category?.slug ?? null)
+  const pictured = typographic ? stock : media.image
+  const image = pictured === null ? null : pictured.startsWith('http') ? pictured : `${origin}${pictured.startsWith('/') ? '' : '/'}${pictured}`
   const tiers = (r.ticket_tiers ?? []).filter((t) => t.is_active !== false)
   const ticketedHere = tiers.some((t) => t.price > 0)
   const ticketed = r.is_free !== true && r.entry_mode !== 'walk_in' && (ticketedHere || Boolean((r.external_ticket_url ?? '').trim()))
@@ -153,7 +158,32 @@ async function toNight(r: Row, cover: string | null, now: Date, origin: string):
     summary: shownSummary(r.summary),
     citySlug: r.city_primary ?? '',
     pageImage: pictured,
+    stockImage: stock,
   }
+}
+
+/**
+ * LAW 46 (f) IN THE NEWSLETTER (Lawal, 09:16 on 21 November 2026: every image has a recorded lawful basis): the event
+ * page's own photograph goes into an email only where the database's own rule says it may be used on an owned channel
+ * (social_asset_usable: approved, scope social or both, current, unexpired; the PM's 03:53: the newsletter is an owned
+ * channel, as social). Every other night takes the licensed category picture, labelled 'Illustrative photo' (AMCF's page
+ * photograph is granted for the listing only, so AMCF's slot is illustrative). A failed read shows the stock, never the
+ * page photograph on a guess.
+ */
+export async function forTheNewsletter(admin: Pick<Admin, 'rpc'>, n: ReadNight, now: Date, origin: string): Promise<ReadNight> {
+  const absolute = (u: string) => (u.startsWith('http') ? u : `${origin}${u.startsWith('/') ? '' : '/'}${u}`)
+  let permitted = false
+  if (n.ownPhoto) {
+    try {
+      const { data } = await admin.rpc('social_asset_usable', { p_url: n.pageImage, p_event: n.id, p_at: now.toISOString() })
+      permitted = data === true
+    } catch {
+      permitted = false
+    }
+  }
+  if (permitted) return n
+  const image = n.stockImage === null ? null : absolute(n.stockImage)
+  return { ...n, image, ownPhoto: false, pick: { ...n.pick, image, illustrative: image !== null, imageAlt: `${n.categoryName ?? 'An event'}, an illustrative photo` } }
 }
 
 /** A short blurb for the featured night from its own words: its first sentence, never the banned word outside its name. */
@@ -196,11 +226,13 @@ export async function readWhatsOnEdition(
     readNights(admin, [citySlug], periodEnd.toISOString(), later.toISOString(), now, 300),
   ])
   const since = now.getTime() - 7 * 86_400_000
-  const [nights, driveNights, laterNights] = await Promise.all([
+  const [ownRead, nearRead, aheadRead] = await Promise.all([
     toNights(own, now, origin),
     toNights(near, now, origin),
     toNights(ahead.filter((r) => r.created_at !== null && Date.parse(r.created_at) >= since), now, origin),
   ])
+  const lawful = (list: readonly ReadNight[]) => Promise.all(list.map((n) => forTheNewsletter(admin, n, now, origin)))
+  const [nights, driveNights, laterNights] = await Promise.all([lawful(ownRead), lawful(nearRead), lawful(aheadRead)])
   const slots = selectSlots({ nights, driveNights, laterNights, now })
   const cityNameOf = (slug: string) => slug.replace(/(^|-)([a-z])/g, (_m, s: string, c: string) => `${s ? ' ' : ''}${c.toUpperCase()}`)
   const range = `${period.start}T12:00:00Z`
