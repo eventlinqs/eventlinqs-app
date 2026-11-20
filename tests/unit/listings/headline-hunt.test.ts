@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HUNT_HOLDS, HUNT_SOURCES, fold, huntBooking, huntDecision, huntFor, huntSummary, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
+import * as Hunt from '@/lib/listings/headline-hunt'
+import { HUNT_HOLDS, HUNT_SOURCES, fold, huntBooking, huntDecision, huntFor, huntVenue, likelyDuplicate, plausibleHuntStart } from '@/lib/listings/headline-hunt'
 import { rowTeaser } from '@/lib/events/whats-on-directory'
 import { sellerName } from '@/lib/events/booking-links'
 import { pageRuleFor, eventPagesFromListPage } from '@/lib/listings/page-rules'
@@ -140,21 +141,20 @@ describe("the arenas' own Date block, never the schema's offset", () => {
   })
 })
 
-/* Car 44c, the CONTROLLER's 14:55 (4): each hunted row carries a one line description in our own words, which the row's
-   own rule (rowTeaser) shows: five words or more past the title, the venue and the city. */
-describe("the hunt's one line description", () => {
-  it('says what kind of night, when, and where tickets are sold, and the row shows it', () => {
-    const line = huntSummary({ categorySlug: 'music', startsAt: '2026-11-13T08:20:00.000Z', seller: 'Ticketek', free: false })
-    expect(line).toBe('A live concert on a Friday evening, tickets through Ticketek.')
-    expect(rowTeaser(line, 'AAMI Park', 'Melbourne', 'Iron Maiden')).toBe(line)
-    expect(huntSummary({ categorySlug: 'sports', startsAt: '2026-11-07T08:30:00.000Z', seller: 'AXS', free: false })).toBe('A live match on a Saturday evening, tickets through AXS.')
-    expect(huntSummary({ categorySlug: 'community', startsAt: '2026-11-21T00:00:00.000Z', seller: null, free: true })).toBe('A community event on a Saturday morning, free entry.')
-    expect(huntSummary({ categorySlug: 'comedy', startsAt: '2026-12-12T03:00:00.000Z', seller: null, free: false })).toBe('Live stand-up comedy on a Saturday afternoon.')
-  })
-  it("names no kind its title does not give: 'An event', never a venue's guess (WWE, a stand-up comedian)", () => {
-    const line = huntSummary({ categorySlug: null, startsAt: '2026-12-09T08:30:00.000Z', seller: 'AXS', free: false })
-    expect(line).toBe('An event on a Wednesday evening, tickets through AXS.')
-    expect(rowTeaser(line, 'Rod Laver Arena', 'Melbourne', 'WWE')).toBe(line)
+/* The PM's 03:14 of 21 November 2026 (Law 1, zero placeholders): car 44c's composed line ('A live concert on a Friday
+   evening, tickets through Ticketek.') said nothing a row does not already say, and 274 live nights carried it. The
+   hunt writes none, and no surface shows one (src/lib/listings/placeholder-summary.ts). */
+describe("the hunt's description", () => {
+  it('writes no composed line, and the row shows none of the lines it used to write', () => {
+    expect('huntSummary' in Hunt).toBe(false)
+    for (const line of [
+      'A live concert on a Friday evening, tickets through Ticketek.',
+      'A live match on a Saturday evening, tickets through AXS.',
+      'A community event on a Saturday morning, free entry.',
+      'Live stand-up comedy on a Saturday afternoon.',
+      'An event on a Wednesday evening, tickets through AXS.',
+    ])
+      expect(rowTeaser(line, 'AAMI Park', 'Melbourne', 'Iron Maiden')).toBeNull()
   })
   it("names every seller and venue booking page the hunt lists, so no hunted row reads a bare 'Get tickets'", () => {
     for (const [url, name] of [

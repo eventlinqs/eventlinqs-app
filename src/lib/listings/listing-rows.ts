@@ -1,3 +1,4 @@
+import { isPlaceholderSummary } from './placeholder-summary'
 import { lineProblems } from '@/lib/events/eventlinqs-listing-words'
 import { localDate } from '@/lib/walk-in/dates'
 import { seriesProblem, weekdayOf, type SeriesRule } from './occurrences'
@@ -303,6 +304,8 @@ export function judgeRow(record: Readonly<Record<string, string>>, ctx: JudgeCon
   const summary = v('what_happens')
   if (!summary) refused.push('what_happens is empty')
   else for (const p of lineProblems(summary)) refused.push(`what_happens: ${p}`)
+  // A composed line that says nothing about the night is no description (the PM's 03:14 of 21 November 2026).
+  if (isPlaceholderSummary(summary)) refused.push('what_happens says nothing about the night (its kind, day or venue only): write what happens, or leave the night without a description')
   if (NOT_AN_EVENT.test(name) || NOT_AN_EVENT.test(summary)) refused.push('it reads as opening hours, a happy hour or a discount, which is not an event')
 
   const website = v('website')

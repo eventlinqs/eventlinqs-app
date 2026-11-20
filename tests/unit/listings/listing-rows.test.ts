@@ -124,6 +124,8 @@ describe('refused, each with its reason', () => {
     [{ entry: '$10 on the door' }, /is not free walk-in entry/],
     [{ age_limit: '21+' }, /age_limit "21\+"/],
     [{ what_happens: 'Grab a ticket at the bar.' }, /what_happens:/],
+    // The PM's 03:14 of 21 November 2026: a composed line that says nothing about the night is no description.
+    [{ what_happens: 'A performance at The Play House, Geelong Arts Centre.' }, /what_happens says nothing about the night/],
     [{ name: 'Happy hour at the Corner Hall' }, /opening hours, a happy hour or a discount/],
     [{ website: 'http://cornerhall.example.com' }, /not an https address/],
     [{ instagram: '@cornerhall' }, /not a bare handle/],

@@ -191,6 +191,25 @@ function dateLabel(iso: string, zone: string): string {
   return new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(iso)).replace(/,/g, '')
 }
 
+/**
+ * THE NIGHT'S DATES AS A READER NEEDS THEM (the look of 05:12 on 21 November 2026: AMCF's Saturday pieces read 'Still on
+ * today' over 'Fri 20 Nov', its first day only). One day reads as one day; a night that runs over more than one day in
+ * its zone reads as its run, 'Fri 20 to Sun 22 Nov', so a post on any of its days is true. An end recorded as a default
+ * midnight never extends a night (law 22 class 2): an end at 00:00 belongs to the day before.
+ */
+export function nightDates(startIso: string, endIso: string | null, zone: string): string {
+  const first = dateLabel(startIso, zone)
+  if (!endIso) return first
+  const lastInstant = new Date(new Date(endIso).getTime() - 1)
+  const dayOf = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  if (dayOf(lastInstant) <= dayOf(new Date(startIso))) return first
+  const part = (d: Date, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, ...opts }).format(d).replace(/,/g, '')
+  const start = new Date(startIso)
+  const sameMonth = part(start, { month: 'short', year: 'numeric' }) === part(lastInstant, { month: 'short', year: 'numeric' })
+  const head = sameMonth ? `${part(start, { weekday: 'short' })} ${part(start, { day: 'numeric' })}` : first
+  return `${head} to ${dateLabel(lastInstant.toISOString(), zone)}`
+}
+
 function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook', format: 'feed' | 'story', kind: MomentKind, day: string): string {
   const q = new URLSearchParams({ utm_source: platform, utm_medium: format, utm_campaign: 'lifecycle', utm_content: `${kind}-${day}` })
   return `${origin}/events/${slug}?${q.toString()}`
@@ -251,7 +270,7 @@ export async function planLifecyclePieces(
       height: photo.height,
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
-    const facts = { title: n.title, place, dateLabel: dateLabel(n.startDate, c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
+    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
     const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
     const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })

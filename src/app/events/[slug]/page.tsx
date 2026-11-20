@@ -1,3 +1,4 @@
+import { shownSummary } from '@/lib/listings/placeholder-summary'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { readEventForRoute } from '@/lib/events/event-detail-read'
 import { Suspense, type ReactNode } from 'react'
@@ -71,6 +72,7 @@ import { outboundHref, ticketButtonLabel } from '@/lib/listings/outbound'
 import { heroSaleWords, ticketPanelOf } from '@/lib/listings/ticket-panel'
 import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
 import { readBookingLinks } from '@/lib/events/booking-links-read'
+import { sellerName } from '@/lib/events/booking-links'
 import { readJoinedCollaborators } from '@/lib/events/collaborators'
 import { CollaboratorsLine } from '@/components/events/collaborators-line'
 // Service role, used for exactly one thing on this page: reading the two
@@ -254,7 +256,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const walkIn = isWalkIn(event)
   const description = buildEventMetaDescription({
     title: event.title,
-    summary: event.summary,
+    summary: shownSummary(event.summary),
     description: event.description,
     venueCity: event.venue_city,
     venueName: event.venue_name,
@@ -1426,14 +1428,14 @@ export default async function EventDetailPage({ params }: Props) {
                     a description of nothing but markdown punctuation is truthy
                     and renders nothing, which would leave the heading standing
                     over an empty block (UX1.1). */}
-                {(stripMarkdown(event.summary) || stripMarkdown(event.description)) && (
+                {(stripMarkdown(shownSummary(event.summary)) || stripMarkdown(event.description)) && (
                   <div>
                     <SectionHeader eyebrow="The details" title="About this event" />
                     {/* The lede is a single line, so it takes the strip
                         direction of the one prose rule (UX1.1). */}
-                    {stripMarkdown(event.summary) && (
+                    {stripMarkdown(shownSummary(event.summary)) && (
                       <p className="mt-5 text-base leading-relaxed text-ink-600">
-                        {stripMarkdown(event.summary)}
+                        {stripMarkdown(shownSummary(event.summary))}
                       </p>
                     )}
                     {/* Organiser description is free-text from a plain textarea, not
@@ -1801,7 +1803,8 @@ export default async function EventDetailPage({ params }: Props) {
                    */
                   <ExternalTicketsPanel
                     destinationUrl={ticketPanel?.button?.href ?? outboundHref(event.slug, event.external_ticket_url)}
-                    host={ticketPanel?.button ? ticketPanel.button.host : externalTicketHost}
+                    // The seller's own name where it is known, never its web address (the PM's 03:14 of 21 November 2026).
+                    host={ticketPanel?.button ? (ticketPanel.button.seller ?? ticketPanel.button.host) : (sellerName(event.external_ticket_url) ?? externalTicketHost)}
                     // The checklist's E4: "View tickets at Humanitix", the site named where it can be.
                     label={ticketPanel?.button?.label ?? ticketButtonLabel(event.external_ticket_url)}
                     price={ticketPanel?.button?.price ?? null}
