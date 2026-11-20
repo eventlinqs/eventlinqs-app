@@ -92,16 +92,25 @@ function StatusWord({ result }: { result: HealthResult }) {
  * so the founder can look any moment without waiting for an email. Gated by the
  * admin (authed) layout - founder/admin only.
  */
+/** A stored platform run younger than this is shown; the sentinel keeps one every five minutes, so three may be missed. */
+const STORED_RUN_FRESH_MS = 15 * 60_000
+
 export default async function HealthStatusPage() {
   // AUTH-03: the (authed) layout admits an admin who has not enrolled 2FA only so enrolment can render, so this
   // page checks the strict session itself, as every page under it does.
   await requireAdminSession()
-  const results = await runAllChecksForAdmin()
-  // The visitor sentinel's last run, as it judged the live site (the PM's 12:35 item 5 of 16 November 2026: every report
-  // quotes it from here). Read through the service role, behind requireAdminSession above.
-  const sentinel = await latestSentinelRun(createAdminClient())
-  const status = overallStatus(results)
-  const checkedAt = new Date()
+  // THE STORED RUN FIRST (law 41, the speed train of 20 November 2026; as /admin/today since #323): the platform sentinel
+  // runs every check every five minutes (vercel.json) and keeps each run, so this page shows the newest one with the
+  // time it ran, and runs the battery itself only when no run of the last fifteen minutes is kept. The visitor
+  // sentinel's last run, as it judged the live site (the PM's 12:35 item 5 of 16 November 2026: every report quotes it
+  // from here), is read beside it. Both through the service role, behind requireAdminSession above.
+  const db = createAdminClient()
+  const [platform, sentinel] = await Promise.all([latestSentinelRun(db, 'platform'), latestSentinelRun(db)])
+  const now = new Date()
+  const stored = platform.run && now.getTime() - Date.parse(platform.run.ranAt) <= STORED_RUN_FRESH_MS ? platform.run : null
+  const results: readonly HealthResult[] = stored ? stored.results : await runAllChecksForAdmin()
+  const status = overallStatus([...results])
+  const checkedAt = stored ? new Date(stored.ranAt) : now
 
   const banner =
     status === 'green'

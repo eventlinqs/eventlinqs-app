@@ -59,27 +59,35 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
   await recordAuditEvent({ action: 'admin.acquisition.view', session })
 
   const db = createAdminClient()
-  const rows = await readOrganiserScores(db, new Date())
-  const states = await db.from('organisers').select('id, acquisition_state')
+  const now = new Date()
+  // EVERY READ AT ONCE (law 41, the speed train of 20 November 2026): these four were awaited one after another.
+  // A queue that could not be read is said so, never shown as an empty day.
+  const queueRead = (async (): Promise<{ queue: QueueChannel[] | null; policyVersion: string }> => {
+    let version = ''
+    try {
+      version = readVoicePolicy().version
+      return { queue: await readDailyQueue(db, now), policyVersion: version }
+    } catch (err) {
+      console.warn('[admin/acquisition] the daily queue could not be read', err instanceof Error ? err.message : String(err))
+      return { queue: null, policyVersion: version }
+    }
+  })()
+  const [rows, states, platformIds, { queue, policyVersion }] = await Promise.all([
+    readOrganiserScores(db, now),
+    db.from('organisers').select('id, acquisition_state'),
+    readPlatformOrganiserIds(db),
+    queueRead,
+  ])
   if (states.error) throw new Error(`organisers: ${states.error.message}`)
   const stateOf = new Map<string, AcquisitionState>()
   // The platform's own listings organisation is not an organiser in the state counts (src/lib/growth/platform-organiser.ts).
-  for (const s of withoutPlatformOrganisers(states.data ?? [], await readPlatformOrganiserIds(db))) if (isAcquisitionState(s.acquisition_state)) stateOf.set(s.id, s.acquisition_state)
+  for (const s of withoutPlatformOrganisers(states.data ?? [], platformIds)) if (isAcquisitionState(s.acquisition_state)) stateOf.set(s.id, s.acquisition_state)
 
   const scored = rows.flatMap((r) => (r.state === 'scored' ? [r] : []))
   const cohort = pickCohort(scored.map((r) => ({ id: r.id, city: r.city, score: r.score, writableEmail: r.writableEmail })))
   const byEmail = new Set(cohort.email.map((c) => c.id))
   const byOther = new Set(cohort.otherRoutes.map((c) => c.id))
   const counts = ACQUISITION_STATES.map((s) => ({ state: s, n: [...stateOf.values()].filter((v) => v === s).length })).filter((c) => c.n > 0)
-  // A queue that could not be read is said so, never shown as an empty day.
-  let queue: QueueChannel[] | null = null
-  let policyVersion = ''
-  try {
-    policyVersion = readVoicePolicy().version
-    queue = await readDailyQueue(db, new Date())
-  } catch (err) {
-    console.warn('[admin/acquisition] the daily queue could not be read', err instanceof Error ? err.message : String(err))
-  }
 
   return (
     <div>

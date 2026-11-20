@@ -93,30 +93,36 @@ export interface CoverageDesk {
 export async function readCoverageDesk(): Promise<CoverageDesk> {
   const db = createAdminClient()
   // Paged, never one read: Supabase stops at 1,000 rows and says nothing (no-silent-row-ceiling).
-  const geo = await readEveryRow('the guide cities', (from, to) =>
-    db.from('city_geography').select('city_slug, region_name, cities(name)').order('city_slug', { ascending: true }).range(from, to),
-  )
-  const cities: CityDesk[] = []
-  for (const g of (geo ?? []) as unknown as { city_slug: string; region_name: string; cities: { name: string } | null }[]) {
-    const [coverage, misses, channels] = await Promise.all([
-      readOrThrow(`the coverage of ${g.city_slug}`, () => db.rpc('growth_city_coverage', { p_city: g.city_slug })),
-      readOrThrow(`the misses of ${g.city_slug}`, () => db.rpc('growth_misses_weekly', { p_city: g.city_slug })),
-      readOrThrow(`the channel weeks of ${g.city_slug}`, () => db.rpc('growth_channel_weekly', { p_city: g.city_slug })),
-    ])
-    cities.push({
-      slug: g.city_slug,
-      name: g.cities?.name ?? g.city_slug,
-      regionName: g.region_name,
-      coverage: coverage as unknown as CityCoverage,
-      misses: (misses ?? []) as unknown as MissesWeek[],
-      channels: (channels ?? []) as unknown as ChannelWeek[],
-    })
-  }
-  const experiments = await readOrThrow('the growth experiments', () =>
-    db.from('growth_experiments')
-      .select('id, title, city_slug, channel, hypothesis, primary_metric, budget_cents, starts_on, ends_on, baseline, result, decision')
-      .order('starts_on', { ascending: false })
-      .limit(50),
+  // EVERY CITY AT ONCE (law 41, the speed train of 20 November 2026): the cities were read one after another and the
+  // experiments only after them, so the desk waited for the sum; each city's three calls are quick alone. The cities
+  // keep the geography's order; any failed read still fails the desk, as before.
+  const [geo, experiments] = await Promise.all([
+    readEveryRow('the guide cities', (from, to) =>
+      db.from('city_geography').select('city_slug, region_name, cities(name)').order('city_slug', { ascending: true }).range(from, to),
+    ),
+    readOrThrow('the growth experiments', () =>
+      db.from('growth_experiments')
+        .select('id, title, city_slug, channel, hypothesis, primary_metric, budget_cents, starts_on, ends_on, baseline, result, decision')
+        .order('starts_on', { ascending: false })
+        .limit(50),
+    ),
+  ])
+  const cities: CityDesk[] = await Promise.all(
+    ((geo ?? []) as unknown as { city_slug: string; region_name: string; cities: { name: string } | null }[]).map(async (g) => {
+      const [coverage, misses, channels] = await Promise.all([
+        readOrThrow(`the coverage of ${g.city_slug}`, () => db.rpc('growth_city_coverage', { p_city: g.city_slug })),
+        readOrThrow(`the misses of ${g.city_slug}`, () => db.rpc('growth_misses_weekly', { p_city: g.city_slug })),
+        readOrThrow(`the channel weeks of ${g.city_slug}`, () => db.rpc('growth_channel_weekly', { p_city: g.city_slug })),
+      ])
+      return {
+        slug: g.city_slug,
+        name: g.cities?.name ?? g.city_slug,
+        regionName: g.region_name,
+        coverage: coverage as unknown as CityCoverage,
+        misses: (misses ?? []) as unknown as MissesWeek[],
+        channels: (channels ?? []) as unknown as ChannelWeek[],
+      }
+    }),
   )
   return { cities, experiments: (experiments ?? []) as unknown as Experiment[] }
 }

@@ -82,8 +82,10 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   const dayAgo = new Date(now.getTime() - DAY_MS).toISOString()
   const head = { count: 'exact' as const, head: true }
 
-  const [supply, funnel, growth, health, submissions, claims, media, permissions, pressesOut, claimsVerified, failedSends, sentThisWeek, reportsKept, loginFailures, campaign] =
-    await Promise.all([
+  // EVERY INDEPENDENT READ STARTS AT ONCE (law 41, the speed train of 20 November 2026): the reads below used to run in
+  // nine stages one after another, so the page waited for the sum of them; each stage is now started here and awaited
+  // together at the end. Only the campaign's pieces wait for the campaign, and the campaigns' spend for the month's orders.
+  const firstReads = Promise.all([
       settle(() => readSupplyScorecard(now)),
       settle(() => readOrganiserFunnel(now)),
       settle(() => readGrowthWeek(now)),
@@ -105,7 +107,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         if (error) throw new Error(error.message)
         return data?.[0]?.id ?? null
       }),
-    ])
+    ] as const)
 
   // The nights a visitor can find ahead at 7, 14 and 30 days, the booking links the daily check found dead on upcoming
   // nights, and the venue partners live (the DemandOS directive's section 11).
@@ -119,7 +121,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         .eq('is_seed_data', false)
         .lte('start_date', new Date(now.getTime() + days * DAY_MS).toISOString()),
     )
-  const [next7, next14, next30, deadLinks, venuePartners] = await Promise.all([
+  const aheadReads = Promise.all([
     nightsAhead(7),
     nightsAhead(14),
     nightsAhead(30),
@@ -132,15 +134,15 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
         .gte('events.start_date', now.toISOString()),
     ),
     counted(() => admin.from('partners').select('id', head).eq('status', 'live').eq('kind', 'venue')),
-  ])
+  ] as const)
   // The control centre's last two rows (./control-centre-complete.ts): venue photographs waiting, nights campaign-ready.
-  const [venuePhotos, eligibility] = await Promise.all([
+  const controlReads = Promise.all([
     counted(() => admin.from('venue_images').select('id', head).in('approval_state', ['pending', 'challenged'])),
     settle(() => readEligibility(now)),
-  ])
+  ] as const)
 
-  // This week's campaign, its pieces and where each stands.
-  const marketing = await settle(async () => {
+  // This week's campaign, its pieces and where each stands: the one read that waits for another (the campaign's id).
+  const marketingRead = firstReads.then(([, , , , , , , , , , , , , , campaign]) => settle(async () => {
     if (!campaign.ok) throw new Error(campaign.note)
     if (campaign.value === null) return null
     const { data: pieces, error } = await admin.from('social_pieces').select('id, kind').eq('campaign_id', campaign.value).limit(500)
@@ -162,11 +164,11 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       posted: new Set((postings ?? []).map((p) => p.piece_id)).size,
       kits: (pieces ?? []).filter((p) => p.kind === 'partner_kit').length,
     }
-  })
+  }))
 
   // Partner kits sent in the credit window, and the real taps on each kit's own link since (the blueprint's 4D).
   // The four honest levels of the nights reported in the last 28 days, read from the kept night reports, never recounted.
-  const reported = await settle(async () => {
+  const reportedRead = settle(async () => {
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
     const kept = await readEveryRow<{ figures: unknown }>('the night reports kept in the last 28 days', (from, to) =>
       admin.from('organiser_night_reports').select('figures').gte('read_at', since).order('id', { ascending: true }).range(from, to),
@@ -175,7 +177,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     return { levels: venueLevels(nights.filter((f) => f !== null).map(fourLevels)), unread: nights.filter((f) => f === null).length }
   })
 
-  const kits = await settle(async () => {
+  const kitsRead = settle(async () => {
     const since = new Date(now.getTime() - CREDIT_DAYS * DAY_MS).toISOString()
     // A kit went when Lawal marked it sent or when he sent the message carrying its own link (src/lib/social/kit-sent.ts).
     const pieces = await readEveryRow<{ id: string; link: string | null; share_link_id: string | null; social_piece_postings: { posted_at: string } | { posted_at: string }[] | null }>('the partner kits', (from, to) =>
@@ -199,7 +201,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
   // The last 28 days' AUD orders, for the monthly contribution (the supreme specification, section 29), through the growth
   // page's own figuresFor so the month counts sold orders exactly as the week does.
   let monthOrders: OrderRow[] = []
-  const month = await settle(async () => {
+  const monthRead = settle(async () => {
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString()
     const rows = await readEveryRow<{ total_cents: number; platform_fee_cents: number; status: string; created_at: string; organisation_id: string; event_id: string | null; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null; refunds: { amount_cents: number; status: string }[] | null }>(
       'the orders of the last 28 days',
@@ -229,7 +231,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
 
   // Contribution per event against the direct campaign cost recorded for it (the directive's section 9); a city guide's
   // spend is platform acquisition, apart. Never the ticket value.
-  const campaigns = await settle(async () => {
+  const campaignsRead = monthRead.then((month) => settle(async () => {
     if (!month.ok) throw new Error(month.note)
     const since = new Date(now.getTime() - 28 * DAY_MS).toISOString().slice(0, 10)
     const rows = await readEveryRow<{ amount_cents: number; paid_campaigns: { scope: string; event_id: string | null } | { scope: string; event_id: string | null }[] }>('the campaign spend of the last 28 days', (from, to) =>
@@ -241,10 +243,10 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     })
     const pooledSpendCents = spend.filter((s) => s.scope !== 'event').reduce((n, s) => n + s.amountCents, 0)
     return profitabilityFigures({ events: contributionByEvent({ orders: monthOrders.map((o) => ({ ...o, refundedCents: o.refundedCents ?? 0 })), spend }), pooledSpendCents })
-  })
+  }))
 
   // The paid controls' counter (src/lib/growth/paid-controls-math.ts): built and off; nothing here can spend.
-  const paid = await settle(async () => {
+  const paidRead = settle(async () => {
     const { data, error } = await admin.rpc('paid_state')
     if (error) throw new Error(error.message)
     const read = paidReadFrom(data)
@@ -252,20 +254,8 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     return read
   })
 
-  const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
-    supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
-  const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
-  const step = (stage: string): Counted => {
-    if (!funnel.ok) return { value: null, note: funnel.note }
-    const s = funnel.value.steps.find((x) => x.stage === stage)
-    return s?.organisers === null || s === undefined ? { value: null, note: 'its table is not on this database' } : { value: s.organisers }
-  }
-  const m = (pick: (v: { pieces: number; toApprove: number; scheduled: number; held: number; posted: number; kits: number }) => number): Counted =>
-    !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
-  const g = growth.ok ? growth.value.lastFigures : null
-  const failing = health.ok ? health.value.filter((r) => !r.ok) : null
   // The Google cost guard's counter (src/lib/google/spend-guard-math.ts): spend against the cap, calls against the quota.
-  const googleSpend = await settle(async () => {
+  const googleSpendRead = settle(async () => {
     const { data, error } = await admin.rpc('google_spend_state')
     if (error) throw new Error(error.message)
     const read = spendReadFrom(data)
@@ -273,7 +263,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     return read
   })
   // What the nights are teaching (the directive's section 10): every kept report, with its night's place and how far ahead it went up.
-  const learned = await settle(async () => {
+  const learnedRead = settle(async () => {
     const rows = await readEveryRow<{ figures: unknown; events: { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null } | { city_primary: string | null; published_at: string | null; start_date: string; event_categories: { name: string } | { name: string }[] | null }[] | null }>('the kept reports the learning loop reads', (from, to) =>
       admin.from('organiser_night_reports').select('figures, events(city_primary, published_at, start_date, event_categories!events_category_id_fkey(name))').order('id', { ascending: true }).range(from, to),
     )
@@ -287,6 +277,33 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
     }
     return recommendationFigure(recommendations(nights), nights.length)
   })
+  // Every read above was started without waiting; the page waits once, for the slowest.
+  const [
+    [supply, funnel, growth, health, submissions, claims, media, permissions, pressesOut, claimsVerified, failedSends, sentThisWeek, reportsKept, loginFailures],
+    [next7, next14, next30, deadLinks, venuePartners],
+    [venuePhotos, eligibility],
+    marketing,
+    reported,
+    kits,
+    month,
+    campaigns,
+    paid,
+    googleSpend,
+    learned,
+  ] = await Promise.all([firstReads, aheadReads, controlReads, marketingRead, reportedRead, kitsRead, monthRead, campaignsRead, paidRead, googleSpendRead, learnedRead])
+
+  const sum = (pick: (c: { verifiedUpcoming: number; expiringSoon: number; awaitingVerification: number; missingCategory: number; cancelledThisWeek: number; newThisWeek: number; recurringSuppliers: number }) => number): Counted =>
+    supply.ok ? { value: supply.value.cities.reduce((n, c) => n + pick(c), 0) } : { value: null, note: supply.note }
+  const awaiting: Counted = supply.ok ? { value: sum((c) => c.awaitingVerification).value! + supply.value.waitingWithNoCity } : { value: null, note: supply.note }
+  const step = (stage: string): Counted => {
+    if (!funnel.ok) return { value: null, note: funnel.note }
+    const s = funnel.value.steps.find((x) => x.stage === stage)
+    return s?.organisers === null || s === undefined ? { value: null, note: 'its table is not on this database' } : { value: s.organisers }
+  }
+  const m = (pick: (v: { pieces: number; toApprove: number; scheduled: number; held: number; posted: number; kits: number }) => number): Counted =>
+    !marketing.ok ? { value: null, note: marketing.note } : marketing.value === null ? { value: 0 } : { value: pick(marketing.value) }
+  const g = growth.ok ? growth.value.lastFigures : null
+  const failing = health.ok ? health.value.filter((r) => !r.ok) : null
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 8)
   const environment = process.env.VERCEL_ENV ?? 'local'
 

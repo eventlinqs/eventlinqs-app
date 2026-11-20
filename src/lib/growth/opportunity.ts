@@ -1,7 +1,5 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { readEveryRow } from '@/lib/supabase/read-every-row'
-import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { SOLD_STATUSES } from '@/lib/broadcast/sales-attribution'
 import { WINDOW_DAYS, scoreEvents, type Dimension, type Raw, type ScoredEvent } from './opportunity-math'
 
@@ -21,13 +19,39 @@ import { WINDOW_DAYS, scoreEvents, type Dimension, type Raw, type ScoredEvent } 
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
-// The platform's one definition of a sale, as the reach panel reads it.
-const SOLD = new Set<string>(SOLD_STATUSES)
 
 export type OpportunityRow = { id: string; title: string; slug: string; city: string | null; category: string | null } & (
   | { state: 'scored'; score: number; parts: Record<Dimension, number>; raw: Raw }
   | { state: 'needs_two_weeks' }
 )
+
+type OpportunityFigures = {
+  id: string
+  title: string
+  slug: string
+  city_primary: string | null
+  category_id: string | null
+  published_at: string | null
+  end_date: string
+  attention: number
+  engaged: number
+  conversion: number
+  health: number
+}
+
+/** growth_opportunity_raw's answer, each row checked: a malformed answer is refused, never read as zeros. */
+export function opportunityRowsFrom(data: unknown): OpportunityFigures[] {
+  if (!Array.isArray(data)) throw new Error('the opportunity figures answered no list')
+  const str = (v: unknown) => typeof v === 'string'
+  const strOrNull = (v: unknown) => v === null || typeof v === 'string'
+  const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0
+  return data.map((r: Record<string, unknown>, i) => {
+    if (!r || !str(r.id) || !str(r.title) || !str(r.slug) || !strOrNull(r.city_primary) || !strOrNull(r.category_id) || !strOrNull(r.published_at) || !str(r.end_date))
+      throw new Error(`the opportunity figures' row ${i} is not an event`)
+    if (!num(r.attention) || !num(r.engaged) || !num(r.conversion) || !num(r.health)) throw new Error(`the opportunity figures' row ${i} holds a figure that is not a count`)
+    return r as unknown as OpportunityFigures
+  })
+}
 
 export async function readOpportunity(now: Date = new Date()): Promise<OpportunityRow[]> {
   const admin = createAdminClient()
@@ -35,104 +59,23 @@ export async function readOpportunity(now: Date = new Date()): Promise<Opportuni
   const fromIso = from.toISOString()
   const nowIso = now.toISOString()
 
-  const events = await readEveryRow<{ id: string; title: string; slug: string; city_primary: string | null; category_id: string | null; published_at: string | null; end_date: string }>(
-    'the events the opportunity score reads',
-    (a, b) =>
-      admin
-        .from('events')
-        .select('id, title, slug, city_primary, category_id, published_at, end_date')
-        .eq('status', 'published')
-        .gte('end_date', fromIso)
-        .order('id', { ascending: true })
-        .range(a, b),
-  )
+  // ONE READ (law 41, the speed train of 20 November 2026): the database counts every event's rows and answers once
+  // (supabase/migrations/20261120190002_growth_opportunity_raw.sql); this used to read them chunk by chunk, each read
+  // awaited after the one before, and count every row here. Proved equal on production on all 1,155 events.
+  const { data, error } = await admin.rpc('growth_opportunity_raw', { p_from: fromIso, p_now: nowIso, p_sold: [...SOLD_STATUSES] })
+  if (error) throw new Error(`the opportunity figures could not be read: ${error.message}`)
+  const events = opportunityRowsFrom(data)
   const raws = new Map<string, Raw>()
-  const ids = events.map((e) => e.id)
   for (const e of events) {
     const start = Math.max(from.getTime(), e.published_at ? new Date(e.published_at).getTime() : now.getTime())
     const end = Math.min(now.getTime(), new Date(e.end_date).getTime())
-    raws.set(e.id, { relevance: Math.max(0, Math.min(WINDOW_DAYS, Math.floor((end - start) / DAY_MS))), attention: 0, engagement: 0, conversion: 0, health: 0 })
-  }
-  const add = (id: string | null | undefined, d: keyof Raw, n: number) => {
-    const r = id ? raws.get(id) : undefined
-    if (r) r[d] += n
-  }
-
-  for (const chunk of chunkInFilterValues(ids)) {
-    const slots = await readEveryRow<{ id: string; source_ref: string }>('the ledger slots of those events', (a, b) =>
-      admin.from('ledger_slots').select('id, source_ref').in('source_ref', chunk).order('id', { ascending: true }).range(a, b),
-    )
-    const eventOfSlot = new Map(slots.map((s) => [s.id, s.source_ref]))
-    const visitors = new Map<string, Set<string>>()
-    for (const slotChunk of chunkInFilterValues(slots.map((s) => s.id))) {
-      const demand = await readEveryRow<{ slot_id: string; demand_action: string | null; visitor_hash: string | null; id: number }>('their demand rows', (a, b) =>
-        admin
-          .from('ledger_entries')
-          .select('id, slot_id, demand_action, visitor_hash')
-          .eq('kind', 'demand')
-          .in('slot_id', slotChunk)
-          .in('demand_action', ['page_view', 'calendar_add', 'share', 'follow'])
-          .gte('occurred_at', fromIso)
-          .lt('occurred_at', nowIso)
-          .order('id', { ascending: true })
-          .range(a, b),
-      )
-      for (const row of demand) {
-        const eventId = eventOfSlot.get(row.slot_id)
-        if (!eventId) continue
-        if (row.demand_action === 'page_view') {
-          if (!visitors.has(eventId)) visitors.set(eventId, new Set())
-          visitors.get(eventId)?.add(row.visitor_hash ?? `row:${row.id}`)
-        } else add(eventId, 'engagement', 1)
-      }
-    }
-    for (const [eventId, set] of visitors) add(eventId, 'attention', set.size)
-
-    const saves = await readEveryRow<{ event_id: string }>('their saves', (a, b) =>
-      admin.from('saved_events').select('event_id').in('event_id', chunk).gte('created_at', fromIso).lt('created_at', nowIso).order('id', { ascending: true }).range(a, b),
-    )
-    for (const s of saves) add(s.event_id, 'engagement', 1)
-
-    const orders = await readEveryRow<{ event_id: string | null; status: string; platform_fee_retained_cents: number | null; stripe_processing_estimate_cents: number | null }>(
-      'their orders',
-      (a, b) =>
-        admin
-          .from('orders')
-          .select('event_id, status, platform_fee_retained_cents, stripe_processing_estimate_cents')
-          .in('event_id', chunk)
-          .gte('created_at', fromIso)
-          .lt('created_at', nowIso)
-          .order('id', { ascending: true })
-          .range(a, b),
-    )
-    for (const o of orders) {
-      if (!SOLD.has(o.status)) continue
-      add(o.event_id, 'conversion', 1)
-      if (o.platform_fee_retained_cents !== null && o.stripe_processing_estimate_cents !== null) {
-        add(o.event_id, 'health', Math.max(0, o.platform_fee_retained_cents - o.stripe_processing_estimate_cents))
-      }
-    }
-
-    const links = await readEveryRow<{ id: string; event_id: string }>('their tracked links', (a, b) =>
-      admin.from('share_links').select('id, event_id').in('event_id', chunk).order('id', { ascending: true }).range(a, b),
-    )
-    const eventOfLink = new Map(links.map((l) => [l.id, l.event_id]))
-    for (const linkChunk of chunkInFilterValues(links.map((l) => l.id))) {
-      const presses = await readEveryRow<{ link_id: string }>('their presses out', (a, b) =>
-        admin
-          .from('share_link_events')
-          .select('id, link_id')
-          .in('link_id', linkChunk)
-          .eq('kind', 'outbound')
-          // A QA press is never a person (car 10's is_test, counted-rows-exclude-tests).
-          .eq('is_test', false)
-          .gte('occurred_at', fromIso)
-          .lt('occurred_at', nowIso)
-          .order('id', { ascending: true })
-          .range(a, b),
-      )
-      for (const p of presses) add(eventOfLink.get(p.link_id), 'conversion', 1)
-    }
+    raws.set(e.id, {
+      relevance: Math.max(0, Math.min(WINDOW_DAYS, Math.floor((end - start) / DAY_MS))),
+      attention: e.attention,
+      engagement: e.engaged,
+      conversion: e.conversion,
+      health: e.health,
+    })
   }
 
   const scoredEvents: ScoredEvent[] = events.map((e) => ({ id: e.id, city: e.city_primary, category: e.category_id, publishedAt: e.published_at }))

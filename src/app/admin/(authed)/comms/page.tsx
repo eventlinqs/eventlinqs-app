@@ -59,10 +59,11 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
   if (withPhotos.length > 0) {
     const sender = await db.from('outreach_sender').select('from_address').eq('id', true).single()
     const cfg = !sender.error && sender.data ? graphConfigFromEnv(sender.data.from_address as string) : null
-    for (const d of withPhotos) {
+    // Every reply's photographs at once (law 41, the speed train of 20 November 2026); each keeps its own answer.
+    await Promise.all(withPhotos.map(async (d) => {
       if (!cfg) {
         photos.set(d.replyId, sender.error ? `The outreach mailbox could not be read: ${sender.error.message}` : 'The outreach mailbox is not connected here, so the photographs cannot be shown.')
-        continue
+        return
       }
       try {
         const graphId = await graphIdOf(cfg, d.sourceMessageId as string)
@@ -70,7 +71,7 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
       } catch {
         photos.set(d.replyId, 'The photographs could not be read from the mailbox just now.')
       }
-    }
+    }))
   }
 
   return (

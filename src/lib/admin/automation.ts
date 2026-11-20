@@ -131,6 +131,11 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
     if (!row) throw new Error('outreach_sender: no row')
     return { kind: 'sender' as const, mode: row.mode, dnsOk: row.dns_ok, dnsCheckedAt: row.dns_checked_at, setByAPerson: row.changed_by !== null }
   }
+  // Three cards show the sender: it is read once per page, on first use, and each card awaits that one read.
+  let senderRead: ReturnType<typeof sender> | null = null
+  const senderOnce = () => (senderRead ??= sender())
+  // The three numbers start beside the cards, never after them.
+  const numbersRead: Promise<ThreeNumbers | { failed: string }> = readThreeNumbers(db, now).catch((err: unknown) => ({ failed: err instanceof Error ? err.message : String(err) }))
 
   const cards = await Promise.all([
     card(
@@ -144,13 +149,15 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const { data: flag, error: flagError } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
+        const [{ data: flag, error: flagError }, { data: last, error: lastError }, planned, approved, posted] = await Promise.all([
+          db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle(),
+          db.from('audit_log').select('created_at, action').like('action', 'system.social.%').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          counted('social_pieces', db.from('social_pieces').select('id', { count: 'exact', head: true }).gte('planned_at', week)),
+          counted('social_piece_approvals', db.from('social_piece_approvals').select('id', { count: 'exact', head: true }).gte('approved_at', week)),
+          counted('social_piece_postings', db.from('social_piece_postings').select('id', { count: 'exact', head: true }).gte('posted_at', week).neq('post_url', 'sent')),
+        ])
         if (flagError) throw new Error(`feature_flags: ${flagError.message}`)
-        const { data: last, error: lastError } = await db.from('audit_log').select('created_at, action').like('action', 'system.social.%').order('created_at', { ascending: false }).limit(1).maybeSingle()
         if (lastError) throw new Error(`audit_log: ${lastError.message}`)
-        const planned = await counted('social_pieces', db.from('social_pieces').select('id', { count: 'exact', head: true }).gte('planned_at', week))
-        const approved = await counted('social_piece_approvals', db.from('social_piece_approvals').select('id', { count: 'exact', head: true }).gte('approved_at', week))
-        const posted = await counted('social_piece_postings', db.from('social_piece_postings').select('id', { count: 'exact', head: true }).gte('posted_at', week).neq('post_url', 'sent'))
         const lastRow = last as { created_at: string; action: string } | null
         const waiting = Math.max(planned - approved, 0)
         return {
@@ -174,16 +181,18 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const sw = await sender()
-        const held = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'held'))
-        const sentToday = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).gte('sent_at', today))
-        const sentWeek = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).gte('sent_at', week))
-        const plays = await counted('outreach_plays', db.from('outreach_plays').select('id', { count: 'exact', head: true }).not('approved_at', 'is', null))
-        const unsubscribes = await counted('outreach_unsubscribes', db.from('outreach_unsubscribes').select('id', { count: 'exact', head: true }))
-        const queued = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'queued'))
-        // What waits for a person's yes, by the one definition Today's queue lists (src/lib/admin/letters-waiting.ts): a
-        // letter a rule holds is an exception to fix, never an approval.
-        const waiting = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', LETTER_WAITS.step).eq('state', LETTER_WAITS.state).eq('held_because', LETTER_WAITS.heldBecause).is('sent_at', null))
+        // What waits for a person's yes (the last read), by the one definition Today's queue lists
+        // (src/lib/admin/letters-waiting.ts): a letter a rule holds is an exception to fix, never an approval.
+        const [sw, held, sentToday, sentWeek, plays, unsubscribes, queued, waiting] = await Promise.all([
+          senderOnce(),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'held')),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).gte('sent_at', today)),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).gte('sent_at', week)),
+          counted('outreach_plays', db.from('outreach_plays').select('id', { count: 'exact', head: true }).not('approved_at', 'is', null)),
+          counted('outreach_unsubscribes', db.from('outreach_unsubscribes').select('id', { count: 'exact', head: true })),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', 1).eq('state', 'queued')),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('step', LETTER_WAITS.step).eq('state', LETTER_WAITS.state).eq('held_because', LETTER_WAITS.heldBecause).is('sent_at', null)),
+        ])
         // A held letter never queues by itself (src/lib/outreach/drafts.ts stores every draft held; only a person's approval
         // queues it inside a play), so it waits on a person in every sender mode, live included.
         const senderWaits = sw.mode !== 'live' ? `The sender is on ${sw.mode}${sw.setByAPerson ? '' : ', never set by a person'}` : null
@@ -209,9 +218,11 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const sw = await sender()
-        const held = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).gte('step', 2).eq('state', 'held'))
-        const sentWeek = await counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).gte('step', 2).gte('sent_at', week))
+        const [sw, held, sentWeek] = await Promise.all([
+          senderOnce(),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).gte('step', 2).eq('state', 'held')),
+          counted('outreach_touches', db.from('outreach_touches').select('id', { count: 'exact', head: true }).gte('step', 2).gte('sent_at', week)),
+        ])
         return {
           lastRun: null,
           queue: [{ label: 'Follow ups held', value: held }],
@@ -233,9 +244,11 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const sw = await sender()
-        const week7 = await counted('outreach_replies', db.from('outreach_replies').select('id', { count: 'exact', head: true }).gte('received_at', week))
-        const unclear = await counted('outreach_replies', db.from('outreach_replies').select('id', { count: 'exact', head: true }).eq('outcome', 'unclear').gte('received_at', month))
+        const [sw, week7, unclear] = await Promise.all([
+          senderOnce(),
+          counted('outreach_replies', db.from('outreach_replies').select('id', { count: 'exact', head: true }).gte('received_at', week)),
+          counted('outreach_replies', db.from('outreach_replies').select('id', { count: 'exact', head: true }).eq('outcome', 'unclear').gte('received_at', month)),
+        ])
         return {
           lastRun: null,
           queue: [{ label: 'Unclear, waiting (30 days)', value: unclear }],
@@ -256,8 +269,10 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const yeses = await counted('organiser_permissions', db.from('organiser_permissions').select('id', { count: 'exact', head: true }).gte('granted_at', month))
-        const given = await counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', PHOTO_WAITS.assetState).eq('approval_status', PHOTO_WAITS.approvalStatus).eq('withdrawal_status', PHOTO_WAITS.withdrawalStatus))
+        const [yeses, given] = await Promise.all([
+          counted('organiser_permissions', db.from('organiser_permissions').select('id', { count: 'exact', head: true }).gte('granted_at', month)),
+          counted('social_assets', db.from('social_assets').select('id', { count: 'exact', head: true }).eq('asset_state', PHOTO_WAITS.assetState).eq('approval_status', PHOTO_WAITS.approvalStatus).eq('withdrawal_status', PHOTO_WAITS.withdrawalStatus)),
+        ])
         return {
           lastRun: null,
           queue: [{ label: 'Organiser photos held', value: given }],
@@ -278,8 +293,10 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const waitingRows = await counted('listing_submissions', db.from('listing_submissions').select('id', { count: 'exact', head: true }).in('status', ['waiting', 'held']))
-        const accepted = await counted('listing_submissions', db.from('listing_submissions').select('id', { count: 'exact', head: true }).in('status', ['accepted', 'published']).gte('created_at', month))
+        const [waitingRows, accepted] = await Promise.all([
+          counted('listing_submissions', db.from('listing_submissions').select('id', { count: 'exact', head: true }).in('status', ['waiting', 'held'])),
+          counted('listing_submissions', db.from('listing_submissions').select('id', { count: 'exact', head: true }).in('status', ['accepted', 'published']).gte('created_at', month)),
+        ])
         return {
           lastRun: null,
           queue: [{ label: 'Waiting or held', value: waitingRows }],
@@ -300,9 +317,11 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
       },
       now,
       async () => {
-        const manual = await counted('listing_claims', db.from('listing_claims').select('id', { count: 'exact', head: true }).eq('status', 'manual_open'))
-        const verified = await counted('listing_claims', db.from('listing_claims').select('id', { count: 'exact', head: true }).eq('status', 'verified').gte('created_at', month))
-        const { data: flag, error } = await db.from('feature_flags').select('enabled').eq('flag', 'listing_claims').maybeSingle()
+        const [manual, verified, { data: flag, error }] = await Promise.all([
+          counted('listing_claims', db.from('listing_claims').select('id', { count: 'exact', head: true }).eq('status', 'manual_open')),
+          counted('listing_claims', db.from('listing_claims').select('id', { count: 'exact', head: true }).eq('status', 'verified').gte('created_at', month)),
+          db.from('feature_flags').select('enabled').eq('flag', 'listing_claims').maybeSingle(),
+        ])
         if (error) throw new Error(`feature_flags: ${error.message}`)
         return {
           lastRun: null,
@@ -350,11 +369,5 @@ export async function readAutomation(now: Date = new Date()): Promise<{ numbers:
     ),
   ])
 
-  let numbers: ThreeNumbers | { failed: string }
-  try {
-    numbers = await readThreeNumbers(db, now)
-  } catch (err) {
-    numbers = { failed: err instanceof Error ? err.message : String(err) }
-  }
-  return { numbers, cards }
+  return { numbers: await numbersRead, cards }
 }

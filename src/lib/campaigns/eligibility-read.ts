@@ -26,6 +26,9 @@ export type EligibilityReport = {
 
 export async function readEligibility(now: Date = new Date()): Promise<EligibilityReport> {
   const db = createAdminClient()
+  // EVERY READ AS SOON AS IT CAN START (law 41, the speed train of 20 November 2026): the fee needs nothing, so it starts
+  // with the nights; the two photo reads need only the nights' ids, so they start together after them.
+  const feeRead = getLivePublicFee()
   const { data, error } = await applyPublicEventVisibility(
     db
       .from('events')
@@ -41,15 +44,17 @@ export async function readEligibility(now: Date = new Date()): Promise<Eligibili
   if (error) throw new Error(`the nights could not be read: ${error.message}`)
   const rows = (data ?? []) as unknown as Record<string, unknown>[]
 
-  const owned = await usableImages(db, rows.map((r) => r.id as string), now)
-  let venuePhotosUnread = false
-  let venuePhotos = new Map<string, unknown>()
-  try {
-    venuePhotos = await eventCoversFor(rows.map((r) => r.id as string), 'event_card', venueMediaDeps())
-  } catch {
-    venuePhotosUnread = true
-  }
-  const fee = await getLivePublicFee()
+  const ids = rows.map((r) => r.id as string)
+  const [owned, venueRead, fee] = await Promise.all([
+    usableImages(db, ids, now),
+    eventCoversFor(ids, 'event_card', venueMediaDeps()).then(
+      (photos) => ({ unread: false, photos: photos as Map<string, unknown> }),
+      () => ({ unread: true, photos: new Map<string, unknown>() }),
+    ),
+    feeRead,
+  ])
+  const venuePhotosUnread = venueRead.unread
+  const venuePhotos = venueRead.photos
 
   const events = rows.map((r): JudgedEvent => {
     const tiers = ((r.ticket_tiers as TierRow[] | null) ?? []).filter((t) => t.is_active)

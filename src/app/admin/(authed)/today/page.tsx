@@ -60,49 +60,38 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   await recordAuditEvent({ action: 'admin.today.view', session })
 
   const now = new Date()
+  const failed = (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) })
+  const melbourneMidnight = now.getTime() - melbourneMinutes(now) * 60_000
+  // EVERY READ OF THIS PAGE STARTS AT ONCE (law 41, the speed train of 20 November 2026): seven of them used to wait one
+  // after another behind the first five, so the page took the sum of them; now it takes the slowest. Each read that can
+  // fail still says so in its own section, never a zero.
   // The six numbers come from the growth page's own rows (src/lib/growth/six-numbers.ts); a failed read names itself.
-  const [queue, dashboard, growth, centre, automation] = await Promise.all([
+  const [queue, dashboard, growth, centre, automation, gates, twenty, sentRecently, timetable, learned, threePosts] = await Promise.all([
     readTodayQueue(now),
     readFounderDashboard(now),
-    readGrowthWeek(now).then(
-      (g) => ({ ok: true as const, g }),
-      (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
-    ),
+    readGrowthWeek(now).then((g) => ({ ok: true as const, g }), failed),
     // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
     readCommandCentre(createAdminClient(), now),
     // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
     readAutomation(now).then(
       (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
-      (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
+      failed,
     ),
+    // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
+    readPlanGates(now).then((g) => ({ ok: true as const, g }), failed),
+    // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
+    readTwentyView(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
+    // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
+    readSentRecently(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
+    // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
+    readTimetable(createAdminClient(), now).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` })),
+    // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
+    readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight)).catch((err: unknown) => ({
+      unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
+    })),
+    // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
+    readThreePosts(createAdminClient(), now).then((v) => ({ ok: true as const, v }), failed),
   ])
-  // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
-  const gates = await readPlanGates(now).then(
-    (g) => ({ ok: true as const, g }),
-    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
-  )
-  // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
-  const twenty = await readTwentyView(createAdminClient(), now).then(
-    (v) => ({ ok: true as const, v }),
-    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
-  )
-  // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
-  const sentRecently = await readSentRecently(createAdminClient(), now).then(
-    (v) => ({ ok: true as const, v }),
-    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
-  )
-  // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
-  // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
-  const timetable = await readTimetable(createAdminClient(), now).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` }))
-  // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
-  const melbourneMidnight = now.getTime() - melbourneMinutes(now) * 60_000
-  const learned = await readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight)).catch((err: unknown) => ({
-    unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
-  }))
-  const threePosts = await readThreePosts(createAdminClient(), now).then(
-    (v) => ({ ok: true as const, v }),
-    (err: unknown) => ({ ok: false as const, why: err instanceof Error ? err.message : String(err) }),
-  )
   const exceptions = byException(dashboard)
   // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
   const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))
