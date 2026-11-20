@@ -28,6 +28,12 @@ on:
         type: choice
         default: week
         options: [week, weekend]
+      design:
+        description: built (the digest as built) or whats-on (Lawal's design A, law 46)
+        required: true
+        type: choice
+        default: built
+        options: [built, whats-on]
 
 permissions:
   contents: read
@@ -48,6 +54,7 @@ jobs:
           CITY: ${{ inputs.city }}
           MODE: ${{ inputs.mode }}
           EDITION: ${{ inputs.edition }}
+          DESIGN: ${{ inputs.design }}
         run: |
           set -euo pipefail
           case "$MODE" in
@@ -63,8 +70,12 @@ jobs:
             week|weekend) ;;
             *) echo "REFUSED: edition $EDITION"; exit 2 ;;
           esac
+          case "$DESIGN" in
+            built|whats-on) ;;
+            *) echo "REFUSED: design $DESIGN"; exit 2 ;;
+          esac
           code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 \
-            "https://www.eventlinqs.com.au/api/cron/weekly-digest?city=${CITY}&edition=${EDITION}&${PARAM}=hello%40eventlinqs.com" \
+            "https://www.eventlinqs.com.au/api/cron/weekly-digest?city=${CITY}&edition=${EDITION}&design=${DESIGN}&${PARAM}=hello%40eventlinqs.com" \
             -H "Authorization: Bearer $CRON_SECRET")
           echo "HTTP $code"
           python3 - <<'PY'
