@@ -50,6 +50,8 @@ describe('a post on its night’s own day says so', () => {
   })
   it('the publisher posts every caption through it, at the moment it posts', () => {
     const src = readFileSync('src/lib/social/store.ts', 'utf8')
-    expect(src).toMatch(/caption: onItsDay\(rev\?\.versions\[platform\]\.caption \?\? '', rev\?\.slides \?\? \[\], now\)/)
+    // The revision is proved there before the call (train AF: a piece with no revision or own format is held first), so the
+    // call reads it plainly.
+    expect(src).toMatch(/caption: onItsDay\(rev\.versions\[platform\]\.caption \?\? '', rev\.slides, now\)/)
   })
 })
