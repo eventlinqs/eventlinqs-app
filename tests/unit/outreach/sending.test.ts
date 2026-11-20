@@ -4,6 +4,7 @@ import type { Database } from '@/types/database'
 import { buildOutreachMime, encodeHeaderValue, outreachOneClickUrl } from '@/lib/outreach/mime'
 import { forgetGraphToken, graphReadInbox, graphSendMime, graphToken, GraphError, type GraphConfig } from '@/lib/outreach/graph'
 import { businessHoursApply, clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
+import { HELLO_MAILBOX, LAWAL_MAILBOX } from '@/lib/outreach/addresses'
 
 /**
  * THE SENDING PATH (src/lib/outreach/mime.ts, graph.ts, sender.ts). The database's own refusals are proved on TEST in
@@ -227,6 +228,15 @@ describe('the run', () => {
     expect(String((ofRow('q-dated')[0].held_because as string[])[0])).toContain("its words name a time ('Saturday')")
     expect(ofRow('q-dated').some((p) => p.state === 'sending' || p.state === 'sent')).toBe(false)
     expect(r.replanned).toHaveLength(2)
+  })
+
+  // LAW 33 (a), the PM's 00:50 of 21 November 2026, item 1: the run itself, not only the table, sends an acquisition
+  // letter from lawal@ and a permission request from hello@, whatever outreach_sender.from_address reads.
+  test('an acquisition letter leaves the run from lawal@, a permission request from hello@', async () => {
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], comms_category: 'ACQ' }, { ...QUEUED[1], comms_category: 'PERM' }] })
+    await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const mail = recordedOutreachMail() as { from?: string }[]
+    expect(mail.map((m) => m.from)).toEqual([LAWAL_MAILBOX, HELLO_MAILBOX])
   })
 
   test("a letter slotted earlier today, or with no slot, is today's and is not re planned", async () => {
