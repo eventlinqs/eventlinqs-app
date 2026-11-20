@@ -40,7 +40,8 @@ describe('the publish gate is on every route', () => {
     expect(schedule.indexOf('slidesMisfit(')).toBeLessThan(schedule.indexOf('scheduled.push('))
     expect(schedule).toMatch(/\.eq\('platform', platform\)/)
     // A partner kit is never given a slot on our account (the PM's 23:09 of 18 November 2026).
-    expect(schedule).toMatch(/select\('format, kind'\)/)
+    // The kind decides the partner kit; the moment (train AI-2, law 37 (l)) binds a lifecycle piece to its day.
+    expect(schedule).toMatch(/select\('format, kind, moment_key'\)/)
     expect(schedule).toMatch(/if \(String\(piece\.kind\) === 'partner_kit'\) continue/)
     expect(schedule.indexOf("=== 'partner_kit') continue")).toBeLessThan(schedule.indexOf('due.push('))
     expect(bodyOf(store, 'export async function editPiece(')).toMatch(/languageFaults\(/)

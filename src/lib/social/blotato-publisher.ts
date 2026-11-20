@@ -69,12 +69,23 @@ export function makeBlotatoPublisher(deps: BlotatoPublisherDeps): Publisher {
   const items = (json: Record<string, unknown>) => (Array.isArray(json.items) ? (json.items as Array<Record<string, unknown>>) : [])
 
   // The piece's own format (the PM's 10:42 of 20 November 2026, item 1, WINDOW 5A's look): never guessed from its slides.
-  return async ({ pieceId, platform, format, slides, caption }) => {
+  return async ({ pieceId, platform, format, slides, caption, collaborators }) => {
     const account = items(await call('GET', '/users/me/accounts')).find((a) => String(a.platform ?? '').toLowerCase() === platform)
     if (!account || account.id === undefined) throw new BlotatoRefusal(`Blotato has no connected ${platform} account; connect it in Blotato`)
     const accountId = String(account.id)
 
-    const target: Record<string, string> = { targetType: platform }
+    const target: Record<string, string | string[]> = { targetType: platform }
+    // LAW 40, A COLLAB: Blotato's Instagram target takes 'collaborators array of strings ... Instagram handles to tag (max
+    // 3). Do not include the @ sign. Single image posts and reels only' (help.blotato.com/api/publish-post, read 20
+    // November 2026; Meta: 'Not supported for Stories'). Sent only on an Instagram feed post of one slide; anything else
+    // carrying collaborators is refused here, so a wrong piece fails loudly rather than posting with a dropped invite.
+    const invite = (collaborators ?? []).map((c) => c.replace(/^@/, '').trim()).filter((c) => c !== '')
+    if (invite.length > 0) {
+      if (platform !== 'instagram' || format !== 'feed' || slides.length !== 1 || invite.length > 3) {
+        throw new BlotatoRefusal(`a Collab goes only on an Instagram feed post of one photograph, at most 3 accounts; this is ${platform} ${format} with ${slides.length} slides and ${invite.length} accounts`)
+      }
+      target.collaborators = invite
+    }
     if (platform === 'facebook') {
       const pages = items(await call('GET', `/users/me/accounts/${encodeURIComponent(accountId)}/subaccounts`))
       if (pages.length !== 1) throw new BlotatoRefusal(`Blotato's Facebook account has ${pages.length} Pages; exactly one, the EventLinqs Page, is expected`)

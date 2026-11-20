@@ -8,10 +8,11 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { dayStart, learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { law37Refusal } from './law37'
+import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
@@ -540,7 +541,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
+  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -892,10 +893,17 @@ export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
 }
 
 /** The week's public nights in the guide cities, each with its call to action, its price line and any usable image. */
-export async function readCampaignNights(db: Db, cities: readonly CampaignCity[], weekStart: string, now: Date): Promise<CampaignNight[]> {
+export async function readCampaignNights(
+  db: Db,
+  cities: readonly CampaignCity[],
+  weekStart: string,
+  now: Date,
+  opts: { readonly aheadDays?: number } = {},
+): Promise<CampaignNight[]> {
   // Three weeks on, for Coming Up's consideration stage; every piece of the week keeps to its week by dayInWeek. The
-  // rows come soonest first, so if the limit below ever cuts, it cuts only the furthest nights.
-  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 21 * DAY_MS)
+  // rows come soonest first, so if the limit below ever cuts, it cuts only the furthest nights. The lifecycle planner
+  // reads further (LIFECYCLE_AHEAD_DAYS) for its announce and build posts.
+  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + (opts.aheadDays ?? 21) * DAY_MS)
   const { data, error } = await applyPublicEventVisibility(db.from('events').select(NIGHT_COLUMNS), { now, includeExternal: true })
     .gt('end_date', now.toISOString())
     .lte('start_date', weekEnd.toISOString())
@@ -920,6 +928,8 @@ export async function readCampaignNights(db: Db, cities: readonly CampaignCity[]
       startDate: e.start_date as string,
       endDate: (e.end_date as string | null) ?? null,
       timezone: (e.timezone as string | null) ?? null,
+      listedAt: (e.created_at as string | null) ?? null,
+      seriesId: (e.listing_series_id as string | null) ?? null,
       citySlug: city.slug,
       cityName: city.name,
       venueName: venueOf(e.venue_name as string | null),
@@ -1022,17 +1032,33 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) throw new Error("the week's campaign could not be read")
 
-  const { pieces: plans, imageRequests } = await planNow(db, campaignId, weekStart, input.now)
-  const { data: have, error: herr } = await db.from('social_pieces').select('kind, city, partner_name, poster_day').eq('campaign_id', campaignId).limit(500)
+  const { pieces: weekPlans, imageRequests } = await planNow(db, campaignId, weekStart, input.now)
+  // LAW 37 (l), THE LIFECYCLE (train AI-2): today's few moments, the history read first (lifecycle-plan.ts). A failed read
+  // plans no lifecycle piece and is said in held, never a guess.
+  const held: string[] = []
+  let lifecycle: PiecePlan[] = []
+  if (LIFECYCLE_ON) {
+    try {
+      const nights = await readCampaignNights(db, await readCampaignCities(db), weekStart, input.now, { aheadDays: LIFECYCLE_AHEAD_DAYS })
+      const planned = await planLifecyclePieces(db, { now: input.now, nights, origin: ORIGIN })
+      lifecycle = planned.pieces
+      held.push(...planned.notes)
+    } catch (error) {
+      held.push(`lifecycle: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  const plans = [...weekPlans, ...lifecycle]
+  const { data: have, error: herr } = await db.from('social_pieces').select('kind, city, partner_name, poster_day, moment_key').eq('campaign_id', campaignId).limit(2000)
   if (herr) throw new Error(`the week's pieces could not be read: ${herr.message}`)
-  const keyOf = (kind: string, city: string, partner: string | null, day: string | null) => `${kind}|${city}|${partner ?? ''}|${day ?? ''}`
-  const kept = new Set((have ?? []).map((p) => keyOf(p.kind as string, p.city as string, (p.partner_name as string | null) ?? null, (p.poster_day as string | null) ?? null)))
+  const keyOf = (kind: string, city: string, partner: string | null, day: string | null, moment: string | null) => `${kind}|${city}|${partner ?? ''}|${day ?? ''}|${moment ?? ''}`
+  const kept = new Set(
+    (have ?? []).map((p) => keyOf(p.kind as string, p.city as string, (p.partner_name as string | null) ?? null, (p.poster_day as string | null) ?? null, (p.moment_key as string | null) ?? null)),
+  )
 
   let created = 0
   let existing = 0
-  const held: string[] = []
   for (const p of plans) {
-    if (kept.has(keyOf(p.kind, p.city, p.partnerName, p.posterDay ?? null))) {
+    if (kept.has(keyOf(p.kind, p.city, p.partnerName, p.posterDay ?? null, p.momentKey ?? null))) {
       existing += 1
       continue
     }
@@ -1067,7 +1093,7 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
     }
     const { data: piece, error: perr } = await db
       .from('social_pieces')
-      .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, poster_day: p.posterDay ?? null, planned_at: input.now.toISOString() })
+      .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, poster_day: p.posterDay ?? null, moment_key: p.momentKey ?? null, planned_at: input.now.toISOString() })
       .select('id')
       .single()
     if (perr || !piece) {
@@ -1113,6 +1139,8 @@ export type PieceRow = {
   partnerName: string | null
   /** A daily poster's own day (social_pieces.poster_day), so a redraw takes the poster of the same day. */
   posterDay: string | null
+  /** A lifecycle piece's moment (social_pieces.moment_key): the redraw never swaps one moment for another. */
+  momentKey?: string | null
   revision: Revision
   history: { version: number; madeBy: Revision['madeBy']; madeAt: string }[]
   decisions: { revision: number; decision: string; reason: string; at: string }[]
@@ -1132,7 +1160,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
     // Each revision's number and maker only: the slides and words are read for each piece's NEWEST revision alone
     // (newestRevisions below). The P0 of 18 November 2026: every revision's slides came with the week, 904 revisions
     // and 2.4 MB, and Lawal could not open /admin/social.
-    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, poster_day, social_piece_revisions(${HISTORY_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
+    .select(`id, kind, city, audience, objective, purpose, next_step, outcome, link, format, partner_name, poster_day, moment_key, social_piece_revisions(${HISTORY_COLUMNS}), social_piece_decisions(revision, decision, reason, decided_at), social_piece_approvals(revision), social_piece_postings(post_url)`)
     .eq('campaign_id', campaignId)
     .order('planned_at', { ascending: true })
     .limit(500)
@@ -1175,6 +1203,7 @@ export async function readCampaign(db: Db, now: Date): Promise<{ weekStart: stri
       format: p.format as 'feed' | 'story',
       partnerName: (p.partner_name as string | null) ?? null,
       posterDay: (p.poster_day as string | null) ?? null,
+      momentKey: (p.moment_key as string | null) ?? null,
       revision: newest,
       history: revisions.map((r) => ({ version: r.version, madeBy: r.madeBy, madeAt: r.madeAt })),
       decisions,
@@ -1427,7 +1456,7 @@ export function refusedOnceSwept(slides: readonly Slide[], images: ReadonlyMap<n
 }
 
 type RedrawCandidate = Pick<PieceRow, 'id' | 'kind' | 'city' | 'partnerName' | 'state'> &
-  Partial<Pick<PieceRow, 'posterDay' | 'history'>> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> & Partial<Pick<Revision, 'caption' | 'madeAt' | 'madeBy' | 'versions'>> }
+  Partial<Pick<PieceRow, 'posterDay' | 'momentKey' | 'history'>> & { readonly revision: Pick<Revision, 'slides' | 'version' | 'message'> & Partial<Pick<Revision, 'caption' | 'madeAt' | 'madeBy' | 'versions'>> }
 
 /** When a candidate's slides were last DRAWN: its newest revision not made by an edit; unknown reads as current. */
 function drawnAtOfCandidate(p: RedrawCandidate): string {
@@ -1461,7 +1490,7 @@ export function olderLookRedraws(
   const kept: string[] = []
   for (const p of pieces.filter(isOlderLookDraft)) {
     const label = `${p.kind} ${p.city}${p.partnerName ? ` ${p.partnerName}` : ''}`
-    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null) && (x.posterDay ?? null) === (p.posterDay ?? null))
+    const f = fresh.find((x) => x.kind === p.kind && x.city === p.city && (x.partnerName ?? null) === (p.partnerName ?? null) && (x.posterDay ?? null) === (p.posterDay ?? null) && (x.momentKey ?? null) === (p.momentKey ?? null))
     if (!f) {
       kept.push(`${label}: this week's plan no longer draws it in the locked look, so it stays as it is`)
       continue
@@ -1947,18 +1976,18 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
   const posted = new Set((gone ?? []).map((g) => g.piece_id as string))
   const { data: have } = await db.from('social_piece_schedules').select('approval_id').limit(5000)
   const scheduledFor = new Set((have ?? []).map((h) => h.approval_id as string))
-  const due: { id: string; approvalId: string; format: SocialFormat; kind: string; approvedAt: Date; eventIds: string[]; rev: Revision }[] = []
+  const due: { id: string; approvalId: string; format: SocialFormat; kind: string; approvedAt: Date; eventIds: string[]; rev: Revision; momentKey: string | null }[] = []
   for (const a of approvals ?? []) {
     const pieceId = a.piece_id as string
     if (posted.has(pieceId) || scheduledFor.has(a.id as string)) continue
     const rev = await newestRevision(db, pieceId)
     if (!rev || rev.version !== (a.revision as number)) continue
-    const { data: piece } = await db.from('social_pieces').select('format, kind').eq('id', pieceId).maybeSingle()
+    const { data: piece } = await db.from('social_pieces').select('format, kind, moment_key').eq('id', pieceId).maybeSingle()
     if (!piece) continue
     // A PARTNER KIT IS NEVER POSTED ON OUR ACCOUNT (the PM's 23:09 of 18 November 2026; law 26 names the plain kit): it is
     // a story card and a message for the partner to share from their own, recorded as sent, never given a slot here.
     if (String(piece.kind) === 'partner_kit') continue
-    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, kind: String(piece.kind), approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev })
+    due.push({ id: pieceId, approvalId: a.id as string, format: piece.format as SocialFormat, kind: String(piece.kind), approvedAt: new Date(a.approved_at as string), eventIds: rev.eventIds, rev, momentKey: (piece.moment_key as string | null) ?? null })
   }
   if (due.length === 0) return { scheduled: [], held: [], floor: [] }
 
@@ -1977,6 +2006,17 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     // A weekend line with no night of its own goes on a Thursday or a Friday (the PM's 03:10, class 6).
     if (window.first === null) return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, days: weekendDaysOf(d.rev.caption, own.length) ?? rhythmDays(d.kind, {}, now) }
     firstStarting.set(d.id, window.first)
+    // LAW 37 (l), A MOMENT IS ITS DAY (train AI-2): a lifecycle piece posts on the day its moment names, or not at all
+    // (its window the night's own, cut to that day), never on another day of the week.
+    const moment = parseMomentKey(d.momentKey)
+    if (moment) {
+      const opens = dayStart(new Date(`${moment.day}T02:00:00Z`))
+      const closes = new Date(opens.getTime() + 36 * 3_600_000)
+      const shuts = dayStart(closes)
+      const notBefore = new Date(Math.max(opens.getTime(), window.notBefore?.getTime() ?? 0))
+      const deadline = new Date(Math.min(shuts.getTime(), window.deadline?.getTime() ?? Infinity))
+      return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline, notBefore, days: null }
+    }
     return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
   })
 
@@ -2055,7 +2095,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
 
 /** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
 /** A publisher posts a piece in its OWN format (social_pieces.format), never one guessed from its slides. */
-export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly format: SocialFormat; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly format: SocialFormat; readonly slides: readonly Slide[]; readonly caption: string; readonly collaborators?: readonly string[] }) => Promise<{ readonly ref: string; readonly submission?: string }>
 
 /**
  * A PIECE'S OWN FORMAT, as it was planned, drawn for approval and scheduled (WINDOW 5A's look of 20 November 2026 at
@@ -2143,7 +2183,9 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
       // 18 November 2026, item 1), set at the moment it posts. It posts in its own format, never one guessed from its slides.
-      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(rev.versions[platform].caption ?? '', rev.slides, now) })
+      // Law 40: the Collab invite the approved version carries, Instagram only (the publisher refuses it anywhere else).
+      const collaborators = platform === 'instagram' ? (rev.versions[platform].collaborators ?? []) : []
+      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(rev.versions[platform].caption ?? '', rev.slides, now), collaborators })
       // THE OUTSIDE ID FIRST, WHERE ONLY ITS OWN SHAPE IS CHECKED (the PM's 18:40 of 18 November 2026, item 1 (a)): Blotato's
       // submission goes to its own column while the row still reads scheduled, so a refusal of the reference below can
       // never lose it. On 18 November five accepted posts lost theirs: the only record was the refused update.
@@ -2155,11 +2197,44 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       // A reference the database refuses is kept FIRST in the held reason, so the post it names can always be read back.
       if (uerr) await hold(id, `Sent as ${ref}; the database refused that reference: ${refusalOf(uerr.message) ?? uerr.message}`)
       else published.push(`${pieceId} on ${platform}: ${ref}`)
+      // LAW 40 (c): each Collab invitation the post carried is recorded in the CRM as pending (never 'accepted': only
+      // Instagram's own read of the post's collaborators can say that, law 40 (b)). A failed record never stops
+      // publishing (law 40 (e)); it is logged and the read back finds the invite on the post.
+      if (collaborators.length > 0) await recordCollabInvites(db, { pieceId, scheduleId: id, handles: collaborators, postRef: ref, now })
     } catch (e) {
       await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
   return { switchOn, due: (rows ?? []).length, published, held, wouldPublish }
+}
+
+/**
+ * LAW 40 (c): a published post's Collab invitations, one row per organiser whose verified handle it invited, status
+ * pending. Never throws: a failure is logged, because collaboration never interrupts publishing (law 40 (e)).
+ */
+export async function recordCollabInvites(
+  db: Db,
+  input: { readonly pieceId: string; readonly scheduleId: string; readonly handles: readonly string[]; readonly postRef: string | null; readonly now: Date },
+): Promise<number> {
+  try {
+    const { data, error } = await db.from('organisers').select('id, instagram_handle').in('instagram_handle', [...input.handles]).not('instagram_verified_at', 'is', null)
+    if (error) throw new Error(error.message)
+    const rows = ((data ?? []) as { id: string; instagram_handle: string }[]).map((o) => ({
+      organiser_id: o.id,
+      piece_id: input.pieceId,
+      schedule_id: input.scheduleId,
+      handle: o.instagram_handle.toLowerCase(),
+      post_ref: input.postRef && /^https:\/\//.test(input.postRef) ? input.postRef : null,
+      sent_at: input.now.toISOString(),
+    }))
+    if (rows.length === 0) return 0
+    const { error: ierr } = await db.from('collab_invitations').upsert(rows, { onConflict: 'organiser_id,piece_id', ignoreDuplicates: true })
+    if (ierr) throw new Error(ierr.message)
+    return rows.length
+  } catch (error) {
+    console.error('[social] a Collab invitation could not be recorded (the post went out):', { pieceId: input.pieceId, error: error instanceof Error ? error.message : error })
+    return 0
+  }
 }
 
 /** Each piece's schedules, for /admin/social. */

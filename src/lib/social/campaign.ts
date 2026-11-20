@@ -101,6 +101,10 @@ export type CampaignNight = {
   startDate: string
   /** When it ends; a night that runs over several days says so (AMCF's three). */
   endDate?: string | null
+  /** When EventLinqs listed it (events.created_at): the lifecycle's 'just announced' (law 37 (l)). */
+  listedAt?: string | null
+  /** Its listing series (events.listing_series_id): a festival's days share one, so they are one run. */
+  seriesId?: string | null
   timezone: string | null
   citySlug: string
   cityName: string
@@ -264,6 +268,11 @@ export type PlatformVersion = {
   crop: '4:5' | '9:16'
   /** The call to action as this platform lets a person act: Instagram has no link in a caption, Facebook does. */
   cta: string
+  /**
+   * Instagram only (law 40): the organiser's verified handle invited as a Collab on a single photograph feed post about
+   * their own event, chosen by lifecycle.ts collaboratorsFor; absent or empty everywhere else.
+   */
+  collaborators?: string[]
 }
 
 export type PiecePlan = {
@@ -291,6 +300,8 @@ export type PiecePlan = {
   message: string | null
   /** A daily poster's day (YYYY-MM-DD); no other kind has one. */
   posterDay?: string | null
+  /** A lifecycle piece's moment, format, day and run (law 37 (l), lifecycle-plan.ts); its day binds its schedule. */
+  momentKey?: string | null
   /** The organisers' own names it quotes exactly (its nights' titles and hosts, its partner), set by planCampaign. */
   names?: string[]
 }
