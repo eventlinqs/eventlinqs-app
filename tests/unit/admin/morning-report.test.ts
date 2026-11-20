@@ -92,7 +92,7 @@ describe('the daily email', () => {
     expect(drawn).not.toBeNull()
     const section = drawn!
     expect(section.title).toBe('Your business, yesterday and today')
-    expect(section.lines[0]).toBe('Organiser Marketing. Yesterday: 17 first letters sent to organisers; 0 positive replies. Today: No first letters queued, 20 short of twenty; the pool could not be read; discovery goes on.')
+    expect(section.lines[0]).toBe('Organiser Marketing. Yesterday: 17 first letters sent to organisers; 0 positive replies. Today: No first letters queued, 10 short of ten; the pool could not be read; discovery goes on.')
     expect(section.lines.at(-1)).toBe(`Every automation, run by run: ${ENGINE_PAGE}`)
     expect(businessAreasSection(null)).toBeNull()
     expect(businessAreasSection({ error: 'the platform was not reached' })?.lines).toEqual(['Not known: the platform was not reached.'])

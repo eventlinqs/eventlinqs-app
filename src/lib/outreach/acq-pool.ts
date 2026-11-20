@@ -8,7 +8,7 @@ import { ACQ_GUIDE_CITIES } from './acq-target'
  * THE ORGANISER MARKETING POOL AND THE DAY'S SHORTFALL (Lawal's 09:01 of 20 November 2026, item 5: "up to 20 a business day;
  * if fewer qualify, the shortfall is reported and discovery continues; never a fabricated or unsuitable recipient").
  *
- * The target is law 24's: twenty qualified first contacts with organisers a business day, ACQ-FIRST only. The pool is every
+ * The target is law 38's: at least ten qualified first contacts with organisers a business day, ACQ-FIRST only. The pool is every
  * real organiser (never the platform's own listings organisation, never a test organiser) in the four guide cities Lawal
  * named on 18 November (11:27), with an email contact whose consent basis is recorded, never yet sent a letter of any kind
  * on any contact. Read from production rows; it writes nothing. On 20 November 2026 it was seven (read by hand at 08:32).

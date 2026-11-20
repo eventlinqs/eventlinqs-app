@@ -73,7 +73,7 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
       return f.marketing && {
         area,
         yesterday: `${countOf(f.marketing.firstLettersSent, 'first letter')} sent to organisers; ${countOf(f.marketing.positiveReplies, 'positive reply', 'positive replies')}.`,
-        // The shortfall against law 24's twenty and the pool behind it (Lawal's 09:01 of 20 November 2026, item 5).
+        // The shortfall against law 38's ten and the pool behind it (Lawal's 09:01 of 20 November 2026, item 5).
         today: shortfallWords(f.marketing.readyToday, f.marketing.poolToday ?? null, f.marketing.businessDay ?? true),
       }
     case 'Event Photo Permissions':
