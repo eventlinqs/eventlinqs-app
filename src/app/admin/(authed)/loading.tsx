@@ -20,7 +20,7 @@ export default function AdminLoading() {
           <span className="mt-3 block h-4 w-96 max-w-full animate-pulse rounded bg-[var(--admin-tint-strong)]" />
         </div>
       </header>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
             <span className="block h-3 w-24 animate-pulse rounded bg-[var(--admin-tint-strong)]" />
