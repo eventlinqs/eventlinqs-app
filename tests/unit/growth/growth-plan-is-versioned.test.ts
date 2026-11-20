@@ -101,7 +101,9 @@ describe('the growth plan keeps every dated version', () => {
   })
 
   test('a plan edited in place, without a new dated version, is caught', () => {
-    const edited = read('growth/plan.json').replace('"outreach_messages": 20', '"outreach_messages": 25')
+    const plan = read('growth/plan.json')
+    const edited = plan.replace(/"outreach_messages": \d+/, (m) => (m.endsWith(' 25') ? '"outreach_messages": 26' : '"outreach_messages": 25'))
+    expect(edited).not.toBe(plan)
     expect(checkLedger(files({ 'growth/plan.json': edited })).join(' ')).toMatch(/newest version/)
   })
 

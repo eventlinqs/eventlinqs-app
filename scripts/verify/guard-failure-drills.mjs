@@ -547,7 +547,7 @@ const DRILLS = [
     name: 'the growth plan is edited in place',
     guard: `${GUARDS}/growth-plan-is-versioned.mjs`,
     file: 'growth/plan.json',
-    find: '"outreach_messages": 20,',
+    find: '"outreach_messages": 10,',
     replace: '"outreach_messages": 25,',
     expect: 'differs from its newest version',
   },
