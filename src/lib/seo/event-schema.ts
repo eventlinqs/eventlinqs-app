@@ -21,6 +21,7 @@
  * one Offer per available ticket tier with availability state.
  */
 
+import { shownSummary } from '@/lib/listings/placeholder-summary'
 import type { Event, TicketTier, Organisation } from '@/types/database'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { toZonedIso8601 } from '@/lib/dates/event-time'
@@ -482,7 +483,8 @@ export function buildEventSchemaPayload({
     // Structured data is machine-read plain text: markdown syntax here reaches
     // a search result verbatim. Tags were stripped, markdown was not (UX1.1).
     description:
-      stripMarkdown(event.summary) ||
+      // A composed placeholder is no description (placeholder-summary.ts; Beck's JSON-LD of 21 November 2026).
+      stripMarkdown(shownSummary(event.summary)) ||
       (event.description
         ? stripMarkdown(event.description.replace(/<[^>]*>/g, '')).slice(0, 500)
         : undefined),

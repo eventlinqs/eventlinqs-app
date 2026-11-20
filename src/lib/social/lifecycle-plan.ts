@@ -74,7 +74,11 @@ type History = {
   readonly storiesToday: number
 }
 
-async function readHistory(db: Db, now: Date): Promise<History> {
+/**
+ * The history, leaving out the pieces the sweep is drawing again (`redrawing`): their moments are due again and their
+ * photographs theirs to keep, so the redraw is the same moment with the code in force, never a different one.
+ */
+async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = new Set()): Promise<History> {
   const { data, error } = await db
     .from('social_pieces')
     .select('id, format, moment_key, planned_at, social_piece_revisions(version, slides, versions), social_piece_decisions(revision, decision)')
@@ -90,6 +94,7 @@ async function readHistory(db: Db, now: Date): Promise<History> {
   let feedLastSeven = 0
   let storiesToday = 0
   for (const p of (data ?? []) as Record<string, unknown>[]) {
+    if (redrawing.has(p.id as string)) continue
     const parts = parseMomentKey(p.moment_key as string)
     if (!parts) continue
     const revs = ((p.social_piece_revisions as { version: number; slides: Slide[]; versions: Record<string, { caption?: string }> }[] | null) ?? []).sort((a, b) => b.version - a.version)
@@ -197,7 +202,11 @@ function dateLabel(iso: string, zone: string): string {
  * its zone reads as its run, 'Fri 20 to Sun 22 Nov', so a post on any of its days is true. An end recorded as a default
  * midnight never extends a night (law 22 class 2): an end at 00:00 belongs to the day before.
  */
-export function nightDates(startIso: string, endIso: string | null, zone: string): string {
+export function nightDates(startIso: string, endIso: string | null, zone: string, onDay?: string): string {
+  // A piece posts on a day of the run: its label starts there, never on a day already over (the publish gate's past day
+  // rule, law 22): AMCF's Saturday post reads 'Sat 21 to Sun 22 Nov', its Sunday post 'Sun 22 Nov' (law 37 (l)).
+  const dayKey = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  if (onDay && onDay > dayKey(new Date(startIso))) startIso = `${onDay}T12:00:00.000Z`
   const first = dateLabel(startIso, zone)
   if (!endIso) return first
   const lastInstant = new Date(new Date(endIso).getTime() - 1)
@@ -221,12 +230,18 @@ function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook
  */
 export async function planLifecyclePieces(
   db: Db,
-  input: { readonly now: Date; readonly nights: readonly CampaignNight[]; readonly origin: string },
+  input: {
+    readonly now: Date
+    readonly nights: readonly CampaignNight[]
+    readonly origin: string
+    /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
+    readonly redrawing?: ReadonlySet<string>
+  },
 ): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const runs = runsOf(input.nights.map(toLifecycleNight))
-  const history = await readHistory(db, input.now)
+  const history = await readHistory(db, input.now, input.redrawing)
   const photos = await readPhotos(db, input.nights.map((n) => n.eventId), input.now)
   const used = new Set(history.usedPhotos)
 
@@ -270,7 +285,7 @@ export async function planLifecyclePieces(
       height: photo.height,
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
-    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
+    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
     const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
     const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })

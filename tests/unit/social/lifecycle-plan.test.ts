@@ -124,3 +124,36 @@ describe('the lifecycle planner, end to end on a fixture', () => {
     expect(b.pieces.find((p) => p.format === 'feed')?.versions.instagram.collaborators).toBeUndefined()
   })
 })
+
+describe('the hourly sweep draws a stale lifecycle draft again, for its own moment (21 November 2026)', () => {
+  // AMCF's two pieces of 05:10 on 21 November were drawn before the rules of 19:45Z and printed 'Fri 20' on a Saturday;
+  // the sweep matched them against the week's plan, which holds no lifecycle moment, and kept them ('0 drawn again').
+  it('a draft the sweep names is planned again with its own moment and its own photograph; unnamed, it holds its moment', async () => {
+    const assets = [asset('a1', 'https://x/lead.jpg', 1), asset('a2', 'https://x/second.jpg', 2, 1080, 1350)]
+    const first = await planLifecyclePieces(fakeDb({ assets }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    const feed = first.pieces.find((p) => p.format === 'feed')!
+    const photoOf = (slides: readonly unknown[]) => (slides[0] as { photo: string }).photo
+    const stale = {
+      id: 'p-stale',
+      format: 'feed',
+      moment_key: feed.momentKey,
+      planned_at: '2026-11-27T18:10:00Z',
+      social_piece_revisions: [{ version: 1, slides: feed.slides, versions: { instagram: { caption: 'An older first line.' } } }],
+      social_piece_decisions: [],
+    }
+    // Unnamed, the draft holds its moment, and its photograph is never drawn twice.
+    const held = await planLifecyclePieces(fakeDb({ history: [stale], assets }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    expect(held.pieces.some((p) => p.momentKey === feed.momentKey)).toBe(false)
+    expect(held.pieces.map((p) => photoOf(p.slides))).not.toContain(photoOf(feed.slides))
+    // Named by the sweep, the same moment is planned again with the same photograph, to be written as its next version.
+    const again = await planLifecyclePieces(fakeDb({ history: [stale], assets }), {
+      now: NOW,
+      nights: [night({})],
+      origin: 'https://www.eventlinqs.com.au',
+      redrawing: new Set(['p-stale']),
+    })
+    const redrawn = again.pieces.find((p) => p.momentKey === feed.momentKey)
+    expect(redrawn).toBeDefined()
+    expect(photoOf(redrawn!.slides)).toBe(photoOf(feed.slides))
+  })
+})

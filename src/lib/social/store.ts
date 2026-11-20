@@ -794,6 +794,29 @@ export async function pieceDependencies(
       }
       continue
     }
+    /* LAW 37, THE LIFECYCLE PIECE (the standing policy's first run over one, 06:40 on 21 November 2026: 'The check could
+       not run (2)', its photo slide read as a night slide): the slide is the night's own photograph, whole, so the night
+       is read again (gone, no longer public, ended, sold out), a paid night's seller page asked, and the photograph's
+       licence for social checked again for this night at this minute. */
+    if (found?.t === 'photo') {
+      const name = e ? String(e.title) : id
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      const photoGone = soldOutIssue(name, e)
+      if (photoGone) issues.push(photoGone)
+      const { cta } = await admissionOf(e, now)
+      if (cta.state === 'paid_external') {
+        const ticket = await ticketPageIssue(fetcher, name, e)
+        if (ticket) issues.push(ticket)
+      }
+      const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+      if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      continue
+    }
     const slide = found as Extract<Slide, { t: 'night' | 'story' }> | undefined
     const name = slide?.title ?? id
     if (!e) {
@@ -1423,8 +1446,25 @@ export async function redrawOlderLook(db: Db, now: Date): Promise<Redrawn> {
   const campaign = await readCampaign(db, now)
   if (campaign === null) return { redrawn: [], kept: [] }
   if (!campaign.pieces.some(isOlderLookDraft)) return { redrawn: [], kept: [] }
-  const { pieces: fresh } = await planNow(db, campaign.campaignId, campaign.weekStart, now)
-  const { redraw, kept } = olderLookRedraws(campaign.pieces, fresh)
+  const { pieces: weekFresh } = await planNow(db, campaign.campaignId, campaign.weekStart, now)
+  // LAW 37 LIFECYCLE DRAFTS (the 06:40 run of 21 November 2026: AMCF's two pieces of 05:10, stale and printing 'Fri 20' on
+  // a Saturday, were matched against the week's plan, which holds no lifecycle moment, so they were kept and refused):
+  // each stale lifecycle draft is planned again for its own moment, the planner reading the history as if it were not
+  // yet drawn, so the moment is due and its photograph its own. A failed read draws none and is said.
+  const lifecycleDue = campaign.pieces.filter((p) => isOlderLookDraft(p) && (p.momentKey ?? null) !== null)
+  let lifecycleFresh: PiecePlan[] = []
+  const lifecycleNotes: string[] = []
+  if (LIFECYCLE_ON && lifecycleDue.length > 0) {
+    try {
+      const nights = await readCampaignNights(db, await readCampaignCities(db), campaign.weekStart, now, { aheadDays: LIFECYCLE_AHEAD_DAYS })
+      lifecycleFresh = (await planLifecyclePieces(db, { now, nights, origin: ORIGIN, redrawing: new Set(lifecycleDue.map((p) => p.id)) })).pieces
+    } catch (error) {
+      lifecycleNotes.push(`lifecycle: drawn again it could not be planned: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  const fresh = [...weekFresh, ...lifecycleFresh]
+  const { redraw, kept: keptPlans } = olderLookRedraws(campaign.pieces, fresh)
+  const kept = [...keptPlans, ...lifecycleNotes]
   const redrawn: string[] = []
   const notKept = [...kept]
   for (const r of redraw) {
