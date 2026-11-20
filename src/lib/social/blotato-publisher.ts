@@ -1,6 +1,5 @@
 import type { Publisher } from './store'
 import type { Slide } from './campaign'
-import { formatOfSlides } from './meta-publisher'
 
 /**
  * ROUTE B: EVENTLINQS' POSTS THROUGH BLOTATO (Lawal's yes of 15 November 2026, 13:55: Blotato Starter, US$29 a month,
@@ -69,13 +68,13 @@ export function makeBlotatoPublisher(deps: BlotatoPublisherDeps): Publisher {
 
   const items = (json: Record<string, unknown>) => (Array.isArray(json.items) ? (json.items as Array<Record<string, unknown>>) : [])
 
-  return async ({ pieceId, platform, slides, caption }) => {
+  // The piece's own format (the PM's 10:42 of 20 November 2026, item 1, WINDOW 5A's look): never guessed from its slides.
+  return async ({ pieceId, platform, format, slides, caption }) => {
     const account = items(await call('GET', '/users/me/accounts')).find((a) => String(a.platform ?? '').toLowerCase() === platform)
     if (!account || account.id === undefined) throw new BlotatoRefusal(`Blotato has no connected ${platform} account; connect it in Blotato`)
     const accountId = String(account.id)
 
     const target: Record<string, string> = { targetType: platform }
-    const format = formatOfSlides(slides)
     if (platform === 'facebook') {
       const pages = items(await call('GET', `/users/me/accounts/${encodeURIComponent(accountId)}/subaccounts`))
       if (pages.length !== 1) throw new BlotatoRefusal(`Blotato's Facebook account has ${pages.length} Pages; exactly one, the EventLinqs Page, is expected`)

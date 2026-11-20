@@ -16,8 +16,10 @@ export function learnedLines(timetable: { rows: readonly TimetableRow[] } | { un
   const rows = 'rows' in timetable ? timetable.rows : null
   const count = (state: TimetableRow['state']) => (rows ?? []).filter((r) => r.state === state).length
   const earlier = (rows ?? []).filter((r) => r.dayBefore !== null)
+  const faults = (rows ?? []).filter((r) => r.state === 'failed' || r.state === 'missed')
   const timetableLine = rows
-    ? `${count('done')} of ${rows.length} phases done, ${count('running')} running, ${count('late')} late, ${count('not yet')} not yet due; ${earlier.length} planned earlier because of yesterday.`
+    ? `${count('done')} of ${rows.length} phases done, ${count('running')} running, ${count('late')} late, ${count('failed')} failed, ${count('missed')} missed, ${count('not yet')} not yet due; ${earlier.length} planned earlier because of yesterday.` +
+      (faults.length > 0 ? ` Failed or missed: ${faults.map((r) => r.phase.label).join(', ')}.` : '')
     : `not read: ${'unread' in timetable ? timetable.unread : ''}`
   const lessons = 'lessons' in learned ? learned.lessons : null
   const learnedLine = lessons

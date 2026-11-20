@@ -1,3 +1,4 @@
+import { LOST_ID } from './post-state'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
 import { generateShareCode, getOrCreateShareLink } from '@/lib/broadcast/share-links'
@@ -23,7 +24,7 @@ import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
-import type { BlotatoPostReader, BlotatoPublishedSearch } from './blotato-publisher'
+import type { BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 
 /**
@@ -1114,7 +1115,7 @@ export type PieceRow = {
   state: PieceState
   postUrl: string | null
   /** B5: its moment on each network once approved, and whether it went or was held. */
-  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]
+  schedule: { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]
 }
 
 /** The week's campaign as /admin/social shows it: each piece's newest revision, its history and its state (K7). */
@@ -1354,11 +1355,13 @@ export function policyRefusals(rev: Pick<Revision, 'slides' | 'caption' | 'versi
 
 export async function approveUnderStandingPolicy(
   db: Db,
-  input: { readonly by: string; readonly now: Date; readonly siteOrigin: string },
+  // ONLY what this hour's logged dry run read ELIGIBLE (the PM's 10:47 of 20 November 2026, item 1; policy-guard.ts):
+  // a piece outside it is never approved here, so a refusal of one inside it is a check that failed between the two.
+  input: { readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly only: ReadonlySet<string> },
 ): Promise<WeekApproved | null> {
   const campaign = await readCampaign(db, input.now)
   if (campaign === null) return null
-  return approveWeek(policyPieces(campaign.pieces), async (pieceId) => {
+  return approveWeek(policyPieces(campaign.pieces).filter((p) => input.only.has(p.id)), async (pieceId) => {
     // The policy's own bar first (the PM's 03:42 item 4), then the same checked approval a person's press gives.
     const rev = await newestRevision(db, pieceId)
     if (!rev) return { state: 'refused', reason: 'The piece has no version to approve.' }
@@ -2029,7 +2032,7 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     for (const platform of ['instagram', 'facebook'] as const) {
       let misfit: string | null
       try {
-        misfit = await slidesMisfit(d.rev.slides, platform, opts.fetcher ?? fetch)
+        misfit = await slidesMisfit(d.rev.slides, platform, d.format, opts.fetcher ?? fetch)
       } catch (e) {
         misfit = `its fit for ${platform} could not be read (${e instanceof Error ? e.message : String(e)})`
       }
@@ -2047,7 +2050,21 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
 }
 
 /** What publishes a piece on a network once Meta allows it: the network's own address for the post, or a refusal. */
-export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
+/** A publisher posts a piece in its OWN format (social_pieces.format), never one guessed from its slides. */
+export type Publisher = (input: { readonly pieceId: string; readonly platform: SocialPlatform; readonly format: SocialFormat; readonly slides: readonly Slide[]; readonly caption: string }) => Promise<{ readonly ref: string; readonly submission?: string }>
+
+/**
+ * A PIECE'S OWN FORMAT, as it was planned, drawn for approval and scheduled (WINDOW 5A's look of 20 November 2026 at
+ * 10:49, on the PM's 10:42 item 1): the publisher and the destination check read it here, so a tonight story, whose slide
+ * is of type 'tonight', posts as a story. Guessed from its slides it read as a feed and would have posted as a feed image
+ * with a black band. Throws when the row cannot be read or holds neither format, so the caller holds the piece.
+ */
+export async function ownFormatOf(db: Db, pieceId: string): Promise<SocialFormat> {
+  const { data, error } = await db.from('social_pieces').select('format').eq('id', pieceId).maybeSingle()
+  const format = (data as { format?: unknown } | null)?.format
+  if (error || (format !== 'feed' && format !== 'story')) throw new Error(`the piece's own format could not be read${error ? `: ${error.message}` : ''}`)
+  return format
+}
 
 export type Published = {
   readonly switchOn: boolean
@@ -2090,13 +2107,15 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     // with every one of them still due; now that piece is held with the reason and the next is read.
     let issues: string[]
     let rev: Revision | null
+    let format: SocialFormat | null
     let misfit: string | null
     try {
       issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
       rev = issues.length > 0 || opts.publisher === null ? null : await newestRevision(db, pieceId)
+      format = rev === null ? null : await ownFormatOf(db, pieceId)
       // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
       // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
-      misfit = rev === null ? null : await slidesMisfit(rev.slides, platform, opts.fetcher ?? fetch)
+      misfit = rev === null || format === null ? null : await slidesMisfit(rev.slides, platform, format, opts.fetcher ?? fetch)
     } catch (e) {
       await hold(id, `Not published: the checks before publishing could not finish (${e instanceof Error ? e.message : String(e)}).`)
       continue
@@ -2113,10 +2132,14 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       await hold(id, `Not published: ${misfit}`)
       continue
     }
+    if (rev === null || format === null) {
+      await hold(id, "Not published: the piece's newest version or its own format could not be read.")
+      continue
+    }
     try {
       // A poster that posts on its night's own day says Tonight, Today or This afternoon (onItsDay; the PM's 06:39 of
-      // 18 November 2026, item 1), set at the moment it posts.
-      const { ref, submission } = await opts.publisher({ pieceId, platform, slides: rev?.slides ?? [], caption: onItsDay(rev?.versions[platform].caption ?? '', rev?.slides ?? [], now) })
+      // 18 November 2026, item 1), set at the moment it posts. It posts in its own format, never one guessed from its slides.
+      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(rev.versions[platform].caption ?? '', rev.slides, now) })
       // THE OUTSIDE ID FIRST, WHERE ONLY ITS OWN SHAPE IS CHECKED (the PM's 18:40 of 18 November 2026, item 1 (a)): Blotato's
       // submission goes to its own column while the row still reads scheduled, so a refusal of the reference below can
       // never lose it. On 18 November five accepted posts lost theirs: the only record was the refused update.
@@ -2176,39 +2199,26 @@ export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | nul
 }
 
 /**
- * A POST BLOTATO ACCEPTED BUT WHOSE ID WAS NEVER KEPT, FOUND IN BLOTATO'S OWN LIST (the PM's 18:40 of 18 November 2026,
- * item 2): a held row whose reason is the database's refusal of its reference, or begins 'Sent as blotato:', is looked
- * for among Blotato's published posts on its platform by the exact words its piece sent (that platform's caption,
- * spaces evened). A held row stays as it is, so each one found is said, never written. Read only towards Blotato.
+ * A POST BLOTATO ACCEPTED BUT WHOSE ID WAS NEVER KEPT, NAMED FOR A PERSON (Lawal's 09:01 of 20 November 2026, item 2:
+ * "status by stable provider id, never caption matching"). Until then each such held row was looked for in Blotato's
+ * published list by its caption's words. Now each is listed by its piece, network and the time it was due, for a person
+ * to read on Blotato by that time; nothing is matched by words and no row is touched. Read only.
  */
-export async function findHeldPostsOnBlotato(db: Db, search: BlotatoPublishedSearch | null): Promise<{ readonly found: string[]; readonly missing: string[] }> {
-  if (search === null) return { found: [], missing: [] }
-  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, platform, held_reason').eq('state', 'held').order('go_at', { ascending: false }).limit(60)
+export async function heldPostsNeedingInvestigation(db: Db): Promise<readonly string[]> {
+  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, platform, go_at, held_reason').eq('state', 'held').order('go_at', { ascending: false }).limit(60)
   if (error) throw new Error(`the held posts could not be read: ${error.message}`)
-  const sent = (data ?? []).filter((r) => /social_piece_schedules_published_ref_check|^Sent as blotato:/.test(String(r.held_reason ?? '')))
-  const even = (t: string) => t.replace(/\s+/g, ' ').trim()
-  const lists = new Map<string, readonly { readonly content: string; readonly postUrl: string | null }[]>()
-  const found: string[] = []
-  const missing: string[] = []
-  for (const r of sent) {
-    const platform = String(r.platform)
-    if (!lists.has(platform)) lists.set(platform, await search(platform))
-    const rev = await newestRevision(db, String(r.piece_id))
-    const words = even(rev?.versions[platform as SocialPlatform]?.caption ?? '')
-    const match = words ? lists.get(platform)!.find((i) => even(i.content) === words && i.postUrl !== null && PUBLIC_POST_URL.test(i.postUrl)) : undefined
-    if (match) found.push(`${String(r.piece_id)} on ${platform}: ${match.postUrl}`)
-    else missing.push(`${String(r.piece_id)} on ${platform}: not in Blotato's published list by its words`)
-  }
-  return { found, missing }
+  return (data ?? [])
+    .filter((r) => LOST_ID.test(String(r.held_reason ?? '')))
+    .map((r) => `${String(r.piece_id)} on ${String(r.platform)}, due ${String(r.go_at)}: requires investigation (accepted by Blotato, its id never kept)`)
 }
 
-export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>> {
-  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null }[]>()
+export async function readSchedules(db: Db, pieceIds: readonly string[]): Promise<Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]>> {
+  const out = new Map<string, { platform: SocialPlatform; goAt: string; state: string; heldReason: string | null; publishedRef: string | null }[]>()
   if (pieceIds.length === 0) return out
-  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
+  const { data } = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason, published_ref, created_at').in('piece_id', [...pieceIds]).order('created_at', { ascending: false }).limit(2000)
   for (const r of data ?? []) {
     const list = out.get(r.piece_id as string) ?? []
-    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null })
+    if (!list.some((x) => x.platform === r.platform)) list.push({ platform: r.platform as SocialPlatform, goAt: r.go_at as string, state: r.state as string, heldReason: (r.held_reason as string | null) ?? null, publishedRef: (r.published_ref as string | null) ?? null })
     out.set(r.piece_id as string, list)
   }
   return out

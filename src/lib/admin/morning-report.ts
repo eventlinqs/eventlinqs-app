@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readEngine } from './engine'
+import { readAcqPool } from '@/lib/outreach/acq-pool'
 import { allWell, areaOfPlay, morningRows, type MorningFacts, type MorningRow } from './morning-report-math'
 
 /**
@@ -62,6 +63,13 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
   }
 
   const letters = await safely('letters', () => readLetters(db, w))
+  // The day's pool of organisers with a recorded basis not yet written (src/lib/outreach/acq-pool.ts); a failed read
+  // says the pool could not be read, never a zero.
+  const pool = await readAcqPool(db, now).catch((fault: unknown) => {
+    unreadable.push(`the Organiser Marketing pool: ${fault instanceof Error ? fault.message : String(fault)}`)
+    return null
+  })
+  const weekday = new Intl.DateTimeFormat('en-AU', { timeZone: ZONE, weekday: 'short' }).format(now)
   const replies = await safely('replies', async () => ({
     received: await counted(db.from('outreach_replies').select('id', { count: 'exact', head: true }).gte('received_at', w.yesterday.from).lt('received_at', w.yesterday.to), 'replies received'),
     positive: await counted(db.from('outreach_replies').select('id', { count: 'exact', head: true }).eq('outcome', 'yes').gte('received_at', w.yesterday.from).lt('received_at', w.yesterday.to), 'positive replies'),
@@ -104,7 +112,7 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
   const engine = await safely('System Operations', () => readEngine(now))
 
   const facts: MorningFacts = {
-    marketing: letters && replies ? { firstLettersSent: letters.firsts, positiveReplies: replies.positive, readyToday: letters.ready } : null,
+    marketing: letters && replies ? { firstLettersSent: letters.firsts, positiveReplies: replies.positive, readyToday: letters.ready, poolToday: pool, businessDay: weekday !== 'Sat' && weekday !== 'Sun' } : null,
     permissions: letters && photos ? { requestsSent: letters.requests, photosReceived: photos.received, photosApproved: photos.approved, requestsDueToday: letters.due } : null,
     social,
     listings,

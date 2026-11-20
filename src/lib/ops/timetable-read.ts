@@ -10,13 +10,17 @@ import { lessonFromYesterday, type DayBefore } from './lessons'
  */
 export interface TimetableRow {
   readonly phase: Phase
-  readonly state: 'done' | 'running' | 'late' | 'not yet'
+  readonly state: 'done' | 'running' | 'late' | 'failed' | 'missed' | 'not yet'
   readonly units: number | null
   readonly endedAt: string | null
   readonly result: string | null
   readonly plannedStartMinutes: number
   /** Its day before as a lesson the engine acts on (late, failed or silent), and the earlier start it gives today. */
   readonly dayBefore: DayBefore | null
+  /** Its latest run that neither failed nor was the watchdog's alarm, at any time in the last 14 days. */
+  readonly lastSuccessAt: string | null
+  /** Its next run: today at its slot while not yet run, otherwise tomorrow at its slot (the night before for prepare). */
+  readonly nextRun: string
 }
 
 const DAY = 24 * 60 * 60 * 1000
@@ -34,12 +38,12 @@ export async function readTimetable(db: SupabaseClient, now: Date): Promise<{ ro
   const since = new Date(now.getTime() - 14 * DAY).toISOString()
   const { data, error } = await db
     .from('ops_phase_runs')
-    .select('phase, started_at, ended_at, units, result, failed')
+    .select('phase, ride, started_at, ended_at, units, result, failed')
     .gte('started_at', since)
     .order('started_at', { ascending: false })
     .limit(5000)
   if (error) return { unread: `the timetable could not be read: ${error.message}` }
-  const runs = (data ?? []) as { phase: string; started_at: string; ended_at: string; units: number; result: string; failed: boolean }[]
+  const runs = (data ?? []) as { phase: string; ride: string; started_at: string; ended_at: string; units: number; result: string; failed: boolean }[]
   const nowMinutes = melbourneMinutes(now)
   const midnight = now.getTime() - nowMinutes * 60_000
   // Yesterday in Melbourne, for the lessons of the day before (the PM's 06:10 of 20 November 2026, item 2).
@@ -58,9 +62,9 @@ export async function readTimetable(db: SupabaseClient, now: Date): Promise<{ ro
     const endedMinutes = today ? melbourneMinutes(new Date(today.ended_at)) : null
     const state = phase.nightBefore
       ? today
-        ? (endedMinutes !== null && endedMinutes > minutesOf(phase.cutoff) ? 'late' : 'done')
+        ? (today.failed ? 'failed' : endedMinutes !== null && endedMinutes > minutesOf(phase.cutoff) ? 'late' : 'done')
         : 'late'
-      : phaseState(phase, today ? { startedAt: today.started_at, endedAt: today.ended_at } : null, nowMinutes, endedMinutes)
+      : phaseState(phase, today ? { startedAt: today.started_at, endedAt: today.ended_at, failed: today.failed, ride: today.ride } : null, nowMinutes, endedMinutes)
     // Its run yesterday: the last that started inside its own window (from its slot to its cutoff), since a ride such as
     // the hourly listings run records the phase all day and only the run inside the window serves it.
     const windowStart = yesterdayMidnight + minutesOf(phase.slot) * 60_000
@@ -79,6 +83,14 @@ export async function readTimetable(db: SupabaseClient, now: Date): Promise<{ ro
       result: today?.result ?? null,
       plannedStartMinutes: plannedStart(phase, today?.units ?? 0, perUnit) - (dayBefore?.shiftMinutes ?? 0),
       dayBefore,
+      lastSuccessAt: own.find((r) => !r.failed && r.ride !== 'watchdog')?.started_at ?? null,
+      nextRun: phase.nightBefore
+        ? `${phase.slot} tonight`
+        : today && today.ride !== 'watchdog'
+          ? `${phase.slot} tomorrow`
+          : nowMinutes <= minutesOf(phase.slot)
+            ? `${phase.slot} today`
+            : `${phase.slot} tomorrow`,
     }
   })
   // The locked document's order: the night before first, then the day.

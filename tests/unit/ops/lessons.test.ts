@@ -72,7 +72,7 @@ describe('the three lines of the 08:00 report, from production', () => {
       { rows: [row('collect', 'done'), row('verify', 'late', { shiftMinutes: 20, wentWrong: 'Verify ended 20 minute(s) late.', cause: 'c', nowDoes: 'Verify is planned 20 minutes earlier today.' }), row('live', 'not yet')] },
       { lessons: [lesson('The founder sentence went out in a letter.'), lesson('A credit line was printed under a photograph.')] },
     )
-    expect(lines.timetable).toBe('1 of 3 phases done, 0 running, 1 late, 1 not yet due; 1 planned earlier because of yesterday.')
+    expect(lines.timetable).toBe('1 of 3 phases done, 0 running, 1 late, 0 failed, 0 missed, 1 not yet due; 1 planned earlier because of yesterday.')
     expect(lines.learned).toBe('2 lessons: The founder sentence went out in a letter. | A credit line was printed under a photograph.')
     expect(lines.changed).toBe('Verify is planned 20 minutes earlier today.')
   })

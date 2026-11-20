@@ -9,6 +9,7 @@ import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { melbourneMinutes, outreachPhaseAt } from '@/lib/ops/timetable'
+import { recordMissedRuns } from '@/lib/ops/missed-runs'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
 import { syncGrowthTasks } from '@/lib/crm/tasks'
 import { TWENTY_ADVICE_DRAFTING, draftTheTwenty, founderAccount, storeSegmentALetters } from '@/lib/outreach/twenty-drafts'
@@ -202,7 +203,12 @@ export async function GET(request: NextRequest) {
         failed: (report.failed?.length ?? 0) > 0,
       })
     }
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool })
+    // THE MISSED-RUN ALARM (Lawal's 09:01 of 20 November 2026, item 4; src/lib/ops/missed-runs.ts): this run already comes
+    // every quarter hour, so it writes one alarm row for any phase with no run an hour past its cutoff, once a day each;
+    // no new cron. A failed read or write is named in the answer and never stops the run above.
+    const watchdog = await recordMissedRuns(db, now)
+    if ('unread' in watchdog) console.error('[cron/outreach-run] the missed-run alarm could not run:', watchdog.unread)
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool, watchdog })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

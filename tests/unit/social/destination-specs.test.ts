@@ -74,15 +74,15 @@ describe('the destination table', () => {
 
 describe('the check the publish run makes before any publisher is called', () => {
   it('holds a feed post on a 3:4 file on Instagram and on Facebook alike, and lets the 4:5 file go to both', async () => {
-    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'instagram', serve)).toMatch(/slide 1 does not fit instagram: it is 1440x1920, ratio 0\.750/)
-    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'facebook', serve)).toMatch(/slide 1 does not fit facebook: it is 1440x1920, ratio 0\.750/)
-    expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'facebook', serve)).toBeNull()
-    expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'instagram', serve)).toBeNull()
-    expect(await slidesMisfit([file('16-lany-story.jpg', 'story')], 'instagram', serve)).toBeNull()
+    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'instagram', 'feed', serve)).toMatch(/slide 1 does not fit instagram: it is 1440x1920, ratio 0\.750/)
+    expect(await slidesMisfit([file('11-lany-feed.jpg')], 'facebook', 'feed', serve)).toMatch(/slide 1 does not fit facebook: it is 1440x1920, ratio 0\.750/)
+    expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'facebook', 'feed', serve)).toBeNull()
+    expect(await slidesMisfit([file('lany-feed-ig45.jpg')], 'instagram', 'feed', serve)).toBeNull()
+    expect(await slidesMisfit([file('16-lany-story.jpg', 'story')], 'instagram', 'story', serve)).toBeNull()
   })
 
   it('holds a post whose file cannot be read, never guessing its size', async () => {
-    expect(await slidesMisfit([file('not-there.jpg')], 'instagram', serve)).toMatch(/answers 404/)
+    expect(await slidesMisfit([file('not-there.jpg')], 'instagram', 'feed', serve)).toMatch(/answers 404/)
   })
 
   it('runs in the publish run after the piece\'s checks and before the publisher', () => {

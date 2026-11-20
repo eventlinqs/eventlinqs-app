@@ -1,14 +1,17 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { socialPhaseAt } from '@/lib/ops/timetable'
+import { planCheckWords } from '@/lib/ops/plan-check'
+import { midnightIn } from '@/lib/dates/zone-midnight'
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, findHeldPostsOnBlotato, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
-import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
+import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,7 +74,12 @@ export async function GET(request: NextRequest) {
        piece of the week in an approved family is given the checked approval in the founder's name (store.ts
        approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Five runs a day, 06:40
        first so the day is prepared before 07:00, because each check reads the night's booking link. A failure is said
-       and never stops the publishing below. */
+       and never stops the publishing below.
+       IT FAILS CLOSED (the PM's 10:47 of 20 November 2026, item 1; src/lib/social/policy-guard.ts): the dry run first,
+       every piece logged eligible or not; the policy approves only what it read eligible; and any approval outside it,
+       any failed check of an approved piece, or any publish error turns the switch off by code with an alarm row. */
+    let policyHour: PolicyHour | null = null
+    const policyFaults: string[] = []
     if (POLICY_HOURS.has(melbourneHour(now))) {
       try {
         const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
@@ -79,8 +87,18 @@ export async function GET(request: NextRequest) {
           const founder = await founderAccount(db)
           if (founder.id === null) {
             console.error(`[cron/social-publish] the standing policy approved nothing: ${founder.why}`)
+            policyFaults.push(`the standing policy approved nothing: ${founder.why}`)
           } else {
-            const policy = await approveUnderStandingPolicy(db, { by: founder.id, now, siteOrigin: getSiteUrl() })
+            const dry = (await standingPolicyDryRun(db, { now, siteOrigin: getSiteUrl() })) ?? []
+            const eligible = new Set(dry.filter((r) => r.eligible).map((r) => r.id))
+            for (const r of dry) console.log(`[cron/social-publish] dry run: ${r.eligible ? 'ELIGIBLE' : 'outside'} ${r.label} (${r.id})${r.eligible ? '' : `: ${r.reasons.join(' ')}`}`)
+            await recordAnonAuditEvent({
+              action: 'system.social.standing_policy_dry_run',
+              actorEmail: 'cron/social-publish',
+              metadata: { eligible: [...eligible], outside: dry.filter((r) => !r.eligible).map((r) => ({ id: r.id, reasons: r.reasons })) },
+            })
+            const policy = await approveUnderStandingPolicy(db, { by: founder.id, now, siteOrigin: getSiteUrl(), only: eligible })
+            policyHour = { eligible, approved: policy?.approved ?? [], refused: (policy?.held ?? []).map((h) => ({ id: h.id, reason: h.reason })) }
             if (policy && (policy.approved.length > 0 || policy.held.length > 0)) {
               console.log(`[cron/social-publish] standing policy: ${policy.approved.length} approved, ${policy.held.length} outside the policy`)
               for (const h of policy.held) console.log(`[cron/social-publish] outside the policy: ${h.label}: ${h.reason}`)
@@ -94,10 +112,16 @@ export async function GET(request: NextRequest) {
         }
       } catch (error) {
         console.error('[cron/social-publish] the standing policy could not approve:', error instanceof Error ? error.message : error)
+        policyFaults.push(`the standing policy could not run: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
+    // THE SWITCH GOES OFF BY CODE on any fault of this run while it reads on (policy-guard.ts), with its alarm row.
+    if (published.switchOn) {
+      const trips = [...policyFaults, ...switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })]
+      if (trips.length > 0) await switchOffByCode(db, { now, phase: socialPhaseAt(melbourneHour(now)) ?? 'schedule', trips })
+    }
     console.log(
       `[cron/social-publish] ${scheduled.scheduled.length} piece(s) scheduled; ${published.due} due; switch ${published.switchOn ? 'ON' : 'OFF'}: ` +
         (published.switchOn ? `${published.published.length} published, ${published.held.length} held` : `${published.wouldPublish.length} would go, nothing written`),
@@ -110,9 +134,8 @@ export async function GET(request: NextRequest) {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
       for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
       for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
-      const held = await findHeldPostsOnBlotato(db, socialPublishedSearchFromEnv())
-      for (const f of held.found) console.log(`[cron/social-publish] held but published, found on Blotato: ${f}`)
-      for (const m of held.missing) console.log(`[cron/social-publish] held, not found on Blotato: ${m}`)
+      const held = await heldPostsNeedingInvestigation(db)
+      for (const h of held) console.log(`[cron/social-publish] ${h}`)
     } catch (error) {
       console.error('[cron/social-publish] the posts waiting for their URL could not be read back:', error instanceof Error ? error.message : error)
     }
@@ -165,6 +188,22 @@ export async function GET(request: NextRequest) {
     // the phase this hour holds, its pieces scheduled and published as its units.
     const phase = socialPhaseAt(melbourneHour(now))
     if (phase) {
+      // THE DAILY PLAN CHECK (Lawal's 09:01 of 20 November 2026, item 3; src/lib/ops/plan-check.ts): at the schedule and live
+      // phases, the policy's own dry run and what is scheduled for the rest of the day, on the phase row itself. A read that
+      // fails is said on the row and fails the phase, never a calm one.
+      let plan: { readonly words: string; readonly failed: boolean } | null = null
+      if (phase === 'schedule' || phase === 'live') {
+        try {
+          const dry = await standingPolicyDryRun(db, { now, siteOrigin: getSiteUrl() })
+          // The end of Melbourne's today, as the 08:00 report reads it (src/lib/admin/morning-report.ts windowsAt).
+          const tomorrow = midnightIn(new Date(midnightIn(now, 'Australia/Melbourne').getTime() + 36 * 3_600_000), 'Australia/Melbourne')
+          const later = await db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'scheduled').gte('go_at', now.toISOString()).lt('go_at', tomorrow.toISOString())
+          if (later.error) throw new Error(`the rest of the day's schedule could not be read: ${later.error.message}`)
+          plan = planCheckWords(dry, later.count ?? 0)
+        } catch (fault) {
+          plan = { words: `plan: the check could not run: ${fault instanceof Error ? fault.message : String(fault)}`, failed: true }
+        }
+      }
       await recordPhaseRun(db, {
         phase,
         ride: 'social',
@@ -173,8 +212,8 @@ export async function GET(request: NextRequest) {
         // The pieces it drew again count as its work too (the PM's 04:51 of 20 November 2026: the 04:40 freeze drew six again
         // and read 0 units, so its time per unit measured nothing).
         units: scheduled.scheduled.length + published.published.length + redrawn.redrawn.length,
-        result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again`,
-        failed: published.held.length > 0,
+        result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again${plan ? `; ${plan.words}` : ''}`,
+        failed: published.held.length > 0 || plan?.failed === true,
       })
     }
     return NextResponse.json({ ok: true, redrawn, scheduled, published, planned })

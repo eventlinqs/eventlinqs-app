@@ -48,7 +48,7 @@ describe('route B, Blotato', () => {
   test('an Instagram feed post: the account by platform, each slide copied in, the body as the reference gives it', async () => {
     const b = blotato({ accounts: [{ id: 101, platform: 'facebook' }, { id: 202, platform: 'instagram' }] })
     const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
-    const out = await publish({ pieceId: 'p1', platform: 'instagram', slides: [night(1), night(2)], caption: 'This weekend' })
+    const out = await publish({ pieceId: 'p1', platform: 'instagram', format: 'feed', slides: [night(1), night(2)], caption: 'This weekend' })
     expect(out).toEqual({ ref: 'https://www.instagram.com/p/abc/', submission: 'sub-1' })
     expect(b.seen.every((s) => s.key === config.apiKey)).toBe(true)
     expect(b.seen.filter((s) => s.url.endsWith('/v2/media')).map((s) => s.body)).toEqual([{ url: 'https://storage.example/s1.jpg' }, { url: 'https://storage.example/s2.jpg' }])
@@ -62,10 +62,24 @@ describe('route B, Blotato', () => {
     })
   })
 
+  // THE PIECE'S OWN FORMAT, NEVER A GUESS FROM ITS SLIDES (WINDOW 5A's look of 20 November 2026 at 10:49, on the PM's
+  // 10:42 item 1): a tonight story's one slide is of type 'tonight', so the guess read it as a feed, and Blotato would
+  // have been sent a feed post of a story drawing, with no story type.
+  test('a tonight story posts as a story: its own format, whatever its slide type', async () => {
+    const b = blotato({ accounts: [{ id: 202, platform: 'instagram' }] })
+    const asked: string[] = []
+    const urls = async (_: string, slides: readonly Slide[], format: 'feed' | 'story') => (asked.push(format), slides.map((_, i) => `https://storage.example/t${i + 1}.jpg`))
+    const tonight = { t: 'tonight', eventIds: ['e1'], when: 'Saturday 21 Nov', city: 'Geelong' } as unknown as Slide
+    await makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls: urls, sleep: async () => {} })({ pieceId: 'p9', platform: 'instagram', format: 'story', slides: [tonight], caption: 'Tonight' })
+    expect(asked).toEqual(['story'])
+    const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
+    expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'instagram', mediaType: 'story' })
+  })
+
   test('an Instagram story is sent as mediaType story', async () => {
     const b = blotato({ accounts: [{ id: 202, platform: 'instagram' }] })
     const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
-    await publish({ pieceId: 'p2', platform: 'instagram', slides: [story(1)], caption: 'Tonight' })
+    await publish({ pieceId: 'p2', platform: 'instagram', format: 'story', slides: [story(1)], caption: 'Tonight' })
     const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
     expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'instagram', mediaType: 'story' })
   })
@@ -75,7 +89,7 @@ describe('route B, Blotato', () => {
   test('a Facebook story is sent as mediaType story, to the one Page', async () => {
     const b = blotato({ accounts: [{ id: 101, platform: 'facebook' }], pages: [{ id: '555' }] })
     const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
-    await publish({ pieceId: 'p4', platform: 'facebook', slides: [story(1)], caption: 'Tonight' })
+    await publish({ pieceId: 'p4', platform: 'facebook', format: 'story', slides: [story(1)], caption: 'Tonight' })
     const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
     expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'facebook', pageId: '555', mediaType: 'story' })
   })
@@ -88,25 +102,25 @@ describe('route B, Blotato', () => {
   test("Facebook posts to the account's one Page", async () => {
     const b = blotato({ accounts: [{ id: 101, platform: 'facebook' }], pages: [{ id: '555' }] })
     const publish = makeBlotatoPublisher({ config, fetchImpl: b.fetchImpl, slideUrls, sleep: async () => {} })
-    await publish({ pieceId: 'p3', platform: 'facebook', slides: [night(1)], caption: 'This week' })
+    await publish({ pieceId: 'p3', platform: 'facebook', format: 'feed', slides: [night(1)], caption: 'This week' })
     const post = b.seen.find((s) => s.url.endsWith('/v2/posts') && s.method === 'POST')
     expect((post?.body as { post: { target: unknown } }).post.target).toEqual({ targetType: 'facebook', pageId: '555' })
   })
 
   test('refusals are thrown in their own words: no account, two Pages, a refused post, a failed publish', async () => {
     const none = blotato({ accounts: [{ id: 101, platform: 'facebook' }] })
-    await expect(makeBlotatoPublisher({ config, fetchImpl: none.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toThrow(/no connected instagram account/)
+    await expect(makeBlotatoPublisher({ config, fetchImpl: none.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow(/no connected instagram account/)
     const two = blotato({ accounts: [{ id: 101, platform: 'facebook' }], pages: [{ id: '1' }, { id: '2' }] })
-    await expect(makeBlotatoPublisher({ config, fetchImpl: two.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'facebook', slides: [night(1)], caption: 'x' })).rejects.toThrow(/2 Pages/)
+    await expect(makeBlotatoPublisher({ config, fetchImpl: two.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'facebook', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow(/2 Pages/)
     const refused = blotato({ accounts: [{ id: 202, platform: 'instagram' }], refuse: 'caption too long' })
-    await expect(makeBlotatoPublisher({ config, fetchImpl: refused.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toThrow(/caption too long/)
+    await expect(makeBlotatoPublisher({ config, fetchImpl: refused.fetchImpl, slideUrls })({ pieceId: 'p', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toThrow(/caption too long/)
     const failed = blotato({ accounts: [{ id: 202, platform: 'instagram' }], status: 'failed' })
-    await expect(makeBlotatoPublisher({ config, fetchImpl: failed.fetchImpl, slideUrls, sleep: async () => {} })({ pieceId: 'p', platform: 'instagram', slides: [night(1)], caption: 'x' })).rejects.toBeInstanceOf(BlotatoRefusal)
+    await expect(makeBlotatoPublisher({ config, fetchImpl: failed.fetchImpl, slideUrls, sleep: async () => {} })({ pieceId: 'p', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })).rejects.toBeInstanceOf(BlotatoRefusal)
   })
 
   test('accepted and still publishing after the checks: recorded by its submission, so it is never sent twice', async () => {
     const slow = blotato({ accounts: [{ id: 202, platform: 'instagram' }], status: 'in-progress' })
-    const out = await makeBlotatoPublisher({ config, fetchImpl: slow.fetchImpl, slideUrls, sleep: async () => {} })({ pieceId: 'p', platform: 'instagram', slides: [night(1)], caption: 'x' })
+    const out = await makeBlotatoPublisher({ config, fetchImpl: slow.fetchImpl, slideUrls, sleep: async () => {} })({ pieceId: 'p', platform: 'instagram', format: 'feed', slides: [night(1)], caption: 'x' })
     expect(out).toEqual({ ref: 'blotato:sub-1', submission: 'sub-1' })
   })
 })
