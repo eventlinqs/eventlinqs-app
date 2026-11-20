@@ -130,6 +130,7 @@
     "/admin/orders/unfulfilled": 158522,
     "/admin/organisers": 157771,
     "/admin/organisers/[id]": 159221,
+    "/admin/page-checks": 157450,
     "/admin/partners": 157450,
     "/admin/payouts": 157306,
     "/admin/payouts/[orgId]": 159430,
