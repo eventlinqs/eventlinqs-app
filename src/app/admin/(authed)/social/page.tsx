@@ -673,20 +673,18 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
 
   const db = createAdminClient()
   const now = new Date()
-  const posts = await readPosts(db, now)
-  const [campaign, requests, assets, imageRights, targets] = await Promise.all([
-    readCampaign(db, now),
-    readImageRequests(db, now),
-    readAssets(db),
-    readImageRights(db),
-    readBlotatoTargets(process.env),
+  // EVERY READ AT ONCE (law 41, the speed train of 20 November 2026): the posts, the five reads and the two cadence
+  // rules were awaited in turn, and each rule's two reads one after the other; none depends on another.
+  const [posts, [campaign, requests, assets, imageRights, targets], rules] = await Promise.all([
+    readPosts(db, now),
+    Promise.all([readCampaign(db, now), readImageRequests(db, now), readAssets(db), readImageRights(db), readBlotatoTargets(process.env)]),
+    Promise.all(
+      (['feed', 'story'] as const).map(async (format) => {
+        const [rule, last] = await Promise.all([cadenceFor(db, 'instagram', format, now), lastPosted(db, 'instagram', format)])
+        return { format, rule, next: nextAllowed(rule, last, now) }
+      }),
+    ),
   ])
-  const rules = await Promise.all(
-    (['feed', 'story'] as const).map(async (format) => {
-      const rule = await cadenceFor(db, 'instagram', format, now)
-      return { format, rule, next: nextAllowed(rule, await lastPosted(db, 'instagram', format), now) }
-    }),
-  )
   const gone = posts.filter((p) => p.postedAt !== null).sort((a, b) => (b.postedAt ?? '').localeCompare(a.postedAt ?? ''))
   const waiting = posts.filter((p) => p.postedAt === null).sort((a, b) => a.eventStart.localeCompare(b.eventStart) || a.format.localeCompare(b.format))
   const total = gone.reduce(

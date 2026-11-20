@@ -78,4 +78,11 @@ describe('the admin never runs the whole health check itself', () => {
       .map((f) => relative(process.cwd(), f).replace(/\\/g, '/'))
     expect(faults).toEqual([])
   })
+
+  it('/admin/health shows the stored platform run first and runs the battery only when no fresh run is kept (law 41)', () => {
+    const page = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/health/page.tsx'), 'utf8')
+    expect(page).toMatch(/latestSentinelRun\(db, 'platform'\)/)
+    expect(page).toMatch(/stored \? stored\.results : await runAllChecksForAdmin\(\)/)
+    expect(page).toMatch(/const checkedAt = stored \? new Date\(stored\.ranAt\) : now/)
+  })
 })

@@ -53,7 +53,7 @@ describe("the sentinel's runs, kept", () => {
     const cron = readFileSync(join(process.cwd(), 'src/app/api/cron/visitor-sentinel/route.ts'), 'utf8')
     expect(cron).toContain('stored = await recordSentinelRun(db, results, new Date(), dry)')
     const page = readFileSync(join(process.cwd(), 'src/app/admin/(authed)/health/page.tsx'), 'utf8')
-    expect(page).toContain('const sentinel = await latestSentinelRun(createAdminClient())')
+    expect(page).toContain("const [platform, sentinel] = await Promise.all([latestSentinelRun(db, 'platform'), latestSentinelRun(db)])")
     expect(page).toContain('<ChecksTable results={sentinel.run.results}')
   })
 })
