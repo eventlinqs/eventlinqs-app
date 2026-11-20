@@ -55,6 +55,6 @@ describe('the growth desk', () => {
   test('the page draws the desk from the one read the founder email also uses', () => {
     const page = readFileSync(resolve(process.cwd(), 'src/app/admin/(authed)/growth/page.tsx'), 'utf8')
     expect(page).toMatch(/readGrowthDesk\(\)/)
-    expect(page).toMatch(/<GrowthDeskSection desk=\{desk\} \/>/)
+    expect(page).toMatch(/<GrowthDeskSection desk=\{desk\.value\} \/>/)
   })
 })

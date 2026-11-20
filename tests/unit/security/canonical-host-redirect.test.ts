@@ -21,7 +21,7 @@ import { describe, it, expect, vi } from 'vitest'
 // pass-through path needs no live auth server.
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
-    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+    auth: { getClaims: async () => ({ data: null, error: null }) },
   }),
 }))
 
