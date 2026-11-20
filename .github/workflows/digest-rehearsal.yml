@@ -1,0 +1,76 @@
+# THE WEEKEND EDITION, REHEARSED (Lawal, 21 November 2026, 02:59, through the PM: "would it be possible to do one for
+# today, just as an exception? ... I would like to see one today"; law 45). Started by hand, never on a schedule: no cron
+# is added or quickened. It calls production's own digest run for ONE city with the secret only this repository's Actions
+# hold, in one of its two operator modes, and the address is fixed to EventLinqs' own mailbox, never an input:
+#   preview  ?preview_to=  renders what that address would receive and returns it; sends nothing, writes nothing. The
+#                          answer is kept for a day as this run's artifact, so the edition is LOOKED at before any send.
+#   test     ?test_to=     sends that one email to that address only, and writes no digest_sends row, so no subscriber
+#                          receives it and the city's real edition is untouched.
+# The log prints the city, the subject, the count of events and the answer's size, never a person's address beyond our own.
+name: digest rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      city:
+        description: The city whose edition is rehearsed
+        required: true
+        type: choice
+        options: [melbourne, geelong, ballarat, bendigo]
+      mode:
+        description: preview (render only) or test (one email to hello@eventlinqs.com)
+        required: true
+        type: choice
+        options: [preview, test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digest-rehearsal-${{ inputs.city }}
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    name: the city's edition, rehearsed once
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's digest run for one city
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CITY: ${{ inputs.city }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            preview) PARAM=preview_to ;;
+            test) PARAM=test_to ;;
+            *) echo "REFUSED: mode $MODE"; exit 2 ;;
+          esac
+          case "$CITY" in
+            melbourne|geelong|ballarat|bendigo) ;;
+            *) echo "REFUSED: city $CITY"; exit 2 ;;
+          esac
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 \
+            "https://www.eventlinqs.com.au/api/cron/weekly-digest?city=${CITY}&${PARAM}=hello%40eventlinqs.com" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          python3 - <<'PY'
+          import json
+          d = json.load(open('answer.json', encoding='utf-8'))
+          for r in d.get('results', []):
+              p = r.get('preview') or {}
+              print(json.dumps({k: r.get(k) for k in ('city', 'skipped', 'testSentTo', 'events', 'error') if r.get(k) is not None}),
+                    json.dumps({'subject': p.get('subject'), 'html_chars': len(p.get('html') or '')}) if p else '')
+          if 'results' not in d:
+              print(json.dumps({k: d[k] for k in d if k != 'results'}))
+          PY
+          [ "$code" = 200 ]
+      - name: Keep the preview for a day, to be looked at
+        if: ${{ inputs.mode == 'preview' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-preview-${{ inputs.city }}
+          path: answer.json
+          retention-days: 1
