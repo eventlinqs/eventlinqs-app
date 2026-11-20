@@ -11,7 +11,8 @@ import { COHORT_SIZE, pickCohort } from '@/lib/outreach/cohort-pick'
 import { ACQUISITION_STATES, STATE_WORDS, isAcquisitionState, type AcquisitionState } from '@/lib/outreach/acquisition-states'
 import { readDailyQueue } from '@/lib/outreach/daily-queue'
 import { CHANNEL_WORDS, nextStepWords, notReady, openInApp, stepWords, type QueueChannel } from '@/lib/outreach/daily-queue-math'
-import { markSentAction } from './actions'
+import { markSentAction, sendAllClearedAction, sendHeldAction } from './actions'
+import { FIRST_LETTER_MANUAL_ON } from '@/lib/outreach/first-letter-flags'
 import { DailyQueueItem } from './daily-queue-item'
 import { PipelineBoardView } from './pipeline-board-view'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
@@ -106,8 +107,9 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
       <section id="queue" data-daily-queue aria-label="Today's queue" className="mb-8">
         <h2 className="font-display text-[11px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">Today&apos;s queue</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
-          Each message you send by hand, channel by channel, never more in a day than the channel allows. Copy it, open where it goes, send it there, then
-          press Sent. Nothing here sends anything.
+          {FIRST_LETTER_MANUAL_ON
+            ? 'Each message you send by hand, channel by channel, never more in a day than the channel allows. Copy it, open where it goes, send it there, then press Sent. Nothing here sends anything.'
+            : 'Read each first letter, tick that their page says nothing against messages, then press Send, or Send all cleared for the day. Each goes from lawal@ through every check again at the press, never more in a day than the channel allows.'}
         </p>
         {queue === null ? (
           <p className="mt-4 text-sm text-[var(--admin-ink)]">The queue could not be read just now. Reload in a minute; nothing has been lost.</p>
@@ -120,6 +122,28 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
                   {c.sentToday} of {c.cap} sent today, {c.left} left
                   {c.waiting > 0 ? `; ${c.waiting} more ${c.waiting === 1 ? 'waits' : 'wait'} for another day` : ''}
                 </p>
+                {/* SEND ALL CLEARED (train AK): every ready first letter on this channel, one at a time, each checked again. */}
+                {!FIRST_LETTER_MANUAL_ON && c.channel === 'email' && c.today.some((t) => t.step === 1 && notReady(t).length === 0) ? (
+                  <form action={sendAllClearedAction} data-send-all className="mt-3 flex w-full flex-wrap items-center gap-2">
+                    {c.today
+                      .filter((t) => t.step === 1 && notReady(t).length === 0)
+                      .map((t) => (
+                        <span key={t.touchId} hidden>
+                          <input type="hidden" name="touch" value={t.touchId} />
+                          <input type="hidden" name="contentHash" value={t.contentHash} />
+                          <input type="hidden" name="policyVersion" value={policyVersion} />
+                        </span>
+                      ))}
+                    <label className="flex min-h-[44px] w-full cursor-pointer items-center gap-3 text-sm text-[var(--admin-ink)]">
+                      <input type="checkbox" name="checked" required className="h-5 w-5 shrink-0" />
+                      I opened each of these pages and none says anything against messages.
+                    </label>
+                    <button type="submit" className="inline-flex min-h-[44px] items-center rounded-full bg-[var(--brand-accent)] px-5 text-sm font-semibold text-[var(--color-navy-950)]">
+                      Send all cleared ({c.today.filter((t) => t.step === 1 && notReady(t).length === 0).length})
+                    </button>
+                    <p className="w-full text-xs text-[var(--admin-muted)]">One at a time, one every 20 seconds, each checked again at its own moment; every answer is shown here.</p>
+                  </form>
+                ) : null}
                 {c.today.length === 0 ? (
                   <p className="mt-3 text-sm text-[var(--admin-soft)]">{c.left === 0 ? 'Done for today on this channel.' : 'Nothing is waiting on this channel.'}</p>
                 ) : (
@@ -138,7 +162,17 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
                             <p className="mt-3 text-sm text-[var(--admin-ink)]">Not ready: {why.join('; ')}.</p>
                           ) : (
                             <>
-                              <DailyQueueItem touchId={t.touchId} contentHash={t.contentHash} policyVersion={policyVersion} body={t.body} openHref={href} openLabel={OPEN_LABEL[t.channel]} action={markSentAction} />
+                              <DailyQueueItem
+                                touchId={t.touchId}
+                                contentHash={t.contentHash}
+                                policyVersion={policyVersion}
+                                body={t.body}
+                                openHref={href}
+                                openLabel={OPEN_LABEL[t.channel]}
+                                action={markSentAction}
+                                firstLetter={t.channel === 'email' && t.step === 1}
+                                sendAction={sendHeldAction}
+                              />
                               <p className="mt-2 text-xs text-[var(--admin-muted)]">{nextStepWords(t.step)}</p>
                             </>
                           )}

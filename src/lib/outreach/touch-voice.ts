@@ -1,5 +1,5 @@
 import type { ContactChannel } from './crm'
-import { readVoicePolicy, type VoiceCategory, type VoiceMessage } from './voice-gate'
+import { readVoicePolicy, type VoiceCategory, type VoiceConsent, type VoiceMessage } from './voice-gate'
 
 /**
  * A held touch as the communication gateway reads a message (voice-gate.ts): its channel, its category from purpose and
@@ -19,6 +19,14 @@ export interface TouchForVoice {
   readonly subject: string | null
   readonly body: string
   readonly firstTouchId: string | null
+  /**
+   * THE ROW'S OWN FACTS THE GATE READS (train AK, 20 November 2026: production's board showed all seven of the day's
+   * cleared first letters 'Not ready' for an offer subject, a consent basis and a timing rule, though their rows held
+   * subtype ACQ-FIRST, the basis, its page and the page check; the reader never passed them). The communication subtype
+   * (law 24), and the contact's consent basis as recorded.
+   */
+  readonly subtype?: string | null
+  readonly consent?: VoiceConsent | null
 }
 
 export function voiceCategoryOf(purpose: string, step: number | null): VoiceCategory {
@@ -53,5 +61,13 @@ export function touchVoiceMessage(t: TouchForVoice): VoiceMessage {
     greetingName: person || (organiser ? `${organiser} team` : null),
     body: t.body,
     threadRef: category === 'follow_up' || category === 'reply' ? t.firstTouchId : null,
+    ...(t.subtype ? { subtype: t.subtype } : {}),
+    ...(t.consent ? { consent: t.consent } : {}),
   }
+}
+
+/** The contact's consent as the gate reads it, from its row (organiser_contacts basis, page and page check). Pure. */
+export function consentOf(c: { basis?: string | null; published_on_url?: string | null; no_marketing_statement_checked?: boolean | null }): VoiceConsent | null {
+  if (!c.basis || c.basis === 'none') return null
+  return { basis: c.basis, publishedOnUrl: c.published_on_url ?? null, noMarketingStatementChecked: c.no_marketing_statement_checked === true }
 }

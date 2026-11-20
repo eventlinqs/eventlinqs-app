@@ -44,7 +44,12 @@ describe('the Sent press', () => {
   })
 
   test('sends nothing itself', () => {
-    expect(src).not.toMatch(/sendEmail|graph|fetch\(/i)
+    // The Sent press records a letter Lawal sent by hand; it sends nothing. Since train AK the file also holds the Send
+    // presses, which send ONLY through src/lib/outreach/send-held.ts (the sender's one path), never by their own call.
+    const sentPress = src.slice(src.indexOf('export async function markSentAction('), src.indexOf('export async function logReplyAction('))
+    expect(sentPress).not.toMatch(/sendEmail|graph|fetch\(|sendHeld|sendAllCleared/i)
+    expect(src).not.toMatch(/sendEmail|graphSendMime|fetch\(/)
+    expect(src).toMatch(/import \{ sendAllCleared, sendHeldFirstLetter, type SendHeldAnswer \} from '@\/lib\/outreach\/send-held'/)
   })
 
   test('the page shows the queue', () => {

@@ -11,6 +11,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { confirmPageChecked, logReply, markSent } from '@/lib/outreach/crm'
 import { readTouchVoice } from '@/lib/outreach/daily-queue'
 import { approvalProblems, readVoicePolicy, voiceContentHash, type VoicePolicy } from '@/lib/outreach/voice-gate'
+import { graphConfigFromEnv } from '@/lib/outreach/graph'
+import { sendAllCleared, sendHeldFirstLetter, type SendHeldAnswer } from '@/lib/outreach/send-held'
+import { getSiteUrl } from '@/lib/site-url'
 
 /**
  * LAWAL's DAILY OUTREACH QUEUE, the one press (the PROJECT MANAGER's 05:00, 31 October 2026): he sent a held message by
@@ -130,4 +133,66 @@ export async function logReplyAction(formData: FormData): Promise<void> {
   revalidatePath('/admin/acquisition')
   revalidatePath('/admin/today')
   go(outcome === 'bounce' || outcome === 'stop' || outcome === 'no' ? 'Recorded. Nothing more goes to them.' : 'Recorded. The follow ups stop; the conversation is yours.')
+}
+
+/*
+ * SEND, AND SEND ALL CLEARED (train AK, the PM's 12:40 and 12:47 of 20 November 2026; src/lib/outreach/send-held.ts).
+ * Lawal reviews each held first letter on this screen and presses Send, or Send all cleared for the day's batch; the
+ * letter goes from lawal@ through the sender's one path, after the same approval the Sent press holds and his tick that
+ * their page says nothing against messages. Only the founder; every press is in the audit log; nothing opens Outlook.
+ */
+const SendSchema = z.object({
+  touch: z.string().uuid(),
+  checked: z.literal('on'),
+  contentHash: z.string().regex(/^[0-9a-f]{16}$/),
+  policyVersion: z.string().regex(/^[0-9a-f]{16}$/),
+})
+const LetterSchema = SendSchema.omit({ checked: true })
+
+/** The sender's own Graph configuration, read as the outreach run reads it (its default mailbox from outreach_sender). */
+async function sendingSetup(db: ReturnType<typeof createAdminClient>) {
+  const sender = await db.from('outreach_sender').select('from_address').eq('id', true).single()
+  return { graph: sender.error ? null : graphConfigFromEnv(sender.data.from_address), origin: getSiteUrl() }
+}
+
+const answerWords = (a: SendHeldAnswer): string => (a.state === 'sent' ? `Sent at ${a.at}, Message-ID ${a.messageId}.` : `Not sent: ${a.reason}.`)
+
+export async function sendHeldAction(formData: FormData): Promise<void> {
+  const go = (said: string): never => redirect(`/admin/acquisition?said=${encodeURIComponent(said)}#queue`)
+  const session = await requireAdminSession()
+  if (session.admin.role !== 'super_admin') go('Only Lawal sends a first letter.')
+  const limited = await actionRateLimit('admin-outreach-sent', session.userId)
+  if (!limited.ok) go(`Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
+  const parsed = SendSchema.safeParse({ touch: formData.get('touch'), checked: formData.get('checked'), contentHash: formData.get('contentHash'), policyVersion: formData.get('policyVersion') })
+  if (!parsed.success) go('Tick that you opened their page and it says nothing against messages, then press Send.')
+  const { touch, contentHash, policyVersion } = parsed.data as z.infer<typeof SendSchema>
+  const db = createAdminClient()
+  const answer = await sendHeldFirstLetter(db, { touchId: touch, contentHash, policyVersion, byFounder: true, by: session.userId, now: new Date(), ...(await sendingSetup(db)) })
+  await recordAuditEvent({ action: 'admin.outreach.send', targetType: 'outreach_touch', targetId: touch, metadata: { answer }, session })
+  revalidatePath('/admin/acquisition')
+  revalidatePath('/admin/today')
+  go(answerWords(answer))
+}
+
+export async function sendAllClearedAction(formData: FormData): Promise<void> {
+  const go = (said: string): never => redirect(`/admin/acquisition?said=${encodeURIComponent(said)}#queue`)
+  const session = await requireAdminSession()
+  if (session.admin.role !== 'super_admin') go('Only Lawal sends a first letter.')
+  const limited = await actionRateLimit('admin-outreach-sent', session.userId)
+  if (!limited.ok) go(`Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
+  if (formData.get('checked') !== 'on') go('Tick that you opened each page and none says anything against messages, then press Send all.')
+  // Each letter as it was shown: its id, its words' hash and the policy version, carried from the screen in order.
+  const touches = formData.getAll('touch').map(String)
+  const hashes = formData.getAll('contentHash').map(String)
+  const versions = formData.getAll('policyVersion').map(String)
+  const parsed = touches.map((t, i) => LetterSchema.safeParse({ touch: t, contentHash: hashes[i], policyVersion: versions[i] }))
+  const letters = parsed.flatMap((p) => (p.success ? [{ touchId: p.data.touch, contentHash: p.data.contentHash, policyVersion: p.data.policyVersion }] : []))
+  if (letters.length === 0 || letters.length !== parsed.length) go('Nothing was sent: the letters shown could not be read back.')
+  const db = createAdminClient()
+  const answers = await sendAllCleared(db, letters, { byFounder: true, by: session.userId, ...(await sendingSetup(db)) })
+  await recordAuditEvent({ action: 'admin.outreach.send_all', targetType: 'outreach_touch', targetId: touches.join(','), metadata: { answers }, session })
+  revalidatePath('/admin/acquisition')
+  revalidatePath('/admin/today')
+  const sent = answers.filter((a) => a.state === 'sent').length
+  go(`${sent} of ${answers.length} sent. ${answers.map(answerWords).join(' ')}`)
 }

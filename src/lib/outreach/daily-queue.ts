@@ -5,7 +5,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { melbourneDayStart } from '@/lib/listings/horizon'
 import { contactRefusal, type ContactChannel } from './crm'
 import { buildDailyQueue, type QueueChannel, type QueueTouch } from './daily-queue-math'
-import { touchVoiceMessage } from './touch-voice'
+import { consentOf, touchVoiceMessage } from './touch-voice'
 import { readVoicePolicy, voiceContentHash, voiceProblems, type VoiceMessage } from './voice-gate'
 
 /**
@@ -27,7 +27,17 @@ type HeldRow = {
   body: string
   tracked_link: string | null
   drafted_at: string
-  organiser_contacts: { channel: string; address: string; person_name: string | null; organisers: { name: string } | null } | null
+  /** The communication subtype (law 24) and the contact's consent, which the gate reads (touch-voice.ts). */
+  comms_subtype?: string | null
+  organiser_contacts: {
+    channel: string
+    address: string
+    person_name: string | null
+    basis?: string | null
+    published_on_url?: string | null
+    no_marketing_statement_checked?: boolean | null
+    organisers: { name: string } | null
+  } | null
 }
 
 export async function readDailyQueue(db: Admin, now: Date): Promise<QueueChannel[]> {
@@ -48,7 +58,7 @@ export async function readHeldTouches(db: Admin, now: Date): Promise<{ touches: 
     readEveryRow<HeldRow>('the held outreach drafts', (from, to) =>
       db
         .from('outreach_touches')
-        .select('id, contact_id, step, purpose, held_because, subject, body, tracked_link, drafted_at, organiser_contacts!inner(channel, address, person_name, organisers(name))')
+        .select('id, contact_id, step, purpose, held_because, subject, body, tracked_link, drafted_at, comms_subtype, organiser_contacts!inner(channel, address, person_name, basis, published_on_url, no_marketing_statement_checked, organisers(name))')
         .eq('state', 'held')
         .order('id', { ascending: true })
         .range(from, to) as unknown as PromiseLike<{ data: HeldRow[] | null; error: { message: string } | null }>,
@@ -90,6 +100,8 @@ export async function readHeldTouches(db: Admin, now: Date): Promise<{ touches: 
       subject: r.subject,
       body: r.body,
       firstTouchId: firsts.get(r.contact_id) ?? null,
+      subtype: r.comms_subtype ?? null,
+      consent: consentOf(c),
     })
     touches.push({
       touchId: r.id,
@@ -121,7 +133,7 @@ export async function readHeldTouches(db: Admin, now: Date): Promise<{ touches: 
 export async function readTouchVoice(db: Admin, touchId: string): Promise<VoiceMessage | null> {
   const t = await db
     .from('outreach_touches')
-    .select('id, contact_id, step, purpose, subject, body, organiser_contacts!inner(channel, address, person_name, organisers(name))')
+    .select('id, contact_id, step, purpose, subject, body, comms_subtype, organiser_contacts!inner(channel, address, person_name, basis, published_on_url, no_marketing_statement_checked, organisers(name))')
     .eq('id', touchId)
     .eq('state', 'held')
     .maybeSingle()
@@ -146,5 +158,7 @@ export async function readTouchVoice(db: Admin, touchId: string): Promise<VoiceM
     subject: row.subject,
     body: row.body,
     firstTouchId,
+    subtype: row.comms_subtype ?? null,
+    consent: consentOf(c),
   })
 }

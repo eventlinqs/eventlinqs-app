@@ -187,7 +187,18 @@ async function threadIds(db: Admin, contactId: string, excludeId: string): Promi
 
 export async function runOutreachSender(
   db: Admin,
-  deps: { now: Date; origin: string; graph: GraphConfig | null; fetchImpl?: Fetch; fromName?: string },
+  deps: {
+    now: Date
+    origin: string
+    graph: GraphConfig | null
+    fetchImpl?: Fetch
+    fromName?: string
+    /**
+     * ONLY THESE LETTERS (train AK, the PM's 12:40 and 12:47 of 20 November 2026): Lawal's Send press runs this one
+     * path for the letter he pressed, with every check below, never a second path. Absent, the run takes the queue.
+     */
+    only?: readonly string[]
+  },
 ): Promise<SenderReport> {
   const sender = await db.from('outreach_sender').select('mode, from_address, test_domain').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
@@ -205,13 +216,12 @@ export async function runOutreachSender(
   }
   report.transport = transport.kind
 
-  const due = await db
+  const queued = db
     .from('outreach_touches')
     .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, outreach_templates(key)')
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
-    .order('scheduled_for', { ascending: true })
-    .limit(SEND_BATCH)
+  const due = await (deps.only ? queued.in('id', [...deps.only]) : queued).order('scheduled_for', { ascending: true }).limit(SEND_BATCH)
   if (due.error) throw new Error(`the queue: ${due.error.message}`)
 
   for (const t of (due.data ?? []) as unknown as Queued[]) {
