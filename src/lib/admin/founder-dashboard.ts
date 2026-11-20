@@ -8,7 +8,7 @@ import { readSupplyScorecard } from '@/lib/growth/supply-scorecard'
 import { readOrganiserFunnel } from '@/lib/growth/organiser-funnel'
 import { readGrowthWeek } from '@/lib/growth/weekly'
 import { nightOutcomeFrom, recommendationFigure, recommendations, type NightOutcome } from '@/lib/growth/demand-learning'
-import { runAllChecksForAdmin } from '@/lib/health/checks'
+import { latestSentinelRun } from '@/lib/health/sentinel-runs'
 import { contributionByEvent, profitabilityFigures, type CampaignSpend } from '@/lib/growth/event-contribution'
 import { fourLevels, levelFigures, nightFiguresFrom, venueLevels } from '@/lib/growth/four-levels'
 import { weekStartOf } from '@/lib/social/campaign'
@@ -48,6 +48,15 @@ async function counted(read: () => PromiseLike<CountAnswer>): Promise<Counted> {
   }
 }
 
+/** The platform sentinel's newest stored run, at most STORED_RUN_FRESH_MS old; else why there is none (NOT COUNTED). */
+const STORED_RUN_FRESH_MS = 30 * 60_000
+async function storedPlatformRun(db: ReturnType<typeof createAdminClient>, now: Date) {
+  const { run, note } = await latestSentinelRun(db, 'platform')
+  if (!run) throw new Error(note ?? 'the platform sentinel has stored no run')
+  if (now.getTime() - Date.parse(run.ranAt) > STORED_RUN_FRESH_MS) throw new Error(`its newest run is from ${run.ranAt}, older than 30 minutes`)
+  return run.results
+}
+
 async function settle<T>(read: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; note: string }> {
   try {
     return { ok: true, value: await read() }
@@ -78,7 +87,9 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
       settle(() => readSupplyScorecard(now)),
       settle(() => readOrganiserFunnel(now)),
       settle(() => readGrowthWeek(now)),
-      settle(() => runAllChecksForAdmin()),
+      // THE NEWEST STORED RUN OF THE PLATFORM SENTINEL (P0 of 20 November 2026): never the whole battery inside this
+      // page, which held /admin/today until its slowest check (four public pages at 15 s each) had answered.
+      settle(() => storedPlatformRun(admin, now)),
       counted(() => admin.from('listing_submissions').select('id', head).eq('status', 'waiting')),
       counted(() => admin.from('listing_claims').select('id', head).eq('status', 'manual_open')),
       counted(() => admin.from('social_assets').select('id', head).eq('approval_status', 'pending')),

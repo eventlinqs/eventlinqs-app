@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { runAllChecks, overallStatus } from '@/lib/health/checks'
 import { routeAlerts } from '@/lib/health/runner'
+import { recordSentinelRun } from '@/lib/health/sentinel-runs'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const runtime = 'nodejs'
@@ -33,6 +35,17 @@ export async function GET(request: NextRequest) {
 
   const results = await runAllChecks({ drill })
   const status = overallStatus(results)
+  // EVERY RUN IS KEPT WHOLE (P0 of 20 November 2026, the PM's 15:41): the next critical is named from this table, and
+  // the admin reads the newest run instead of running the whole battery inside a page. A drill is never kept: its
+  // forced failure is not the platform's state. A failed write is said in the answer and never stops the alerts.
+  let stored = 'a drill is not kept'
+  if (!drill) {
+    try {
+      stored = await recordSentinelRun(createAdminClient(), results, new Date(), dry, 'platform')
+    } catch (err) {
+      stored = `not stored: ${err instanceof Error ? err.message : String(err)}`
+    }
+  }
 
   let alerted = false
   let toAlertIds: string[] = []
@@ -58,6 +71,7 @@ export async function GET(request: NextRequest) {
       alerted,
       toAlertIds,
       recovered,
+      stored,
       dry,
       drill: drill ?? null,
       checks: results,

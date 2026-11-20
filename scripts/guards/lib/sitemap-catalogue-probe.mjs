@@ -160,7 +160,9 @@ async function main() {
 
   /* -------------------------------------------------------- the expected side */
 
-  const rawEvents = await readAll(`events?select=slug&${PUBLIC_EVENT_QUERY}&slug=not.is.null&order=slug.asc`, { cap: 5000, what: 'the published events' })
+  // Train AL (20 November 2026): the sitemap names only nights still listed, so this side reads each night's dates and
+  // keeps the same window by the same rule (isStillListed), never a PostgREST dialect of it.
+  const rawEvents = await readAll(`events?select=slug,start_date,end_date,timezone&${PUBLIC_EVENT_QUERY}&slug=not.is.null&order=slug.asc`, { cap: 5000, what: 'the published events' })
   if (rawEvents.error) {
     process.stdout.write(JSON.stringify({ looked: false, reason: `the raw event read failed: ${rawEvents.error}` }))
     return
@@ -227,9 +229,10 @@ async function main() {
   }
 
   const expectedEvents = []
+  const eventsNow = new Date()
   for (const row of rawEvents.rows) {
     const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
-    if (slug) expectedEvents.push(`/events/${slug}`)
+    if (slug && isStillListed(row, eventsNow)) expectedEvents.push(`/events/${slug}`)
   }
 
   const expectedOrganisers = []
