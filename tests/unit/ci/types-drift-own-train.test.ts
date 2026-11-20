@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-// @ts-expect-error a plain .mjs module, no declarations
 import { trainOwnDeltas } from '../../../scripts/ci/types-drift-own-train.mjs'
 
 // A TRAIN'S OWN TYPES, JUDGED BEFORE ITS PUSH (law 4; the PM's order of 20 November 2026). #323's CI went red on one

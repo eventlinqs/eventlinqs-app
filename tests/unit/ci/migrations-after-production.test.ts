@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error a plain .mjs module, no declarations
 import { migrationsBehindProduction, versionOf } from '../../../scripts/ci/migrations-after-production.mjs'
 
 // A TRAIN'S MIGRATIONS SORT AFTER PRODUCTION'S NEWEST (law 4; #324, 20 November 2026). The pipeline's production push
