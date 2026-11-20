@@ -1,0 +1,33 @@
+# THE SOCIAL PLAN, ASKED ONCE (the PM's item 3 of 23:57, 20 November 2026: today's law 37 moments planned before six,
+# law 35). Started by hand. It calls production's own social run with ?plan=now and the secret only this repository's
+# Actions hold; the run plans the week and today's moments exactly as its 06:40 run does, and approves, schedules and
+# publishes nothing. No cron is added or quickened: this runs only when started. The answer names pieces and counts,
+# never a person's address (this log is public).
+name: social plan now
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-plan-now
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: the week and today's moments, planned once
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's social run to plan now
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 'https://www.eventlinqs.com.au/api/cron/social-publish?plan=now' \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]

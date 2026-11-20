@@ -56,6 +56,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ readBack: true, read: back.read, filled: back.filled, pending: back.pending })
   }
 
+  // THE PLAN, ASKED ONCE (the PM's item 3 of 23:57, 20 November 2026: the day planned before six, law 35): with ?plan=now
+  // the run plans the week and today's law 37 moments exactly as its own 06:40 run does (planCampaignWeek, planned by no
+  // person) and answers what it drew; it approves, schedules and publishes nothing, and it adds no cron and quickens none:
+  // it runs only when asked (.github/workflows/social-plan-now.yml).
+  if (request.nextUrl.searchParams.get('plan') === 'now') {
+    const db = createAdminClient()
+    const week = await planCampaignWeek(db, { plannedBy: null, now: new Date() })
+    if (week.created > 0) {
+      await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
+    }
+    return NextResponse.json({ planned: true, campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+  }
+
   try {
     const db = createAdminClient()
     const now = new Date()
