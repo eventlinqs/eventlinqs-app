@@ -1,6 +1,7 @@
 import { CAPTION_PHOTO_CREDITS, clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefusal, nightKind, notAStreet, OLDER_LOOK_IN_PLAN, ORGANISER_OFFER_FILE, ORGANISER_OFFER_SHOWS_UNTIL, type CampaignNight, type Slide } from './campaign'
 import { namesAStandIn, STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
+import { law37Refusal } from './law37'
 import { getAllCities } from '@/lib/cities/data'
 
 /**
@@ -12,6 +13,7 @@ import { getAllCities } from '@/lib/cities/data'
  * another piece or the campaign.
  *
  *   holds (pieceQuality)
+ *     [law37]    not in law 37's format: any slide that is not a permitted photograph shown whole (Lawal, 20 November 2026)
  *     [night]    a night it advertises has started (unless its caption says it is on now and the night has not ended),
  *                a day it prints is already over, a row prints another session's time
  *     [photo]    a stand-in over a night it does not show (Lawal's D1: never a wrong photograph)
@@ -187,6 +189,12 @@ export function pastDaysPrinted(texts: readonly string[], now: Date, zone = 'Aus
 
 export function pieceQuality(input: QualityInput): string[] {
   const out: string[] = []
+
+  /* [law37] LAW 37 (Lawal, 20 November 2026, 11:24, locked: image first, organic, never an advert): only a permitted
+     photograph shown whole posts; every earlier family is refused here, in the one rule set that approval (a person's
+     or the standing policy's), scheduling and publishing all read (law37.ts; the guard law37-only.mjs). */
+  const law37 = law37Refusal(input.slides)
+  if (law37) out.push(`[law37] ${law37}`)
 
   /* [night] class 1: no piece posts once a night it advertises has started, unless its caption says it is on now and
      people can still go (the night has not ended): Lawal's 00:12, section 5. */

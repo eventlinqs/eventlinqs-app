@@ -11,6 +11,7 @@ import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
+import { law37Refusal } from './law37'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
@@ -499,7 +500,7 @@ export async function brandImages(db: Db, now: Date): Promise<UsableImage[]> {
 
 /** The night whose OWN photograph a slide draws: a night, a story, a poster, a feature, or a cover showing one whole. */
 function ownPhotoNightOf(sl: Slide): string | null {
-  if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster' || sl.t === 'feature') && sl.photo) return sl.eventId
+  if ((sl.t === 'night' || sl.t === 'story' || sl.t === 'poster' || sl.t === 'feature' || sl.t === 'photo') && sl.photo) return sl.eventId
   if (sl.t === 'week_cover' && sl.photo && sl.photoEventId) return sl.photoEventId
   return null
 }
@@ -970,7 +971,10 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
   const pieces = withKitCaptions([...week.pieces, ...(DAILY_POSTERS_IN_PLAN ? dailyPosterPieces({ nights, cities, weekStart, origin: ORIGIN, excluded }) : [])], nights, cities, ORIGIN)
   // Lawal's social lock of 15 November 2026 (campaign.ts lockRefusal): only a piece drawn wholly in the locked look and
   // carrying a photograph enters the week's plan; the rest wait behind OLDER_LOOK_IN_PLAN (law 13), never deleted.
-  return { ...week, pieces: OLDER_LOOK_IN_PLAN ? pieces : pieces.filter((p) => lockRefusal(p.slides) === null) }
+  const locked = OLDER_LOOK_IN_PLAN ? pieces : pieces.filter((p) => lockRefusal(p.slides) === null)
+  // LAW 37 (Lawal, 20 November 2026, 11:24): every earlier family is never drawn again, so neither the week's plan nor the
+  // hourly redraw (which draws from this plan) holds one; they wait behind EARLIER_FAMILIES_ON (law 13), never deleted.
+  return { ...week, pieces: locked.filter((p) => law37Refusal(p.slides) === null) }
 }
 
 /** The partner's own link, minted for their kit alone, so what their share brings is counted as theirs. */

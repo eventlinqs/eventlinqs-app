@@ -21,6 +21,7 @@ import { askElement, bandHeight, bandPhoto, bandTop, daysElement, featureElement
 import { footBottom, lockedSlideFaults, spareAboveFoot, wordTop } from '@/lib/broadcast/day-card-guard'
 import { inLockedLook, isApprovedFileUrl, type Composition, type LOCKED_SLIDES, type Slide } from '@/lib/social/campaign'
 import { standInCredit, standInOf } from '@/lib/social/stand-ins'
+import { drawLaw37Photo } from '@/lib/broadcast/law37-photo'
 
 /**
  * THE WEEKLY CAMPAIGN'S SLIDES (the release checklist of 28 October 2026, J7, S3; Lawal's final creative approval of
@@ -103,6 +104,9 @@ export function layoutOfSlide(f: Format, slide: UnlockedSlide, image: SlideImage
     case 'end':
       layout = layoutEnd(tf, { headline: slide.headline, line: slide.line, url: slide.url, foot: slide.foot, label: count }, m)
       break
+    case 'photo':
+      // Law 37's photograph is drawn whole by drawLaw37Photo, never laid out as a card (renderCampaignSlide sends it there).
+      throw new Error("law 37's photograph is drawn whole by drawLaw37Photo, never laid out as a card")
     case 'poster': {
       /* Family F: the photograph only as the register holds it now for this night, else the same poster in type. */
       const facts = { ...slide.night, photo: photo && slide.credit ? { url: photo, credit: slide.credit, archival: false } : null }
@@ -149,6 +153,12 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
         for (const fault of await lockedSlideFaults(el, f)) faults.push(`${where}: ${fault}.`)
         continue
       }
+      // LAW 37'S ONE SLIDE: the photograph whole, nothing laid out to measure; it is drawn only while its photograph is
+      // permitted (its fit is its destination's, slidesMisfit). Said once, for the piece's own format.
+      if (slide.t === 'photo') {
+        if (!images.get(i) && f === formatsOf(pieceFormat)[0]) faults.push(`Slide ${i + 1}: its photograph is not permitted now, so it is never drawn.`)
+        continue
+      }
       if (!isLocked(slide)) continue
       // An approved file is never drawn, so nothing here can measure it: its fit is read from its own bytes against its
       // destination before any publisher is called (slidesMisfit, src/lib/social/destination-check.ts).
@@ -160,7 +170,7 @@ export async function visualFaults(slides: readonly Slide[], pieceFormat: 'feed'
       for (const fault of await lockedSlideFaults(el, f)) faults.push(`${where}: ${fault}.`)
     }
     slides.forEach((slide, i) => {
-      if (isLocked(slide) || (slide.t === 'poster' && slide.look)) return
+      if (isLocked(slide) || (slide.t === 'poster' && slide.look) || slide.t === 'photo') return
       const where = `Slide ${i + 1} (${f === 'feed' ? 'portrait' : f})`
       let layout: Layout
       try {
@@ -198,6 +208,7 @@ export function withStandInCredit(slide: Slide): Slide {
 }
 
 export async function buildCampaignSlide(f: Format, given: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<React.ReactElement> {
+  if (given.t === 'photo') throw new Error("law 37's photograph is drawn whole by drawLaw37Photo, never laid out as a card")
   const slide = withStandInCredit(given)
   if (isLocked(slide)) return (await lockedElement(f, slide, image, n, total, next)) as unknown as React.ReactElement
   if (slide.t === 'poster' && slide.look) return (await posterLockedElement(f, slide, image)) as unknown as React.ReactElement
@@ -206,6 +217,8 @@ export async function buildCampaignSlide(f: Format, given: Slide, n: number, tot
 
 /** The slide as the JPEG Instagram and Facebook take, at the format's published size. `next` names a story's next slide. */
 export async function renderCampaignSlide(f: Format, slide: Slide, n: number, total: number, label: string | null, image: SlideImage | null = null, next: Slide | null = null): Promise<Uint8Array> {
+  // LAW 37'S ONE SLIDE (law37-photo.tsx): the permitted photograph whole, never laid out as a card.
+  if (slide.t === 'photo') return drawLaw37Photo(f, slide, image)
   // An approved file is its own bytes, read from its own address on www, never drawn again: a story reel, a kit download
   // or any later caller gets exactly the file Lawal approved.
   if (slide.t === 'file') {

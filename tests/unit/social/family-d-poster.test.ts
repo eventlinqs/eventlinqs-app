@@ -1,4 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+// These tests prove the earlier families' own rules, kept behind EARLIER_FAMILIES_ON (law 13); law 37's hold over the same
+// pieces is proved in law37.test.ts and by the guard law37-only, so here alone its refusal is set aside.
+vi.mock('@/lib/social/law37', async (orig) => ({ ...(await orig<typeof import('@/lib/social/law37')>()), law37Refusal: () => null }))
 import sharp from 'sharp'
 import { ctaFor } from '@/lib/events/cta'
 import { lockRefusal, nightKind, type CampaignNight, type Slide } from '@/lib/social/campaign'

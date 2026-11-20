@@ -168,6 +168,13 @@ export type Slide =
   /** Lawal's ask on gold, with the three to start with. */
   | { t: 'ask'; composition: 'close'; count: number; three: DayRow[] }
   /**
+   * LAW 37'S ONE SLIDE (Lawal, 20 November 2026, 11:24, locked; src/lib/social/law37.ts): the night's permitted photograph
+   * shown whole at its own shape, nothing printed on it. `width` and `height` are the photograph's own, from the register,
+   * so the destination check measures what is drawn. `line` is a story's one small line of fact beneath the photograph
+   * (a story carries no caption); a feed slide's is always null, its words in the caption.
+   */
+  | { t: 'photo'; composition: 'photo_whole'; eventId: string; photo: string; credit: null; width: number; height: number; line: string | null }
+  /**
    * AN APPROVED FILE, POSTED AS IT IS (Lawal, 18 November 2026, 11:55: "You can post this. You have my approval now",
    * of the SOCIAL-READY-15NOV posts; the PM's 12:20): a finished image Lawal approved, never drawn again. `url` is its
    * address under /social/approved/ on www (isApprovedFileUrl); `eventId` and `startDate` are the night it shows, read
@@ -2162,6 +2169,11 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     if (!CAPTION_PHOTO_CREDITS && /^\s*(Photos?|Photograph(?: by)?|Illustrative photo)\s*:/im.test(v.caption)) issues.push(`The ${name} words carry a photo credit line; no caption carries one.`)
     if (!STAND_INS_IN_PLAN && namesAStandIn(v.caption)) issues.push(`The ${name} words name a stock photograph; none goes out.`)
     if (!v.cta?.trim()) issues.push(`The ${name} version has no call to action.`)
+    // EACH PLATFORM'S LINK NAMES ITS OWN SOURCE (the PM's 14:00 of 20 November 2026: the AMCF story's Facebook version
+    // carried utm_source=instagram, so its visits would have counted as Instagram's): a version naming the other
+    // platform as its source is refused, its words and its call to action both.
+    const other = platform === 'instagram' ? 'facebook' : 'instagram'
+    if (new RegExp(`utm_source=${other}\\b`, 'i').test(`${v.caption}\n${v.cta}`)) issues.push(`The ${name} words carry utm_source=${other}; its link names ${platform} as its source.`)
   }
   for (const s of rev.slides) {
     if (s.t !== 'night' && s.t !== 'story') continue

@@ -1657,6 +1657,27 @@ const DRILLS = [
     expect: 'no longer refused first',
   },
   /*
+   * law37-only (Lawal's law 37 of 20 November 2026, 11:24; the PM's 11:28 item 3), two drills: the earlier families turned
+   * back on without his word, and the one validation pipeline no longer refusing a piece outside the format (as on the
+   * morning of 20 November, when the boxed AMCF card was approved and posted).
+   */
+  {
+    name: 'the earlier families are switched back on without Lawal',
+    guard: `${GUARDS}/law37-only.mjs`,
+    file: 'src/lib/social/law37.ts',
+    find: 'export const EARLIER_FAMILIES_ON = false',
+    replace: 'export const EARLIER_FAMILIES_ON = true',
+    expect: 'EARLIER_FAMILIES_ON is not false',
+  },
+  {
+    name: "pieceQuality no longer refuses a piece outside law 37's format, as the boxed AMCF card passed on 20 November",
+    guard: `${GUARDS}/law37-only.mjs`,
+    file: 'src/lib/social/piece-quality.ts',
+    find: '  if (law37) out.push(`[law37] ${law37}`)',
+    replace: '  if (law37 && false) out.push(`[law37] ${law37}`)',
+    expect: "no longer refuses a piece outside law 37's format",
+  },
+  /*
    * The piece's own format (WINDOW 5A's look of 20 November 2026 at 10:49, on the PM's 10:42 item 1), two drills: the
    * fault as it was found (the publisher guessing the format from its slides, so a tonight story posts as a feed), and
    * the publishing run calling the publisher with a fixed format instead of the piece's own.

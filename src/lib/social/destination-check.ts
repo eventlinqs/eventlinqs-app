@@ -2,6 +2,7 @@ import type { Slide } from '@/lib/social/campaign'
 import type { SocialPlatform } from '@/lib/social/cadence'
 import { SOCIAL_CARD_FORMATS } from '@/lib/broadcast/social-card-spec'
 import { destinationOf, imageFacts, misfitOf } from '@/lib/social/destination-specs'
+import { photoDrawnSize } from '@/lib/social/law37'
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -31,7 +32,8 @@ export async function slidesMisfit(slides: readonly Slide[], platform: SocialPla
       if (why) return `slide ${i + 1} does not fit ${platform}: ${why}`
       continue
     }
-    const drawn = SOCIAL_CARD_FORMATS[format]
+    // Law 37's photograph is drawn at its own shape (law37.ts photoDrawnSize), every other slide at its card's size.
+    const drawn = s.t === 'photo' ? photoDrawnSize(format, { width: s.width, height: s.height }) : SOCIAL_CARD_FORMATS[format]
     const why = misfitOf(dest, { width: drawn.width, height: drawn.height, bytes: 0, kind: 'jpeg' })
     if (why) return `slide ${i + 1}, drawn at ${drawn.width}x${drawn.height}, does not fit ${platform}: ${why}`
   }
