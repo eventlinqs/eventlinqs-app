@@ -24,11 +24,14 @@ import { getAllCities } from '@/lib/cities/data'
  */
 
 /** The moment the rules below came into force: a revision drawn before it is stale. Moved forward with every rule change. */
-// Moved forward with every rule change. Last moved to 11:00 on 18 November 2026 (Melbourne), past the category car's deploy
+// Moved forward with every rule change. Last moved to 06:45 on 21 November 2026 (Melbourne), past train AO's deploy: AMCF's
+// Saturday pieces drawn at 05:10 that day read 'Fri 20 Nov' for a three day night (nightDates fixes the planner), so the
+// hourly run draws them again with the code in force before any is approved. Before that, to 11:00 on 18 November 2026
+// (Melbourne), past the category car's deploy
 // (the PM's 07:05, item 3: the routine corrections apply by the hourly redraw after the car): the pack of 08:01 held seven
 // posts drawn at 05:40 by #295's code that #296's moment did not make stale. Until 11:00 a fresh drawing also reads as
 // stale, which only means the hourly run compares it again; an identical drawing is never written twice (olderLookRedraws).
-export const PIECE_RULES_SINCE = '2026-11-18T00:00:00.000Z'
+export const PIECE_RULES_SINCE = '2026-11-20T19:45:00.000Z'
 
 export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'>
 

@@ -1,6 +1,7 @@
 // THE STANDING POLICY'S OWN BAR (the PM's 03:42 of 20 November 2026, item 4). The policy approves in the founder's name with
 // no person reading the piece, so it approves only a piece the code in force would not draw again and whose drawn image
 // prints no photo credit; everything else waits for a person's press, its reasons said (src/lib/social/store.ts).
+import { PIECE_RULES_SINCE } from '@/lib/social/piece-quality'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -20,7 +21,8 @@ const instagram = [...BODY, "Send this to who you're going with. Link in bio.", 
 const facebook = [...BODY, `Send this to who you're going with: ${LINK}`, '', '#Melbourne #FedSquare #AfricanMusic'].join('\n')
 const versions = { instagram: { caption: instagram }, facebook: { caption: facebook } } as never
 const fileSlide = (name: string) => ({ t: 'file', composition: 'close', url: `${APPROVED}${name}`, format: 'feed', eventId: '5d664060-a175-4b07-9c07-5e3c4a934c69', startDate: '2026-11-20T00:00:00Z' }) as Slide
-const FRESH = '2026-11-20T00:00:00.000Z'
+// Fresh: drawn after the rules in force (piece-quality.ts PIECE_RULES_SINCE), as piece-quality.test.ts reads it.
+const FRESH = new Date(Date.parse(PIECE_RULES_SINCE) + 60_000).toISOString()
 
 describe("the standing policy's own bar", () => {
   it("passes AMCF's feed piece as written on production at 03:14:50 (version 3: the clean file, the gated captions)", () => {
