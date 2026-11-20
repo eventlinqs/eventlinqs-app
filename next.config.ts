@@ -146,6 +146,11 @@ const SECURITY_HEADERS = [
 ]
 
 const nextConfig: NextConfig = {
+  // SENTRY'S RELEASE IS THE BUILD'S OWN COMMIT (the PM's 15:41 item 2 of 20 November 2026: production's events read
+  // release=local, so no error could be tied to a commit). Fixed into the bundle at build time, where Vercel gives the
+  // build its commit ("Next.js will replace process.env.customKey with my-value at build time": the installed docs,
+  // 01-next-config-js/env.md); every Sentry.init reads it first. A commit SHA is public: the repository is.
+  env: { SENTRY_RELEASE: process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || '' },
   trailingSlash: false,
   // Render page metadata (<title>, <meta name="description">, etc.) in the
   // initial <head> for EVERY user agent, opting out of Next's streaming-

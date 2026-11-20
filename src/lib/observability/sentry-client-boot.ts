@@ -87,7 +87,7 @@ export function bootSentryClient(
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
     environment: sentryEnvironment(true),
-    release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+    release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
     // Session Replay is NOT listed here on purpose: it is armed on the visitor's
     // first interaction by armSessionReplay() below. Adding it here statically
     // imports the rrweb recorder (~304KB unminified with rrweb inlined)
