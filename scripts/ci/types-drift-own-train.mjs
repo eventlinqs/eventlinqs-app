@@ -23,6 +23,7 @@ import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { analyse, parseMigrationDdl } from './types-drift-analyse.mjs'
+import { gitEnv } from '../lib/git-env.mjs'
 
 export const TEST_REF = 'vkapkibzokmfaxqogypq'
 const MIGRATIONS_DIR = 'supabase/migrations'
@@ -48,7 +49,7 @@ const say = (s) => console.log(`[types-drift-own] ${s}`)
 
 async function main() {
   const base = process.argv[2] || 'origin/main'
-  const changed = execFileSync('git', ['diff', '--name-only', '--diff-filter=d', `${base}...HEAD`, '--', MIGRATIONS_DIR], { encoding: 'utf8' })
+  const changed = execFileSync('git', ['diff', '--name-only', '--diff-filter=d', `${base}...HEAD`, '--', MIGRATIONS_DIR], { encoding: 'utf8', env: gitEnv() })
     .split(/\r?\n/)
     .filter((f) => f.endsWith('.sql'))
     .map((f) => basename(f))
