@@ -251,7 +251,7 @@ export async function planLifecyclePieces(
       height: photo.height,
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
-    const facts = { title: n.title, place, dateLabel: dateLabel(n.startDate, c.run.zone), priceLine: n.priceLine, summary: n.summary }
+    const facts = { title: n.title, place, dateLabel: dateLabel(n.startDate, c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
     const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
     const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })

@@ -1,4 +1,5 @@
 import type { SocialFormat } from './cadence'
+import { carriesBannedWord } from './words'
 
 /**
  * THE ENGINE THINKS IN EVENT LIFECYCLES AND NEVER REPEATS (law 37 (l), Lawal, 20 November 2026, 14:06; his yes to the
@@ -439,6 +440,11 @@ export type CaptionFacts = {
   readonly priceLine: string | null
   /** The listing's own words, its first sentence only. */
   readonly summary: string | null
+  /**
+   * The night's exact names (its title and its host), the only words that may carry the banned word (words.ts
+   * carriesBannedWord, the one rule every piece is judged by). Absent, the title alone.
+   */
+  readonly names?: readonly (string | null | undefined)[]
 }
 
 /**
@@ -457,7 +463,11 @@ export function captionFor(input: {
 }): string {
   const f = input.facts
   const sentence = (f.summary ?? '').split(/(?<=[.!?])\s/)[0]?.trim() ?? ''
-  const experience = sentence.length >= 20 && sentence.length <= 200 ? sentence.replace(/!+$/, '.') : ''
+  // The listing's sentence is quoted only where the piece may say it: one carrying the banned word outside the night's
+  // own names is left out, and the caption goes on without it (21 November 2026, 02:53: AMCF's first sentence says the
+  // banned word outside its title, and both of its pieces were refused as drawn; tests/unit/social/lifecycle.test.ts).
+  const quotable = sentence.length >= 20 && sentence.length <= 200 && !carriesBannedWord(sentence, f.names ?? [f.title])
+  const experience = quotable ? sentence.replace(/!+$/, '.') : ''
   const price = f.priceLine ? f.priceLine.replace(/\.$/, '').trim() : ''
   const signposts = [
     f.title,
