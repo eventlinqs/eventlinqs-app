@@ -9,6 +9,7 @@ import {
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
+import { guideSearchWords, matchesGuideSearch } from '@/lib/events/guide-search'
 import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, sectionOrder, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
@@ -185,9 +186,10 @@ export function CityGuide({
   const here = live.filter((r) => (wholeState ? inState(r) : inCity(r) || near(r)))
   const placeName = wholeState ? stateName : city.name
 
-  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  const matchesQ = (r: DirectoryRow) =>
-    words.every((w) => `${r.title} ${r.venue ?? ''} ${r.category ?? ''} ${r.suburb ?? ''}`.toLowerCase().includes(w))
+  // What a visitor's words find (src/lib/events/guide-search.ts): the title, venue, category and suburb as before, the
+  // event's own address, a title's initials ('AMCF') and 'free' as every free night (WINDOW 5C, 21 November 2026).
+  const words = guideSearchWords(q)
+  const matchesQ = (r: DirectoryRow) => matchesGuideSearch(r, words)
   // Friday to Sunday (the 2 November directive, section 4): the platform's one weekend, every day of it from today on
   // (discoveryDays); the 'This weekend' chip and section 4 read the same days, so the page never says two weekends.
   const weekendDays = days.weekendKeys
@@ -270,7 +272,20 @@ export function CityGuide({
 
         {/* SHORTER ON A PHONE (Lawal, 2 November 2026, 09:00, refinement 3): the whole-country search sits beside the box,
             not on a line of its own; the dates, Free and the distance share one row below. */}
-        <div className="mt-4 flex items-center gap-3">
+        {/* GO TAKES THE VISITOR TO THE ANSWER (WINDOW 5C, 21 November 2026). The box filters the list below as it is
+            typed, but it sat in no form, so a phone's Go (Enter) did nothing: the visitor saw the same screen, the answer
+            out of sight below the category tiles. In a search form, Go closes the keyboard and brings the list into view,
+            as Ticketmaster's and Eventbrite's search take the visitor to the results. */}
+        <form
+          role="search"
+          aria-label={`Search events in ${placeName}`}
+          className="mt-4 flex items-center gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            e.currentTarget.querySelector('input')?.blur()
+            toList()
+          }}
+        >
           <label className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-[var(--color-ink-200)] bg-white px-4 focus-within:ring-2 focus-within:ring-[var(--color-gold-400)]">
             <Search className="h-5 w-5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
             <input
@@ -289,7 +304,7 @@ export function CityGuide({
             label="All of Australia"
             plain
           />
-        </div>
+        </form>
 
         <div className={`mt-3 ${SCROLL_ROW}`}>
         <div className="flex shrink-0 gap-2" role="group" aria-label="When">
