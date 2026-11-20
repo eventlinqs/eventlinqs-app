@@ -173,6 +173,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/city/[slug]', klass: 'conditional', why: 'templated city landings' },
   { route: '/city/[slug]/[suburb]', klass: 'conditional', why: 'templated suburb landings' },
   { route: '/state/[state]', klass: 'never', why: 'the state chip view of the city guides (3 November 2026, 14:10); each city guide is the indexable page' },
+  { route: '/weekend', klass: 'never', why: "The Weekend Guide, Victoria (law 46 (b)); /this-weekend is the indexed weekend surface until it is folded into this page (law 13), so two do not compete" },
   { route: '/categories/[slug]', klass: 'conditional', why: 'templated category landings' },
   { route: '/events/browse/[city]', klass: 'conditional', why: '22 templated browse-by-city pages' },
   { route: '/faith/[faith]', klass: 'conditional', why: 'templated faith landings' },

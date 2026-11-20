@@ -278,6 +278,8 @@ function markEventPaths(event: RevalidatableEvent): string[] {
   // public list, the suburb pages and /state/victoria included, loses a night at its end, even from a cached render).
   const statePath = citySlug ? statePageHref(getCity(citySlug)?.state ?? '') : null
   if (statePath) mark(statePath)
+  // The Weekend Guide lists Victoria's nights (law 46 (b), /weekend), so a Victorian night leaves it at its end too.
+  if (citySlug && getCity(citySlug)?.state === 'VIC') mark('/weekend')
   if (citySlug) {
     revalidatePath('/city/[slug]/[suburb]', 'page')
     invalidated.push('/city/[slug]/[suburb]')
@@ -391,7 +393,7 @@ export function revalidateEventSurfacesFromRouteHandler(event: RevalidatableEven
  */
 export function revalidateEveryGuideFromRouteHandler(): string[] {
   const invalidated: string[] = []
-  for (const path of ['/', '/events', '/sitemap.xml']) {
+  for (const path of ['/', '/events', '/weekend', '/sitemap.xml']) {
     revalidatePath(path)
     invalidated.push(path)
   }

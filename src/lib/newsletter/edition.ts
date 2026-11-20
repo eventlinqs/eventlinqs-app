@@ -61,7 +61,14 @@ const COLUMNS =
   'id, slug, title, summary, start_date, end_date, timezone, venue_name, venue_id, city_primary, created_at, visibility, is_seed_data, is_free, entry_mode, external_ticket_url, cover_image_url, thumbnail_url, gallery_urls, category:event_categories!events_category_id_fkey(slug, name), ticket_tiers(price, currency, is_active)'
 
 /** The edition's night: what the selection weighs and what a slot prints. */
-export type ReadNight = EditionNight & { readonly pick: NlPick; readonly summary: string | null; readonly citySlug: string }
+export type ReadNight = EditionNight & {
+  readonly pick: NlPick
+  readonly summary: string | null
+  readonly citySlug: string
+  /** The picture exactly as the event page's resolver returned it (a storage address or the site's own path), for the
+   *  website's media components; `image` is the same picture made absolute for an email. */
+  readonly pageImage: string
+}
 
 /**
  * Nights still listed at `now` (the platform's one rule, law 16) starting no later than `toIso`; with `fromIso`, only
@@ -145,6 +152,7 @@ async function toNight(r: Row, cover: string | null, now: Date, origin: string):
     pick,
     summary: shownSummary(r.summary),
     citySlug: r.city_primary ?? '',
+    pageImage: pictured,
   }
 }
 
@@ -225,4 +233,37 @@ export async function readWhatsOnEdition(
       referUrl: `${origin}/newsletter/refer`,
     },
   }
+}
+
+/** Victoria's guide cities: The Weekend Guide, Victoria (law 46 (b)). */
+export const VICTORIA_CITIES = ['melbourne', 'geelong', 'ballarat', 'bendigo'] as const
+
+/** '21 to 22 Nov 2026', '29 Nov to 1 Dec 2026', '22 Nov 2026': the weekend guide's dates as Lawal's design B prints them. */
+export function weekendDatesLabel(period: { readonly start: string; readonly end: string }): string {
+  const at = (day: string) => new Date(`${day}T12:00:00Z`)
+  const f = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', ...o }).format(at(day))
+  const d = (day: string) => f(day, { day: 'numeric' })
+  const m = (day: string) => f(day, { month: 'short' })
+  const y = period.end.slice(0, 4)
+  if (period.start === period.end) return `${d(period.end)} ${m(period.end)} ${y}`
+  if (m(period.start) === m(period.end)) return `${d(period.start)} to ${d(period.end)} ${m(period.end)} ${y}`
+  return `${d(period.start)} ${m(period.start)} to ${d(period.end)} ${m(period.end)} ${y}`
+}
+
+/**
+ * THE WEEKEND GUIDE, VICTORIA (law 46 (b), Lawal's design B): this weekend's nights still listed across Victoria's guide
+ * cities, from today to the end of the weekend's Sunday, picked by the newsletter's own written out selection (one rule
+ * for both: law 18's tier, the night's own photograph, variety, never twice) and pictured by the event page's own
+ * resolver. The feature and the top picks; nothing invented when the supply is thin.
+ */
+export async function readWeekendGuide(
+  admin: Admin,
+  input: { readonly now: Date; readonly origin: string },
+): Promise<{ readonly period: { start: string; end: string }; readonly datesLabel: string; readonly featured: ReadNight | null; readonly picks: readonly ReadNight[] }> {
+  const period = resolveDigestPeriod(input.now, 'weekend')
+  const end = endOfLocalDayUtc(new Date(`${period.end}T12:00:00Z`), PLATFORM_TIME_ZONE)
+  const rows = await readNights(admin, VICTORIA_CITIES, null, end.toISOString(), input.now, 600)
+  const nights = await toNights(rows, input.now, input.origin)
+  const slots = selectSlots({ nights, driveNights: [], laterNights: [], now: input.now })
+  return { period, datesLabel: weekendDatesLabel(period), featured: slots.featured, picks: slots.highlights }
 }
