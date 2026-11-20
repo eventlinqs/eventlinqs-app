@@ -19,6 +19,7 @@
  * Monday to Friday, 9:00 to 17:00, read in the time zone of the city of a venue the organiser runs, else Melbourne.
  * The hours are EventLinqs' own choice (UNSOURCED: no rule names them); outside them a message stays queued.
  */
+import { slotDay, slotFromEarlierDay, wordsNameATime } from '@/lib/ops/stale-slot'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readVoicePolicy, wordsProblems } from './voice-gate'
 import type { Database } from '@/types/database'
@@ -100,6 +101,8 @@ export type SenderReport = {
   failed: { id: string; reason: string }[]
   refused: { id: string; reason: string }[]
   outsideHours: number
+  /** Law 42: letters whose slot fell on a missed day, re planned to today or held for a redraft, each with its reason. */
+  replanned?: string[]
   note?: string
 }
 
@@ -112,6 +115,7 @@ type Queued = {
   subject: string | null
   body: string
   in_reply_to: string | null
+  scheduled_for?: string | null
   outreach_templates: { key: string } | null
 }
 
@@ -229,7 +233,7 @@ export async function runOutreachSender(
 
   const queued = db
     .from('outreach_touches')
-    .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, outreach_templates(key)')
+    .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, scheduled_for, outreach_templates(key)')
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
   const due = await (deps.only ? queued.in('id', [...deps.only]) : queued).order('scheduled_for', { ascending: true }).limit(SEND_BATCH)
@@ -239,7 +243,24 @@ export async function runOutreachSender(
     report.considered++
     const addressed = await db.from('organiser_contacts').select('address').eq('id', t.contact_id).maybeSingle()
     const hoursApply = businessHoursApply(addressed.data?.address ?? null, sender.data.test_domain)
-    if (hoursApply && !inBusinessHours(deps.now, await recipientZone(db, t.contact_id))) {
+    const zone = await recipientZone(db, t.contact_id)
+    // LAW 42, A MISSED DAY IS NEVER CAUGHT UP (Lawal, 20 November 2026, 23:58): a letter whose slot fell on an earlier day
+    // in its recipient's city is never sent as that day's. It is re planned from today, so it goes only inside today's
+    // window by the rules below; a letter whose words name a day or a date is held to be drafted again from today's facts.
+    if (slotFromEarlierDay(t.scheduled_for ?? null, deps.now, zone)) {
+      const missed = slotDay(t.scheduled_for ?? null, zone)
+      const named = wordsNameATime(`${t.subject ?? ''}\n${t.body}`)
+      report.replanned ??= []
+      if (named) {
+        const why = `its slot of ${missed} passed unsent and its words name a time ('${named}'): drafted again from today's facts (law 42)`
+        await db.from('outreach_touches').update({ state: 'held', held_because: [why] }).eq('id', t.id).eq('state', 'queued')
+        report.replanned.push(`${t.id}: held, ${why}`)
+        continue
+      }
+      await db.from('outreach_touches').update({ scheduled_for: deps.now.toISOString() }).eq('id', t.id).eq('state', 'queued')
+      report.replanned.push(`${t.id}: its slot of ${missed} passed unsent; re planned from today (law 42)`)
+    }
+    if (hoursApply && !inBusinessHours(deps.now, zone)) {
       report.outsideHours++
       continue
     }

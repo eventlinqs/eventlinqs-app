@@ -209,6 +209,31 @@ describe('the run', () => {
     expect(businessHoursApply(null, 'eventlinqs.com')).toBe(true)
     expect(businessHoursApply('sam@eventlinqs.com', null)).toBe(true)
   })
+
+  // LAW 42 (Lawal, 20 November 2026, 23:58): a letter whose slot fell on a missed day is never sent as that day's.
+  test('a letter from a missed day is re planned from today; one whose words name a time is held for a redraft', async () => {
+    const yesterday = '2026-10-27T23:00:00Z' // Wednesday 28 October, 10:00 in Melbourne; the run is Thursday the 29th
+    const { db, calls } = standardDb('test', {
+      queued: [
+        { ...QUEUED[0], scheduled_for: yesterday },
+        { ...QUEUED[1], id: 'q-dated', body: 'Hi Jo,\nYour night on Saturday is on our guide. EventLinqs.', scheduled_for: yesterday },
+      ],
+    })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const updates = calls.filter((c) => c.op === 'update' && c.table === 'outreach_touches')
+    const ofRow = (id: string) => updates.filter((c) => c.filters.some(([k, v]) => k === 'eq:id' && v === id)).map((c) => c.payload as Record<string, unknown>)
+    expect(ofRow('q-ok')[0]).toEqual({ scheduled_for: THURSDAY_10_MELBOURNE.toISOString() })
+    expect(ofRow('q-dated')[0]).toMatchObject({ state: 'held' })
+    expect(String((ofRow('q-dated')[0].held_because as string[])[0])).toContain("its words name a time ('Saturday')")
+    expect(ofRow('q-dated').some((p) => p.state === 'sending' || p.state === 'sent')).toBe(false)
+    expect(r.replanned).toHaveLength(2)
+  })
+
+  test("a letter slotted earlier today, or with no slot, is today's and is not re planned", async () => {
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], scheduled_for: '2026-10-28T22:00:00Z' }, { ...QUEUED[1] }] })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.replanned ?? []).toEqual([])
+  })
 })
 
 /*
