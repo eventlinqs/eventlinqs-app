@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { pageViewKeyParts } from '@/lib/growth/page-view-key'
@@ -63,7 +64,8 @@ export interface GrowthWeek {
   readonly six: { readonly last: readonly SixFigure[]; readonly before: readonly SixFigure[] }
 }
 
-export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek> {
+/** One read per request (React cache): /admin/today and its founder dashboard both ask for the same week. */
+export const readGrowthWeek = cache(async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek> {
   const { last, before } = lastWeeks(now)
   const { rows, unreadVisitRows } = await readGrowthRows(before.from, last.to)
   return {
@@ -71,7 +73,7 @@ export async function readGrowthWeek(now: Date = new Date()): Promise<GrowthWeek
     victoria: stateScorecard(rows, last, before, VICTORIA), unreadVisitRows,
     six: { last: sixNumbersFor(rows, last), before: sixNumbersFor(rows, before) },
   }
-}
+})
 
 /**
  * The rows behind any run of whole weeks from `spanFrom` to `spanTo`: the visits from 90 days before `spanFrom` (so a visitor seen

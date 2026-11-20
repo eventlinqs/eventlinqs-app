@@ -65,11 +65,14 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
 
   /* Listing checks name their writer (import_file), so each listing automation's runs are read from its own rows. */
   const checksBy = (pattern: string) => async (): Promise<Pick<Read, 'days'> & { last: string | null; n: number }> => {
-    const ran = await ranOn(`listing_checks ${pattern}`, days, (d) =>
-      db.from('listing_checks').select('id', { count: 'exact', head: true }).like('import_file', pattern).gte('checked_at', d.from).lt('checked_at', d.to),
-    )
-    const last = must('listing_checks', await db.from('listing_checks').select('checked_at').like('import_file', pattern).order('checked_at', { ascending: false }).limit(1).maybeSingle()) as { checked_at: string } | null
-    const { count, error } = await db.from('listing_checks').select('id', { count: 'exact', head: true }).like('import_file', pattern).gte('checked_at', days[0].from)
+    const [ran, newest, { count, error }] = await Promise.all([
+      ranOn(`listing_checks ${pattern}`, days, (d) =>
+        db.from('listing_checks').select('id', { count: 'exact', head: true }).like('import_file', pattern).gte('checked_at', d.from).lt('checked_at', d.to),
+      ),
+      db.from('listing_checks').select('checked_at').like('import_file', pattern).order('checked_at', { ascending: false }).limit(1).maybeSingle(),
+      db.from('listing_checks').select('id', { count: 'exact', head: true }).like('import_file', pattern).gte('checked_at', days[0].from),
+    ])
+    const last = must('listing_checks', newest) as { checked_at: string } | null
     if (error) throw new Error(`listing_checks: ${error.message}`)
     return { days: ran, last: last?.checked_at ?? null, n: count ?? 0 }
   }
@@ -85,15 +88,21 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       },
       now,
       async () => {
-        const ran = await ranOn('social_piece_revisions', days, async (d) => {
-          const drawn = await db.from('social_piece_revisions').select('id', { count: 'exact', head: true }).eq('made_by', 'sweep').gte('made_at', d.from).lt('made_at', d.to)
-          if (drawn.error || (drawn.count ?? 0) > 0) return drawn
-          return db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).gte('published_at', d.from).lt('published_at', d.to)
-        })
-        const drawn = must('social_piece_revisions', await db.from('social_piece_revisions').select('made_at').eq('made_by', 'sweep').order('made_at', { ascending: false }).limit(1).maybeSingle()) as { made_at: string } | null
-        const pub = must('social_piece_schedules', await db.from('social_piece_schedules').select('published_at, published_ref, platform').not('published_at', 'is', null).order('published_at', { ascending: false }).limit(1).maybeSingle()) as { published_at: string; published_ref: string | null; platform: string } | null
-        const held = must('social_piece_schedules', await db.from('social_piece_schedules').select('created_at, held_reason, platform').eq('state', 'held').not('held_reason', 'like', 'Sent as blotato:%').order('created_at', { ascending: false }).limit(1).maybeSingle()) as { created_at: string; held_reason: string | null; platform: string } | null
-        const flag = must('feature_flags', await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()) as { enabled: boolean } | null
+        const [ran, drawnRead, pubRead, heldRead, flagRead] = await Promise.all([
+          ranOn('social_piece_revisions', days, async (d) => {
+            const drawn = await db.from('social_piece_revisions').select('id', { count: 'exact', head: true }).eq('made_by', 'sweep').gte('made_at', d.from).lt('made_at', d.to)
+            if (drawn.error || (drawn.count ?? 0) > 0) return drawn
+            return db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).gte('published_at', d.from).lt('published_at', d.to)
+          }),
+          db.from('social_piece_revisions').select('made_at').eq('made_by', 'sweep').order('made_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('social_piece_schedules').select('published_at, published_ref, platform').not('published_at', 'is', null).order('published_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('social_piece_schedules').select('created_at, held_reason, platform').eq('state', 'held').not('held_reason', 'like', 'Sent as blotato:%').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle(),
+        ])
+        const drawn = must('social_piece_revisions', drawnRead) as { made_at: string } | null
+        const pub = must('social_piece_schedules', pubRead) as { published_at: string; published_ref: string | null; platform: string } | null
+        const held = must('social_piece_schedules', heldRead) as { created_at: string; held_reason: string | null; platform: string } | null
+        const flag = must('feature_flags', flagRead) as { enabled: boolean } | null
         const lastAt = newestOf(drawn?.made_at, pub?.published_at)
         return {
           days: ran,
@@ -118,12 +127,17 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       },
       now,
       async () => {
-        const ran = await ranOn('outreach_touches', days, (d) =>
-          db.from('outreach_touches').select('id', { count: 'exact', head: true }).or(`and(sent_at.gte.${d.from},sent_at.lt.${d.to}),and(drafted_at.gte.${d.from},drafted_at.lt.${d.to})`),
-        )
-        const sender = must('outreach_sender', await db.from('outreach_sender').select('mode, changed_by, dns_checked_at').limit(1).maybeSingle()) as { mode: string; changed_by: string | null; dns_checked_at: string | null } | null
-        const sent = must('outreach_touches', await db.from('outreach_touches').select('sent_at, internet_message_id').is('sent_by', null).not('sent_at', 'is', null).order('sent_at', { ascending: false }).limit(1).maybeSingle()) as { sent_at: string; internet_message_id: string | null } | null
-        const failed = must('outreach_touches', await db.from('outreach_touches').select('drafted_at, sending_at, failed_reason').not('failed_reason', 'is', null).gte('drafted_at', week).order('drafted_at', { ascending: false }).limit(1).maybeSingle()) as { drafted_at: string; sending_at: string | null; failed_reason: string } | null
+        const [ran, senderRead, sentRead, failedRead] = await Promise.all([
+          ranOn('outreach_touches', days, (d) =>
+            db.from('outreach_touches').select('id', { count: 'exact', head: true }).or(`and(sent_at.gte.${d.from},sent_at.lt.${d.to}),and(drafted_at.gte.${d.from},drafted_at.lt.${d.to})`),
+          ),
+          db.from('outreach_sender').select('mode, changed_by, dns_checked_at').limit(1).maybeSingle(),
+          db.from('outreach_touches').select('sent_at, internet_message_id').is('sent_by', null).not('sent_at', 'is', null).order('sent_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('outreach_touches').select('drafted_at, sending_at, failed_reason').not('failed_reason', 'is', null).gte('drafted_at', week).order('drafted_at', { ascending: false }).limit(1).maybeSingle(),
+        ])
+        const sender = must('outreach_sender', senderRead) as { mode: string; changed_by: string | null; dns_checked_at: string | null } | null
+        const sent = must('outreach_touches', sentRead) as { sent_at: string; internet_message_id: string | null } | null
+        const failed = must('outreach_touches', failedRead) as { drafted_at: string; sending_at: string | null; failed_reason: string } | null
         const lastAt = newestOf(sent?.sent_at, sender?.dns_checked_at)
         const failedAt = failed ? (failed.sending_at ?? failed.drafted_at) : null
         return {
@@ -145,10 +159,15 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       },
       now,
       async () => {
-        const c = await checksBy('collection run%')()
-        const failed = must('listing_source_runs', await db.from('listing_source_runs').select('ran_at, outcome').eq('succeeded', false).gte('ran_at', week).order('ran_at', { ascending: false }).limit(1).maybeSingle()) as { ran_at: string; outcome: string | null } | null
-        const good = must('listing_source_runs', await db.from('listing_source_runs').select('ran_at').eq('succeeded', true).order('ran_at', { ascending: false }).limit(1).maybeSingle()) as { ran_at: string } | null
-        const line = must('discovery_engine_days', await db.from('discovery_engine_days').select('day, all_passed, checks').order('day', { ascending: false }).limit(3)) as { day: string; all_passed: boolean; checks: Record<string, { pass: boolean; why: string }> }[] | null
+        const [c, failedRead, goodRead, lineRead] = await Promise.all([
+          checksBy('collection run%')(),
+          db.from('listing_source_runs').select('ran_at, outcome').eq('succeeded', false).gte('ran_at', week).order('ran_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('listing_source_runs').select('ran_at').eq('succeeded', true).order('ran_at', { ascending: false }).limit(1).maybeSingle(),
+          db.from('discovery_engine_days').select('day, all_passed, checks').order('day', { ascending: false }).limit(3),
+        ])
+        const failed = must('listing_source_runs', failedRead) as { ran_at: string; outcome: string | null } | null
+        const good = must('listing_source_runs', goodRead) as { ran_at: string } | null
+        const line = must('discovery_engine_days', lineRead) as { day: string; all_passed: boolean; checks: Record<string, { pass: boolean; why: string }> }[] | null
         const judged = (line ?? []).find((d) => Object.keys(d.checks ?? {}).length > 0)
         const failing = judged ? Object.entries(judged.checks).filter(([, v]) => !v.pass).map(([k, v]) => `${k}: ${v.why}`) : []
         return {
@@ -180,8 +199,11 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       { key: 'booking-link-check', title: 'Listings: booking links and prices', area: 'Event Listings', does: 'Once a day: asks every booking link whether it still reaches its seller, and reads its price.', schedules: [SCHEDULES.bookingLinkCheck] },
       now,
       async () => {
-        const ran = await ranOn('event_booking_links', days, (d) => db.from('event_booking_links').select('id', { count: 'exact', head: true }).gte('price_checked_at', d.from).lt('price_checked_at', d.to))
-        const last = must('event_booking_links', await db.from('event_booking_links').select('price_checked_at').not('price_checked_at', 'is', null).order('price_checked_at', { ascending: false }).limit(1).maybeSingle()) as { price_checked_at: string } | null
+        const [ran, lastRead] = await Promise.all([
+          ranOn('event_booking_links', days, (d) => db.from('event_booking_links').select('id', { count: 'exact', head: true }).gte('price_checked_at', d.from).lt('price_checked_at', d.to)),
+          db.from('event_booking_links').select('price_checked_at').not('price_checked_at', 'is', null).order('price_checked_at', { ascending: false }).limit(1).maybeSingle(),
+        ])
+        const last = must('event_booking_links', lastRead) as { price_checked_at: string } | null
         return { days: ran, lastRun: last ? { at: last.price_checked_at, what: 'checked booking links and their prices', evidence: null } : null, lastFailure: null, switch: 'Runs by itself; no switch', note: null }
       },
     ),
@@ -189,8 +211,11 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       { key: 'growth-scorecard', title: 'The daily scorecard', area: 'System Operations', does: "Once a day: reads the plan's numbers from production and keeps the day's scorecard.", schedules: [SCHEDULES.growthScorecard] },
       now,
       async () => {
-        const ran = await ranOn('growth_scorecard_daily', days, (d) => db.from('growth_scorecard_daily').select('day', { count: 'exact', head: true }).gte('read_at', d.from).lt('read_at', d.to))
-        const last = must('growth_scorecard_daily', await db.from('growth_scorecard_daily').select('day, read_at, plan_version').order('read_at', { ascending: false }).limit(1).maybeSingle()) as { day: string; read_at: string; plan_version: number } | null
+        const [ran, lastRead] = await Promise.all([
+          ranOn('growth_scorecard_daily', days, (d) => db.from('growth_scorecard_daily').select('day', { count: 'exact', head: true }).gte('read_at', d.from).lt('read_at', d.to)),
+          db.from('growth_scorecard_daily').select('day, read_at, plan_version').order('read_at', { ascending: false }).limit(1).maybeSingle(),
+        ])
+        const last = must('growth_scorecard_daily', lastRead) as { day: string; read_at: string; plan_version: number } | null
         return { days: ran, lastRun: last ? { at: last.read_at, what: `kept the scorecard for ${last.day} (plan version ${last.plan_version})`, evidence: null } : null, lastFailure: null, switch: 'Runs by itself; no switch', note: null }
       },
     ),
@@ -198,8 +223,11 @@ export async function readEngine(now: Date = new Date()): Promise<EngineRow[]> {
       { key: 'social-measure', title: "Social posts: the platforms' own figures", area: 'Social Media Marketing', does: "Once a day after 06:40: reads each post's reach, views, saves, shares and clicks from Blotato and keeps them apart from our own counts.", schedules: [SCHEDULES.socialPublish] },
       now,
       async () => {
-        const ran = await ranOn('social_measure_runs', days, (d) => db.from('social_measure_runs').select('id', { count: 'exact', head: true }).gte('ran_at', d.from).lt('ran_at', d.to))
-        const last = must('social_measure_runs', await db.from('social_measure_runs').select('ran_at, kept').order('ran_at', { ascending: false }).limit(1).maybeSingle()) as { ran_at: string; kept: number } | null
+        const [ran, lastRead] = await Promise.all([
+          ranOn('social_measure_runs', days, (d) => db.from('social_measure_runs').select('id', { count: 'exact', head: true }).gte('ran_at', d.from).lt('ran_at', d.to)),
+          db.from('social_measure_runs').select('ran_at, kept').order('ran_at', { ascending: false }).limit(1).maybeSingle(),
+        ])
+        const last = must('social_measure_runs', lastRead) as { ran_at: string; kept: number } | null
         return { days: ran, lastRun: last ? { at: last.ran_at, what: `kept ${countOf(last.kept, 'figure')}`, evidence: null } : null, lastFailure: null, switch: 'Runs inside the hourly social run', note: null }
       },
     ),
