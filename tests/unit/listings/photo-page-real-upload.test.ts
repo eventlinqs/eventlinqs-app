@@ -83,7 +83,10 @@ function db() {
       insert: (payload: unknown) => chain(table, 'insert', payload),
       update: (payload: unknown) => chain(table, 'update', payload),
     }),
-    rpc: async () => ({ data: 'yes-id', error: null }),
+    rpc: async (name: string) => {
+      writes.push({ table: `rpc:${name}`, op: 'rpc' })
+      return { data: 'yes-id', error: null }
+    },
   }
   return { client: client as unknown as SupabaseClient<Database>, writes }
 }
@@ -113,6 +116,21 @@ describe('the photo page keeps a real organiser photo', () => {
     const { client } = db()
     const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_0001.jpg', 4032, 3024)], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(done).toMatchObject({ state: 'done', added: 1, refused: [] })
+  }, 30000)
+
+  it('AN UPLOAD THAT KEEPS NOTHING LOGS NO YES (the PM\'s 15:02 of 20 November 2026: on 18 November at 23:50 a yes was logged and 0 images kept)', async () => {
+    const refusedOnly = db()
+    const small = await jpeg('small.jpg', 600, 400)
+    const nothing = await givePhotos(refusedOnly.client, { page: PAGE, eventId: 'night-20', files: [small], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    expect(nothing).toMatchObject({ state: 'done', added: 0 })
+    expect(refusedOnly.writes.filter((w) => w.table === 'rpc:social_log_organiser_yes')).toHaveLength(0)
+    expect(refusedOnly.writes.filter((w) => w.table === 'social_assets')).toHaveLength(0)
+    // One kept beside one refused: the yes is logged once, for the one kept, and the refused one is named with its reason.
+    const mixed = db()
+    const done = await givePhotos(mixed.client, { page: PAGE, eventId: 'night-20', files: [small, await jpeg('IMG_6082.jpg', 973, 695)], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    expect(done).toMatchObject({ state: 'done', added: 1 })
+    expect(mixed.writes.filter((w) => w.table === 'rpc:social_log_organiser_yes')).toHaveLength(1)
+    expect((done as { refused: readonly string[] }).refused[0]).toMatch(/^small\.jpg: it is 600 x 400 pixels/)
   }, 30000)
 
   it('a photo the page would have to enlarge is refused in words that say what fits; an unreadable file is the only one "could not be read"', async () => {
