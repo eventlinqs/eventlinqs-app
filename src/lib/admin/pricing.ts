@@ -130,21 +130,23 @@ async function readCurrent(
 /** Reads the current effective value for every scope + editable field. */
 export async function readAdminPricingMatrix(): Promise<AdminPricingRowView[]> {
   const admin = createAdminClient()
-  const rows: AdminPricingRowView[] = []
-  for (const scope of ADMIN_PRICING_SCOPES) {
-    const [pct, fixed, treat] = await Promise.all([
-      readCurrent(admin, 'platform_fee_percentage', scope.countryCode, scope.currency),
-      readCurrent(admin, 'platform_fee_fixed', scope.countryCode, scope.currency),
-      readCurrent(admin, 'processing_fee_pass_through', scope.countryCode, scope.currency),
-    ])
-    rows.push({
-      scope,
-      platformFeePercentage: pct,
-      platformFeeFixedCents: fixed,
-      processingTreatment: treat,
-    })
-  }
-  return rows
+  // Every region at once (law 41, the speed train of 20 November 2026): the five regions were read one after another;
+  // the rows keep ADMIN_PRICING_SCOPES' order.
+  return Promise.all(
+    ADMIN_PRICING_SCOPES.map(async (scope): Promise<AdminPricingRowView> => {
+      const [pct, fixed, treat] = await Promise.all([
+        readCurrent(admin, 'platform_fee_percentage', scope.countryCode, scope.currency),
+        readCurrent(admin, 'platform_fee_fixed', scope.countryCode, scope.currency),
+        readCurrent(admin, 'processing_fee_pass_through', scope.countryCode, scope.currency),
+      ])
+      return {
+        scope,
+        platformFeePercentage: pct,
+        platformFeeFixedCents: fixed,
+        processingTreatment: treat,
+      }
+    }),
+  )
 }
 
 /**
