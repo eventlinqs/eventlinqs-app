@@ -30,7 +30,8 @@ export default async function AdminPageChecksPage({ searchParams }: { searchPara
   await recordAuditEvent({ action: 'admin.page_checks.view', session })
   const { said, view } = await searchParams
   const db = createAdminClient()
-  const since = new Date(Date.now() - 14 * 24 * 60 * 60_000).toISOString()
+  const now = new Date()
+  const since = new Date(now.getTime() - 14 * 24 * 60 * 60_000).toISOString()
   const [rows, copy] = await Promise.all([
     readPageChecks(db, since).then((r) => ({ ok: true as const, r }), (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) })),
     view && /^[0-9a-f-]{36}$/i.test(view) ? readPageCopy(db, view).catch(() => null) : Promise.resolve(null),
