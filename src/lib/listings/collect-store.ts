@@ -435,7 +435,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const name = row.title.trim()
       /* Free entry only where every link read states nothing to pay; a night read with no link books on its own page, with
          no price claimed, never walk in (huntBooking; the PM's 07:55 of 15 November 2026, the JazzLab nights). */
-      const { free, links: bookingLinks } = huntBooking(row, today)
+      const { links: bookingLinks } = huntBooking(row, today)
       const series = {
         venue_id: venueId,
         organisation_id: org.id,
