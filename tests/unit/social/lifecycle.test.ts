@@ -188,10 +188,10 @@ describe('words: a human first line, never repeated in the window, facts short a
     expect(second).not.toBe(first)
     expect(firstLineFor('first_day', true, new Set(['It starts today.', 'Today is the day.', 'Opening today.']), 0)).toBeNull()
   })
-  it("'last chance' only while tickets can be had", () => {
-    const lines = (open: boolean) => new Set(Array.from({ length: 6 }, (_, i) => firstLineFor('final_push', open, new Set(), i)))
-    expect([...lines(false)].some((l) => /last chance/i.test(l ?? ''))).toBe(false)
-    expect([...lines(true)].some((l) => /last chance/i.test(l ?? ''))).toBe(true)
+  it('never hurries a buyer: no last chance or selling fast, open or not (no-false-urgency)', () => {
+    for (const kind of ['announce', 'build', 'final_push', 'tomorrow', 'first_day', 'running', 'final_day'] as const)
+      for (const open of [true, false])
+        for (let i = 0; i < 6; i++) expect(firstLineFor(kind, open, new Set(), i) ?? '').not.toMatch(/last chance|selling fast|few left|sold out/i)
   })
   it("a caption per network: Instagram's says link in bio, Facebook's carries its own link", () => {
     const facts = { title: 'Night Market', place: 'Fed Square', dateLabel: 'Sat 28 Nov', priceLine: 'Free', summary: 'Street food and live music under the lights all evening. More below.' }

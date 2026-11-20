@@ -1686,8 +1686,8 @@ const DRILLS = [
     name: 'the Blotato publisher guesses the format from its slides again, so a tonight story posts as a feed',
     guard: `${GUARDS}/stories-post-as-stories.mjs`,
     file: 'src/lib/social/blotato-publisher.ts',
-    find: '  return async ({ pieceId, platform, format, slides, caption }) => {',
-    replace: "  return async ({ pieceId, platform, slides, caption }) => {\n    const format = slides.some((s) => s.t === 'story') ? 'story' : 'feed'",
+    find: '  return async ({ pieceId, platform, format, slides, caption, collaborators }) => {',
+    replace: "  return async ({ pieceId, platform, slides, caption, collaborators }) => {\n    const format = slides.some((s) => s.t === 'story') ? 'story' : 'feed'",
     expect: "does not take the piece's own format",
   },
   {

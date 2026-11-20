@@ -373,13 +373,14 @@ export function collabWorthIt(input: { readonly categorySlug: string | null; rea
 
 /**
  * The human first lines (law 37 (j): the feeling first, the facts short at the end), several a moment so a run's
- * moments and the account's days never say the same thing twice inside FIRST_LINE_WINDOW_DAYS. 'Last chance' is said only
- * while tickets can be had. No line claims a crowd, a sell out or a number nobody has proved.
+ * moments and the account's days never say the same thing twice inside FIRST_LINE_WINDOW_DAYS. No line hurries a buyer
+ * ('last chance', 'selling fast': a scarcity message must be computed from real stock, scripts/guards/no-false-urgency.mjs),
+ * and none claims a crowd, a sell out, a weekday or a number nobody has proved.
  */
 const FIRST_LINES: Record<MomentKind, readonly string[]> = {
   announce: ['One for the calendar.', 'Something new to look forward to.', 'Fresh on the list this week.', 'Put this one in your plans.'],
   build: ['Still a little way off, and worth planning for.', 'One to plan the month around.', 'Coming up, and worth the wait.', 'Mark the date now.'],
-  final_push: ['Only days to go now.', 'Nearly here.', 'This weekend is close.', 'Not long now.'],
+  final_push: ['Only days to go now.', 'Nearly here.', 'Coming up in a few days.', 'Not long now.'],
   tomorrow: ['Tomorrow.', 'See you tomorrow.', 'It is on tomorrow.'],
   first_day: ['It starts today.', 'Today is the day.', 'Opening today.'],
   // A day after the first is posted while the run is under way, so its words say it is on (piece-quality.ts ON_NOW:
@@ -387,11 +388,10 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
   running: ['Still on today.', 'It is still on today.', 'Still on today, so there is time.'],
   final_day: ['Last day today, and still on.', 'Final day today, still on until it closes.', 'Still on today, for the last time.'],
 }
-const LAST_CHANCE = ['Last chance to get there.', 'Last chance for tickets.']
 
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number): string | null {
-  const bank = kind === 'final_push' && salesOpen ? [...LAST_CHANCE, ...FIRST_LINES.final_push] : FIRST_LINES[kind]
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number): string | null {
+  const bank = FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line

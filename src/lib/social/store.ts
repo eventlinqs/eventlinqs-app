@@ -13,6 +13,7 @@ import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
 import { factsOf, kitCaption, listingCta, listingPriceLabel, plan, postKey, PLAN_AHEAD_DAYS, type PlanCandidate } from './plan'
@@ -2219,7 +2220,9 @@ export async function recordCollabInvites(
   try {
     const { data, error } = await db.from('organisers').select('id, instagram_handle').in('instagram_handle', [...input.handles]).not('instagram_verified_at', 'is', null)
     if (error) throw new Error(error.message)
-    const rows = ((data ?? []) as { id: string; instagram_handle: string }[]).map((o) => ({
+    // Never the platform's own listings organisation or a test organiser (src/lib/growth/platform-organiser.ts).
+    const platform = await readPlatformOrganiserIds(db)
+    const rows = ((data ?? []) as { id: string; instagram_handle: string }[]).filter((o) => !platform.has(o.id)).map((o) => ({
       organiser_id: o.id,
       piece_id: input.pieceId,
       schedule_id: input.scheduleId,

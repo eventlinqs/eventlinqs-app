@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { tierOf } from '@/lib/events/relevance'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
 import type { CampaignNight, PiecePlan, Slide } from './campaign'
 import {
@@ -145,15 +146,17 @@ async function readCollabOrganisers(db: Db, hosts: readonly string[]): Promise<M
   if (keys.length === 0) return out
   const { data, error } = await db
     .from('organisers')
-    .select('id, name_key, instagram_handle, instagram_verified_at, collab_preference, is_test, collab_invitations(status)')
+    .select('id, name_key, instagram_handle, instagram_verified_at, collab_preference, collab_invitations(status)')
     .in('name_key', keys)
     .not('instagram_verified_at', 'is', null)
   if (error) {
     console.error('[social] the organisers for a Collab could not be read; no piece invites anyone:', error.message)
     return out
   }
+  // The platform's own listings organisation and every test organiser are never invited (the one rule).
+  const platform = await readPlatformOrganiserIds(db)
   for (const o of (data ?? []) as Record<string, unknown>[]) {
-    if (o.is_test === true) continue
+    if (platform.has(o.id as string)) continue
     const list = out.get(o.name_key as string) ?? []
     list.push({
       handle: (o.instagram_handle as string | null) ?? null,

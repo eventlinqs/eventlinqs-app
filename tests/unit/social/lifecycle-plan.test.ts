@@ -37,16 +37,24 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
 
 type Rows = { history?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
 function fakeDb(rows: Rows): SupabaseClient {
+  // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
+  // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
   const chain = (data: unknown[], error: { message: string } | null = null) => {
+    let platformRead = false
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'not', 'order', 'limit', 'in', 'eq']) b[m] = () => b
-    b.then = (resolve: (v: unknown) => unknown) => resolve({ data, error })
+    for (const m of ['select', 'not', 'order', 'limit', 'in', 'range']) b[m] = () => b
+    b.eq = (col: string) => {
+      if (col === 'is_test' || col === 'slug') platformRead = true
+      return b
+    }
+    b.then = (resolve: (v: unknown) => unknown) => resolve({ data: platformRead ? [] : data, error })
     return b
   }
   return {
     from: (table: string) => {
       if (table === 'social_pieces') return chain(rows.history ?? [], rows.failHistory ? { message: 'connection reset' } : null)
       if (table === 'organisers') return chain(rows.organisers ?? [])
+      if (table === 'organisations') return chain([])
       throw new Error(`unexpected table ${table}`)
     },
     rpc: async (name: string) => {
