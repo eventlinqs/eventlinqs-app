@@ -13,6 +13,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { venueSlugify } from '@/lib/venues/venue-slug'
+import { organiserCitySlugs } from './organiser-city'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 type Admin = SupabaseClient<Database>
 
@@ -57,6 +59,23 @@ export async function factsForContact(db: Admin, contactId: string, origin: stri
   const first = contact.data.person_name?.trim().split(/\s+/)[0]
   facts['first name'] = first && first.length > 0 ? first : null
 
+  // The Organiser Marketing letter's own fields (acq_first v1, Lawal's approved email of 18 November 2026): their name
+  // as the CRM holds it, their city by its three roads (./organiser-city.ts), and the template's own fallback for what
+  // they run, 'events', since no phrase is claimed here that was not read on their own page.
+  const organiser = await db.from('organisers').select('id, name, found_on, organisation_id').eq('id', contact.data.organiser_id).single()
+  if (organiser.error) throw new Error(`the organiser: ${organiser.error.message}`)
+  // The platform's own listings organisation, or a test organiser, is never written to as an organiser: its name stays
+  // unfilled, so a letter to it is held (readPlatformOrganiserIds, the one reader of them).
+  const platform = await readPlatformOrganiserIds(db)
+  facts.organiser = platform.has(organiser.data.id) ? null : organiser.data.name?.trim() || null
+  facts['what they run, or events'] = 'events'
+  const citySlug = (await organiserCitySlugs(db, [organiser.data], new Date())).get(organiser.data.id) ?? null
+  if (citySlug) {
+    const city = await db.from('cities').select('name').eq('slug', citySlug).maybeSingle()
+    facts.city = city.data?.name ?? null
+    facts['city slug'] = city.data?.name ? citySlug : null
+  }
+
   const links = await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id)
   const venueIds = (links.data ?? []).map((l) => l.venue_id)
   if (venueIds.length === 0) return facts
@@ -73,6 +92,7 @@ export async function factsForContact(db: Admin, contactId: string, origin: stri
   if (venue.city_slug) {
     const city = await db.from('cities').select('name').eq('slug', venue.city_slug).maybeSingle()
     facts.city = city.data?.name ?? null
+    facts['city slug'] = city.data?.name ? venue.city_slug : null
   }
 
   // A recurring series speaks for the venue before a one-off: only a rhythm gives a true line (the drive found a venue
