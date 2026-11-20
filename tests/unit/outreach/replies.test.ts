@@ -99,6 +99,17 @@ describe('bounces and automatic replies are not replies', () => {
   test('an out of office', () => {
     expect(reply('I am away until Monday.', 'Automatic reply: Your nights', { 'auto-submitted': 'auto-replied' })).toEqual({ kind: 'auto_reply' })
   })
+  test("an acknowledgement with no auto header is closed by the engine, never put to Lawal (Bendigo Symphony Orchestra, 21 November 2026)", () => {
+    // Production's own words, as the inbox reader logged them at 7.15 am.
+    expect(reply('Thank you for contacting the Bendigo Symphony Orchestra. \r\n\r\nYour message has been forwarded to our Committee.', 'Re: Complimentary listing in our Bendigo events guide')).toEqual({ kind: 'auto_reply' })
+    expect(reply('Thanks for your email. We have received your message and one of our team will be in touch shortly.')).toEqual({ kind: 'auto_reply' })
+  })
+  test("a person's answer that opens with thanks stays a reply", () => {
+    expect(reply('Thank you for contacting us. Yes please, list our next night.')).toMatchObject({ kind: 'reply' })
+    expect(reply('Thank you for contacting us. Your message has been forwarded to Sam: sam@venue.example')).toMatchObject({ kind: 'reply', outcome: 'referred' })
+    expect(reply('Thanks for your email. We have received your message. How much does it cost?')).toMatchObject({ kind: 'reply', outcome: 'question' })
+    expect(reply('Thank you for contacting us. Please stop emailing.')).toMatchObject({ kind: 'reply', outcome: 'stop' })
+  })
 })
 
 describe('which published address the planner writes to first', () => {
