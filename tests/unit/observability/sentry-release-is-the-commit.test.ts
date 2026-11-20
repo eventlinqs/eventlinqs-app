@@ -21,6 +21,7 @@ describe("Sentry's release is the commit, never 'local' on a deployment", () => 
   it.each(RELEASE_FILES.map((p) => [p.join('/'), p] as const))('%s reads SENTRY_RELEASE before anything else', (_name, parts) => {
     const src = read(...parts)
     expect(src).toMatch(/process\.env\.SENTRY_RELEASE \|\| process\.env\.VERCEL_GIT_COMMIT_SHA \|\| 'local'/)
-    expect(src).not.toMatch(/[^.]process\.env\.VERCEL_GIT_COMMIT_SHA \|\| 'local'/)
+    // No release line that skips SENTRY_RELEASE (the old one read the run time variable alone).
+    expect(src).not.toMatch(/(?<!process\.env\.SENTRY_RELEASE \|\| )process\.env\.VERCEL_GIT_COMMIT_SHA \|\| 'local'/)
   })
 })
