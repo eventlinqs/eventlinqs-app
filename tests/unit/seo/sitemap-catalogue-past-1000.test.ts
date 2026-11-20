@@ -36,10 +36,27 @@ const pad = (i: number) => String(i).padStart(5, '0')
 
 describe('the sitemap reads every row past the server ceiling', () => {
   it('1,200 public events are 1,200 event pages, the last ones included', async () => {
-    const r = await readEventCatalogue(client((i) => ({ slug: `event-${pad(i)}`, updated_at: '2026-11-05T00:00:00Z' })))
+    const r = await readEventCatalogue(
+      client((i) => ({ slug: `event-${pad(i)}`, facts_changed_at: '2026-11-05T00:00:00Z', start_date: '2099-01-01T09:00:00Z', end_date: '2099-01-01T12:00:00Z', timezone: 'Australia/Melbourne' })),
+    )
     expect(r.error).toBeNull()
     expect(r.rows).toHaveLength(ROWS)
     expect(r.rows.at(-1)?.path).toBe(`/events/event-${pad(ROWS - 1)}`)
+  })
+  it('names only nights still listed, each with its true last change (train AL, 20 November 2026)', async () => {
+    // Even rows ended in 2020, odd rows are ahead; half of the stamps are unknown (null), and none is stated then.
+    const r = await readEventCatalogue(
+      client((i) =>
+        i % 2 === 0
+          ? { slug: `event-${pad(i)}`, facts_changed_at: '2020-01-01T00:00:00Z', start_date: '2020-01-01T09:00:00Z', end_date: '2020-01-01T12:00:00Z', timezone: 'Australia/Melbourne' }
+          : { slug: `event-${pad(i)}`, facts_changed_at: i % 4 === 1 ? '2026-11-05T00:00:00Z' : null, start_date: '2099-01-01T09:00:00Z', end_date: '2099-01-01T12:00:00Z', timezone: 'Australia/Melbourne' },
+      ),
+    )
+    expect(r.error).toBeNull()
+    expect(r.rows).toHaveLength(ROWS / 2)
+    expect(r.rows.every((row) => Number(row.path.slice(-5)) % 2 === 1)).toBe(true)
+    expect(r.rows.find((row) => row.path.endsWith(pad(1)))?.lastModified).toBe('2026-11-05T00:00:00Z')
+    expect(r.rows.find((row) => row.path.endsWith(pad(3)))?.lastModified).toBeNull()
   })
   it('1,200 events at 1,200 venues are 1,200 venue pages', async () => {
     const r = await readVenueCatalogue(client((i) => ({ venue_name: `Venue ${pad(i)}`, updated_at: '2026-11-05T00:00:00Z' })))

@@ -84,19 +84,23 @@ type AdminClient = ReturnType<typeof createAdminClient>
  */
 
 /**
- * Every publicly visible event with a slug, as `/events/{slug}`.
+ * Every CURRENT publicly visible event with a slug, as `/events/{slug}`.
  *
- * The predicate is `PUBLIC_EVENT_MATCH` and nothing else, deliberately: the
- * event page itself resolves a published, public event whatever its dates, so
- * applying the listing window here would drop a past event's URL from the
- * sitemap while the page still answered 200.
+ * ONLY NIGHTS STILL LISTED (train AL, the PM's 13:08 item 2 of 20 November 2026, on Lawal's go of 14:06; Google's
+ * own words, developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap: a sitemap names the pages you
+ * want shown in results). On 20 November at 13:07 the sitemap carried 1,236 event pages of which 503 had ENDED, while
+ * Search Console read 504 pages 'Discovered, currently not indexed': the sitemap was pointing Google's crawl at nights
+ * that are over. The window is the platform's own (`isStillListed`, the rule every discovery surface uses), never a
+ * second dialect of it. An ended night's page still answers at its address; it is simply not asked to be crawled.
+ * It used to be every public event whatever its dates, so the sitemap and the page agreed on 200; the sitemap now
+ * names only what a visitor can still go to.
  */
-export async function readEventCatalogue(given?: AdminClient): Promise<CatalogueRead> {
+export async function readEventCatalogue(given?: AdminClient, now: Date = new Date()): Promise<CatalogueRead> {
   try {
     const admin = given ?? createAdminClient()
-    const data = await readEveryRow<{ slug: string | null; updated_at: string | null }>('the sitemap event pages', (from, to) => admin
+    const data = await readEveryRow<{ slug: string | null; facts_changed_at: string | null; start_date: string; end_date: string | null; timezone: string | null }>('the sitemap event pages', (from, to) => admin
       .from('events')
-      .select('slug, updated_at')
+      .select('slug, facts_changed_at, start_date, end_date, timezone')
       .match(PUBLIC_EVENT_MATCH)
       .not('slug', 'is', null)
       // DETERMINISTIC ORDER. Without an explicit ORDER BY, PostgREST returns
@@ -110,9 +114,12 @@ export async function readEventCatalogue(given?: AdminClient): Promise<Catalogue
     for (const row of data) {
       const slug = typeof row.slug === 'string' ? row.slug.trim() : ''
       if (!slug) continue
+      if (!isStillListed(row, now)) continue
       rows.push({
         path: `/events/${slug}`,
-        lastModified: typeof row.updated_at === 'string' ? row.updated_at : null,
+        // The true last change a visitor sees (events.facts_changed_at, migration 20261120160001), never updated_at,
+        // which routine runs move; none is stated where none is known.
+        lastModified: typeof row.facts_changed_at === 'string' ? row.facts_changed_at : null,
       })
     }
     return { rows, error: null }
