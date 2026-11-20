@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { PHASES, RIDES, lateBy, minutesOf, outreachPhaseAt, p90, phaseOf, phaseState, plannedStart, socialPhaseAt, melbourneMinutes } from '@/lib/ops/timetable'
+import { PHASES, RIDES, lateBy, minutesOf, outreachPhaseAt, p90, phaseOf, phaseState, plannedStart, socialPhaseAt, melbourneMinutes, unitOfRun } from '@/lib/ops/timetable'
 import { phaseRunRow } from '@/lib/ops/phase-runs'
 import { SCHEDULES } from '@/lib/admin/automation-schedules'
 
@@ -100,5 +100,21 @@ describe('a run record', () => {
     expect(row.units).toBe(0)
     expect(row.ended_at).toBe(row.started_at)
     expect(String(row.result).length).toBeLessThanOrEqual(2000)
+  })
+})
+
+// TRAIN AL (20 November 2026): /admin/today read '1171 sources' for Collect, where the hourly listings run had read 1,171
+// nights; the board said every run in its phase's unit. A run is said in its own ride's unit where that is fixed.
+describe("a run is counted in its own ride's unit", () => {
+  test('Collect: the listings run counts nights, the collection run sources', () => {
+    const collect = phaseOf('collect')
+    expect(unitOfRun(collect, 'listings')).toBe('night')
+    expect(unitOfRun(collect, 'collection')).toBe('source')
+  })
+  test("Verify: the link check counts links; a ride with no unit of its own, or none known, takes the phase's", () => {
+    expect(unitOfRun(phaseOf('verify'), 'linkCheck')).toBe('link')
+    expect(unitOfRun(phaseOf('queue'), 'outreach')).toBe('letter')
+    expect(unitOfRun(phaseOf('collect'), null)).toBe('source')
+    expect(unitOfRun(phaseOf('collect'), 'watchdog')).toBe('source')
   })
 })
