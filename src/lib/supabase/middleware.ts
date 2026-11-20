@@ -33,9 +33,16 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // EVERY REQUEST'S SESSION CHECK, WITHOUT A ROUND TRIP (law 41, Lawal, 20 November 2026, 16:08: every page in one
+  // second). getUser 'always sends a request to the Auth server for each JWT'; getClaims verifies 'against the
+  // server's JSON Web Key Set endpoint /.well-known/jwks.json which is often cached, resulting in significantly faster
+  // responses' (supabase.com/docs/reference/javascript/auth-getclaims, read 20 November 2026), and refreshes a session
+  // close to expiring before it verifies (supabase.com/docs/guides/auth/server-side/nextjs). This project signs with an
+  // asymmetric key (its /.well-known/jwks.json read 20 November 2026: one EC ES256 key), so the check is local. Here the
+  // answer is only signed in or not, for the redirects and the signed in marker; every page and action still checks
+  // its own access (getAdminSession for the admin).
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const user = typeof claimsData?.claims?.sub === 'string' ? { id: claimsData.claims.sub } : null
 
   // API routes handle their own auth - never redirect them to /login
   if (request.nextUrl.pathname.startsWith('/api/')) {

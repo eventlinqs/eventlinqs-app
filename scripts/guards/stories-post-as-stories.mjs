@@ -50,7 +50,7 @@ for (const f of socialFiles) {
     }
   }
 }
-if (!/return async \(\{ pieceId, platform, format, slides, caption \}\)/.test(blotato)) faults.push(`${BLOTATO}: the publisher does not take the piece's own format from its input`)
+if (!/return async \(\{ pieceId, platform, format, slides, caption(, collaborators)? \}\)/.test(blotato)) faults.push(`${BLOTATO}: the publisher does not take the piece's own format from its input`)
 if (!/return async \(\{ pieceId, platform, format, slides, caption \}: \{[^}]*format: 'feed' \| 'story'/.test(meta)) faults.push(`${META}: the publisher does not take the piece's own format from its input`)
 if (!/export async function slidesMisfit\(slides: readonly Slide\[\], platform: SocialPlatform, format: 'feed' \| 'story', fetcher: Fetcher\)/.test(check)) {
   faults.push(`${CHECK}: slidesMisfit does not take the piece's own format as an argument`)

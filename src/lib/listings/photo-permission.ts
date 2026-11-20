@@ -104,24 +104,11 @@ export async function givePhotos(
   const founder = await founderAccount(db)
   if (founder.id === null) return { state: 'refused', reason: 'Your photos could not be kept just now. Try again in a minute.' }
 
-  const yes = await db.rpc('social_log_organiser_yes', {
-    p_host: night.venueName,
-    p_granted_at: input.now.toISOString(),
-    p_wording: grantWording({ givenBy: input.givenBy, organiserName: input.page.organiserName, nightTitle: night.title, uses: input.uses, count: files.length }),
-    p_scope: 'this_event',
-    p_channel: 'website',
-    p_event: night.eventId,
-    p_logged_by: founder.id,
-  })
-  if (yes.error) {
-    const words = /refused:\s*(.+)$/s.exec(yes.error.message)?.[1]?.trim()
-    return { state: 'refused', reason: words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Your permission could not be kept just now. Try again in a minute.' }
-  }
-
-  const receivedOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(input.now)
+  // EVERY PHOTO IS STORED AND CHECKED BEFORE ANY YES IS LOGGED (the PM's 15:02 of 20 November 2026, the upload class: on
+  // 18 November at 23:50 an organiser's yes was logged and 0 images kept, because the yes came first). An upload that
+  // keeps nothing logs nothing and says, photo by photo, why each was not kept; a yes is logged only for photos kept.
   const refused: string[] = []
-  let added = 0
-  const applied: string[] = []
+  const kept: { file: File; stored: Extract<Awaited<ReturnType<typeof storeImage>>, { url: string }> }[] = []
   for (const file of files) {
     const stored = await storeImage(`photos/${night.eventId}`, file, night.eventId, deps)
     if ('refused' in stored) {
@@ -146,6 +133,31 @@ export async function givePhotos(
       )
       continue
     }
+    kept.push({ file, stored })
+  }
+  // Nothing kept: no yes, nothing in the register, each photo's reason said.
+  if (kept.length === 0) return { state: 'done', added: 0, refused, applied: 0, coverSet: false, slug: night.slug }
+
+  const yes = await db.rpc('social_log_organiser_yes', {
+    p_host: night.venueName,
+    p_granted_at: input.now.toISOString(),
+    p_wording: grantWording({ givenBy: input.givenBy, organiserName: input.page.organiserName, nightTitle: night.title, uses: input.uses, count: kept.length }),
+    p_scope: 'this_event',
+    p_channel: 'website',
+    p_event: night.eventId,
+    p_logged_by: founder.id,
+  })
+  if (yes.error) {
+    // The yes could not be kept, so neither are the photos stored for it.
+    await deps.remove(kept.map((k) => k.stored.path))
+    const words = /refused:\s*(.+)$/s.exec(yes.error.message)?.[1]?.trim()
+    return { state: 'refused', reason: words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Your permission could not be kept just now. Try again in a minute.' }
+  }
+
+  const receivedOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(input.now)
+  let added = 0
+  const applied: string[] = []
+  for (const { file, stored } of kept) {
     const done = await addAsset(db, {
       assetState: 'organiser_authorised',
       assetType: input.kind === 'flyer' ? 'artwork' : 'photo',

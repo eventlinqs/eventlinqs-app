@@ -10,7 +10,7 @@ import { describe, it, expect, vi } from 'vitest'
  * query (a campaign link), keeps the founder's one-host 301.
  */
 vi.mock('@supabase/ssr', () => ({
-  createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: null }, error: null }) } }),
+  createServerClient: () => ({ auth: { getClaims: async () => ({ data: null, error: null }) } }),
 }))
 
 import { NextRequest } from 'next/server'

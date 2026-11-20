@@ -710,6 +710,80 @@ export type Database = {
         }
         Relationships: []
       }
+      collab_invitations: {
+        Row: {
+          created_at: string
+          handle: string
+          id: string
+          notes: string | null
+          organiser_id: string
+          piece_id: string
+          post_ref: string | null
+          schedule_id: string | null
+          sent_at: string
+          status: string
+          status_read_at: string | null
+          status_source: string | null
+        }
+        Insert: {
+          created_at?: string
+          handle: string
+          id?: string
+          notes?: string | null
+          organiser_id: string
+          piece_id: string
+          post_ref?: string | null
+          schedule_id?: string | null
+          sent_at: string
+          status?: string
+          status_read_at?: string | null
+          status_source?: string | null
+        }
+        Update: {
+          created_at?: string
+          handle?: string
+          id?: string
+          notes?: string | null
+          organiser_id?: string
+          piece_id?: string
+          post_ref?: string | null
+          schedule_id?: string | null
+          sent_at?: string
+          status?: string
+          status_read_at?: string | null
+          status_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collab_invitations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "organisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_invitations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+          {
+            foreignKeyName: "collab_invitations_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_invitations_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "social_piece_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comms_send_approvals: {
         Row: {
           approval_words: string
@@ -7193,11 +7267,14 @@ export type Database = {
       organisers: {
         Row: {
           acquisition_state: string
+          collab_preference: string
           created_at: string
           created_by: string
           found_on: string | null
           id: string
           instagram_handle: string | null
+          instagram_verified_at: string | null
+          instagram_verified_source: string | null
           is_test: boolean
           name: string
           name_key: string | null
@@ -7209,11 +7286,14 @@ export type Database = {
         }
         Insert: {
           acquisition_state?: string
+          collab_preference?: string
           created_at?: string
           created_by: string
           found_on?: string | null
           id?: string
           instagram_handle?: string | null
+          instagram_verified_at?: string | null
+          instagram_verified_source?: string | null
           is_test?: boolean
           name: string
           name_key?: string | null
@@ -7225,11 +7305,14 @@ export type Database = {
         }
         Update: {
           acquisition_state?: string
+          collab_preference?: string
           created_at?: string
           created_by?: string
           found_on?: string | null
           id?: string
           instagram_handle?: string | null
+          instagram_verified_at?: string | null
+          instagram_verified_source?: string | null
           is_test?: boolean
           name?: string
           name_key?: string | null
@@ -10669,6 +10752,7 @@ export type Database = {
           id: string
           kind: string
           link: string
+          moment_key: string | null
           next_step: string
           objective: string
           outcome: string
@@ -10688,6 +10772,7 @@ export type Database = {
           id?: string
           kind: string
           link: string
+          moment_key?: string | null
           next_step: string
           objective: string
           outcome: string
@@ -10707,6 +10792,7 @@ export type Database = {
           id?: string
           kind?: string
           link?: string
+          moment_key?: string | null
           next_step?: string
           objective?: string
           outcome?: string
@@ -14128,6 +14214,21 @@ export type Database = {
           event_id: string
           focal_x: number
           focal_y: number
+          source_height: number
+          source_width: number
+        }[]
+      }
+      social_usable_images_all: {
+        Args: { p_at: string; p_events: string[] }
+        Returns: {
+          approved_at: string
+          asset_id: string
+          asset_type: string
+          asset_url: string
+          event_id: string
+          focal_x: number
+          focal_y: number
+          lead_rank: number
           source_height: number
           source_width: number
         }[]

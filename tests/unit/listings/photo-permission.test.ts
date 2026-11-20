@@ -55,6 +55,9 @@ describe('the page and its press', () => {
     expect(lib).toMatch(/await addAsset\(db, \{/)
     expect(lib).not.toMatch(/from\('social_assets'\)/)
     expect(lib.indexOf("db.rpc('social_log_organiser_yes'")).toBeLessThan(lib.indexOf('await addAsset('))
+    // Every photo stored and checked BEFORE the yes, and nothing kept means no yes (the PM's 15:02 of 20 November 2026).
+    expect(lib.indexOf('await storeImage(')).toBeLessThan(lib.indexOf("db.rpc('social_log_organiser_yes'"))
+    expect(lib).toMatch(/if \(kept\.length === 0\) return \{ state: 'done', added: 0, refused/)
     expect(lib).toMatch(/await deps\.remove\(\[stored\.path\]\)/)
     // Lawal, 18 November 2026, 13:46: "If they ticked it, if they approve it, good": approved at once, no review queue.
     expect(lib.indexOf('await addAsset(')).toBeLessThan(lib.indexOf('await decideAsset('))

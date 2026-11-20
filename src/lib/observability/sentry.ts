@@ -101,7 +101,7 @@ function ensureServerSentryInitialized(): void {
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
       environment: sentryEnvironment(false),
-      release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+      release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
       beforeSend(event) {
         try {
           return scrubValue(event) as typeof event

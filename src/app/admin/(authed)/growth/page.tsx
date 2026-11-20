@@ -84,7 +84,17 @@ export default async function AdminGrowthPage() {
   if (!can(session, 'admin.network.manage') || !can(session, 'admin.pricing.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.growth.view', session })
 
-  const [g, funnel, qa, supply, desk, acq, coverage] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard(), readGrowthDesk(), readAcquisitionDesk(), readCoverageDesk()])
+  // ONE SLOW OR FAILED DESK NEVER ENDS THE PAGE (the PM's 15:41 of 20 November 2026: a Server Components error here at
+  // 15:36, readAcquisitionDesk throwing inside one Promise.all; law 41): the three desk reads are settled and each is said
+  // in its own section when it cannot be read; marketing and learning need nothing from them, so they start beside them.
+  const settle = <T,>(read: Promise<T>) =>
+    read.then(
+      (value) => ({ ok: true as const, value }),
+      (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
+    )
+  const marketingRead = settle(readMarketingResults(createAdminClient()))
+  const learningRead = settle(readSocialLearning(createAdminClient(), new Date()))
+  const [g, funnel, qa, supply, desk, acq, coverage] = await Promise.all([readGrowthWeek(), readOrganiserFunnel(), readQaPresses(), readSupplyScorecard(), settle(readGrowthDesk()), settle(readAcquisitionDesk()), settle(readCoverageDesk())])
   const thisMonth = monthOf(funnel.readAt, PLATFORM_TIME_ZONE)
   // The weekly report (order 4, Release 3): last week's moves, conversion, tasks past due and failed jobs. A failed read is
   // said in its own section and never stops the page.
@@ -94,16 +104,10 @@ export default async function AdminGrowthPage() {
   )
   // Organiser Marketing results (the PM's 12:40 of 18 November 2026, item 5): a failed read is said in its own words and
   // never stops the page.
-  const marketing = await readMarketingResults(createAdminClient()).then(
-    (value) => ({ ok: true as const, value }),
-    (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
-  )
+  const marketing = await marketingRead
   // Car C, learn (the PM's 21:00 and 23:09 of 18 November 2026): the best family from the platforms' own figures and the
   // posts the day's read could not match. A failed read is said in its own words and never stops the page.
-  const learning = await readSocialLearning(createAdminClient(), new Date()).then(
-    (value) => ({ ok: true as const, value }),
-    (e: unknown) => ({ ok: false as const, why: e instanceof Error ? e.message : String(e) }),
-  )
+  const learning = await learningRead
   const f: WeekFigures = g.lastFigures
   const b: WeekFigures = g.beforeFigures
   const lastSunday = new Date(new Date(g.last.to).getTime() - 1).toISOString()
@@ -119,9 +123,9 @@ export default async function AdminGrowthPage() {
         </section>
       )}
       {/* The growth desk first (Law 8): today's tasks and the plan against the actual, then last week's detail. */}
-      <GrowthDeskSection desk={desk} />
-      <AcquisitionDeskSection acq={acq} />
-      <CoverageDeskSection desk={coverage} />
+      {desk.ok ? <GrowthDeskSection desk={desk.value} /> : <DeskNotRead section="growth-desk" title="The growth desk" why={desk.why} />}
+      {acq.ok ? <AcquisitionDeskSection acq={acq.value} /> : <DeskNotRead section="acquisition-desk" title="The acquisition desk" why={acq.why} />}
+      {coverage.ok ? <CoverageDeskSection desk={coverage.value} /> : <DeskNotRead section="coverage-desk" title="The coverage desk" why={coverage.why} />}
 
       <header className="mb-8">
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">Growth</p>
@@ -403,5 +407,15 @@ export default async function AdminGrowthPage() {
         </p>
       ) : null}
     </div>
+  )
+}
+
+/** A desk that could not be read just now, said in its own section with the reason; the rest of the page stands. */
+function DeskNotRead({ section, title, why }: { section: string; title: string; why: string }) {
+  return (
+    <section data-section={section} className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
+      <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">{title}</h2>
+      <p className="mt-2 text-sm text-[var(--admin-soft)]">Not read just now: {why}</p>
+    </section>
   )
 }
