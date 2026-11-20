@@ -16,7 +16,7 @@ import { join } from 'node:path'
 const getUser = vi.fn()
 
 vi.mock('@supabase/ssr', () => ({
-  createServerClient: () => ({ auth: { getUser: () => getUser() } }),
+  createServerClient: () => ({ auth: { getClaims: () => getUser() } }),
 }))
 vi.mock('@/lib/supabase/env', () => ({
   getSupabaseUrl: () => 'https://test.supabase.co',
@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe('the session middleware keeps the marker in step with the session', () => {
   it('sets it on a response with a user when the request lacks it', async () => {
-    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+    getUser.mockResolvedValue({ data: { claims: { sub: 'u1' } } })
     const res = await updateSession(request('https://www.eventlinqs.com.au/events/some-gig'))
     const cookie = res.cookies.get(SIGNED_IN_MARKER_COOKIE)
     expect(cookie?.value).toBe('1')
@@ -48,17 +48,17 @@ describe('the session middleware keeps the marker in step with the session', () 
   })
 
   it('leaves the response untouched when the marker already matches the session, so anonymous responses stay cacheable', async () => {
-    getUser.mockResolvedValue({ data: { user: null } })
+    getUser.mockResolvedValue({ data: null })
     const anon = await updateSession(request('https://www.eventlinqs.com.au/events/some-gig'))
     expect(anon.cookies.get(SIGNED_IN_MARKER_COOKIE)).toBeUndefined()
 
-    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+    getUser.mockResolvedValue({ data: { claims: { sub: 'u1' } } })
     const signedIn = await updateSession(request('https://www.eventlinqs.com.au/events/some-gig', `${SIGNED_IN_MARKER_COOKIE}=1`))
     expect(signedIn.cookies.get(SIGNED_IN_MARKER_COOKIE)).toBeUndefined()
   })
 
   it('clears it on a response without a user when the request still carries it', async () => {
-    getUser.mockResolvedValue({ data: { user: null } })
+    getUser.mockResolvedValue({ data: null })
     const res = await updateSession(request('https://www.eventlinqs.com.au/events/some-gig', `${SIGNED_IN_MARKER_COOKIE}=1`))
     const cookie = res.cookies.get(SIGNED_IN_MARKER_COOKIE)
     expect(cookie?.value).toBe('')
@@ -66,14 +66,14 @@ describe('the session middleware keeps the marker in step with the session', () 
   })
 
   it('sets it on the redirect away from the login page too, so the first page after sign-in carries it', async () => {
-    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+    getUser.mockResolvedValue({ data: { claims: { sub: 'u1' } } })
     const res = await updateSession(request('https://www.eventlinqs.com.au/login'))
     expect(res.status).toBe(307)
     expect(res.cookies.get(SIGNED_IN_MARKER_COOKIE)?.value).toBe('1')
   })
 
   it('never touches the Stripe webhook', async () => {
-    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+    getUser.mockResolvedValue({ data: { claims: { sub: 'u1' } } })
     const res = await updateSession(request('https://www.eventlinqs.com.au/api/webhooks/stripe'))
     expect(res.cookies.get(SIGNED_IN_MARKER_COOKIE)).toBeUndefined()
     expect(getUser).not.toHaveBeenCalled()
