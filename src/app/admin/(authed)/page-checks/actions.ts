@@ -24,5 +24,5 @@ export async function stopPageCheckAction(formData: FormData): Promise<void> {
   await recordAuditEvent({ action: 'admin.page_checks.stop', targetType: 'organiser_page_checks', targetId: id, metadata: { ...answer, reason }, session })
   revalidatePath('/admin/page-checks')
   if (answer.state === 'stopped') back(`Stopped. The contact is unticked; ${answer.held} waiting letter(s) went back to held.`)
-  back(`Not stopped: ${answer.reason}.`)
+  else back(`Not stopped: ${answer.reason}.`)
 }
