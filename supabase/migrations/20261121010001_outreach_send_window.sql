@@ -1,22 +1,23 @@
--- THE SENDING WINDOW IS A STORED SETTING (law 44; Lawal, 21 November 2026, 01:08, through the PM's 01:09 of that day:
--- "The engine works from today. Every approved email, all the emails, go from today ... the emails go out today before
--- 9 am"). Organiser letters send every day from 08:00 to before 18:00 in the recipient's city, weekends included, until
--- the setting says otherwise. The sender (src/lib/outreach/sender.ts sendWindowOf) and the self queue read these three
--- columns; a row that holds a malformed window is never guessed at: the code keeps the default.
+-- THE SENDING WINDOW IS A STORED SETTING (law 44; Lawal, 21 November 2026, 01:16, through the PM's 01:17 of that day,
+-- quoted: "Monday to Saturday we are sending ... Sunday is off ... You send my emails before the start of work hours.
+-- Every outreach must go out no, never between nine to five ... every communication is published as early as six AM").
+-- Organiser letters send Monday to Saturday, from 06:00 and out before 09:00 in the recipient's city; never on a Sunday
+-- (the engine plans the week), never inside working hours. The sender (src/lib/outreach/sender.ts sendWindowOf) and the
+-- self queue read these three columns; a row holding a malformed window is never guessed at: the code keeps the default.
 --   send_days: the ISO days of the week it sends on, 1 Monday to 7 Sunday;
---   send_from_hour, send_to_hour: from the first hour to before the last, in the recipient's city.
+--   send_from_minute, send_until_minute: from that minute of the day to before the last, in the recipient's city.
 -- No table is created, so no grant changes (the columns take outreach_sender's own grants). Reversal: drop the three
--- columns; the code then keeps its default, every day, 08:00 to 18:00.
+-- columns; the code then keeps its default, Monday to Saturday, 06:00 to 09:00.
 
 alter table public.outreach_sender
-  add column if not exists send_days smallint[] not null default '{1,2,3,4,5,6,7}',
-  add column if not exists send_from_hour smallint not null default 8,
-  add column if not exists send_to_hour smallint not null default 18;
+  add column if not exists send_days smallint[] not null default '{1,2,3,4,5,6}',
+  add column if not exists send_from_minute smallint not null default 360,
+  add column if not exists send_until_minute smallint not null default 540;
 
 alter table public.outreach_sender
   add constraint outreach_sender_send_days_are_days check (cardinality(send_days) between 1 and 7 and send_days <@ '{1,2,3,4,5,6,7}'::smallint[]),
-  add constraint outreach_sender_send_hours_are_a_window check (send_from_hour between 0 and 23 and send_to_hour between 1 and 24 and send_from_hour < send_to_hour);
+  add constraint outreach_sender_send_minutes_are_a_window check (send_from_minute between 0 and 1439 and send_until_minute between 1 and 1440 and send_from_minute < send_until_minute);
 
-comment on column public.outreach_sender.send_days is 'The days organiser letters send on, ISO 1 Monday to 7 Sunday (law 44: every day).';
-comment on column public.outreach_sender.send_from_hour is 'The first hour letters send in the recipient''s city (law 44: 8).';
-comment on column public.outreach_sender.send_to_hour is 'Letters send before this hour in the recipient''s city (law 44: 18).';
+comment on column public.outreach_sender.send_days is 'The days organiser letters send on, ISO 1 Monday to 7 Sunday (law 44: Monday to Saturday; Sunday is off).';
+comment on column public.outreach_sender.send_from_minute is 'The first minute of the day letters send in the recipient''s city (law 44: 360, 06:00).';
+comment on column public.outreach_sender.send_until_minute is 'Letters send before this minute of the day in the recipient''s city (law 44: 540, 09:00).';

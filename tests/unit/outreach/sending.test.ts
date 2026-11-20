@@ -99,25 +99,30 @@ describe('Graph', () => {
 })
 
 describe('business hours in the recipient zone', () => {
-  // LAW 44 (Lawal, 21 November 2026, 01:08): every day, 08:00 to before 18:00 in the recipient's city, weekends included.
-  test('Thursday 10:00 and Saturday 11:00 in Melbourne are in; 07:00 and 18:00 are not', () => {
-    expect(inBusinessHours(new Date('2026-10-28T23:00:00Z'), 'Australia/Melbourne')).toBe(true)
-    expect(inBusinessHours(new Date('2026-10-31T00:00:00Z'), 'Australia/Melbourne')).toBe(true)
-    expect(inBusinessHours(new Date('2026-10-29T07:00:00Z'), 'Australia/Melbourne')).toBe(false)
-    expect(inBusinessHours(new Date('2026-10-30T20:00:00Z'), 'Australia/Melbourne')).toBe(false)
+  // LAW 44 (Lawal, 21 November 2026, 01:16): Monday to Saturday, from 06:00 and out before 09:00 in the recipient's
+  // city; never on a Sunday, never between nine and five.
+  test('Saturday 07:00 and Thursday 06:00 in Melbourne are in; a Sunday, 09:00, Thursday 10:00 and 05:59 are refused', () => {
+    expect(inBusinessHours(new Date('2026-10-30T20:00:00Z'), 'Australia/Melbourne')).toBe(true)
+    expect(inBusinessHours(new Date('2026-10-28T19:00:00Z'), 'Australia/Melbourne')).toBe(true)
+    expect(inBusinessHours(new Date('2026-10-31T20:00:00Z'), 'Australia/Melbourne')).toBe(false)
+    expect(inBusinessHours(new Date('2026-10-30T22:00:00Z'), 'Australia/Melbourne')).toBe(false)
+    expect(inBusinessHours(new Date('2026-10-28T23:00:00Z'), 'Australia/Melbourne')).toBe(false)
+    expect(inBusinessHours(new Date('2026-10-30T18:59:00Z'), 'Australia/Melbourne')).toBe(false)
   })
   test('the stored window is read, and a malformed one is never guessed at', () => {
-    const weekdays = sendWindowOf({ send_days: [1, 2, 3, 4, 5], send_from_hour: 9, send_to_hour: 17 })
-    expect(inBusinessHours(new Date('2026-10-31T00:00:00Z'), 'Australia/Melbourne', weekdays)).toBe(false)
+    const sundays = sendWindowOf({ send_days: [7], send_from_minute: 360, send_until_minute: 540 })
+    expect(inBusinessHours(new Date('2026-10-31T20:00:00Z'), 'Australia/Melbourne', sundays)).toBe(true)
+    expect(inBusinessHours(new Date('2026-10-30T20:00:00Z'), 'Australia/Melbourne', sundays)).toBe(false)
     expect(sendWindowOf(null)).toEqual(DEFAULT_SEND_WINDOW)
-    expect(sendWindowOf({ send_days: [], send_from_hour: 8, send_to_hour: 18 })).toEqual(DEFAULT_SEND_WINDOW)
-    expect(sendWindowOf({ send_days: [1, 8], send_from_hour: 8, send_to_hour: 18 })).toEqual(DEFAULT_SEND_WINDOW)
-    expect(sendWindowOf({ send_days: [6, 7], send_from_hour: 18, send_to_hour: 8 })).toEqual(DEFAULT_SEND_WINDOW)
-    expect(DEFAULT_SEND_WINDOW).toEqual({ days: [1, 2, 3, 4, 5, 6, 7], fromHour: 8, toHour: 18 })
-    expect(sendWindowWords(DEFAULT_SEND_WINDOW)).toBe('every day, 8:00 to 18:00')
+    expect(sendWindowOf({ send_days: [], send_from_minute: 360, send_until_minute: 540 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(sendWindowOf({ send_days: [1, 8], send_from_minute: 360, send_until_minute: 540 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(sendWindowOf({ send_days: [6], send_from_minute: 540, send_until_minute: 360 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(DEFAULT_SEND_WINDOW).toEqual({ days: [1, 2, 3, 4, 5, 6], fromMinute: 360, untilMinute: 540 })
+    expect(sendWindowWords(DEFAULT_SEND_WINDOW)).toBe('Monday to Saturday, 06:00 to 09:00')
   })
-  test('the same instant read in Perth is three hours earlier', () => {
-    expect(inBusinessHours(new Date('2026-10-28T23:00:00Z'), 'Australia/Perth')).toBe(false)
+  test('the same instant read in Perth is three hours earlier: 07:00 in Melbourne is 04:00 there, outside', () => {
+    expect(inBusinessHours(new Date('2026-10-28T20:00:00Z'), 'Australia/Melbourne')).toBe(true)
+    expect(inBusinessHours(new Date('2026-10-28T20:00:00Z'), 'Australia/Perth')).toBe(false)
   })
 })
 
@@ -156,7 +161,8 @@ function fakeDb(answer: (call: Call, shape: 'many' | 'one') => { data: unknown; 
   return { db: db as unknown as SupabaseClient<Database>, calls }
 }
 
-const THURSDAY_10_MELBOURNE = new Date('2026-10-28T23:00:00Z')
+// Inside law 44's window (Monday to Saturday, 06:00 to before 09:00 in the recipient's city): Thursday 07:00, Melbourne.
+const THURSDAY_7_MELBOURNE = new Date('2026-10-28T20:00:00Z')
 const QUEUED = [
   { id: 'q-ok', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null },
   { id: 'q-refused', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
@@ -185,14 +191,14 @@ describe('the run', () => {
 
   test('on hold nothing is claimed and nothing leaves', async () => {
     const { db, calls } = standardDb('hold')
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.note).toBe('the sender is on hold: nothing is claimed')
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
 
   test('a claim the database refuses stays queued and is reported in its words; the other is sent with our Message-ID', async () => {
     const { db, calls } = standardDb('test', { refuse: ['q-refused'] })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.sent).toEqual(['q-ok'])
     expect(r.refused).toEqual([{ id: 'q-refused', reason: 'the play has sent its 20 for today.' }])
     const sentUpdate = calls.find((c) => c.op === 'update' && (c.payload as { state: string }).state === 'sent')
@@ -204,16 +210,16 @@ describe('the run', () => {
 
   test('test mode fails a message to an outside address, and the row says why', async () => {
     const { db, calls } = standardDb('test', { address: 'sam@venue.example' })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.sent).toEqual([])
     expect(r.failed[0].reason).toContain('test mode reaches only @eventlinqs.com')
     expect(calls.some((c) => c.op === 'update' && (c.payload as { state: string }).state === 'failed')).toBe(true)
     expect(recordedOutreachMail()).toHaveLength(0)
   })
 
-  test('outside the sending window nothing is claimed for an organiser (07:00 on a Saturday in Melbourne)', async () => {
+  test('on a Sunday nothing is claimed for an organiser (07:00 on Sunday in Melbourne)', async () => {
     const { db, calls } = standardDb('test', { address: 'sam@venue.example' })
-    const r = await runOutreachSender(db, { now: new Date('2026-10-30T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: new Date('2026-10-31T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(2)
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
@@ -222,7 +228,7 @@ describe('the run', () => {
   // mailbox is not one, so a letter to an address on the sender's own test domain goes at any hour.
   test('our own test mailbox is sent outside business hours; an organiser never is', async () => {
     const { db } = standardDb('test')
-    const r = await runOutreachSender(db, { now: new Date('2026-10-30T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: new Date('2026-10-31T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(0)
     expect(r.sent.length).toBeGreaterThan(0)
     expect(businessHoursApply('sam@eventlinqs.com', 'eventlinqs.com')).toBe(false)
@@ -235,17 +241,17 @@ describe('the run', () => {
 
   // LAW 42 (Lawal, 20 November 2026, 23:58): a letter whose slot fell on a missed day is never sent as that day's.
   test('a letter from a missed day is re planned from today; one whose words name a time is held for a redraft', async () => {
-    const yesterday = '2026-10-27T23:00:00Z' // Wednesday 28 October, 10:00 in Melbourne; the run is Thursday the 29th
+    const yesterday = '2026-10-27T20:00:00Z' // Wednesday 28 October, 07:00 in Melbourne; the run is Thursday the 29th
     const { db, calls } = standardDb('test', {
       queued: [
         { ...QUEUED[0], scheduled_for: yesterday },
         { ...QUEUED[1], id: 'q-dated', body: 'Hi Jo,\nYour night on Saturday is on our guide. EventLinqs.', scheduled_for: yesterday },
       ],
     })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     const updates = calls.filter((c) => c.op === 'update' && c.table === 'outreach_touches')
     const ofRow = (id: string) => updates.filter((c) => c.filters.some(([k, v]) => k === 'eq:id' && v === id)).map((c) => c.payload as Record<string, unknown>)
-    expect(ofRow('q-ok')[0]).toEqual({ scheduled_for: THURSDAY_10_MELBOURNE.toISOString() })
+    expect(ofRow('q-ok')[0]).toEqual({ scheduled_for: THURSDAY_7_MELBOURNE.toISOString() })
     expect(ofRow('q-dated')[0]).toMatchObject({ state: 'held' })
     expect(String((ofRow('q-dated')[0].held_because as string[])[0])).toContain("its words name a time ('Saturday')")
     expect(ofRow('q-dated').some((p) => p.state === 'sending' || p.state === 'sent')).toBe(false)
@@ -256,14 +262,14 @@ describe('the run', () => {
   // letter from lawal@ and a permission request from hello@, whatever outreach_sender.from_address reads.
   test('an acquisition letter leaves the run from lawal@, a permission request from hello@', async () => {
     const { db } = standardDb('test', { queued: [{ ...QUEUED[0], comms_category: 'ACQ' }, { ...QUEUED[1], comms_category: 'PERM' }] })
-    await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     const mail = recordedOutreachMail()
     expect(mail.map((m) => m.from)).toEqual([LAWAL_MAILBOX, HELLO_MAILBOX])
   })
 
   test("a letter slotted earlier today, or with no slot, is today's and is not re planned", async () => {
-    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], scheduled_for: '2026-10-28T22:00:00Z' }, { ...QUEUED[1] }] })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], scheduled_for: '2026-10-28T19:30:00Z' }, { ...QUEUED[1] }] })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.replanned ?? []).toEqual([])
   })
 })
@@ -308,7 +314,7 @@ describe('one send path, no doubles', () => {
       if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: 'q-first' }, error: null }
       return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
     })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.sent).toEqual([])
     expect(recordedOutreachMail()).toHaveLength(0)
     const voided = calls.find((c) => c.op === 'update' && (c.payload as { state: string }).state === 'void')
@@ -334,7 +340,7 @@ describe('its words, read again at send time', () => {
   test('a queued letter carrying the founder sentence is voided with why and never sent; the clean one goes', async () => {
     const queued = [{ ...QUEUED[0], id: 'q-v1', body: `Hi Sam,\n${SENTENCE}\nEventLinqs.` }, { ...QUEUED[0], id: 'q-clean' }]
     const { db, calls } = standardDb('test', { queued })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.sent).toEqual(['q-clean'])
     expect(r.refused.map((x) => x.id)).toEqual(['q-v1'])
     expect(r.refused[0].reason).toMatch(/founder sentence/)
@@ -345,7 +351,7 @@ describe('its words, read again at send time', () => {
   })
   test('the drill: the same letter without it is sent', async () => {
     const { db } = standardDb('test', { queued: [{ ...QUEUED[0], id: 'q-v2' }] })
-    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.sent).toEqual(['q-v2'])
     expect(r.refused).toEqual([])
   })

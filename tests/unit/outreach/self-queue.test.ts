@@ -77,15 +77,15 @@ describe("the gateway's standing rule, ported", () => {
 })
 
 describe('the next sending window, from today (laws 42 and 44)', () => {
-  test('Saturday after midnight in Melbourne: the same Saturday at 8:00', () => {
-    expect(nextWindowStart(new Date('2026-11-20T13:30:00Z'), 'Australia/Melbourne').toISOString()).toBe('2026-11-20T21:00:00.000Z')
+  test('Saturday after midnight in Melbourne: the same Saturday at 06:00', () => {
+    expect(nextWindowStart(new Date('2026-11-20T13:30:00Z'), 'Australia/Melbourne').toISOString()).toBe('2026-11-20T19:00:00.000Z')
   })
-  test('inside the window: now; after six on a Friday: Saturday at 8:00; Perth keeps its own clock; a stored window is kept', () => {
-    const tuesday10 = new Date('2026-11-23T23:00:00Z')
-    expect(nextWindowStart(tuesday10, 'Australia/Melbourne')).toBe(tuesday10)
-    expect(nextWindowStart(new Date('2026-11-27T07:00:00Z'), 'Australia/Melbourne').toISOString()).toBe('2026-11-27T21:00:00.000Z')
-    expect(nextWindowStart(new Date('2026-11-20T13:30:00Z'), 'Australia/Perth').toISOString()).toBe('2026-11-21T00:00:00.000Z')
-    const weekdays = { days: [1, 2, 3, 4, 5], fromHour: 9, toHour: 17 }
+  test('inside the window: now; Saturday after nine: Monday at 06:00, never a Sunday; Perth keeps its own clock', () => {
+    const tuesday7 = new Date('2026-11-23T20:00:00Z')
+    expect(nextWindowStart(tuesday7, 'Australia/Melbourne')).toBe(tuesday7)
+    expect(nextWindowStart(new Date('2026-11-20T23:00:00Z'), 'Australia/Melbourne').toISOString()).toBe('2026-11-22T19:00:00.000Z')
+    expect(nextWindowStart(new Date('2026-11-20T13:30:00Z'), 'Australia/Perth').toISOString()).toBe('2026-11-20T22:00:00.000Z')
+    const weekdays = { days: [1, 2, 3, 4, 5], fromMinute: 540, untilMinute: 1020 }
     expect(nextWindowStart(new Date('2026-11-20T13:30:00Z'), 'Australia/Melbourne', weekdays).toISOString()).toBe('2026-11-22T22:00:00.000Z')
   })
 })
@@ -131,15 +131,15 @@ describe('the self queue', () => {
     return { db: { from } as never, calls }
   }
   const NOW = new Date('2026-11-20T13:30:00Z') // Saturday 00:30 in Melbourne
-  const SATURDAY_8 = '2026-11-20T21:00:00.000Z'
+  const SATURDAY_6 = '2026-11-20T19:00:00.000Z'
   const policy = { version: POLICY } as never
 
-  test('a held letter on the approved template, words passing and page checked, queues itself for Saturday at 8:00', async () => {
+  test('a held letter on the approved template, words passing and page checked, queues itself for Saturday at 06:00', async () => {
     const { db, calls } = fakeDb([{ id: 'ok', template: 'acq_first v1', mail: letter('Bendigo Symphony Orchestra', 'Bendigo') }])
     const r = await queueApprovedHeldLetters(db, { now: NOW, policy })
-    expect(r.queued).toEqual([expect.objectContaining({ id: 'ok', at: SATURDAY_8 })])
+    expect(r.queued).toEqual([expect.objectContaining({ id: 'ok', at: SATURDAY_6 })])
     const update = calls.find((c) => c.op === 'update')
-    expect(update?.payload).toEqual({ state: 'queued', scheduled_for: SATURDAY_8 })
+    expect(update?.payload).toEqual({ state: 'queued', scheduled_for: SATURDAY_6 })
     expect(update?.filters).toEqual(expect.arrayContaining([['eq:id', 'ok'], ['eq:state', 'held']]))
   })
 
@@ -173,8 +173,8 @@ describe('the self queue', () => {
     const own = { id: 'acq-test-02', content_hash: gatewayContentHash(gatewayFirstLetter(geelong)), policy_version: POLICY, by: 'lawal', authorised_send: true, at: '2026-11-20T12:21:12+1100' }
     const { db, calls } = fakeDb([{ id: 'geelong', template: 'acq_first v1', mail: geelong }])
     const r = await queueApprovedHeldLetters(db, { now: NOW, policy, letterApprovals: [own] })
-    expect(r.queued).toEqual([{ id: 'geelong', at: SATURDAY_8, why: "Lawal's own approval acq-test-02 of 2026-11-20T12:21:12+1100" }])
-    expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: SATURDAY_8 })
+    expect(r.queued).toEqual([{ id: 'geelong', at: SATURDAY_6, why: "Lawal's own approval acq-test-02 of 2026-11-20T12:21:12+1100" }])
+    expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: SATURDAY_6 })
   })
 })
 

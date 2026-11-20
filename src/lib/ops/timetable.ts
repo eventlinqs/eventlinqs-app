@@ -68,9 +68,9 @@ export const PHASES: readonly Phase[] = [
   { key: 'freeze', label: 'Freeze and redraw', slot: '04:40', cutoff: '05:30', unit: 'piece', rides: ['social'], what: "Today's rows frozen; any piece whose facts changed drawn again; the publish gate run on every piece." },
   { key: 'schedule', label: 'Schedule', slot: '05:40', cutoff: '05:55', unit: 'piece', rides: ['social'], what: "Every passed piece scheduled into its band; the city guides revalidated." },
   { key: 'live', label: 'Live', slot: '06:00', cutoff: '06:00', unit: 'piece', rides: ['social'], what: 'The site current for today; the morning post published; the first story out.' },
-  { key: 'queue', label: 'Queue', slot: '07:00', cutoff: '07:00', unit: 'letter', rides: ['outreach'], what: "The day's acquisition and permission letters queued, each CLEARED_TO_SEND." },
+  { key: 'queue', label: 'Queue', slot: '05:40', cutoff: '05:55', unit: 'letter', rides: ['outreach'], what: "The day's acquisition and permission letters queued, each CLEARED_TO_SEND, before the window opens at 06:00 (law 44)." },
   { key: 'report', label: 'Report', slot: '08:00', cutoff: '08:00', unit: 'area', rides: ['heartbeat'], what: 'The morning report emailed to Lawal from production records.' },
-  { key: 'send', label: 'Send', slot: '08:30', cutoff: '10:30', unit: 'letter', rides: ['outreach'], what: 'Letters sent in business hours, spread across the window.' },
+  { key: 'send', label: 'Send', slot: '06:00', cutoff: '08:59', unit: 'letter', rides: ['outreach'], what: 'Letters sent Monday to Saturday from 06:00, out before 09:00 in their city, spread across the window (law 44).' },
   { key: 'inbox', label: 'Inbox', slot: '07:00', cutoff: '22:00', unit: 'message', rides: ['outreach'], what: 'hello@ and lawal@ read every 15 minutes; replies matched, classified and answered or raised.' },
   { key: 'midday', label: 'Midday post', slot: '12:00', cutoff: '12:00', unit: 'piece', rides: ['social'], what: 'Feed post and story for the week ahead or a venue spotlight.' },
   { key: 'tonight', label: 'Tonight', slot: '17:30', cutoff: '17:30', unit: 'piece', rides: ['social'], what: 'Tonight story and evening feed post.' },
@@ -130,9 +130,10 @@ export function socialPhaseAt(melbourneHour: number): PhaseKey | null {
  * queue 07:00 to 08:29, the send 08:30 to 10:30, the inbox otherwise from 07:00 to 22:00; null outside. Pure.
  */
 export function outreachPhaseAt(melbourneMinutes: number): PhaseKey | null {
-  if (melbourneMinutes < minutesOf('07:00') || melbourneMinutes > minutesOf('22:00')) return null
-  if (melbourneMinutes < minutesOf('08:30')) return 'queue'
-  if (melbourneMinutes <= minutesOf('10:30')) return 'send'
+  // The engine plan of 21 November 2026 (section 3; law 44): queue 05:40 to 05:55, send 06:00 to 08:59, inbox to 22:00.
+  if (melbourneMinutes < minutesOf('05:40') || melbourneMinutes > minutesOf('22:00')) return null
+  if (melbourneMinutes < minutesOf('06:00')) return 'queue'
+  if (melbourneMinutes < minutesOf('09:00')) return 'send'
   return 'inbox'
 }
 

@@ -70,13 +70,17 @@ describe('the runs read their phase from the table', () => {
     expect(socialPhaseAt(9)).toBeNull()
   })
 
-  test('the outreach run: queue to 08:29, send to 10:30, inbox to 22:00, nothing at night', () => {
-    expect(outreachPhaseAt(minutesOf('06:59'))).toBeNull()
-    expect(outreachPhaseAt(minutesOf('07:00'))).toBe('queue')
-    expect(outreachPhaseAt(minutesOf('08:30'))).toBe('send')
-    expect(outreachPhaseAt(minutesOf('10:30'))).toBe('send')
-    expect(outreachPhaseAt(minutesOf('10:45'))).toBe('inbox')
+  // The engine plan of 21 November 2026, section 3 (law 44): queue 05:40 to 05:55, send 06:00 to 08:59, inbox to 22:00.
+  test('the outreach run: queue from 05:40, send 06:00 to 08:59, inbox to 22:00, nothing at night', () => {
+    expect(outreachPhaseAt(minutesOf('05:39'))).toBeNull()
+    expect(outreachPhaseAt(minutesOf('05:40'))).toBe('queue')
+    expect(outreachPhaseAt(minutesOf('05:55'))).toBe('queue')
+    expect(outreachPhaseAt(minutesOf('06:00'))).toBe('send')
+    expect(outreachPhaseAt(minutesOf('08:59'))).toBe('send')
+    expect(outreachPhaseAt(minutesOf('09:00'))).toBe('inbox')
     expect(outreachPhaseAt(minutesOf('22:15'))).toBeNull()
+    expect(phaseOf('queue')).toMatchObject({ slot: '05:40', cutoff: '05:55' })
+    expect(phaseOf('send')).toMatchObject({ slot: '06:00', cutoff: '08:59' })
   })
 
   test("Melbourne's minute of the day: 19:00 UTC on 19 November is 06:00 there", () => {

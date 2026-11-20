@@ -7598,8 +7598,8 @@ export type Database = {
           id: boolean
           mode: string
           send_days: number[]
-          send_from_hour: number
-          send_to_hour: number
+          send_from_minute: number
+          send_until_minute: number
           test_domain: string
         }
         Insert: {
@@ -7612,8 +7612,8 @@ export type Database = {
           id?: boolean
           mode?: string
           send_days?: number[]
-          send_from_hour?: number
-          send_to_hour?: number
+          send_from_minute?: number
+          send_until_minute?: number
           test_domain?: string
         }
         Update: {
@@ -7626,8 +7626,8 @@ export type Database = {
           id?: boolean
           mode?: string
           send_days?: number[]
-          send_from_hour?: number
-          send_to_hour?: number
+          send_from_minute?: number
+          send_until_minute?: number
           test_domain?: string
         }
         Relationships: []

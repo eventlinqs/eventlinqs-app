@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readTouchVoice } from './daily-queue'
-import { DEFAULT_SEND_WINDOW, inBusinessHours, recipientZone, sendWindowOf, type SendWindow } from './sender'
+import { dayAndMinuteIn, DEFAULT_SEND_WINDOW, inBusinessHours, recipientZone, sendWindowOf, type SendWindow } from './sender'
 import { mailboxFor } from './addresses'
 import letters from './letter-approvals.generated.json'
 import standing from './standing-approvals.generated.json'
@@ -193,18 +193,14 @@ export function standingClear(
   return { cleared: true, reason: `standing approval of ${named}: '${entry.words.trim().slice(0, 160)}'` }
 }
 
-function hourIn(at: Date, zone: string): number {
-  return Number(new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', hourCycle: 'h23' }).format(at))
-}
-
 /** The next moment the sending window is open in the zone, from now (law 42: from today, never a day before; law 44). */
 export function nextWindowStart(now: Date, zone: string, window: SendWindow = DEFAULT_SEND_WINDOW): Date {
   if (inBusinessHours(now, zone, window)) return now
   let midnight = midnightIn(now, zone)
   for (let i = 0; i < 9; i++) {
-    let opens = new Date(midnight.getTime() + window.fromHour * 3_600_000)
-    const h = hourIn(opens, zone)
-    if (h !== window.fromHour) opens = new Date(opens.getTime() + (window.fromHour - h) * 3_600_000)
+    let opens = new Date(midnight.getTime() + window.fromMinute * 60_000)
+    const m = dayAndMinuteIn(opens, zone).minute
+    if (m !== window.fromMinute) opens = new Date(opens.getTime() + (window.fromMinute - m) * 60_000)
     if (opens.getTime() > now.getTime() && inBusinessHours(opens, zone, window)) return opens
     midnight = midnightIn(new Date(midnight.getTime() + 36 * 3_600_000), zone)
   }
@@ -224,7 +220,7 @@ export async function queueApprovedHeldLetters(
   deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[]; readonly letterApprovals?: readonly LetterApproval[] },
 ): Promise<SelfQueueReport> {
   const report: SelfQueueReport = { queued: [], waiting: [] }
-  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_hour, send_to_hour').eq('id', true).single()
+  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_minute, send_until_minute').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
   if (sender.data.mode !== 'live') return { ...report, note: `the sender is ${sender.data.mode}: no letter queues itself` }
   let policy: VoicePolicy
