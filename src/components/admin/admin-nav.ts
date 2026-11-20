@@ -61,6 +61,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: 'Outreach',
     items: [
       { label: 'Organiser pipeline', href: '/admin/acquisition', capability: 'admin.network.manage' },
+      { label: 'Page checks', href: '/admin/page-checks', capability: 'admin.network.manage' },
       { label: 'Campaigns', href: '/admin/campaigns', capability: 'admin.network.manage' },
       { label: 'Campaign eligibility', href: '/admin/eligibility', capability: 'admin.network.manage' },
       { label: 'Matches', href: '/admin/matches', capability: 'admin.network.manage' },

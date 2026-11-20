@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { COLLECTOR_AGENT, robotsVerdict } from '@/lib/listings/collect'
@@ -46,7 +47,7 @@ export type PoolOutcome = { organiser: string; outcome: string; recorded: number
 export interface PoolStore {
   candidates(): Promise<PoolCandidate[]>
   /** Records the contact with its basis whole but its no-messages check unticked; false when the address is held already. */
-  record(row: { organiserId: string; address: string; pageUrl: string; day: string }): Promise<boolean>
+  record(row: { organiserId: string; address: string; pageUrl: string; day: string; pageHtml?: string; inGuideCity?: boolean }): Promise<boolean>
 }
 
 async function get(fetcher: Fetcher, url: string): Promise<{ status: number | null; body: string; url: string }> {
@@ -112,7 +113,8 @@ export async function runBasisPool(
     const { finds, refused: notTaken } = basisFinds({ name: o.name, website: o.website }, pages, o.known)
     let recorded = 0
     for (const f of finds) {
-      if (await store.record({ organiserId: o.id, address: f.address, pageUrl: f.pageUrl, day })) recorded += 1
+      const pageHtml = pages.find((p) => p.url === f.pageUrl)?.html
+      if (await store.record({ organiserId: o.id, address: f.address, pageUrl: f.pageUrl, day, pageHtml, inGuideCity: o.inGuideCity === true })) recorded += 1
     }
     out.push({
       organiser: o.name,
@@ -126,6 +128,45 @@ export async function runBasisPool(
 type Db = SupabaseClient<Database>
 
 /** The pool's database: CRM organisers with their own website and no contact with a basis yet; the platform never. */
+/**
+ * THE ENGINE CHECKS THE PAGE (law 43; Lawal, 21 November 2026, 01:05, through the PM's 01:05: "the engine checks. The
+ * engine reads each organizer's page and saves a copy as evidence. You see each one in the morning report and can stop
+ * any"). An address the pool takes already holds two of the three conditions (./basis-find.ts: published at the
+ * organiser's own domain, on a page with no statement against messages); the third is that the organiser runs events in
+ * its city (placed in a guide city by the pool count's own roads). With all three, the page as read is saved with its
+ * sha256 (the database recomputes it, migration 20261121010002) and only then the contact is ticked, by the engine. Any
+ * doubt leaves that one address unticked, held for a person, and never stops the night's run.
+ */
+export async function engineCheck(db: Db, r: { organiserId: string; address: string; pageUrl: string; pageHtml?: string; inGuideCity?: boolean }): Promise<'checked' | 'left'> {
+  if (!r.inGuideCity || !r.pageHtml || !/^https:\/\//i.test(r.pageUrl)) return 'left'
+  try {
+    const contact = await db.from('organiser_contacts').select('id').eq('channel', 'email').eq('address', r.address).eq('organiser_id', r.organiserId).maybeSingle()
+    if (contact.error || !contact.data) return 'left'
+    const page_sha256 = createHash('sha256').update(r.pageHtml, 'utf8').digest('hex')
+    const saved = await db.from('organiser_page_checks').insert({
+      contact_id: contact.data.id,
+      page_url: r.pageUrl,
+      page_html: r.pageHtml,
+      page_sha256,
+      checked_by: 'engine',
+      verdict: { address_on_own_site: true, no_statement_against_messages: true, runs_events_in_its_city: true },
+    })
+    if (saved.error) {
+      console.error('[basis-pool] the page copy could not be saved; the address stays unticked:', saved.error.message)
+      return 'left'
+    }
+    const ticked = await db.from('organiser_contacts').update({ no_marketing_statement_checked: true, page_checked_by: 'engine' }).eq('id', contact.data.id)
+    if (ticked.error) {
+      console.error('[basis-pool] the engine check could not be ticked; the address stays unticked:', ticked.error.message)
+      return 'left'
+    }
+    return 'checked'
+  } catch (error) {
+    console.error('[basis-pool] the engine check failed; the address stays unticked:', error instanceof Error ? error.message : String(error))
+    return 'left'
+  }
+}
+
 export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
   return {
     async candidates() {
@@ -168,7 +209,7 @@ export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
         basis: 'conspicuous_publication',
         published_on_url: r.pageUrl,
         seen_on: r.day,
-        /* Lawal's own check, on the page, before any message leaves held (migration 20261031053501). */
+        /* Unticked until the engine's check below, with its saved copy, or a person's (migration 20261031053501). */
         no_marketing_statement_checked: false,
         relevance: RELEVANCE,
         basis_recorded_by: recordedBy,
@@ -180,6 +221,7 @@ export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
         if (/organiser_contacts_one_per_address|duplicate key/i.test(error.message)) return false
         throw new Error(`the contact could not be recorded: ${error.message}`)
       }
+      await engineCheck(db, r)
       return true
     },
   }

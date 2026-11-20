@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readEngine } from './engine'
 import { readAcqPool } from '@/lib/outreach/acq-pool'
+import { readPageChecks } from '@/lib/outreach/page-checks'
 import { allWell, areaOfPlay, morningRows, type MorningFacts, type MorningRow } from './morning-report-math'
 
 /**
@@ -16,7 +17,17 @@ type Db = ReturnType<typeof createAdminClient>
 const ZONE = 'Australia/Melbourne'
 const HOUR = 3_600_000
 
-export type MorningReport = { readonly rows: readonly MorningRow[]; readonly allWell: boolean; readonly unreadable: readonly string[]; readonly engine: string }
+/** One organiser page the engine checked (law 43), with what the report links to: its saved copy and its Stop. */
+export type ReportPageCheck = { readonly id: string; readonly organiser: string; readonly pageUrl: string; readonly stopped: boolean }
+
+export type MorningReport = {
+  readonly rows: readonly MorningRow[]
+  readonly allWell: boolean
+  readonly unreadable: readonly string[]
+  readonly engine: string
+  /** Every organiser page the engine checked since yesterday began, newest first (law 43). */
+  readonly pageChecks?: readonly ReportPageCheck[]
+}
 
 type Window = { readonly from: string; readonly to: string }
 
@@ -110,9 +121,11 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
     return { ordersConfirmed: rows.length, feeRevenueCents: rows.reduce((n, o) => n + ((o.platform_fee_retained_cents as number | null) ?? 0), 0), activations }
   })
   const engine = await safely('System Operations', () => readEngine(now))
+  // LAW 43 (Lawal, 21 November 2026, 01:05): each page the engine checked, with its link and its Stop.
+  const pageChecks = await safely('the engine page checks', () => readPageChecks(db, w.yesterday.from))
 
   const facts: MorningFacts = {
-    marketing: letters && replies ? { firstLettersSent: letters.firsts, positiveReplies: replies.positive, readyToday: letters.ready, poolToday: pool, businessDay: weekday !== 'Sat' && weekday !== 'Sun' } : null,
+    marketing: letters && replies ? { firstLettersSent: letters.firsts, positiveReplies: replies.positive, readyToday: letters.ready, poolToday: pool, businessDay: weekday !== 'Sun' } : null,
     permissions: letters && photos ? { requestsSent: letters.requests, photosReceived: photos.received, photosApproved: photos.approved, requestsDueToday: letters.due } : null,
     social,
     listings,
@@ -127,5 +140,11 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
         }
       : null,
   }
-  return { rows: morningRows(facts), allWell: allWell(facts), unreadable, engine: '/admin/engine' }
+  return {
+    rows: morningRows(facts),
+    allWell: allWell(facts),
+    unreadable,
+    engine: '/admin/engine',
+    pageChecks: (pageChecks ?? []).map((c) => ({ id: c.id, organiser: c.organiser, pageUrl: c.pageUrl, stopped: c.stoppedAt !== null })),
+  }
 }

@@ -71,7 +71,7 @@ describe('closing the ticketing gap (plan version 2)', () => {
     const tasks = todaysTasks(plan, card, '2026-11-01')
     const ask = tasks.find((t) => t.kind === 'conversion')
     expect(tasks.findIndex((t) => t.kind === 'conversion')).toBeLessThan(tasks.findIndex((t) => t.kind === 'outreach'))
-    expect(ask?.text).toMatch(/^Send 5 conversion asks today, within the 20 outreach messages, to: /)
+    expect(ask?.text?.startsWith(`Send 5 conversion asks today, within the ${plan.daily_quotas.outreach_messages} outreach messages, to: `)).toBe(true)
     for (const who of plan.close_the_ticketing_gap!.who_first) expect(ask?.text).toContain(who)
     expect(ask?.text).toMatch(/Selling through EventLinqs now: 0 of 5 by 15 November 2026\.$/)
   })
@@ -88,7 +88,7 @@ describe("today's tasks, by rule", () => {
   })
 
   test('the outreach quota comes from the plan, beside what went yesterday', () => {
-    expect(tasks.find((t) => t.kind === 'outreach')?.text).toBe('Send 20 outreach messages today (yesterday: 12 sent).')
+    expect(tasks.find((t) => t.kind === 'outreach')?.text).toBe(`Send ${plan.daily_quotas.outreach_messages} outreach messages today (yesterday: 12 sent).`)
   })
 
   test('replies due and claims to verify are counted, in the singular when one', () => {
