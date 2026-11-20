@@ -74,7 +74,11 @@ type History = {
   readonly storiesToday: number
 }
 
-async function readHistory(db: Db, now: Date): Promise<History> {
+/**
+ * The history, leaving out the pieces the sweep is drawing again (`redrawing`): their moments are due again and their
+ * photographs theirs to keep, so the redraw is the same moment with the code in force, never a different one.
+ */
+async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = new Set()): Promise<History> {
   const { data, error } = await db
     .from('social_pieces')
     .select('id, format, moment_key, planned_at, social_piece_revisions(version, slides, versions), social_piece_decisions(revision, decision)')
@@ -90,6 +94,7 @@ async function readHistory(db: Db, now: Date): Promise<History> {
   let feedLastSeven = 0
   let storiesToday = 0
   for (const p of (data ?? []) as Record<string, unknown>[]) {
+    if (redrawing.has(p.id as string)) continue
     const parts = parseMomentKey(p.moment_key as string)
     if (!parts) continue
     const revs = ((p.social_piece_revisions as { version: number; slides: Slide[]; versions: Record<string, { caption?: string }> }[] | null) ?? []).sort((a, b) => b.version - a.version)
@@ -225,12 +230,18 @@ function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook
  */
 export async function planLifecyclePieces(
   db: Db,
-  input: { readonly now: Date; readonly nights: readonly CampaignNight[]; readonly origin: string },
+  input: {
+    readonly now: Date
+    readonly nights: readonly CampaignNight[]
+    readonly origin: string
+    /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
+    readonly redrawing?: ReadonlySet<string>
+  },
 ): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const runs = runsOf(input.nights.map(toLifecycleNight))
-  const history = await readHistory(db, input.now)
+  const history = await readHistory(db, input.now, input.redrawing)
   const photos = await readPhotos(db, input.nights.map((n) => n.eventId), input.now)
   const used = new Set(history.usedPhotos)
 
