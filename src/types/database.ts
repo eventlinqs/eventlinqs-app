@@ -13647,6 +13647,10 @@ export type Database = {
         Returns: Json
       }
       growth_misses_weekly: { Args: { p_city: string }; Returns: Json }
+      growth_opportunity_raw: {
+        Args: { p_from: string; p_now: string; p_sold: string[] }
+        Returns: Json
+      }
       growth_scorecard_read: { Args: never; Returns: Json }
       growth_scorecard_snapshot: {
         Args: { p_plan_version: number }
