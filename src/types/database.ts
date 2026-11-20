@@ -762,6 +762,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "collab_invitations_organiser_id_fkey"
+            columns: ["organiser_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_pipeline"
+            referencedColumns: ["organiser_id"]
+          },
+          {
             foreignKeyName: "collab_invitations_piece_id_fkey"
             columns: ["piece_id"]
             isOneToOne: false
