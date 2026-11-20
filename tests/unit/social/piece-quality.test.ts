@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+// These tests prove the earlier families' own rules, kept behind EARLIER_FAMILIES_ON (law 13); law 37's hold over the same
+// pieces is proved in law37.test.ts and by the guard law37-only, so here alone its refusal is set aside.
+vi.mock('@/lib/social/law37', async (orig) => ({ ...(await orig<typeof import('@/lib/social/law37')>()), law37Refusal: () => null }))
 import { languageFaults, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
 import { clockOf, nightLabel, type CampaignNight, type Slide } from '@/lib/social/campaign'
 

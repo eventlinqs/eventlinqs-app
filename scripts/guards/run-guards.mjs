@@ -252,6 +252,8 @@
  *                              and /pricing all agree with the configuration
  *   timetable-is-the-one-schedule  the daily timetable's rides scheduled in vercel.json exactly as
  *                              src/lib/ops/timetable.ts says, the phase routes reading its phase
+ *   law37-only                 law 37: only a permitted photograph shown whole is drawn, approved
+ *                              or posted; every earlier family off, refused by the one pipeline
  *   stories-post-as-stories    a story posts as a story or not at all: Blotato's story type
  *                              follows the format on every network, Meta refuses Facebook stories
  *   no-text-range-for-a-prefix  a prefix is asked as a prefix (like), never as a text range whose
@@ -3495,6 +3497,9 @@ const GUARDS = [
   // The PM's 04:40 of 20 November 2026, item 4: no story piece reaches a publisher call without its story type (a
   // Facebook story once went to Blotato with none, so it would have posted to the Page's feed).
   'scripts/guards/stories-post-as-stories.mjs',
+  // Lawal's law 37 of 20 November 2026, 11:24 (the PM's 11:28, train AI): only a permitted photograph shown whole posts;
+  // every earlier family off behind its flag and refused by the one validation pipeline, drilled red.
+  'scripts/guards/law37-only.mjs',
   // WINDOW 5A, 20 November 2026 (train AD): the social read back asked a prefix as a text range and production's
   // collation answered 0 of the 4 posts waiting; every hold a run writes names its next action, as the database requires
   // (the occurrence run's held-series hold named none, so eight new nights were refused every hour).
