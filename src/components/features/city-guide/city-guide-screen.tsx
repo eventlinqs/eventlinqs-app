@@ -65,6 +65,18 @@ export async function CityGuideScreen({
   const banner = getCityBanner(city.slug)
   const photo = banner?.src ?? heroImage
   const now = new Date()
+  // LAW 41 (every page in one second): the two reads that need nothing from the rows start now, beside them, never
+  // after them. Claims open only on the flag (feature_flags.listing_claims; its default and any failed read are OFF),
+  // so the organiser block never offers a claim the claim page would refuse (round 2 (d)). A failed free guide read
+  // only leaves the link off, and says so (the old city page's own handling).
+  const claimsOnRead = isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true })
+  const freeWeekRead = readGuideCity(city.slug).then(
+    (c) => c !== null,
+    (err: unknown) => {
+      console.error('[city-guide] the free guide could not be read:', err instanceof Error ? err.message : err)
+      return false
+    },
+  )
   const rows = (await withVenuePhotos(await loadGuideUpcoming(createPublicClient(), now))) as LedgerRow[]
   const data = await discoveryData(rows, now)
   const quickCities = QUICK.map((s) => getCity(s)).filter((c): c is NonNullable<typeof c> => c !== null)
@@ -82,17 +94,7 @@ export async function CityGuideScreen({
   )
   // The suburbs of a tier 1 city (the old page's rule), and the city's free week page only where that page exists.
   const suburbs = city.tier === 1 ? getSuburbsForCity(city.slug as CitySlug) : []
-  // Claims open only on the flag (feature_flags.listing_claims; its default and any failed read are OFF), so the organiser
-  // block never offers a claim the claim page would refuse (round 2 (d)).
-  const claimsOn = await isFeatureEnabled('listing_claims', { client: createPublicClient(), cachedPage: true })
-  // A failed read only leaves the link off, and says so (the old city page's own handling).
-  const freeWeek = await readGuideCity(city.slug).then(
-    (c) => c !== null,
-    (err: unknown) => {
-      console.error('[city-guide] the free guide could not be read:', err instanceof Error ? err.message : err)
-      return false
-    },
-  )
+  const [claimsOn, freeWeek] = await Promise.all([claimsOnRead, freeWeekRead])
 
   return (
     <div className="min-h-screen bg-canvas">
