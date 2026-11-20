@@ -62,6 +62,15 @@ describe('the admin never runs the whole health check itself', () => {
       return statSync(p).isDirectory() ? files(p) : /\.(ts|tsx)$/.test(name) ? [p] : []
     })
 
+  it("the founder dashboard on /admin/today never runs the battery: it reads the platform sentinel's newest stored run (P0, 20 November 2026)", () => {
+    const dash = readFileSync(join(process.cwd(), 'src', 'lib', 'admin', 'founder-dashboard.ts'), 'utf8')
+    expect(dash).not.toMatch(/runAllChecks(ForAdmin)?\(/)
+    expect(dash).toMatch(/latestSentinelRun\(db, 'platform'\)/)
+    const route = readFileSync(join(process.cwd(), 'src', 'app', 'api', 'cron', 'health-sentinel', 'route.ts'), 'utf8')
+    // The sentinel keeps every run but a drill, before it answers.
+    expect(route).toMatch(/if \(!drill\) \{[\s\S]*recordSentinelRun\(createAdminClient\(\), results, new Date\(\), dry, 'platform'\)/)
+  })
+
   it('every admin surface reads runAllChecksForAdmin', () => {
     const faults = ['src/app/admin', 'src/lib/admin']
       .flatMap((r) => files(join(process.cwd(), r)))
