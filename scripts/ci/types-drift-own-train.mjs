@@ -114,11 +114,15 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // process.exitCode, never process.exit(): exiting at once after a fetch trips libuv's assertion on Windows
+  // ('!(handle->flags & UV_HANDLE_CLOSING)', 20 November 2026), which a gate would read as a failure.
   main().then(
-    (code) => process.exit(code),
+    (code) => {
+      process.exitCode = code
+    },
     (err) => {
       say(`FAIL: ${err instanceof Error ? err.message : String(err)}`)
-      process.exit(1)
+      process.exitCode = 1
     },
   )
 }
