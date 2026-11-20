@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
@@ -70,45 +71,98 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
   // EACH READ TIMED (law 41; src/lib/admin/read-timing.ts): when they settle, one log line names every read slowest first.
   const clock = readClock('/admin/today')
   const { timed } = clock
-  const [queue, dashboard, growth, centre, automation, gates, twenty, sentRecently, timetable, learned, threePosts] = await Promise.all([
-    timed('queue', readTodayQueue(now)),
-    timed('dashboard', readFounderDashboard(now)),
-    timed('growth', readGrowthWeek(now)).then((g) => ({ ok: true as const, g }), failed),
-    // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
-    timed('centre', readCommandCentre(createAdminClient(), now)),
-    // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
-    timed('automation', readAutomation(now)).then(
-      (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
-      failed,
-    ),
-    // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
-    timed('gates', readPlanGates(now)).then((g) => ({ ok: true as const, g }), failed),
-    // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
-    timed('twenty', readTwentyView(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
-    // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
-    timed('sentRecently', readSentRecently(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
-    // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
-    timed('timetable', readTimetable(createAdminClient(), now)).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` })),
-    // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
-    timed('lessons', readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight))).catch((err: unknown) => ({
-      unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
-    })),
-    // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
-    timed('threePosts', readThreePosts(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed),
-  ])
-  console.log(readTimesLine(clock.report()))
-  const exceptions = byException(dashboard)
-  // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
-  const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))
-  const cadence = rhythm(dashboard)
-  const count = new Intl.NumberFormat('en-AU')
+  // EVERY READ STARTS AT ONCE AND NONE HOLDS THE PAGE (law 41; the PM's 08:30 of 21 November 2026, item 9: the page took
+  // 17.1 seconds, the slowest of its reads, before a pixel showed). The reads still start together, as the speed train of
+  // 20 November made them; each section now awaits only its own, behind its own Suspense boundary, so the shell paints
+  // at once and each section streams in as its read lands. Each read that can fail still says so in its own section.
+  const queueP = timed('queue', readTodayQueue(now))
+  const dashboardP = timed('dashboard', readFounderDashboard(now))
+  const growthP = timed('growth', readGrowthWeek(now)).then((g) => ({ ok: true as const, g }), failed)
+  // The Growth OS's tasks, overdue first (src/lib/crm/command-centre.ts): a failed read says so, never an empty queue.
+  const centreP = timed('centre', readCommandCentre(createAdminClient(), now))
+  // The one count of what waits for approval, the same read /admin/automation shows (the PM's 02:45 fix 1).
+  const automationP = timed('automation', readAutomation(now)).then(
+    (a) => ({ ok: true as const, needs: needsYou(a.cards) }),
+    failed,
+  )
+  // The master plan's gates (the PM's 09:19 of 12 November 2026, item 3): a failed read says so, never a zero.
+  const gatesP = timed('gates', readPlanGates(now)).then((g) => ({ ok: true as const, g }), failed)
+  // Tomorrow's twenty (Lawal's 11:11): who, their basis, their draft, Copy and Sent. A failed read says so.
+  const twentyP = timed('twenty', readTwentyView(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed)
+  // What came back on each message sent (Lawal's 11:11, item 2). A failed read says so.
+  const sentRecentlyP = timed('sentRecently', readSentRecently(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed)
+  // The day's timetable (the daily timetable, locked 20 November 2026): a read that fails is named on the board.
+  const timetableP = timed('timetable', readTimetable(createAdminClient(), now)).catch((err: unknown) => ({ unread: `the timetable could not be read: ${err instanceof Error ? err.message : String(err)}` }))
+  // What the engine learned yesterday, from ops_lessons (Lawal's 06:07 of 20 November 2026): Melbourne's yesterday.
+  const learnedP = timed('lessons', readLessons(createAdminClient(), new Date(melbourneMidnight - 24 * 60 * 60_000), new Date(melbourneMidnight))).catch((err: unknown) => ({
+    unread: `what the engine learned could not be read: ${err instanceof Error ? err.message : String(err)}`,
+  }))
+  // This week's three posts (Lawal's 11:11, items 3 and 4). A failed read says so.
+  const threePostsP = timed('threePosts', readThreePosts(createAdminClient(), now)).then((v) => ({ ok: true as const, v }), failed)
+  // EACH READ TIMED (src/lib/admin/read-timing.ts): when they settle, one log line names every read slowest first. It
+  // never holds the page: it is written after the last read lands, whatever the sections are doing.
+  void Promise.allSettled([queueP, dashboardP, growthP, centreP, automationP, gatesP, twentyP, sentRecentlyP, timetableP, learnedP, threePostsP]).then(() =>
+    console.log(readTimesLine(clock.report())),
+  )
 
-  // The one primary action (Lawal's 20:52, item 2): the oldest thing that waits for him, else the automation screen.
-  const firstHref = queue.sections.flatMap((s) => s.items).find((i) => i.href)?.href ?? null
   return (
     <div>
       {/* A press that names its tone shows as a toast; the older inline line below stays for the twenty's Sent press. */}
       <AdminToast said={tone ? (said ?? null) : null} tone={tone === 'refused' ? 'refused' : 'ok'} />
+      <Suspense fallback={<HeaderShape />}>
+        <TodayHeader queueP={queueP} now={now} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-40" />}>
+        <TodayBoards timetableP={timetableP} learnedP={learnedP} />
+      </Suspense>
+      <Suspense fallback={<CardsShape />}>
+        <TodayNumbers queueP={queueP} centreP={centreP} automationP={automationP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-64" />}>
+        <TodayCentre gatesP={gatesP} centreP={centreP} queueP={queueP} now={now} />
+      </Suspense>
+
+      {said === undefined ? null : (
+        <p role="status" data-said className="mb-4 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
+          {said}
+        </p>
+      )}
+      <Suspense fallback={<BlockShape h="h-48" />}>
+        <TodayTwenty twentyP={twentyP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-32" />}>
+        <TodaySent sentRecentlyP={sentRecentlyP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-48" />}>
+        <TodayPosts threePostsP={threePostsP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-48" />}>
+        <TodayQueue queueP={queueP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-64" />}>
+        <TodayExceptions dashboardP={dashboardP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-64" />}>
+        <TodaySix growthP={growthP} />
+      </Suspense>
+      <Suspense fallback={<BlockShape h="h-48" />}>
+        <TodayRhythm dashboardP={dashboardP} />
+      </Suspense>
+    </div>
+  )
+}
+
+/* THE SECTIONS, EACH AWAITING ONLY ITS OWN READ (law 41). Their markup is the page's own, moved here unchanged. */
+type Reads = {
+  queueP: Promise<Awaited<ReturnType<typeof readTodayQueue>>>
+}
+const NUMBER = () => new Intl.NumberFormat('en-AU')
+
+async function TodayHeader({ queueP, now }: { queueP: Reads['queueP']; now: Date }) {
+  const queue = await queueP
+  // The one primary action (Lawal's 20:52, item 2): the oldest thing that waits for him, else the automation screen.
+  const firstHref = queue.sections.flatMap((s) => s.items).find((i) => i.href)?.href ?? null
+  return (
       <PageHeader
         eyebrow="Today"
         title="What needs you"
@@ -127,10 +181,24 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
           )
         }
       />
+  )
+}
 
+async function TodayBoards({ timetableP, learnedP }: { timetableP: Promise<Parameters<typeof TimetableBoard>[0]['read']>; learnedP: Promise<Parameters<typeof LessonsPanel>[0]['learned']> }) {
+  const [timetable, learned] = await Promise.all([timetableP, learnedP])
+  return (
+    <>
       <TimetableBoard read={timetable} />
       <LessonsPanel learned={learned} timetable={timetable} />
+    </>
+  )
+}
 
+async function TodayNumbers({ queueP, centreP, automationP }: { queueP: Reads['queueP']; centreP: Promise<Awaited<ReturnType<typeof readCommandCentre>>>; automationP: Promise<{ ok: true; needs: ReturnType<typeof needsYou> } | { ok: false; why: string }> }) {
+  const [queue, centre, automation] = await Promise.all([queueP, centreP, automationP])
+  const count = NUMBER()
+  return (
+    <>
       {/* The numbers that matter, first (Lawal's 20:52, item 2), from the reads below. */}
       {/* One card a row at 320, two from 375, four at desktop (the PM's 07:30 polish (b): two narrow columns at 320). */}
       <section data-section="today-numbers" aria-label="Today in numbers" className="mb-8 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-4">
@@ -154,6 +222,17 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         <StatCard label="Failed jobs" value={centre.state === 'read' ? count.format(centre.failed) : 'Not read'} sub={centre.state === 'read' && centre.failed > 0 ? 'Each named below until fixed' : 'None open'} />
       </section>
 
+    </>
+  )
+}
+
+async function TodayCentre({ gatesP, centreP, queueP, now }: { gatesP: Promise<{ ok: true; g: Awaited<ReturnType<typeof readPlanGates>> } | { ok: false; why: string }>; centreP: Promise<Awaited<ReturnType<typeof readCommandCentre>>>; queueP: Reads['queueP']; now: Date }) {
+  const [gates, centre, queue] = await Promise.all([gatesP, centreP, queueP])
+  const count = NUMBER()
+  // Each kept task's link is its queue item's own link, matched by the item's id (the task's source key).
+  const hrefOf = new Map(queue.sections.flatMap((s) => s.items.map((i) => [i.id, i.href] as const)))
+  return (
+    <>
       {/* THE COMMAND CENTRE (the Growth OS directive, section 5): the kept tasks, overdue first, each with its status, owner,
           due date and link; failed jobs stay here until fixed. Approving in one press arrives with Release 2, where an
           approval sends; until then each task opens the page that acts on it. */}
@@ -230,15 +309,26 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         )}
       </section>
 
-      {said === undefined ? null : (
-        <p role="status" data-said className="mb-4 max-w-2xl rounded-lg border border-[var(--admin-line)] bg-[var(--admin-tint)] p-4 text-sm text-[var(--admin-ink)]">
-          {said}
-        </p>
-      )}
-      <TwentySection view={twenty} />
-      <SentRecentlySection view={sentRecently} />
-      <PostsSection view={threePosts} />
+    </>
+  )
+}
 
+async function TodayTwenty({ twentyP }: { twentyP: Promise<Parameters<typeof TwentySection>[0]['view']> }) {
+  return <TwentySection view={await twentyP} />
+}
+
+async function TodaySent({ sentRecentlyP }: { sentRecentlyP: Promise<Parameters<typeof SentRecentlySection>[0]['view']> }) {
+  return <SentRecentlySection view={await sentRecentlyP} />
+}
+
+async function TodayPosts({ threePostsP }: { threePostsP: Promise<Parameters<typeof PostsSection>[0]['view']> }) {
+  return <PostsSection view={await threePostsP} />
+}
+
+async function TodayQueue({ queueP }: { queueP: Reads['queueP'] }) {
+  const queue = await queueP
+  return (
+    <>
       {queue.sections.map((section) => (
         <section key={section.key} data-section={section.key} aria-label={section.title} className="mb-6 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-6">
           <h2 className="font-display text-lg font-semibold text-[var(--admin-ink)]">
@@ -301,6 +391,15 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         </section>
       ))}
 
+    </>
+  )
+}
+
+async function TodayExceptions({ dashboardP }: { dashboardP: Promise<Awaited<ReturnType<typeof readFounderDashboard>>> }) {
+  const exceptions = byException(await dashboardP)
+  const count = NUMBER()
+  return (
+    <>
       <section data-section="by-exception" aria-label="By exception" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">By exception</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
@@ -335,6 +434,15 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         ) : null}
       </section>
 
+    </>
+  )
+}
+
+async function TodaySix({ growthP }: { growthP: Promise<{ ok: true; g: Awaited<ReturnType<typeof readGrowthWeek>> } | { ok: false; why: string }> }) {
+  const growth = await growthP
+  const count = NUMBER()
+  return (
+    <>
       <section data-section="six-numbers" aria-label="The six numbers, week on week" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">The six numbers, week on week</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
@@ -369,6 +477,15 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         )}
       </section>
 
+    </>
+  )
+}
+
+async function TodayRhythm({ dashboardP }: { dashboardP: Promise<Awaited<ReturnType<typeof readFounderDashboard>>> }) {
+  const cadence = rhythm(await dashboardP)
+  const count = NUMBER()
+  return (
+    <>
       <section data-section="rhythm" aria-label="Daily, weekly and monthly" className="mt-10">
         <h2 className="font-display text-2xl font-bold tracking-tight">Daily, weekly, monthly</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--admin-soft)]">
@@ -379,8 +496,40 @@ export default async function AdminTodayPage({ searchParams }: { searchParams: P
         <RhythmGroup title="Weekly" cadence="weekly" figures={cadence.weekly} open={false} count={count} />
         <RhythmGroup title="Monthly" cadence="monthly" figures={cadence.monthly} open={false} count={count} />
       </section>
+    </>
+  )
+}
+
+/* THE SHAPES WHILE A SECTION READS (the admin's own loading tokens, src/app/admin/(authed)/loading.tsx): the size of what
+   replaces them, no spinner, no words that claim anything. */
+function HeaderShape() {
+  return (
+    <header aria-busy="true" className="mb-8 flex flex-col gap-4 border-b border-[var(--admin-line)] pb-6">
+      <div className="min-w-0">
+        <span className="block h-3 w-20 animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+        <span className="mt-3 block h-8 w-64 max-w-full animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+        <span className="mt-3 block h-4 w-96 max-w-full animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+      </div>
+    </header>
+  )
+}
+
+function CardsShape() {
+  return (
+    <div aria-busy="true" className="mb-8 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 lg:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5">
+          <span className="block h-3 w-24 animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+          <span className="mt-3 block h-7 w-20 animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+          <span className="mt-3 block h-3 w-40 max-w-full animate-pulse rounded bg-[var(--admin-tint-strong)]" />
+        </div>
+      ))}
     </div>
   )
+}
+
+function BlockShape({ h }: { h: string }) {
+  return <div aria-busy="true" className={`mb-8 ${h} animate-pulse rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)]`} />
 }
 
 function figureValue(f: DashboardFigure, count: Intl.NumberFormat): string {
