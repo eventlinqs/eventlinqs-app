@@ -174,7 +174,7 @@ async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string
 export const SEND_BATCH = 1
 
 /** The zone of the city of a venue the contact's organiser runs, else Melbourne. */
-async function recipientZone(db: Admin, contactId: string): Promise<string> {
+export async function recipientZone(db: Admin, contactId: string): Promise<string> {
   const contact = await db.from('organiser_contacts').select('organiser_id').eq('id', contactId).single()
   if (contact.error) return 'Australia/Melbourne'
   const venues = await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id).limit(1)

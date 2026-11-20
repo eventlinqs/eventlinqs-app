@@ -7,6 +7,7 @@ import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox } from '@/lib/outreach/replies'
 import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
 import { runOutreachSender } from '@/lib/outreach/sender'
+import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { melbourneMinutes, outreachPhaseAt } from '@/lib/ops/timetable'
 import { recordMissedRuns } from '@/lib/ops/missed-runs'
@@ -110,6 +111,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // NO DAILY PRESS (the PM's item 2 of 00:05:52, 21 November 2026; laws 23 and 38): a held first letter that clears
+    // under Lawal's standing approval of its template, with its words passing and its page check recorded by a person,
+    // queues itself into the next business window in its city (src/lib/outreach/self-queue.ts). A fault here is said in
+    // the answer and never stops the sender below.
+    let selfQueued: unknown
+    try {
+      const q = await queueApprovedHeldLetters(db, { now })
+      selfQueued = q
+      console.log(`[cron/outreach-run] self queue: ${q.queued.length} queued, ${q.waiting.length} waiting${q.note ? ` (${q.note})` : ''}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[cron/outreach-run] self queue failed:', message)
+      selfQueued = { error: message }
+    }
+
     const sent = await runOutreachSender(db, { now, origin, graph })
     console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
 
@@ -208,7 +224,7 @@ export async function GET(request: NextRequest) {
     // no new cron. A failed read or write is named in the answer and never stops the run above.
     const watchdog = await recordMissedRuns(db, now)
     if ('unread' in watchdog) console.error('[cron/outreach-run] the missed-run alarm could not run:', watchdog.unread)
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool, watchdog })
+    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, selfQueued, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool, watchdog })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })
