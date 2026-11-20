@@ -197,7 +197,7 @@ function KitCoverUpload({ code, onUploaded }: { code: string; onUploaded: () => 
           />
         </label>
         <span className="text-xs text-ink-500">
-          JPEG, PNG, WebP, AVIF or HEIC, up to {MAX_IMAGE_BYTES / 1024 / 1024}MB. Big
+          JPEG, PNG, WebP or AVIF, up to {MAX_IMAGE_BYTES / 1024 / 1024}MB. Big
           camera photos are fine, we resize them.
         </span>
       </div>

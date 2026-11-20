@@ -6,6 +6,7 @@ import { createSectionAnswers, StatusLine, SubmitButton } from '@/components/ui/
 import { claimAuthorityWords } from '@/lib/listings/claim-acceptance'
 import { IMAGE_REPLACED_WORDS, IMAGE_WITHDRAWN_WORDS, YES_WITHDRAWN_WORDS } from '@/lib/listings/media-words'
 import { PERMISSION_WORDS } from '@/lib/listings/submission'
+import { IMAGE_ACCEPT_ATTR } from '@/lib/media/limits'
 
 /**
  * The organiser's own image forms, on /dashboard/organisation/media and the claim page's upload step, each showing the
@@ -63,8 +64,8 @@ export function AddMediaForm({
         </select>
       </label>
       <label className="mt-4 block text-sm font-medium text-ink-900">
-        Photo or artwork (JPEG, PNG, WebP, AVIF or HEIC, under 10MB)
-        <input type="file" name="file" accept="image/*" required className={file} />
+        Photo or artwork (JPEG, PNG, WebP or AVIF, under 10MB)
+        <input type="file" name="file" accept={IMAGE_ACCEPT_ATTR} required className={file} />
       </label>
       <fieldset className="mt-4">
         <legend className="text-sm font-medium text-ink-900">It is</legend>
@@ -105,7 +106,7 @@ export function ReplaceMediaForm({ assetId }: { assetId: string }) {
       <input type="hidden" name="assetId" value={assetId} />
       <label className="block text-sm font-medium text-ink-900">
         Replace with
-        <input type="file" name="file" accept="image/*" required className={file} />
+        <input type="file" name="file" accept={IMAGE_ACCEPT_ATTR} required className={file} />
       </label>
       {line}
       <div className="mt-3">

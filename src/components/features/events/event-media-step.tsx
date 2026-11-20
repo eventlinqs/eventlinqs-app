@@ -399,7 +399,7 @@ export function EventMediaStep({
             <p className="text-sm text-ink-600">
               <span className="font-medium text-gold-500">{total === 0 ? 'Add a cover' : 'Add images'}</span> or drag and drop
             </p>
-            <p className="mt-1 text-xs text-ink-400">JPEG, PNG, WebP, AVIF, or HEIC. Up to 10MB each. The first image is your cover.</p>
+            <p className="mt-1 text-xs text-ink-400">JPEG, PNG, WebP or AVIF. Up to 10MB each. The first image is your cover.</p>
           </div>
         )}
 
