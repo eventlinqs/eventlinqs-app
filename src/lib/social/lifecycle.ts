@@ -441,7 +441,13 @@ export type CaptionFacts = {
   readonly summary: string | null
 }
 
-/** A caption per network: the first line, the experience in the listing's own words, then the facts and the link. */
+/**
+ * A caption per network: the first line, the experience in the listing's own words, then the title and caption standard
+ * version 2's signposts, one emoji each on its own line (C:\dev\GROWTH\CAPTION-STANDARD-18NOV.md items 3 and 4: the
+ * place, the date and time, the price or 'Free entry'; the link line led by the ticket), so every caption the planner
+ * draws carries the marks src/lib/social/caption-marks.ts requires. The first line stays its own paragraph: the history
+ * reads it back so no first line repeats (law 37 (l)).
+ */
 export function captionFor(input: {
   readonly platform: 'instagram' | 'facebook'
   readonly firstLine: string
@@ -452,9 +458,15 @@ export function captionFor(input: {
   const f = input.facts
   const sentence = (f.summary ?? '').split(/(?<=[.!?])\s/)[0]?.trim() ?? ''
   const experience = sentence.length >= 20 && sentence.length <= 200 ? sentence.replace(/!+$/, '.') : ''
-  const where = f.place ? ` at ${f.place}` : ''
-  const price = f.priceLine ? ` ${f.priceLine.replace(/\.$/, '')}.` : ''
-  const facts = `${f.title}, ${f.dateLabel}${where}.${price}`
-  const link = input.platform === 'instagram' ? 'Link in our bio.' : input.link
-  return [input.firstLine, experience, facts, link].filter((p) => p !== '').join('\n\n')
+  const price = f.priceLine ? f.priceLine.replace(/\.$/, '').trim() : ''
+  const signposts = [
+    f.title,
+    f.place ? `\u{1F4CD} ${f.place}` : '',
+    `\u{1F4C5} ${f.dateLabel}`,
+    price ? `\u{1F4B2} ${/^free$/i.test(price) ? 'Free entry' : price}` : '',
+  ]
+    .filter((l) => l !== '')
+    .join('\n')
+  const link = input.platform === 'instagram' ? '\u{1F39F} Event details and tickets: link in our bio' : `\u{1F39F} Event details and tickets:\n${input.link}`
+  return [input.firstLine, experience, signposts, link].filter((p) => p !== '').join('\n\n')
 }
