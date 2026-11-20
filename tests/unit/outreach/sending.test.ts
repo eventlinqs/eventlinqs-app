@@ -3,7 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { buildOutreachMime, encodeHeaderValue, outreachOneClickUrl } from '@/lib/outreach/mime'
 import { forgetGraphToken, graphReadInbox, graphSendMime, graphToken, GraphError, type GraphConfig } from '@/lib/outreach/graph'
-import { businessHoursApply, clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
+import {
+  businessHoursApply,
+  clearRecordedOutreachMail,
+  DEFAULT_SEND_WINDOW,
+  inBusinessHours,
+  recordedOutreachMail,
+  runOutreachSender,
+  sendWindowOf,
+  sendWindowWords,
+  transportForMode,
+} from '@/lib/outreach/sender'
 import { HELLO_MAILBOX, LAWAL_MAILBOX } from '@/lib/outreach/addresses'
 
 /**
@@ -89,10 +99,22 @@ describe('Graph', () => {
 })
 
 describe('business hours in the recipient zone', () => {
-  test('Thursday 10:00 in Melbourne is in; 18:00 and Saturday are not', () => {
+  // LAW 44 (Lawal, 21 November 2026, 01:08): every day, 08:00 to before 18:00 in the recipient's city, weekends included.
+  test('Thursday 10:00 and Saturday 11:00 in Melbourne are in; 07:00 and 18:00 are not', () => {
     expect(inBusinessHours(new Date('2026-10-28T23:00:00Z'), 'Australia/Melbourne')).toBe(true)
+    expect(inBusinessHours(new Date('2026-10-31T00:00:00Z'), 'Australia/Melbourne')).toBe(true)
     expect(inBusinessHours(new Date('2026-10-29T07:00:00Z'), 'Australia/Melbourne')).toBe(false)
-    expect(inBusinessHours(new Date('2026-10-31T00:00:00Z'), 'Australia/Melbourne')).toBe(false)
+    expect(inBusinessHours(new Date('2026-10-30T20:00:00Z'), 'Australia/Melbourne')).toBe(false)
+  })
+  test('the stored window is read, and a malformed one is never guessed at', () => {
+    const weekdays = sendWindowOf({ send_days: [1, 2, 3, 4, 5], send_from_hour: 9, send_to_hour: 17 })
+    expect(inBusinessHours(new Date('2026-10-31T00:00:00Z'), 'Australia/Melbourne', weekdays)).toBe(false)
+    expect(sendWindowOf(null)).toEqual(DEFAULT_SEND_WINDOW)
+    expect(sendWindowOf({ send_days: [], send_from_hour: 8, send_to_hour: 18 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(sendWindowOf({ send_days: [1, 8], send_from_hour: 8, send_to_hour: 18 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(sendWindowOf({ send_days: [6, 7], send_from_hour: 18, send_to_hour: 8 })).toEqual(DEFAULT_SEND_WINDOW)
+    expect(DEFAULT_SEND_WINDOW).toEqual({ days: [1, 2, 3, 4, 5, 6, 7], fromHour: 8, toHour: 18 })
+    expect(sendWindowWords(DEFAULT_SEND_WINDOW)).toBe('every day, 8:00 to 18:00')
   })
   test('the same instant read in Perth is three hours earlier', () => {
     expect(inBusinessHours(new Date('2026-10-28T23:00:00Z'), 'Australia/Perth')).toBe(false)
@@ -189,9 +211,9 @@ describe('the run', () => {
     expect(recordedOutreachMail()).toHaveLength(0)
   })
 
-  test('outside business hours nothing is claimed for an organiser', async () => {
+  test('outside the sending window nothing is claimed for an organiser (07:00 on a Saturday in Melbourne)', async () => {
     const { db, calls } = standardDb('test', { address: 'sam@venue.example' })
-    const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: new Date('2026-10-30T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(2)
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
@@ -200,7 +222,7 @@ describe('the run', () => {
   // mailbox is not one, so a letter to an address on the sender's own test domain goes at any hour.
   test('our own test mailbox is sent outside business hours; an organiser never is', async () => {
     const { db } = standardDb('test')
-    const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    const r = await runOutreachSender(db, { now: new Date('2026-10-30T20:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(0)
     expect(r.sent.length).toBeGreaterThan(0)
     expect(businessHoursApply('sam@eventlinqs.com', 'eventlinqs.com')).toBe(false)

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readTouchVoice } from './daily-queue'
-import { inBusinessHours, recipientZone } from './sender'
+import { DEFAULT_SEND_WINDOW, inBusinessHours, recipientZone, sendWindowOf, type SendWindow } from './sender'
 import { mailboxFor } from './addresses'
 import letters from './letter-approvals.generated.json'
 import standing from './standing-approvals.generated.json'
@@ -197,19 +197,15 @@ function hourIn(at: Date, zone: string): number {
   return Number(new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', hourCycle: 'h23' }).format(at))
 }
 
-function weekdayIn(at: Date, zone: string): boolean {
-  return !['Sat', 'Sun'].includes(new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short' }).format(at))
-}
-
-/** The next moment a business window is open in the zone, from now (law 42: from today, never a day before). */
-export function nextWindowStart(now: Date, zone: string): Date {
-  if (inBusinessHours(now, zone)) return now
+/** The next moment the sending window is open in the zone, from now (law 42: from today, never a day before; law 44). */
+export function nextWindowStart(now: Date, zone: string, window: SendWindow = DEFAULT_SEND_WINDOW): Date {
+  if (inBusinessHours(now, zone, window)) return now
   let midnight = midnightIn(now, zone)
   for (let i = 0; i < 9; i++) {
-    let nine = new Date(midnight.getTime() + 9 * 3_600_000)
-    const h = hourIn(nine, zone)
-    if (h !== 9) nine = new Date(nine.getTime() + (9 - h) * 3_600_000)
-    if (nine.getTime() > now.getTime() && weekdayIn(nine, zone)) return nine
+    let opens = new Date(midnight.getTime() + window.fromHour * 3_600_000)
+    const h = hourIn(opens, zone)
+    if (h !== window.fromHour) opens = new Date(opens.getTime() + (window.fromHour - h) * 3_600_000)
+    if (opens.getTime() > now.getTime() && inBusinessHours(opens, zone, window)) return opens
     midnight = midnightIn(new Date(midnight.getTime() + 36 * 3_600_000), zone)
   }
   throw new Error(`no business window found in nine days in ${zone}`)
@@ -228,7 +224,7 @@ export async function queueApprovedHeldLetters(
   deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[]; readonly letterApprovals?: readonly LetterApproval[] },
 ): Promise<SelfQueueReport> {
   const report: SelfQueueReport = { queued: [], waiting: [] }
-  const sender = await db.from('outreach_sender').select('mode').eq('id', true).single()
+  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_hour, send_to_hour').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
   if (sender.data.mode !== 'live') return { ...report, note: `the sender is ${sender.data.mode}: no letter queues itself` }
   let policy: VoicePolicy
@@ -267,7 +263,7 @@ export async function queueApprovedHeldLetters(
       report.waiting.push({ id: t.id, reasons })
       continue
     }
-    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id)).toISOString()
+    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id), sendWindowOf(sender.data)).toISOString()
     const moved = await db.from('outreach_touches').update({ state: 'queued', scheduled_for: at }).eq('id', t.id).eq('state', 'held').select('id').maybeSingle()
     if (moved.error || !moved.data) {
       report.waiting.push({ id: t.id, reasons: [moved.error?.message.replace(/^refused: /, '') ?? 'it was no longer held'] })

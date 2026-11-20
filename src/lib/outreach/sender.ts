@@ -16,7 +16,9 @@
  *   live   Graph. Without credentials the run reports that and claims nothing.
  *
  * BUSINESS HOURS IN THE RECIPIENT's ZONE (the plan: "sends spread through business hours in the recipient's timezone"):
- * Monday to Friday, 9:00 to 17:00, read in the time zone of the city of a venue the organiser runs, else Melbourne.
+ * The sending window, a stored setting (law 44, Lawal's 01:08 of 21 November 2026; outreach_sender.send_days,
+ * send_from_hour, send_to_hour; every day, 08:00 to 18:00 by default), read in the time zone of the city of a venue the
+ * organiser runs, else Melbourne.
  * The hours are EventLinqs' own choice (UNSOURCED: no rule names them); outside them a message stays queued.
  */
 import { slotDay, slotFromEarlierDay, wordsNameATime } from '@/lib/ops/stale-slot'
@@ -77,19 +79,47 @@ export function transportForMode(mode: SenderMode, testDomain: string, graph: Gr
  * WHETHER BUSINESS HOURS APPLY TO AN ADDRESS (the PM's 00:10 of 21 November 2026, item 2, on Lawal's 'start now'):
  * the hours protect a recipient, and our own test mailbox is not one. An address on the sender's own test domain
  * (outreach_sender.test_domain) is sent at any hour; every other address, and any address when the domain is not
- * known, keeps Monday to Friday, 9 to 5, in its city.
+ * known, keeps the sending window in its city.
  */
 export function businessHoursApply(address: string | null, testDomain: string | null): boolean {
   if (!address || !testDomain) return true
   return !atDomain(address, testDomain)
 }
 
-/** True from 9:00 to before 17:00, Monday to Friday, in the given zone. */
-export function inBusinessHours(at: Date, timeZone: string): boolean {
+/**
+ * THE SENDING WINDOW (law 44, Lawal's 01:08 of 21 November 2026: 'Every approved email, all the emails, go from today'):
+ * the days of the week (1 Monday to 7 Sunday) and the hours, from the first to before the last, in the recipient's city.
+ * Stored on outreach_sender; every day, 08:00 to 18:00 when the row holds none.
+ */
+export type SendWindow = { readonly days: readonly number[]; readonly fromHour: number; readonly toHour: number }
+
+export const DEFAULT_SEND_WINDOW: SendWindow = { days: [1, 2, 3, 4, 5, 6, 7], fromHour: 8, toHour: 18 }
+
+/** The window the sender row holds, else the default; a malformed stored window is never guessed at: the default holds. */
+export function sendWindowOf(row: { send_days?: readonly number[] | null; send_from_hour?: number | null; send_to_hour?: number | null } | null | undefined): SendWindow {
+  const days = row?.send_days
+  const from = row?.send_from_hour
+  const to = row?.send_to_hour
+  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => Number.isInteger(d) && d >= 1 && d <= 7)) return DEFAULT_SEND_WINDOW
+  if (!Number.isInteger(from) || !Number.isInteger(to) || (from as number) < 0 || (to as number) > 24 || (from as number) >= (to as number)) return DEFAULT_SEND_WINDOW
+  return { days: [...days], fromHour: from as number, toHour: to as number }
+}
+
+const ISO_DAY: Readonly<Record<string, number>> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }
+
+/** True inside the sending window in the given zone (by default every day, 08:00 to before 18:00). */
+export function inBusinessHours(at: Date, timeZone: string, window: SendWindow = DEFAULT_SEND_WINDOW): boolean {
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(at)
-  const weekday = parts.find((p) => p.type === 'weekday')?.value ?? ''
+  const weekday = ISO_DAY[parts.find((p) => p.type === 'weekday')?.value ?? ''] ?? 0
   const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0')
-  return !['Sat', 'Sun'].includes(weekday) && hour >= 9 && hour < 17
+  return window.days.includes(weekday) && hour >= window.fromHour && hour < window.toHour
+}
+
+/** The window in words, for a refusal: 'every day, 8 to 18' or the days it names. */
+export function sendWindowWords(w: SendWindow): string {
+  const names = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const days = w.days.length === 7 ? 'every day' : w.days.map((d) => names[d]).join(', ')
+  return `${days}, ${w.fromHour}:00 to ${w.toHour}:00`
 }
 
 export type SenderReport = {
@@ -215,7 +245,7 @@ export async function runOutreachSender(
     only?: readonly string[]
   },
 ): Promise<SenderReport> {
-  const sender = await db.from('outreach_sender').select('mode, from_address, test_domain').eq('id', true).single()
+  const sender = await db.from('outreach_sender').select('mode, from_address, test_domain, send_days, send_from_hour, send_to_hour').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
   const mode = sender.data.mode as SenderMode
   const report: SenderReport = { mode, transport: 'none', closedStuck: 0, considered: 0, sent: [], failed: [], refused: [], outsideHours: 0 }
@@ -260,7 +290,7 @@ export async function runOutreachSender(
       await db.from('outreach_touches').update({ scheduled_for: deps.now.toISOString() }).eq('id', t.id).eq('state', 'queued')
       report.replanned.push(`${t.id}: its slot of ${missed} passed unsent; re planned from today (law 42)`)
     }
-    if (hoursApply && !inBusinessHours(deps.now, zone)) {
+    if (hoursApply && !inBusinessHours(deps.now, zone, sendWindowOf(sender.data))) {
       report.outsideHours++
       continue
     }

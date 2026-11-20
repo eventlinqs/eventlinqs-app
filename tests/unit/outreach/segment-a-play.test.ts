@@ -90,7 +90,7 @@ describe('a segment A letter is queued only when it passes whole', () => {
   })
 
   it('outside a Melbourne business hour nothing is drafted: its numbers are read in the hour it goes', async () => {
-    const r = await draftSegmentALetter(fakeDb('').db, input(new Date('2026-11-21T00:00:00Z')))
+    const r = await draftSegmentALetter(fakeDb('').db, input(new Date('2026-11-20T20:00:00Z')))
     expect(r.state).toBe('not drafted')
   })
 
