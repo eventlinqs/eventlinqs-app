@@ -13412,6 +13412,7 @@ export type Database = {
           entry_mode: string
           event_type: Database["public"]["Enums"]["event_type"]
           external_ticket_url: string | null
+          facts_changed_at: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
           genre_slug: string | null
