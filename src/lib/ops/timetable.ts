@@ -34,6 +34,18 @@ export const RIDES = {
 } as const
 export type Ride = keyof typeof RIDES
 
+/**
+ * WHAT ONE UNIT OF A RIDE'S WORK IS, where it is fixed whatever phase the ride serves (train AL, 20 November 2026): the
+ * hourly listings run records nights under Collect, whose own unit is a source, and the board read '1171 sources'.
+ * A ride not named here counts in its phase's unit.
+ */
+export const RIDE_UNITS: Partial<Record<Ride, string>> = { collection: 'source', listings: 'night', linkCheck: 'link', engineVerifier: 'night' }
+
+/** The unit a run's count is said in: its ride's own, else its phase's. */
+export function unitOfRun(phase: Pick<Phase, 'unit'>, ride: string | null): string {
+  return (ride !== null && ride in RIDE_UNITS ? RIDE_UNITS[ride as Ride] : undefined) ?? phase.unit
+}
+
 export interface Phase {
   readonly key: string
   readonly label: string

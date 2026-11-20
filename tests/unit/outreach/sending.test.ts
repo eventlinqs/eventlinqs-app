@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { buildOutreachMime, encodeHeaderValue, outreachOneClickUrl } from '@/lib/outreach/mime'
 import { forgetGraphToken, graphReadInbox, graphSendMime, graphToken, GraphError, type GraphConfig } from '@/lib/outreach/graph'
-import { clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
+import { businessHoursApply, clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
+import { HELLO_MAILBOX, LAWAL_MAILBOX } from '@/lib/outreach/addresses'
 
 /**
  * THE SENDING PATH (src/lib/outreach/mime.ts, graph.ts, sender.ts). The database's own refusals are proved on TEST in
@@ -188,11 +189,60 @@ describe('the run', () => {
     expect(recordedOutreachMail()).toHaveLength(0)
   })
 
-  test('outside business hours nothing is claimed', async () => {
-    const { db, calls } = standardDb('test')
+  test('outside business hours nothing is claimed for an organiser', async () => {
+    const { db, calls } = standardDb('test', { address: 'sam@venue.example' })
     const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(2)
     expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  // The PM's 00:10 of 21 November 2026, item 2 (Lawal's 'start now'): business hours protect a recipient; our own test
+  // mailbox is not one, so a letter to an address on the sender's own test domain goes at any hour.
+  test('our own test mailbox is sent outside business hours; an organiser never is', async () => {
+    const { db } = standardDb('test')
+    const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.outsideHours).toBe(0)
+    expect(r.sent.length).toBeGreaterThan(0)
+    expect(businessHoursApply('sam@eventlinqs.com', 'eventlinqs.com')).toBe(false)
+    expect(businessHoursApply('SAM@EventLinqs.com', 'eventlinqs.com')).toBe(false)
+    expect(businessHoursApply('sam@venue.example', 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply('sam@eventlinqs.com.evil.example', 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply(null, 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply('sam@eventlinqs.com', null)).toBe(true)
+  })
+
+  // LAW 42 (Lawal, 20 November 2026, 23:58): a letter whose slot fell on a missed day is never sent as that day's.
+  test('a letter from a missed day is re planned from today; one whose words name a time is held for a redraft', async () => {
+    const yesterday = '2026-10-27T23:00:00Z' // Wednesday 28 October, 10:00 in Melbourne; the run is Thursday the 29th
+    const { db, calls } = standardDb('test', {
+      queued: [
+        { ...QUEUED[0], scheduled_for: yesterday },
+        { ...QUEUED[1], id: 'q-dated', body: 'Hi Jo,\nYour night on Saturday is on our guide. EventLinqs.', scheduled_for: yesterday },
+      ],
+    })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const updates = calls.filter((c) => c.op === 'update' && c.table === 'outreach_touches')
+    const ofRow = (id: string) => updates.filter((c) => c.filters.some(([k, v]) => k === 'eq:id' && v === id)).map((c) => c.payload as Record<string, unknown>)
+    expect(ofRow('q-ok')[0]).toEqual({ scheduled_for: THURSDAY_10_MELBOURNE.toISOString() })
+    expect(ofRow('q-dated')[0]).toMatchObject({ state: 'held' })
+    expect(String((ofRow('q-dated')[0].held_because as string[])[0])).toContain("its words name a time ('Saturday')")
+    expect(ofRow('q-dated').some((p) => p.state === 'sending' || p.state === 'sent')).toBe(false)
+    expect(r.replanned).toHaveLength(2)
+  })
+
+  // LAW 33 (a), the PM's 00:50 of 21 November 2026, item 1: the run itself, not only the table, sends an acquisition
+  // letter from lawal@ and a permission request from hello@, whatever outreach_sender.from_address reads.
+  test('an acquisition letter leaves the run from lawal@, a permission request from hello@', async () => {
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], comms_category: 'ACQ' }, { ...QUEUED[1], comms_category: 'PERM' }] })
+    await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const mail = recordedOutreachMail()
+    expect(mail.map((m) => m.from)).toEqual([LAWAL_MAILBOX, HELLO_MAILBOX])
+  })
+
+  test("a letter slotted earlier today, or with no slot, is today's and is not re planned", async () => {
+    const { db } = standardDb('test', { queued: [{ ...QUEUED[0], scheduled_for: '2026-10-28T22:00:00Z' }, { ...QUEUED[1] }] })
+    const r = await runOutreachSender(db, { now: THURSDAY_10_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.replanned ?? []).toEqual([])
   })
 })
 

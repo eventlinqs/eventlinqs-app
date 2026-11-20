@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
     const summary = await runLinkCheck(createAdminClient(), reader, runStarted)
     const stopped = reader.stopped()
     console.log(
-      `[cron/booking-link-check] links=${summary.links} changed=${summary.changed} robots=${summary.robots} unknown=${summary.unknown} failed=${summary.failed} stopped=${stopped.join(',') || 'none'}`,
+      `[cron/booking-link-check] links=${summary.links} changed=${summary.changed} confirmed=${summary.confirmed} robots=${summary.robots} unknown=${summary.unknown} failed=${summary.failed} stopped=${stopped.join(',') || 'none'}`,
     )
-    await record(summary.links, `${summary.links} booking link(s) read, ${summary.changed} changed, ${summary.robots} refused by robots.txt, ${summary.unknown} unknown, ${summary.failed} failed; hosts stopped: ${stopped.join(', ') || 'none'}`, false)
+    await record(summary.links, `${summary.links} booking link(s) read, ${summary.changed} changed, ${summary.confirmed} prices confirmed, ${summary.robots} refused by robots.txt, ${summary.unknown} unknown, ${summary.failed} failed; hosts stopped: ${stopped.join(', ') || 'none'}`, false)
     return NextResponse.json({ ok: true, ...summary, stopped })
   } catch (err) {
     await record(0, `the booking link check failed: ${err instanceof Error ? err.message : String(err)}`, true)

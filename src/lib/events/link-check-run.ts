@@ -64,7 +64,7 @@ export function politeLinkDeps(inner: CheckDeps = fetchDeps, pauseMs = 1000): Ch
   }
 }
 
-export type LinkCheckSummary = { links: number; changed: number; robots: number; unknown: number; failed: number }
+export type LinkCheckSummary = { links: number; changed: number; confirmed: number; robots: number; unknown: number; failed: number }
 
 const hostOf = (url: string): string | null => {
   try {
@@ -89,7 +89,7 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
     captureException(error, { scope: 'link-check', handler: 'read-links' })
     throw error
   }
-  const summary: LinkCheckSummary = { links: 0, changed: 0, robots: 0, unknown: 0, failed: 0 }
+  const summary: LinkCheckSummary = { links: 0, changed: 0, confirmed: 0, robots: 0, unknown: 0, failed: 0 }
   const robots = new Map()
   // One read of a page per run, however many nights' links it sells (Comedy Republic's Main Stage is one page for every
   // night), and each night read for itself on it (link-check.ts readPage).
@@ -126,7 +126,11 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
     // An unstated availability keeps the stored one; only what the page states is written, except a dead link that answers
     // again, which works ('on_sale', the state every link starts in).
     const availability = stated ?? (back ? 'on_sale' : link.availability)
-    if (availability === link.availability && (price === null || price === link.price_from_cents)) return
+    // A PRICE READ AGAIN IS A PRICE CHECKED NOW (train AL, 20 November 2026): an unchanged price used to write nothing,
+    // so price_checked_at never moved and the page and its JSON-LD dropped, after seven days (priceToShow), a price
+    // confirmed every day. Only a read that says nothing new about availability and no price writes nothing.
+    if (availability === link.availability && price === null) return
+    const moved = availability !== link.availability || (price !== null && price !== link.price_from_cents)
     const row: Record<string, unknown> = { updated_at: now.toISOString() }
     if (availability !== link.availability) row.availability = availability
     if (price !== null) Object.assign(row, { price_from_cents: price, price_checked_at: now.toISOString() })
@@ -136,7 +140,8 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
       captureException(writeError, { scope: 'link-check', handler: 'write-verdict', linkId: link.id })
       return
     }
-    summary.changed++
+    if (moved) summary.changed++
+    else summary.confirmed++
   }
   await Promise.all(
     [...byHost.values()].map(async (links) => {

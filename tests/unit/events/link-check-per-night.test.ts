@@ -64,8 +64,35 @@ describe('a page of several dated nights', () => {
     const deps: CheckDeps = { async get(u) { gets.push(u); return u.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: week } } }
     const summary = await runLinkCheck(admin, deps, new Date('2026-11-03T00:00:00Z'))
     expect(gets.filter((g) => g === url)).toHaveLength(1)
+    // Saturday changed (sold out at $39); Wednesday's $22 was read again unchanged, so only its check time moves
+    // (train AL, 20 November 2026: a price read again is a price checked now).
     expect(summary.changed).toBe(1)
-    expect(writes).toEqual([{ id: 'sat', row: expect.objectContaining({ availability: 'sold_out', price_from_cents: 3900 }) }])
+    expect(summary.confirmed).toBe(1)
+    expect(writes).toEqual([
+      { id: 'wed', row: expect.objectContaining({ price_from_cents: 2200, price_checked_at: '2026-11-03T00:00:00.000Z' }) },
+      { id: 'sat', row: expect.objectContaining({ availability: 'sold_out', price_from_cents: 3900 }) },
+    ])
+    expect(writes[0].row).not.toHaveProperty('availability')
+  })
+
+  // 20 November 2026, train AL: a price read again and found unchanged wrote nothing, so price_checked_at never moved and,
+  // after seven days (priceToShow), the page and its JSON-LD dropped a price confirmed every day (Chanukah Pillars of
+  // Light, 0 checked 5 November). A price read again is a price checked now, counted as confirmed, never as changed.
+  test('a price read again and unchanged has its check time written now, counted as confirmed, not changed', async () => {
+    const links = [{ id: 'wed', url: 'https://comedyrepublic.example/main-stage', availability: 'on_sale', price_from_cents: 2200, events: { start_date: '2026-11-04T09:00:00.000Z', timezone: zone } }]
+    const writes: { id: string; row: Record<string, unknown> }[] = []
+    const admin = {
+      from: () => ({
+        select: () => ({ gte: () => ({ limit: async () => ({ data: links, error: null }) }) }),
+        update: (row: Record<string, unknown>) => ({ eq: async (_c: string, id: string) => { writes.push({ id, row }); return { error: null } } }),
+      }),
+    } as unknown as SupabaseClient
+    const deps: CheckDeps = { async get(u) { return u.endsWith('/robots.txt') ? { status: 404, body: '' } : { status: 200, body: week } } }
+    const now = new Date('2026-11-03T00:00:00Z')
+    const summary = await runLinkCheck(admin, deps, now)
+    expect(writes).toEqual([{ id: 'wed', row: expect.objectContaining({ price_from_cents: 2200, price_checked_at: now.toISOString() }) }])
+    expect(summary.changed).toBe(0)
+    expect(summary.confirmed).toBe(1)
   })
 
   // 16 November 2026 (the PM's 12:35 item 4): the sentinel holds a night whose every link is dead and releases it when a

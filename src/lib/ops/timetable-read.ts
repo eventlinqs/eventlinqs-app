@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { PHASES, TIMETABLE_ZONE, melbourneMinutes, minutesOf, phaseState, plannedStart, type Phase } from './timetable'
+import { PHASES, TIMETABLE_ZONE, melbourneMinutes, minutesOf, phaseState, plannedStart, unitOfRun, type Phase } from './timetable'
 import { lessonFromYesterday, type DayBefore } from './lessons'
 
 /**
@@ -12,6 +12,8 @@ export interface TimetableRow {
   readonly phase: Phase
   readonly state: 'done' | 'running' | 'late' | 'failed' | 'missed' | 'not yet'
   readonly units: number | null
+  /** The unit its count is said in: the unit of the ride that made today's run, else its phase's. */
+  readonly unit: string
   readonly endedAt: string | null
   readonly result: string | null
   readonly plannedStartMinutes: number
@@ -79,6 +81,7 @@ export async function readTimetable(db: SupabaseClient, now: Date): Promise<{ ro
       phase,
       state,
       units: today?.units ?? null,
+      unit: unitOfRun(phase, today?.ride ?? null),
       endedAt: today?.ended_at ?? null,
       result: today?.result ?? null,
       plannedStartMinutes: plannedStart(phase, today?.units ?? 0, perUnit) - (dayBefore?.shiftMinutes ?? 0),

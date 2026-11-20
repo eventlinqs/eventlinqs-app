@@ -1,3 +1,4 @@
+import { SOCIAL_SLOT_ZONE, slotDay, slotFromEarlierDay } from '@/lib/ops/stale-slot'
 import { LOST_ID } from './post-state'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
@@ -2143,6 +2144,13 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     const id = r.id as string
     const pieceId = r.piece_id as string
     const platform = r.platform as SocialPlatform
+    // LAW 42, A MISSED DAY IS NEVER CAUGHT UP (Lawal, 20 November 2026, 23:58): a slot from an earlier Melbourne day is
+    // never posted late as that day's post, switch on or off. A moment belongs to its own day (law 37 (l)), so the post is
+    // dropped with its reason and the planner plans afresh from today.
+    if (slotFromEarlierDay(r.go_at as string, now, SOCIAL_SLOT_ZONE)) {
+      await hold(id, `Not published: its slot of ${slotDay(r.go_at as string, SOCIAL_SLOT_ZONE)} passed before it could post; a missed day is never posted late (law 42), and the planner plans afresh from today.`)
+      continue
+    }
     if (!switchOn) {
       wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
       continue

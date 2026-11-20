@@ -41,7 +41,7 @@ export function TimetableBoard({ read }: { read: { rows: TimetableRow[] } | { un
               </span>
               <span className="text-[var(--admin-soft)]">
                 <span className="font-medium text-[var(--admin-ink)]">{r.phase.label}</span>, done by {r.phase.cutoff}
-                {r.units !== null ? `: ${r.units} ${r.units === 1 ? r.phase.unit : `${r.phase.unit}s`}${r.endedAt ? `, ended ${endWords(r.endedAt)}` : ''}` : ''}
+                {r.units !== null ? `: ${r.units} ${r.units === 1 ? r.unit : `${r.unit}s`}${r.endedAt ? `, ended ${endWords(r.endedAt)}` : ''}` : ''}
                 <span className="block text-xs text-[var(--admin-muted)]">Starts by {plannedStartWords(r)} on measured times{r.result ? `. ${r.result}` : ''}</span>
                 <span className="block text-xs text-[var(--admin-muted)]">
                   Last success {r.lastSuccessAt ? `${dayWords(r.lastSuccessAt)} ${endWords(r.lastSuccessAt)}` : 'none in 14 days'}. Next run {r.nextRun}.
