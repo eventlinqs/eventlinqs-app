@@ -34,6 +34,7 @@ export type PolicyName =
   | 'newsletter-subscribe'
   | 'newsletter-confirm-address'
   | 'partner-enquiry'
+  | 'contact-form'
   | 'listing-submission'
   | 'photo-permission'
   | 'listing-report'
@@ -264,6 +265,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Confirmation emails per ADDRESS (keyed by a hash of the normalised address, never the address) per day. The per IP limit cannot stop someone using the form, from many addresses or networks, to send one person confirmation after confirmation; three a day lets the real owner ask again after losing the first while bounding that to three unwanted emails. FAIL-CLOSED for the same reason as newsletter-subscribe: it stands in front of a real send from our domain.',
+  },
+  'contact-form': {
+    keyPrefix: 'contact',
+    limit: 5,
+    windowSec: 600,
+    failClosed: true,
+    rationale:
+      'The /contact page message per IP per 10 min (WINDOW 5C, 21 November 2026: the form used to open a mailto: link and claim "Message received" whatever happened; it now sends the message to the support inbox through sendEmail). Five covers someone sending, correcting and sending again; a scripted flood is bounced. FAIL-CLOSED: it stands in front of a real send from our domain, the posture of newsletter-subscribe and launch-email (docs/RATE-LIMIT-DOCTRINE.md section 3: two policies sending from one domain cannot hold opposite postures). A visitor refused by a Redis blip is told plainly the message was not sent and given the address to write to, never told it arrived.',
   },
   'partner-enquiry': {
     keyPrefix: 'partner-enq',

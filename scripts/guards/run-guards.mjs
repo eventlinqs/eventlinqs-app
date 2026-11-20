@@ -712,6 +712,7 @@
  *                              or the badge as a perk; the words in lib/retired-offer-words.mjs
  *                              (LAW 24 retired, Lawal 15 November 2026)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
+ *   forms-say-only-what-happened  no form sends a visitor to a mail app or thanks them from a timer
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
  *   organiser-links-have-a-page  every public /organisers/<slug> link asks whether the organiser
@@ -2102,6 +2103,10 @@ const GUARDS = [
   // the /events popular rail and the venues rail on production. A public collection draws real events only and an empty
   // rail is hidden. Drilled red on car 26's tree.
   'scripts/guards/no-filler-in-event-collections.mjs',
+  // 21 November 2026, WINDOW 5C (Lawal 09:02: every function works to completion): the contact page opened a mailto:
+  // link and said 'Message received' whatever happened. No form hands a visitor to a mail app or thanks them from a
+  // timer. Drilled red on the old contact form.
+  'scripts/guards/forms-say-only-what-happened.mjs',
   // 15 November 2026, Lawal 00:19 and 00:37: LAW 24 is retired, every organiser pays the fee from day one, and the
   // whole website says so. The retired words live in one file, scripts/guards/lib/retired-offer-words.mjs.
   'scripts/guards/no-free-months-promise.mjs',

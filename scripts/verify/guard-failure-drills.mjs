@@ -353,6 +353,18 @@ const DRILLS = [
    * no-filler-in-event-collections (Lawal's 17:44 of 31 October 2026: no open-slot cards in any public collection,
    * ever): the regression is the invitation card fill coming back into a home rail.
    */
+  /*
+   * forms-say-only-what-happened (WINDOW 5C, 21 November 2026): the contact page opened a mailto: link and said
+   * 'Message received' whatever happened. The regression is the form handing the visitor to a mail app again.
+   */
+  {
+    name: 'the contact form hands the visitor to a mail app again',
+    guard: `${GUARDS}/forms-say-only-what-happened.mjs`,
+    file: 'src/components/features/contact/ContactForm.tsx',
+    find: "      const res = await fetch('/api/contact', {",
+    replace: "      window.location.href = `mailto:${contactAddress('hello')}`\n      const res = await fetch('/api/contact', {",
+    expect: 'hands the visitor to a mail app',
+  },
   {
     name: 'a home rail draws the invitation card fill again',
     guard: `${GUARDS}/no-filler-in-event-collections.mjs`,
