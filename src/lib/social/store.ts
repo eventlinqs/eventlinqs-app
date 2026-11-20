@@ -794,6 +794,29 @@ export async function pieceDependencies(
       }
       continue
     }
+    /* LAW 37, THE LIFECYCLE PIECE (the standing policy's first run over one, 06:40 on 21 November 2026: 'The check could
+       not run (2)', its photo slide read as a night slide): the slide is the night's own photograph, whole, so the night
+       is read again (gone, no longer public, ended, sold out), a paid night's seller page asked, and the photograph's
+       licence for social checked again for this night at this minute. */
+    if (found?.t === 'photo') {
+      const name = e ? String(e.title) : id
+      if (!e) {
+        issues.push(`${name}: the night no longer exists.`)
+        continue
+      }
+      if (String(e.status) !== 'published' || String(e.visibility) !== 'public') issues.push(`${name}: it is no longer published and public.`)
+      if (Date.parse(String(e.end_date)) <= now.getTime()) issues.push(`${name}: it has ended.`)
+      const photoGone = soldOutIssue(name, e)
+      if (photoGone) issues.push(photoGone)
+      const { cta } = await admissionOf(e, now)
+      if (cta.state === 'paid_external') {
+        const ticket = await ticketPageIssue(fetcher, name, e)
+        if (ticket) issues.push(ticket)
+      }
+      const { data: ok } = await db.rpc('social_asset_usable', { p_url: found.photo, p_event: id, p_at: now.toISOString() })
+      if (ok !== true) issues.push(`${name}: its image has no approved, unexpired licence for this night.`)
+      continue
+    }
     const slide = found as Extract<Slide, { t: 'night' | 'story' }> | undefined
     const name = slide?.title ?? id
     if (!e) {

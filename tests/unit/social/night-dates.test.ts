@@ -17,6 +17,12 @@ describe("a night's dates on a post", () => {
     // 7.30 pm Saturday to midnight: Saturday's alone.
     expect(nightDates('2026-11-21T08:30:00Z', '2026-11-21T13:00:00Z', MEL)).toBe('Sat 21 Nov')
   })
+  it("a post on a later day of the run starts from that day, never a day already over (the publish gate's past day rule)", () => {
+    expect(nightDates('2026-11-20T00:00:00Z', '2026-11-22T09:00:00Z', MEL, '2026-11-21')).toBe('Sat 21 to Sun 22 Nov')
+    expect(nightDates('2026-11-20T00:00:00Z', '2026-11-22T09:00:00Z', MEL, '2026-11-22')).toBe('Sun 22 Nov')
+    // On its first day the run reads whole.
+    expect(nightDates('2026-11-20T00:00:00Z', '2026-11-22T09:00:00Z', MEL, '2026-11-20')).toBe('Fri 20 to Sun 22 Nov')
+  })
   it('a run across a month names both months', () => {
     expect(nightDates('2026-11-29T00:00:00Z', '2026-12-01T09:00:00Z', MEL)).toBe('Sun 29 Nov to Tue 1 Dec')
   })

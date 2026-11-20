@@ -197,7 +197,11 @@ function dateLabel(iso: string, zone: string): string {
  * its zone reads as its run, 'Fri 20 to Sun 22 Nov', so a post on any of its days is true. An end recorded as a default
  * midnight never extends a night (law 22 class 2): an end at 00:00 belongs to the day before.
  */
-export function nightDates(startIso: string, endIso: string | null, zone: string): string {
+export function nightDates(startIso: string, endIso: string | null, zone: string, onDay?: string): string {
+  // A piece posts on a day of the run: its label starts there, never on a day already over (the publish gate's past day
+  // rule, law 22): AMCF's Saturday post reads 'Sat 21 to Sun 22 Nov', its Sunday post 'Sun 22 Nov' (law 37 (l)).
+  const dayKey = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  if (onDay && onDay > dayKey(new Date(startIso))) startIso = `${onDay}T12:00:00.000Z`
   const first = dateLabel(startIso, zone)
   if (!endIso) return first
   const lastInstant = new Date(new Date(endIso).getTime() - 1)
@@ -270,7 +274,7 @@ export async function planLifecyclePieces(
       height: photo.height,
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
-    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
+    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
     const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
     const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })
