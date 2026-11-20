@@ -61,6 +61,16 @@ export function missedWords(p: Phase): string {
  * that fails is named in the answer and never throws, so the run that calls it goes on.
  */
 export async function recordMissedRuns(db: SupabaseClient, now: Date): Promise<{ readonly missed: PhaseKey[] } | { readonly unread: string }> {
+  // NEVER THROWS, in fact as well as in words (law 23: one failed step never stops the run). AF's gate of 20 November
+  // 2026 at 12:36 read the outreach run answering 500 when a read here threw before it could answer.
+  try {
+    return await missedRunsNow(db, now)
+  } catch (fault) {
+    return { unread: `the missed-run alarm could not run: ${fault instanceof Error ? fault.message : String(fault)}` }
+  }
+}
+
+async function missedRunsNow(db: SupabaseClient, now: Date): Promise<{ readonly missed: PhaseKey[] } | { readonly unread: string }> {
   const from = new Date(melbourneMidnight(now) - 3 * 60 * 60_000).toISOString()
   const { data, error } = await db.from('ops_phase_runs').select('phase, ride, started_at').gte('started_at', from).limit(5000)
   if (error) return { unread: `the day's runs could not be read: ${error.message}` }
