@@ -49,6 +49,15 @@ const argOf = flag => {
 export const INDEXING_STATE_FILE = join(ROOT, '.indexing', 'last-run.json')
 
 const SITE = (argOf('--site') || process.env.INDEXING_SITE || 'https://www.eventlinqs.com.au').replace(/\/$/, '')
+/**
+ * THE PROPERTY GOOGLE IS ASKED ABOUT (train AL, 20 November 2026): EventLinqs is verified in Search Console as the
+ * DOMAIN property sc-domain:eventlinqs.com.au (a google-site-verification TXT record on the domain), not as the URL
+ * prefix https://www.eventlinqs.com.au/, so every inspection asked a property that does not exist. Google's own words
+ * (developers.google.com/webmaster-tools/v1/urlInspection.index/inspect, read 20 November 2026): 'siteUrl ... The URL
+ * of the property as defined in Search Console ... Examples: https://www.example.com/ for a URL-prefix property, or
+ * sc-domain:example.com for a Domain property.'
+ */
+export const PROPERTY = argOf('--property') || process.env.INDEXING_PROPERTY || 'sc-domain:eventlinqs.com.au'
 const JSON_OUT = argOf('--json')
 const LIMIT = Number(argOf('--limit') || process.env.INDEXING_LIMIT || 0) || 0
 const NO_INSPECT = argv.includes('--no-inspect')
@@ -200,7 +209,7 @@ async function main() {
       const token = await accessToken(JSON.parse(process.env.GOOGLE_SEARCH_CONSOLE_KEY))
       say(`asking Search Console about ${sweepList.length} URL(s) as ${credential.clientEmail}.`)
       const perSlot = Math.max(1, Math.floor(INSPECTIONS_PER_MINUTE / 60))
-      const inspections = await pool(sweepList.map(r => r.url ?? r), url => inspect(token, `${SITE}/`, typeof url === 'string' ? url : url.url), perSlot)
+      const inspections = await pool(sweepList.map(r => r.url ?? r), url => inspect(token, PROPERTY, typeof url === 'string' ? url : url.url), perSlot)
       const coverage = coverageFromInspections(inspections)
       searchConsole = { connected: true, reason: null, indexed: coverage.indexed, excluded: coverage.excluded }
       say(`Google reports ${coverage.indexed} indexed and ${coverage.excluded.length} excluded.`)
