@@ -1,3 +1,6 @@
+import { endOfLocalDayUtc, isStillListed, listingWindowOrPredicate, startOfLocalDayUtcOffset, weekendWindowUtc } from '@/lib/events/listing-window'
+import { byRelevance, tierOf } from '@/lib/events/relevance'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
@@ -69,12 +72,35 @@ export interface DigestEvent {
 
 type Admin = ReturnType<typeof createAdminClient>
 
-/** The digest period: the seven days from the send date. */
-export function resolveDigestPeriod(now: Date): { start: string; end: string } {
-  const start = now.toISOString().slice(0, 10)
-  const endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  const end = endDate.toISOString().slice(0, 10)
+/** THE WEEK (Wednesday's edition) or THE WEEKEND (Friday's), law 45. */
+export type DigestEdition = 'week' | 'weekend'
+
+/** A local day as YYYY-MM-DD in `zone`. */
+function localDay(at: Date, zone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
+}
+
+/**
+ * The digest period, in the city's own days (the practice weekend edition of 21 November 2026: at 07:00 in Melbourne the
+ * UTC day is still the day before, so `now.toISOString().slice(0, 10)` opened the week on Friday and the edition led with
+ * Friday's ended nights). THE WEEK: today and the seven days after it. THE WEEKEND: today to the end of the weekend's
+ * Sunday (`weekendWindowUtc`, the platform's one weekend). Which nights are carried is the listing rule's, never this.
+ */
+export function resolveDigestPeriod(now: Date, edition: DigestEdition = 'week', zone: string = PLATFORM_TIME_ZONE): { start: string; end: string } {
+  const start = localDay(now, zone)
+  const end = edition === 'weekend' ? localDay(weekendWindowUtc(now, zone).to, zone) : localDay(startOfLocalDayUtcOffset(now, zone, 7), zone)
   return { start, end }
+}
+
+/** '21 to 22 November', '30 November to 1 December', or one day: the dates a weekend edition's subject names. */
+export function digestRangeLabel(period: { start: string; end: string }): string {
+  const at = (day: string) => new Date(`${day}T12:00:00Z`)
+  const part = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', ...o }).format(at(day))
+  const dayOf = (day: string) => part(day, { day: 'numeric' })
+  const month = (day: string) => part(day, { month: 'long' })
+  if (period.start === period.end) return `${dayOf(period.end)} ${month(period.end)}`
+  if (month(period.start) === month(period.end)) return `${dayOf(period.start)} to ${dayOf(period.end)} ${month(period.end)}`
+  return `${dayOf(period.start)} ${month(period.start)} to ${dayOf(period.end)} ${month(period.end)}`
 }
 
 /**
@@ -322,7 +348,15 @@ export function digestVenueLabel(
   return parts.join(', ')
 }
 
-/** This week's published events for the city, soonest first. */
+/** The most rows the digest reads before it orders them: under Supabase's 1,000 row response cap, above a city's week. */
+export const DIGEST_READ_CEILING = 500
+
+/**
+ * The period's published events for the city that are still listed at `now`, by law 18's tiers and then the soonest:
+ * a library session, story time or class comes last, never ahead of a ticketed night (Geelong's practice edition led with
+ * 'Knitting and crochet social group'). A night running across the period (a festival on its middle day) stays, dated by
+ * its end.
+ */
 export async function fetchDigestEvents(
   admin: Admin,
   citySlug: string,
@@ -330,6 +364,7 @@ export async function fetchDigestEvents(
   limit = 10,
   origin = '',
   cityName = '',
+  now: Date = new Date(),
 ): Promise<DigestEvent[]> {
   /*
    * THE ERROR IS NOT DISCARDED, because on this surface a failed read and a
@@ -344,7 +379,7 @@ export async function fetchDigestEvents(
     admin
     .from('events')
     .select(
-      'id, slug, title, start_date, timezone, venue_name, venue_city, venue_id, status, visibility, is_seed_data, external_ticket_url, is_free, entry_mode, ticket_tiers(price, currency, is_active)',
+      'id, slug, title, start_date, end_date, timezone, venue_name, venue_city, venue_id, status, visibility, is_seed_data, external_ticket_url, is_free, entry_mode, category:event_categories!events_category_id_fkey(slug), ticket_tiers(price, currency, is_active)',
     )
     .eq('city_primary', citySlug)
     .eq('status', 'published')
@@ -354,10 +389,13 @@ export async function fetchDigestEvents(
     // gathering cannot reach a stranger's inbox even if a later edit drops the
     // in-memory guard below.
     .eq('visibility', PUBLIC_VISIBILITY)
-    .gte('start_date', `${period.start}T00:00:00Z`)
-    .lte('start_date', `${period.end}T23:59:59Z`)
+    // Still listed at `now`, by the platform's one rule (law 16: a night leaves every list at its end), never from a
+    // UTC midnight; and starting no later than the period's last day, in the city's own zone (noon UTC of an
+    // Australian date is that same date in every Australian zone).
+    .or(listingWindowOrPredicate(now))
+    .lte('start_date', endOfLocalDayUtc(new Date(`${period.end}T12:00:00Z`), PLATFORM_TIME_ZONE).toISOString())
     .order('start_date', { ascending: true })
-    .limit(limit * 2),
+    .limit(DIGEST_READ_CEILING),
   )
 
   type Row = {
@@ -365,7 +403,9 @@ export async function fetchDigestEvents(
     slug: string
     title: string
     start_date: string
+    end_date?: string | null
     timezone: string | null
+    category?: { slug: string | null } | null
     venue_name: string | null
     venue_city: string | null
     venue_id?: string | null
@@ -389,12 +429,30 @@ export async function fetchDigestEvents(
     // it through the one shared predicate. Two independent guards, because a
     // regression here emails a private address to a whole city.
     .filter((e) => isPubliclyDiscoverable(e.visibility) && e.is_seed_data !== true)
+    // The same rule in memory as in the query, so a night that ends between the read and the send is never carried.
+    .filter((e) => isStillListed(e, now))
+    .sort(
+      byRelevance(
+        (e) =>
+          tierOf({
+            title: e.title,
+            venue: e.venue_name,
+            categorySlug: e.category?.slug ?? null,
+            ticketed: e.is_free !== true && e.entry_mode !== 'walk_in' && (Boolean((e.external_ticket_url ?? '').trim()) || (e.ticket_tiers ?? []).some((x) => x.price > 0)),
+          }),
+        (e) => Date.parse(e.start_date),
+      ),
+    )
     .slice(0, limit)
     .map((e) => ({
       id: e.id,
       slug: e.slug,
       title: e.title,
-      dateLabel: digestDateLabel(e.start_date, e.timezone),
+      // A night already under way is dated by its end, never by a start that has passed (AMCF on its Saturday).
+      dateLabel:
+        Date.parse(e.start_date) < now.getTime() && e.end_date
+          ? `Until ${digestDateLabel(e.end_date, e.timezone)}`
+          : digestDateLabel(e.start_date, e.timezone),
       venueLabel: digestVenueLabel(e.venue_name, e.venue_city, cityName),
       priceLabel: digestPriceLabel(e.ticket_tiers, e.external_ticket_url ?? null, { isFree: e.is_free ?? null, entryMode: e.entry_mode ?? null }),
       url: `${origin}/events/${e.slug}`,
@@ -454,10 +512,15 @@ export function buildDigestEmailHtml(input: {
   events: DigestEvent[]
   origin: string
   unsubscribeUrl: string
+  /** THE WEEKEND names its dates in the subject; THE WEEK keeps its count (law 45). */
+  edition?: DigestEdition
+  period?: { start: string; end: string }
 }): { subject: string; html: string; text: string } {
-  const subject = `This week in ${input.cityName}: ${input.events.length} ${
-    input.events.length === 1 ? 'event' : 'events'
-  } worth a look`
+  const weekend = input.edition === 'weekend'
+  const heading = `${weekend ? 'This weekend' : 'This week'} in ${input.cityName}`
+  const subject = weekend
+    ? `${heading}${input.period ? ` (${digestRangeLabel(input.period)})` : ''}`
+    : `This week in ${input.cityName}: ${input.events.length} ${input.events.length === 1 ? 'event' : 'events'} worth a look`
 
   const rows = input.events
     .map(
@@ -480,7 +543,7 @@ export function buildDigestEmailHtml(input: {
     <div style="background:#ffffff;border:1px solid #e7e9ee;border-radius:14px;padding:28px">
       ${greetingHtml(null)}
       <p style="margin:0 0 6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9a7b1f;font-weight:700">Your weekly local digest</p>
-      <p style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0A1628;font-weight:800">This week in ${escapeHtml(input.cityName)}</p>
+      <p style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0A1628;font-weight:800">${escapeHtml(heading)}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
       <a href="${escapeAttr(`${input.origin}/events`)}" style="display:inline-block;margin-top:20px;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">See everything on EventLinqs</a>
       ${signOffHtml()}
@@ -493,7 +556,7 @@ export function buildDigestEmailHtml(input: {
   const text = [
     greetingLine(null),
     '',
-    `This week in ${input.cityName}`,
+    heading,
     '',
     // Joined on the parts that exist. An unconditional separator printed
     // "Bridge Proof Night -  - Free entry" whenever a venue was unnamed:

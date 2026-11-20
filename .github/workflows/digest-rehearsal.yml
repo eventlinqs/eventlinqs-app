@@ -22,6 +22,12 @@ on:
         required: true
         type: choice
         options: [preview, test]
+      edition:
+        description: week (Wednesday's edition) or weekend (Friday's), law 45
+        required: true
+        type: choice
+        default: week
+        options: [week, weekend]
 
 permissions:
   contents: read
@@ -41,6 +47,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CITY: ${{ inputs.city }}
           MODE: ${{ inputs.mode }}
+          EDITION: ${{ inputs.edition }}
         run: |
           set -euo pipefail
           case "$MODE" in
@@ -52,8 +59,12 @@ jobs:
             melbourne|geelong|ballarat|bendigo) ;;
             *) echo "REFUSED: city $CITY"; exit 2 ;;
           esac
+          case "$EDITION" in
+            week|weekend) ;;
+            *) echo "REFUSED: edition $EDITION"; exit 2 ;;
+          esac
           code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 \
-            "https://www.eventlinqs.com.au/api/cron/weekly-digest?city=${CITY}&${PARAM}=hello%40eventlinqs.com" \
+            "https://www.eventlinqs.com.au/api/cron/weekly-digest?city=${CITY}&edition=${EDITION}&${PARAM}=hello%40eventlinqs.com" \
             -H "Authorization: Bearer $CRON_SECRET")
           echo "HTTP $code"
           python3 - <<'PY'

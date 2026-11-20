@@ -27,7 +27,7 @@ export async function approveRoundupAction(formData: FormData): Promise<void> {
   const admin = createAdminClient()
   const now = new Date()
   const origin = getSiteUrl()
-  const events = await fetchDigestEvents(admin, citySlug, resolveDigestPeriod(now), 10, origin, city!.name)
+  const events = await fetchDigestEvents(admin, citySlug, resolveDigestPeriod(now), 10, origin, city!.name, now)
   const text = whatsappEdition({ cityName: city!.name, events, cityUrl: `${origin}/city/${citySlug}` })
   const done = await approveRoundup(admin, { citySlug, whatsappText: text, eventCount: events.length, approvedBy: session.userId, now })
   if (done.state === 'refused') back(done.reason)
