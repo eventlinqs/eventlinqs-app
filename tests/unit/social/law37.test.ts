@@ -53,6 +53,20 @@ describe('law 37: only a permitted photograph shown whole', () => {
   })
 })
 
+describe("each platform's link names its own source (the PM's 14:00 of 20 November 2026)", () => {
+  it("refuses a Facebook version whose link names Instagram, and the reverse", async () => {
+    const { creativeRefusals } = await import('@/lib/social/campaign')
+    const version = (caption: string, cta: string) => ({ caption, cta, hook: 'x', crop: '9:16' })
+    const ig = 'https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram&utm_medium=story'
+    const fb = 'https://www.eventlinqs.com.au/events/amcf-2026?utm_source=facebook&utm_medium=story'
+    const good = creativeRefusals({ slides: [], versions: { instagram: version('On now. Link in our bio.', 'Link in our bio.'), facebook: version(`On now. ${fb}`, fb) } as never }, new Map())
+    expect(good.filter((i) => i.includes('utm_source'))).toEqual([])
+    const crossed = creativeRefusals({ slides: [], versions: { instagram: version('On now.', fb), facebook: version(`On now. ${ig}`, ig) } as never }, new Map())
+    expect(crossed).toContain('The Facebook words carry utm_source=instagram; its link names facebook as its source.')
+    expect(crossed).toContain('The Instagram words carry utm_source=facebook; its link names instagram as its source.')
+  })
+})
+
 describe("law 37's drawing sizes", () => {
   it("a feed photograph inside Instagram's bounds is drawn at its own shape and pixels", () => {
     expect(photoDrawnSize('feed', { width: 1100, height: 733 })).toEqual({ width: 1100, height: 733, photo: { x: 0, y: 0, width: 1100, height: 733 } })
@@ -107,8 +121,9 @@ describe('law 37 drawn: the photograph whole, nothing over it', () => {
     expect(near(mid, RED)).toBe(true)
     // The photograph's own top and bottom rows are its own colour: nothing is printed over it.
     for (const [x, y] of [[20, 510], [1060, 510], [20, 1218], [1060, 1218]] as const) expect(near(await at(out, x, y), RED), `pixel ${x},${y}`).toBe(true)
-    // Above it, the plain ground.
-    expect(near(await at(out, 540, 100), { r: 10, g: 22, b: 40 })).toBe(true)
+    // Above it, the same photograph blurred to fill the frame (the PM's 14:00 of 20 November 2026), never a navy block.
+    expect(near(await at(out, 540, 100), RED)).toBe(true)
+    expect(near(await at(out, 540, 1880), RED)).toBe(true)
   })
 
   it('a photograph whose permission has gone is never drawn', async () => {

@@ -104,6 +104,9 @@ export function layoutOfSlide(f: Format, slide: UnlockedSlide, image: SlideImage
     case 'end':
       layout = layoutEnd(tf, { headline: slide.headline, line: slide.line, url: slide.url, foot: slide.foot, label: count }, m)
       break
+    case 'photo':
+      // Law 37's photograph is drawn whole by drawLaw37Photo, never laid out as a card (renderCampaignSlide sends it there).
+      throw new Error("law 37's photograph is drawn whole by drawLaw37Photo, never laid out as a card")
     case 'poster': {
       /* Family F: the photograph only as the register holds it now for this night, else the same poster in type. */
       const facts = { ...slide.night, photo: photo && slide.credit ? { url: photo, credit: slide.credit, archival: false } : null }

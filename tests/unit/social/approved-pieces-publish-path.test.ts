@@ -142,6 +142,22 @@ async function runPath(fetcher: ((url: string) => Promise<Response>) | undefined
  * The schedules whose newest revision carries a stock stand-in photograph or a caption naming one (the PM's 15:55 of 19
  * November 2026, item 6: none goes out), read from the rows themselves, never listed by hand.
  */
+/** The schedules of a piece any of whose versions names the OTHER platform as its link's source (campaign.ts
+ * creativeRefusals, the PM's 14:00 of 20 November 2026): the gate holds both of that piece's schedules. */
+function crossedFor(schedules: Row[]): Set<string> {
+  const revs = fixture.social_piece_revisions ?? []
+  return new Set(
+    schedules
+      .filter((s) => {
+        const rev = revs.filter((r) => r.piece_id === s.piece_id).sort((a, b) => Number(b.version) - Number(a.version))[0]
+        const v = (rev.versions ?? {}) as Record<string, { caption?: string; cta?: string }>
+        const said = (k: string) => `${v[k]?.caption ?? ''}\n${v[k]?.cta ?? ''}`
+        return /utm_source=facebook\b/i.test(said('instagram')) || /utm_source=instagram\b/i.test(said('facebook'))
+      })
+      .map((s) => String(s.id)),
+  )
+}
+
 function stockFor(schedules: Row[]): Set<string> {
   const revs = fixture.social_piece_revisions ?? []
   return new Set(
@@ -205,9 +221,10 @@ describe('the whole publish path on every approved piece', () => {
     if (!LIVE) expect(tooTall.size).toBe(2)
     // The PM's 15:55 of 19 November 2026, item 6: a piece carrying a stock photograph or naming one is held too.
     const stock = stockFor(schedules)
-    const heldIds = new Set([...tooTall, ...stock])
+    const crossed = crossedFor(schedules)
+    const heldIds = new Set([...tooTall, ...stock, ...crossed])
     expect(out.held.length).toBe(heldIds.size)
-    for (const h of out.held) expect(h).toMatch(/does not fit facebook: it is 1440x1920, ratio 0\.750, outside facebook feed's 0\.800 to 1\.910|stock photograph/)
+    for (const h of out.held) expect(h).toMatch(/does not fit facebook: it is 1440x1920, ratio 0\.750, outside facebook feed's 0\.800 to 1\.910|stock photograph|utm_source=(instagram|facebook)/)
     // Each stock schedule is held for its stock photograph, which the gate names before a file's fit (one is also too tall).
     if (!LIVE) expect(out.held.filter((h) => /stock photograph/.test(h)).length).toBe(stock.size)
     const reaching = schedules.filter((s) => !heldIds.has(String(s.id)))
@@ -245,7 +262,7 @@ describe('the whole publish path on every approved piece', () => {
       expect(given.some((g) => lanyPieces.has(g.pieceId))).toBe(false)
       expect(out.held.filter((h) => h.includes('its ticket page refuses our reader (403) and its booking link reads dead')).length).toBe(3)
       const all = fixture.social_piece_schedules ?? []
-      const heldIds = new Set([...all.filter((x) => lanyPieces.has(String(x.piece_id))).map((x) => String(x.id)), ...tooTallFor(all), ...stockFor(all)])
+      const heldIds = new Set([...all.filter((x) => lanyPieces.has(String(x.piece_id))).map((x) => String(x.id)), ...tooTallFor(all), ...stockFor(all), ...crossedFor(all)])
       expect(given.length).toBe(all.length - heldIds.size)
     } finally {
       link!.availability = before
@@ -277,7 +294,7 @@ describe('the whole publish path on every approved piece', () => {
       return { ref: `blotato:${submission}`, submission }
     })
     const out = await publishDuePieces(db as never, now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
-    const notSent = new Set([...tooTallFor(schedules), ...stockFor(schedules)])
+    const notSent = new Set([...tooTallFor(schedules), ...stockFor(schedules), ...crossedFor(schedules)])
     expect(publisher).toHaveBeenCalledTimes(schedules.length - notSent.size)
     // Every row held, and each one the publisher sent keeps the reference that names the post, so it can be read back.
     expect(out.held.length).toBe(schedules.length)

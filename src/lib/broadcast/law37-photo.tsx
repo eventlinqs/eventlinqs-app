@@ -41,9 +41,20 @@ export async function drawLaw37Photo(format: 'feed' | 'square' | 'story', slide:
       .toBuffer()
     return new Uint8Array(placed)
   }
+  // THE STORY'S FRAME IS THE SAME PHOTOGRAPH, scaled to fill 9:16 and blurred, behind the photograph whole (the PM's 14:00
+  // of 20 November 2026: a landscape photo across an empty navy frame reads as a placeholder; this is how Instagram itself
+  // fills a landscape photo shared to a story). The photograph itself is never cropped or covered (law 15).
+  const frame = await sharp(Buffer.from(fetched.bytes))
+    .rotate()
+    .resize(STORY.width, STORY.height, { fit: 'cover' })
+    .blur(36)
+    .jpeg({ quality: 80 })
+    .toBuffer()
   const element: React.ReactElement = (
     <div style={{ width: STORY.width, height: STORY.height, display: 'flex', position: 'relative', background: PHOTO_GROUND }}>
-      {/* satori draws an img by its data URI at the size given, the photograph whole. */}
+      {/* satori draws an img by its data URI at the size given: the blurred frame, then the photograph whole. */}
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+      <img src={`data:image/jpeg;base64,${frame.toString('base64')}`} width={STORY.width} height={STORY.height} style={{ position: 'absolute', left: 0, top: 0 }} />
       {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
       <img src={`data:image/jpeg;base64,${photo.toString('base64')}`} width={d.photo.width} height={d.photo.height} style={{ position: 'absolute', left: d.photo.x, top: d.photo.y }} />
       {slide.line ? (
@@ -61,6 +72,8 @@ export async function drawLaw37Photo(format: 'feed' | 'square' | 'story', slide:
             fontWeight: 600,
             fontSize: 46,
             lineHeight: 1.25,
+            // Readable on the blurred photograph behind it, as a story's own text is; nothing lies over the photograph.
+            textShadow: '0 2px 14px rgba(0, 0, 0, 0.7)',
           }}
         >
           {slide.line}
