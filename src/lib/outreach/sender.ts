@@ -72,6 +72,17 @@ export function transportForMode(mode: SenderMode, testDomain: string, graph: Gr
   return { kind: 'graph', send: (m) => graphSendMime(m.from ? { ...graph, mailbox: m.from } : graph, m.base64Mime, fetchImpl) }
 }
 
+/**
+ * WHETHER BUSINESS HOURS APPLY TO AN ADDRESS (the PM's 00:10 of 21 November 2026, item 2, on Lawal's 'start now'):
+ * the hours protect a recipient, and our own test mailbox is not one. An address on the sender's own test domain
+ * (outreach_sender.test_domain) is sent at any hour; every other address, and any address when the domain is not
+ * known, keeps Monday to Friday, 9 to 5, in its city.
+ */
+export function businessHoursApply(address: string | null, testDomain: string | null): boolean {
+  if (!address || !testDomain) return true
+  return !atDomain(address, testDomain)
+}
+
 /** True from 9:00 to before 17:00, Monday to Friday, in the given zone. */
 export function inBusinessHours(at: Date, timeZone: string): boolean {
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(at)
@@ -226,7 +237,9 @@ export async function runOutreachSender(
 
   for (const t of (due.data ?? []) as unknown as Queued[]) {
     report.considered++
-    if (!inBusinessHours(deps.now, await recipientZone(db, t.contact_id))) {
+    const addressed = await db.from('organiser_contacts').select('address').eq('id', t.contact_id).maybeSingle()
+    const hoursApply = businessHoursApply(addressed.data?.address ?? null, sender.data.test_domain)
+    if (hoursApply && !inBusinessHours(deps.now, await recipientZone(db, t.contact_id))) {
       report.outsideHours++
       continue
     }

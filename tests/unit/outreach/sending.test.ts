@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { buildOutreachMime, encodeHeaderValue, outreachOneClickUrl } from '@/lib/outreach/mime'
 import { forgetGraphToken, graphReadInbox, graphSendMime, graphToken, GraphError, type GraphConfig } from '@/lib/outreach/graph'
-import { clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
+import { businessHoursApply, clearRecordedOutreachMail, inBusinessHours, recordedOutreachMail, runOutreachSender, transportForMode } from '@/lib/outreach/sender'
 
 /**
  * THE SENDING PATH (src/lib/outreach/mime.ts, graph.ts, sender.ts). The database's own refusals are proved on TEST in
@@ -188,11 +188,26 @@ describe('the run', () => {
     expect(recordedOutreachMail()).toHaveLength(0)
   })
 
-  test('outside business hours nothing is claimed', async () => {
-    const { db, calls } = standardDb('test')
+  test('outside business hours nothing is claimed for an organiser', async () => {
+    const { db, calls } = standardDb('test', { address: 'sam@venue.example' })
     const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(r.outsideHours).toBe(2)
     expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  // The PM's 00:10 of 21 November 2026, item 2 (Lawal's 'start now'): business hours protect a recipient; our own test
+  // mailbox is not one, so a letter to an address on the sender's own test domain goes at any hour.
+  test('our own test mailbox is sent outside business hours; an organiser never is', async () => {
+    const { db } = standardDb('test')
+    const r = await runOutreachSender(db, { now: new Date('2026-10-31T00:00:00Z'), origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(r.outsideHours).toBe(0)
+    expect(r.sent.length).toBeGreaterThan(0)
+    expect(businessHoursApply('sam@eventlinqs.com', 'eventlinqs.com')).toBe(false)
+    expect(businessHoursApply('SAM@EventLinqs.com', 'eventlinqs.com')).toBe(false)
+    expect(businessHoursApply('sam@venue.example', 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply('sam@eventlinqs.com.evil.example', 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply(null, 'eventlinqs.com')).toBe(true)
+    expect(businessHoursApply('sam@eventlinqs.com', null)).toBe(true)
   })
 })
 
