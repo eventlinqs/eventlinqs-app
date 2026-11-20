@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
 import { coverLine, nightKind, nightWords, postAction, postTitle, selectAcrossDays, HUNT_SUMMARY_LINE, type CampaignNight } from '@/lib/social/campaign'
-import { huntSummary } from '@/lib/listings/headline-hunt'
 
 /*
  * A POST'S WORDS (the PM's 15:45 of 15 November 2026, after the first week was drawn from production's rows and scored
@@ -62,14 +61,16 @@ describe("a post's title (fix 2)", () => {
 })
 
 describe('the hunt\'s composed line is never quoted on a post (fix 4)', () => {
-  it('matches every line the hunt writes', () => {
-    for (const [categorySlug, startsAt, seller, free] of [
-      [null, '2026-11-16T09:00:00Z', 'Melbourne Recital Centre', false],
-      ['music', '2026-11-18T22:15:00Z', null, true],
-      ['comedy', '2026-11-20T03:00:00Z', 'Oztix', false],
-    ] as const) {
-      expect(huntSummary({ categorySlug, startsAt, seller, free })).toMatch(HUNT_SUMMARY_LINE)
-    }
+  // The hunt writes no line since 21 November 2026 (train AO); these are the lines production stored before, read on
+  // production that day, and the shape still keeps any left from being quoted.
+  it('matches every line the hunt used to write', () => {
+    for (const line of [
+      'An event on a Monday evening, tickets through Melbourne Recital Centre.',
+      'A live concert on a Thursday morning, free entry.',
+      'Live stand-up comedy on a Friday afternoon, tickets through Oztix.',
+      'An event on a Saturday evening, tickets through Ticketek.',
+    ])
+      expect(line).toMatch(HUNT_SUMMARY_LINE)
   })
   it('leaves a real summary to be quoted', () => {
     expect('A gentle two-hour evening for women, with movement and breathwork.').not.toMatch(HUNT_SUMMARY_LINE)

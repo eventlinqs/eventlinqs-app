@@ -39,7 +39,7 @@ cjs._resolveFilename = (request: string, ...rest: unknown[]) =>
       : resolveFilename(request, ...rest)
 
 const pick = <T,>(m: T & { default?: T }) => (m.default ?? m) as T
-const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody, wallClockToIso } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
+const { COLLECTOR_AGENT, robotsVerdict, eventsFromBody } = pick((await import('@/lib/listings/collect')) as typeof CollectModule)
 const { pageRuleFor } = pick((await import('@/lib/listings/page-rules')) as typeof RulesModule)
 const { correctionDecision, huntFor } = pick((await import('@/lib/listings/headline-hunt')) as typeof HuntModule)
 const { toZonedInputValue } = pick((await import('@/lib/dates/event-time')) as typeof TimeModule)
@@ -99,13 +99,12 @@ function typedApply(prompt: string) {
   }
 }
 
-/* --refresh-words: every active hunted series' one line description rewritten from its own facts (huntSummary: its kind,
+/* --refresh-words (the PM's 03:14 of 21 November 2026: the composed line is a placeholder): every active hunted series
+   whose description is a placeholder (src/lib/listings/placeholder-summary.ts) is cleared to none. Was (huntSummary: its kind,
    its day and part of the day in Melbourne, where it is booked), the CONTROLLER's 14:55 (4); then the occurrence run for
    those nights, which brings each future event's words in line. Before values saved; nothing else changes. */
 if (args.includes('--refresh-words')) {
-  const { huntSummary } = pick((await import('@/lib/listings/headline-hunt')) as typeof HuntModule)
-  const { sellerName } = pick((await import('@/lib/events/booking-links')) as typeof import('@/lib/events/booking-links'))
-  const { classify } = pick((await import('@/lib/categories/classify')) as typeof import('@/lib/categories/classify'))
+  const { isPlaceholderSummary } = pick((await import('@/lib/listings/placeholder-summary')) as typeof import('@/lib/listings/placeholder-summary'))
   const { data: checks, error: ce } = await db.from('listing_checks').select('series_id').like('import_file', 'big event hunt, source %')
   if (ce) throw new Error(`the hunted series could not be read: ${ce.message}`)
   const seriesIds = [...new Set((checks ?? []).map((c) => c.series_id as string))]
@@ -116,14 +115,8 @@ if (args.includes('--refresh-words')) {
     .eq('status', 'active')
   if (se) throw new Error(`the hunted series could not be read: ${se.message}`)
   const plan = (series ?? []).map((s) => {
-    const [y, m, d] = String(s.anchor_date).split('-').map(Number)
-    const [hh, mm] = String(s.starts_at).split(':').map(Number)
-    const startsAt = wallClockToIso(y, m, d, hh, mm, 0, String(s.timezone)) ?? new Date().toISOString()
-    const links = (s.booking_links ?? []) as { url: string; price_from_cents: number | null }[]
-    const free = links.length > 0 && links.every((l) => l.price_from_cents === 0)
-    // The kind only from the night's own words (classify on its name), never the venue's usual category.
-    const next = huntSummary({ categorySlug: classify({ title: String(s.name) }).primary ?? null, startsAt, seller: free ? null : sellerName(links[0]?.url ?? null), free })
-    return { id: s.id as string, name: s.name as string, before: (s.summary as string | null) ?? null, next }
+    const before = (s.summary as string | null) ?? null
+    return { id: s.id as string, name: s.name as string, before, next: isPlaceholderSummary(before) ? '' : (before ?? '') }
   })
   const changes = plan.filter((p) => p.before !== p.next)
   for (const p of changes.slice(0, 12)) console.log(`  ${p.name.slice(0, 44).padEnd(44)} '${p.before}' -> '${p.next}'`)

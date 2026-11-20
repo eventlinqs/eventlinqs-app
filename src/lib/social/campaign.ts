@@ -1,3 +1,4 @@
+import { isPlaceholderSummary } from '@/lib/listings/placeholder-summary'
 import type { Cta } from '@/lib/events/cta'
 import { tierOf } from '@/lib/events/relevance'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
@@ -714,7 +715,7 @@ export function whyOf(n: CampaignNight): string | null {
   const s = (quotableSummary(n.summary, [n.title, n.host]) ?? '').replace(/\s+/g, ' ').trim()
   /* The PM's 15:45 of 15 November 2026, fix 4: the headline hunt's composed line ('An event on a Monday evening,
      tickets through ...') repeats what the slide already shows; with no summary of its own a night shows none. */
-  if (!s || HUNT_SUMMARY_LINE.test(s)) return null
+  if (!s || HUNT_SUMMARY_LINE.test(s) || isPlaceholderSummary(s)) return null
   const first = s.match(/^.*?[.?](\s|$)/)?.[0]?.trim() ?? s
   return first.length <= 140 ? first : `${first.slice(0, 137).replace(/\s+\S*$/, '')}.`
 }

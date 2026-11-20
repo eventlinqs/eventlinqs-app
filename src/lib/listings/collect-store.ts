@@ -4,11 +4,10 @@ import { COLLECT_AHEAD_DAYS, THIS_WEEK_DAYS, type KnownEvent, type RegisteredSou
 import { addCuratedLinks } from './collect-accept'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { CollectionStore } from './collect-run'
-import { huntBooking, huntCategory, huntDecision, huntFor, huntSummary, ownProgrammeFor } from './headline-hunt'
+import { huntBooking, huntCategory, huntDecision, huntFor, ownProgrammeFor } from './headline-hunt'
+import { notAPlace } from './venue-name'
 import { sourceHostOf } from './judge'
 import { holdLeftSource, recordLeftSourceRereads, releaseLeftSource } from './left-source-store'
-import { sellerName } from '@/lib/events/booking-links'
-import { classify } from '@/lib/categories/classify'
 import { toZonedInputValue } from '@/lib/dates/event-time'
 import { venueSlugify } from '@/lib/venues/venue-slug'
 
@@ -385,6 +384,10 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       }
       const c = { id: data.id as string }
       if (row.title.trim().length > 80) throw new Error(`'${row.title.slice(0, 40)}...' is longer than a listing's 80 characters: a person names it`)
+      /* A venue is a place, never a council or a bare street address (the PM's 03:14 of 21 November 2026; venue-name.ts): the
+         night waits for a person, who names where it is held. */
+      const placeFault = notAPlace(venueName)
+      if (placeFault) throw new Error(`${placeFault}: a person names the place`)
       const { data: org, error: orgError } = await db.from('organisations').select('id').eq('slug', LISTINGS_ORG_SLUG).maybeSingle()
       if (orgError || !org) throw new Error('the EventLinqs listings organisation could not be read')
       const { data: city, error: cityError } = await db.from('cities').select('name, timezone').eq('slug', hunt.citySlug).maybeSingle()
@@ -444,9 +447,11 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
         starts_at: local.slice(11, 16),
         ends_at: null,
         timezone: city.timezone,
-        /* Car 44c (the CONTROLLER's 14:55 (4)): a one line description from the night's own facts, which the row shows;
+        /* Car 44c (the CONTROLLER's 14:55 (4)):
            and a night every link of which states it free is free entry, walk in, with no ticket link. */
-        summary: huntSummary({ categorySlug: classify({ title: row.title }).primary ?? null, startsAt: row.startsAt, seller: free ? null : sellerName(bookingLinks[0]?.url ?? null), free }),
+        // No composed line (the PM's 03:14 of 21 November 2026, placeholder-summary.ts): a hunted night holds no
+        // description of its own ('', the column takes no null), so it shows none.
+        summary: '',
         booking_links: bookingLinks,
         listing_source: 'eventlinqs',
         status: 'active',

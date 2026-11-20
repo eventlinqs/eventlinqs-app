@@ -12,6 +12,7 @@ import { fromPrice, priceToShow, sellerName, toBookingLink, type BookingLinkRow 
 import { GET_TICKETS, ROW_REGISTER_ON_EVENTLINQS, ROW_WALK_IN } from '@/lib/events/cta'
 import { PLATFORM_TIME_ZONE, resolveZone } from '@/lib/dates/event-time'
 import { listingUntil } from '@/lib/events/listing-window'
+import { isPlaceholderSummary } from '@/lib/listings/placeholder-summary'
 
 export type DirectoryInput = {
   readonly id: string
@@ -140,7 +141,8 @@ export const WALK_IN_LABEL = ROW_WALK_IN
  */
 export function rowTeaser(summary: string | null, venue: string | null, city: string | null, title: string): string | null {
   const line = (summary ?? '').replace(/\s+/g, ' ').trim()
-  if (!line) return null
+  // A composed line that says nothing about the night is never shown (src/lib/listings/placeholder-summary.ts).
+  if (!line || isPlaceholderSummary(line)) return null
   const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
   const parts = [title, venue ?? '', ...(venue ?? '').split(','), city ?? '']
     .map(norm)

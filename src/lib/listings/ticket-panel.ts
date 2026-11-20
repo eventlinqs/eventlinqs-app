@@ -1,4 +1,4 @@
-import { PROVIDER_NAMES, alsoOn, buttonOf, fromPrice, priceToShow, type BookingLink } from '@/lib/events/booking-links'
+import { PROVIDER_NAMES, alsoOn, buttonOf, fromPrice, priceToShow, sellerName, type BookingLink } from '@/lib/events/booking-links'
 import { ctaFor, FREE_REGISTRATION_REQUIRED, GET_TICKETS, type Cta } from '@/lib/events/cta'
 import { outboundHost, outboundHref, ticketButtonLabel } from './outbound'
 
@@ -14,13 +14,17 @@ import { outboundHost, outboundHref, ticketButtonLabel } from './outbound'
  * A leaf: no database.
  */
 export type TicketPanel = {
-  button: { href: string; label: string; host: string | null; price: string | null } | null
+  /** seller: the site's own name where one is known (sellerName), shown in place of its web address. */
+  button: { href: string; label: string; host: string | null; price: string | null; seller?: string | null } | null
   also: { href: string; name: string }[]
   soldOut: string | null
 }
 
-/** The platform's own name, or null for a venue's or organiser's own page. */
-const nameOf = (l: BookingLink) => PROVIDER_NAMES[l.provider] ?? null
+/**
+ * The seller's own name: the platform's, else the name sellerName holds for its host (AXS, Ticketek, a venue's own box
+ * office; the PM's 03:14 of 21 November 2026: Beck's page read 'on axs.com'); null only for a site no table knows.
+ */
+const nameOf = (l: BookingLink) => PROVIDER_NAMES[l.provider] ?? sellerName(l.url) ?? null
 
 const live = (l: BookingLink) => (l.availability === 'on_sale' || l.availability === 'not_yet') && l.kind !== 'sold_out'
 
@@ -48,7 +52,7 @@ export function ticketPanelOf(eventSlug: string, links: readonly BookingLink[], 
     also.push({ href: outboundHref(eventSlug, l.url), name: n })
   }
   return {
-    button: { href: outboundHref(eventSlug, first.url), label, host: outboundHost(first.url), price: cents !== null && cents > 0 ? fromPrice(cents) : null },
+    button: { href: outboundHref(eventSlug, first.url), label, host: outboundHost(first.url), price: cents !== null && cents > 0 ? fromPrice(cents) : null, seller: name },
     also,
     soldOut: null,
   }
