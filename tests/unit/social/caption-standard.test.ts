@@ -15,7 +15,7 @@ describe('the writer, to the standard', () => {
   it("Colours of Asia's last night: its hook, its words and the practical line, then the fact block of four markers", () => {
     const caption = captionFor({
       platform: 'instagram',
-      firstLine: hookFor('final_day', experiencesOf(COA_SUMMARY, 'Colours of Asia: Garden of Wonders'), 'Alexandra Gardens', { title: 'Colours of Asia: Garden of Wonders' }) as string,
+      firstLine: hookFor('final_day', experiencesOf(COA_SUMMARY, 'Colours of Asia: Garden of Wonders'), 'Alexandra Gardens', { title: 'Colours of Asia: Garden of Wonders', startedByBand: true }) as string,
       facts: {
         title: 'Colours of Asia: Garden of Wonders',
         place: 'Alexandra Gardens',

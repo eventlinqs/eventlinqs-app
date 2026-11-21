@@ -24,6 +24,7 @@ import {
   postableBand,
   repeatDayOf,
   sessionAt,
+  sessionOfDay,
   experiencesOf,
   hookFor,
   nightTimes,
@@ -101,6 +102,12 @@ export function parseMomentKey(key: string | null | undefined): MomentKeyParts |
   const m = /^([a-z_]+)\|(feed|story)\|(\d{4}-\d{2}-\d{2})\|(.+)$/.exec(key ?? '')
   if (!m) return null
   return { kind: m[1] as MomentKind, format: m[2] as 'feed' | 'story', day: m[3], runKey: m[4] }
+}
+
+/** That day's own hours (lifecycle.ts sessionOfDay, nightTimes): AMCF's last day reads '11am to 8pm', not 'from 11am'. */
+function dayTimes(n: LifecycleNight, day: string, zone: string): string | null {
+  const s = sessionOfDay({ startDate: n.startDate, endDate: n.endDate ?? null }, zone, day)
+  return nightTimes(s.start, s.end, zone)
 }
 
 /** The night a moment is about: the run's night on that day, else its first. */
@@ -436,7 +443,7 @@ export async function planLifecyclePieces(
       title: n.title,
       place,
       dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day),
-      times: nightTimes(ln.startDate, ln.endDate ?? null, ln.timezone?.trim() || c.run.zone),
+      times: dayTimes(ln, day, ln.timezone?.trim() || c.run.zone),
       priceLine: n.priceLine,
       summary: n.summary,
       names: [n.title, ...(n.host ? [n.host] : [])],

@@ -17,9 +17,12 @@ describe('the night in its own words', () => {
     expect(experiencesOf('An evening of conversation.', 'Book launch')).toEqual([])
   })
 
-  it("Colours of Asia's last night opens on what you will find there, and still on", () => {
-    expect(hookFor('final_day', experiencesOf(COA, 'Colours of Asia'), 'Alexandra Gardens')).toBe(
+  it("Colours of Asia's last night opens on what you will find there: 'and still on' inside its doors, plain before them", () => {
+    expect(hookFor('final_day', experiencesOf(COA, 'Colours of Asia'), 'Alexandra Gardens', { startedByBand: true })).toBe(
       'Last day today for street food, lantern gardens and music at Alexandra Gardens, and still on.',
+    )
+    expect(hookFor('final_day', experiencesOf(COA, 'Colours of Asia'), 'Alexandra Gardens')).toBe(
+      'Last day today for street food, lantern gardens and music at Alexandra Gardens.',
     )
     expect(hookFor('final_day', [], 'Alexandra Gardens')).toBeNull()
   })
