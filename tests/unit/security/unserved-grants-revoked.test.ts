@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error a plain .mjs module, its exports read as any here (scripts/ops/pipeline-migrations.mjs)
 import { classify } from '../../../scripts/ops/pipeline-migrations.mjs'
 
 /*
