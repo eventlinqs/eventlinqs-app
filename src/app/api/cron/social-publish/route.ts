@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
@@ -82,6 +82,28 @@ export async function GET(request: NextRequest) {
       await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
     }
     return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+  }
+
+  // POST ONE NIGHT NOW, FROM OUR SIDE (Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram now ... I
+  // don't care about the time ... the schedule"; his 01:23: posting is done by the engine from our side through Blotato,
+  // never through Lawal in the admin). With ?post=now&event=<id> the run draws that night's feed post on its permitted
+  // photograph, approves it checked in the standing approval's name, gives it a slot at this minute (the posting hours
+  // waived for that night by his word, nothing else), publishes it through the publisher and reads it back
+  // (store.ts postNightNow). Started only by .github/workflows/social-post-now.yml; it adds no cron and quickens none.
+  if (request.nextUrl.searchParams.get('post') === 'now') {
+    const event = request.nextUrl.searchParams.get('event') ?? ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event)) return NextResponse.json({ posted: false, why: 'the event is not an id' }, { status: 400 })
+    const db = createAdminClient()
+    const now = new Date()
+    const founder = await founderAccount(db)
+    if (!founder.id) return NextResponse.json({ posted: false, why: "no founder account to approve in the standing approval's name" }, { status: 409 })
+    const result = await postNightNow(db, { eventId: event, by: founder.id, now, siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
+    await recordAnonAuditEvent({
+      action: 'system.social.post_now',
+      actorEmail: 'cron/social-publish?post=now',
+      metadata: { event, piece: result.pieceId, state: result.state, lines: result.lines.slice(0, 10), waived: "the posting hours, for this night, by Lawal's word of 22 November 2026, 00:32" },
+    })
+    return NextResponse.json({ posted: result.state === 'posted', piece: result.pieceId, lines: result.lines })
   }
 
   try {

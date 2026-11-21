@@ -7,13 +7,11 @@ import {
   collabWorthIt,
   collaboratorsFor,
   firstLineFor,
-  FEED_PER_WEEK,
   momentsDue,
   rankPhotos,
   runsOf,
   selectToday,
   stageOf,
-  STORIES_PER_DAY,
   storyLine,
   type CollabOrganiser,
   type LifecycleNight,
@@ -105,29 +103,40 @@ describe('stages and moments', () => {
   })
 })
 
-describe('the day selects only a few, never every event every day', () => {
+describe('the events rule the day: every due moment of every event (Lawal, 22 November 2026, 01:31)', () => {
   const runs = runsOf(Array.from({ length: 8 }, (_, i) => night({ eventId: `n${i}`, title: `Night ${i}`, venueKey: `v${i}` })))
-  it('one feed post and four stories at most, and a missing permission (no photograph) never posts', () => {
+  it('every night with a photograph takes its day feed post and its day story; a missing permission never posts', () => {
     const cands = runs.flatMap((run, i) =>
       momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: i !== 0 })),
     )
-    const chosen = selectToday(cands, { feedToday: 0, feedLastSeven: 0, storiesToday: 0 })
-    expect(chosen.filter((c) => c.moment.format === 'feed')).toHaveLength(1)
-    expect(chosen.filter((c) => c.moment.format === 'story')).toHaveLength(STORIES_PER_DAY)
+    const chosen = selectToday(cands)
+    expect(chosen.filter((c) => c.moment.format === 'feed')).toHaveLength(7)
+    expect(chosen.filter((c) => c.moment.format === 'story')).toHaveLength(7)
     expect(chosen.some((c) => c.run.nights[0].eventId === 'n0')).toBe(false)
   })
-  it('five feed posts in seven days stops the feed for the day; tier 4 never takes a feed place', () => {
-    const cands = runs.flatMap((run) => momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: true })))
-    expect(selectToday(cands, { feedToday: 0, feedLastSeven: FEED_PER_WEEK, storiesToday: 0 }).filter((c) => c.moment.format === 'feed')).toHaveLength(0)
+  it('three events with a day moment on one day draw three day pieces of each format', () => {
+    const three = runsOf(['a', 'b', 'c'].map((k) => night({ eventId: k, title: `Night ${k}`, venueKey: `v${k}` })))
+    const cands = three.flatMap((run) => momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: true })))
+    const chosen = selectToday(cands)
+    expect(chosen.filter((c) => c.moment.format === 'feed').map((c) => c.run.nights[0].eventId).sort()).toEqual(['a', 'b', 'c'])
+    expect(chosen.filter((c) => c.moment.format === 'story')).toHaveLength(3)
+  })
+  it("the season's spike: a day with 40 events draws every one's due pieces", () => {
+    const forty = runsOf(Array.from({ length: 40 }, (_, i) => night({ eventId: `e${i}`, title: `Event ${i}`, venueKey: `w${i}` })))
+    const cands = forty.flatMap((run) => momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: true })))
+    expect(cands).toHaveLength(80)
+    expect(selectToday(cands)).toHaveLength(80)
+  })
+  it('tier 4 never takes a feed place (law 18), its story still goes', () => {
     const library = runsOf([night({ title: 'Story time', tier: 4 })])
     const lc = library.flatMap((run) => momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: true })))
-    expect(selectToday(lc, { feedToday: 0, feedLastSeven: 0, storiesToday: 0 }).map((c) => c.moment.format)).toEqual(['story'])
+    expect(selectToday(lc).map((c) => c.moment.format)).toEqual(['story'])
   })
-  it('a night EventLinqs sells leads a night it only lists (law 39)', () => {
+  it('a night EventLinqs sells is ranked before a night it only lists (law 39), so it takes the earlier slot', () => {
     const two = runsOf([night({ eventId: 'a', title: 'A', venueKey: 'va' }), night({ eventId: 'b', title: 'B', venueKey: 'vb', ticketedHere: true })])
     const cands = two.flatMap((run) => momentsDue(run, melb('2026-11-28'), none).map((moment) => ({ run, moment, hasPhoto: true })))
-    const feed = selectToday(cands, { feedToday: 0, feedLastSeven: 0, storiesToday: 0 }).filter((c) => c.moment.format === 'feed')
-    expect(feed.map((c) => c.run.nights[0].eventId)).toEqual(['b'])
+    const feed = selectToday(cands).filter((c) => c.moment.format === 'feed')
+    expect(feed.map((c) => c.run.nights[0].eventId)).toEqual(['b', 'a'])
   })
 })
 

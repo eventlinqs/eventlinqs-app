@@ -18,11 +18,12 @@ import { carriesBannedWord } from './words'
  */
 
 export const LIFECYCLE_ZONE = 'Australia/Melbourne'
-/** The account's feed: at most one a day and five in any seven days (Buffer's 3 to 5 a week, the PM's 14:35). */
-export const FEED_PER_DAY = 1
-export const FEED_PER_WEEK = 5
-/** Stories a day across the account (several a day do not hurt reach: Mosseri, the PM's 14:35). */
-export const STORIES_PER_DAY = 4
+/*
+ * NO DAILY COUNT (Lawal, 22 November 2026, 01:31, binding: "The events rule the day. The engine works according to the
+ * event."). The account's caps (one feed post a day, five in seven, four stories a day) were the PM's 14:35 reading of
+ * law 37 (l)'s 'only the most relevant few'; Lawal never set them and removed them. The day's volume is every moment the
+ * lifecycle plan makes due for every event, however many; the scheduler spreads them across the day (cadence.ts).
+ */
 /** A caption's first line is never used again inside this many days. */
 export const FIRST_LINE_WINDOW_DAYS = 30
 /** One event's feed posts stand at least this many days apart, except its first and final days. */
@@ -241,16 +242,13 @@ export function momentsDue(run: Run, now: Date, h: RunHistory): Moment[] {
 /** A run's moment that has a photograph to carry it (law 37 (h): no permitted photograph, no post). */
 export type Candidate = { readonly run: Run; readonly moment: Moment; readonly hasPhoto: boolean }
 
-/** The account's own record for today and the last seven days. */
-export type AccountToday = { readonly feedToday: number; readonly feedLastSeven: number; readonly storiesToday: number }
-
 /**
- * The day's few: feed at most FEED_PER_DAY a day and FEED_PER_WEEK in seven, stories at most STORIES_PER_DAY, ranked by
- * the moment, then what sells through EventLinqs (law 39), then law 18's tier, then the soonest. Law 18's tier 4 (library
- * sessions, story time, classes) never takes a feed place. A run takes at most one place per format.
+ * The day's pieces: every due moment of every event with a photograph to carry it, ranked by the moment, then what sells
+ * through EventLinqs (law 39), then law 18's tier, then the soonest (the order the scheduler gives the day's slots in).
+ * Law 18's tier 4 (library sessions, story time, classes) never takes a feed place. One piece per moment and format.
  */
-export function selectToday(candidates: readonly Candidate[], account: AccountToday): Candidate[] {
-  return chooseToday(candidates, account, (c) => (c.hasPhoto ? null : 'no permitted photograph')).chosen
+export function selectToday(candidates: readonly Candidate[]): Candidate[] {
+  return chooseToday(candidates, (c) => (c.hasPhoto ? null : 'no permitted photograph')).chosen
 }
 
 /**
@@ -258,13 +256,12 @@ export function selectToday(candidates: readonly Candidate[], account: AccountTo
  * the system?"). On 21 November the only eligible night offered a tomorrow story whose window was empty, and one wrong
  * window stopped the day. Now each ranked moment is asked whether it can be drawn (the planner's own checks, passed in
  * as `drawable`: a photograph for its format, a band on its day, the publish gate's rule at that band); one that cannot
- * is passed over WITHOUT spending its cap, the same moment for that night in the other format is tried next, and only
- * then the next night. So a day with any drawable moment never ends with nothing. The caps stand (FEED_PER_DAY,
- * FEED_PER_WEEK, STORIES_PER_DAY) and each run takes at most one piece of a format. Pure.
+ * is passed over, and the same moment for that night in the other format is tried, where the night does not offer it
+ * already. There is no daily count (Lawal, 22 November 2026, 01:31): every drawable moment is drawn. Each run takes one
+ * piece of a format. Pure.
  */
 export function chooseToday(
   candidates: readonly Candidate[],
-  account: AccountToday,
   drawable: (c: Candidate) => string | null,
 ): { readonly chosen: Candidate[]; readonly passedOver: { readonly candidate: Candidate; readonly why: string }[] } {
   const ranked = candidates
@@ -277,34 +274,28 @@ export function chooseToday(
         a.run.days[0].localeCompare(b.run.days[0]) ||
         a.run.key.localeCompare(b.run.key),
     )
-  let feedLeft = Math.max(0, Math.min(FEED_PER_DAY - account.feedToday, FEED_PER_WEEK - account.feedLastSeven))
-  let storiesLeft = Math.max(0, STORIES_PER_DAY - account.storiesToday)
   const taken = new Set<string>()
   const out: Candidate[] = []
   const passedOver: { candidate: Candidate; why: string }[] = []
   const offered = new Set(candidates.map((c) => `${c.run.key}|${c.moment.format}`))
-  const room = (f: SocialFormat) => (f === 'feed' ? feedLeft > 0 : storiesLeft > 0)
   const take = (c: Candidate) => {
     taken.add(`${c.run.key}|${c.moment.format}`)
     out.push(c)
-    if (c.moment.format === 'feed') feedLeft--
-    else storiesLeft--
   }
   for (const c of ranked) {
     if (taken.has(`${c.run.key}|${c.moment.format}`)) continue
-    if (!room(c.moment.format)) continue
     const why = drawable(c)
     if (why === null) {
       take(c)
       continue
     }
     passedOver.push({ candidate: c, why })
-    // The same moment for that night in the other format, where the run has not offered that format already, its cap
-    // has room, a tier 4 night is never a feed post, and it can be drawn.
+    // The same moment for that night in the other format, where the run has not offered that format already, a tier 4
+    // night is never a feed post, and it can be drawn.
     const other: SocialFormat = c.moment.format === 'feed' ? 'story' : 'feed'
     const alt: Candidate = { ...c, moment: { kind: c.moment.kind, format: other } }
     const key = `${c.run.key}|${other}`
-    if (offered.has(key) || taken.has(key) || !room(other) || (other === 'feed' && c.run.tier === 4)) continue
+    if (offered.has(key) || taken.has(key) || (other === 'feed' && c.run.tier === 4)) continue
     const altWhy = drawable(alt)
     if (altWhy === null) take(alt)
     else passedOver.push({ candidate: alt, why: altWhy })

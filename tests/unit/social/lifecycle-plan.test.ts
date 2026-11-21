@@ -35,14 +35,14 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   ...over,
 })
 
-type Rows = { history?: unknown[]; postings?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
+type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
 function fakeDb(rows: Rows): SupabaseClient {
   // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
   // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
   const chain = (data: unknown[], error: { message: string } | null = null) => {
     let platformRead = false
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'not', 'neq', 'order', 'limit', 'in', 'range']) b[m] = () => b
+    for (const m of ['select', 'not', 'neq', 'or', 'order', 'limit', 'in', 'range']) b[m] = () => b
     b.eq = (col: string) => {
       if (col === 'is_test' || col === 'slug') platformRead = true
       return b
@@ -56,6 +56,7 @@ function fakeDb(rows: Rows): SupabaseClient {
       if (table === 'organisers') return chain(rows.organisers ?? [])
       if (table === 'organisations') return chain([])
       if (table === 'social_piece_postings') return chain(rows.postings ?? [])
+      if (table === 'social_piece_schedules') return chain(rows.schedules ?? [])
       throw new Error(`unexpected table ${table}`)
     },
     rpc: async (name: string) => {
@@ -103,7 +104,7 @@ describe('the lifecycle planner, end to end on a fixture', () => {
 
   it('never posts a photograph already used, and plans nothing when no looked-at photograph is left', async () => {
     const used = [{ id: 'p0', format: 'feed', moment_key: 'announce|feed|2026-11-01|t:harbour lights festival|Eastern Beach|2026-11-28', planned_at: '2026-11-01T00:00:00Z', social_piece_revisions: [{ version: 1, slides: [{ t: 'photo', photo: 'https://x/lead.jpg' }], versions: { instagram: { caption: 'One for the calendar.' } } }], social_piece_decisions: [] }]
-    const db = fakeDb({ history: used, assets: [asset('a1', 'https://x/lead.jpg', 1)] })
+    const db = fakeDb({ history: used, postings: [{ piece_id: 'p0' }], assets: [asset('a1', 'https://x/lead.jpg', 1)] })
     const { pieces } = await planLifecyclePieces(db, { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
     expect(pieces).toEqual([])
   })
@@ -167,5 +168,66 @@ describe('the hourly sweep draws a stale lifecycle draft again, for its own mome
     const redrawn = again.pieces.find((p) => p.momentKey === feed.momentKey)
     expect(redrawn).toBeDefined()
     expect(photoOf(redrawn!.slides)).toBe(photoOf(feed.slides))
+  })
+})
+
+describe("an owner's Post now and a photograph that can no longer post (Colours of Asia, 22 November 2026)", () => {
+  // Saturday's tomorrow story for Sunday's night, never approved and never sent, held Asia Oasis's only Sunday
+  // photograph; Sunday's planner then said 'no permitted photograph for a story', and AMCF held the day's one feed place.
+  const SUNDAY = new Date('2026-11-28T14:30:00Z') // 01:30, Sunday 29 November, Melbourne
+  const sunday = night({ eventId: 'e-sun', slug: 'colours-sunday', title: 'Colours of Asia: Garden of Wonders', startDate: '2026-11-29T00:00:00Z', endDate: '2026-11-29T11:00:00Z', host: null })
+  const other = night({ eventId: 'e-other', slug: 'other-festival', title: 'Another Festival', startDate: '2026-11-27T00:00:00Z', endDate: '2026-11-29T11:00:00Z', host: null })
+  const photo = { event_id: 'e-sun', asset_id: 'a-sun', asset_url: 'https://x/her-sunday.jpg', asset_type: 'photo', lead_rank: 1, source_width: 916, source_height: 654 }
+  const otherPhoto = { event_id: 'e-other', asset_id: 'a-other', asset_url: 'https://x/other.jpg', asset_type: 'photo', lead_rank: 1, source_width: 1440, source_height: 1080 }
+  const yesterdaysStory = {
+    id: 'p-tomorrow',
+    format: 'story',
+    moment_key: 'tomorrow|story|2026-11-28|t:colours of asia: garden of wonders|Eastern Beach|2026-11-29',
+    planned_at: '2026-11-27T14:04:00Z',
+    social_piece_revisions: [
+      { version: 1, slides: [{ t: 'photo', photo: 'https://x/her-sunday.jpg' }], versions: { instagram: { caption: 'Tomorrow.' } } },
+      { version: 2, slides: [{ t: 'photo', photo: 'https://x/her-sunday.jpg' }], versions: { instagram: { caption: 'Tomorrow, again.' } } },
+    ],
+    social_piece_decisions: [{ revision: 1, decision: 'rejected' }, { revision: 2, decision: 'edited' }],
+  }
+  const todaysOtherFeed = {
+    id: 'p-other-feed',
+    format: 'feed',
+    moment_key: 'final_day|feed|2026-11-29|t:another festival|Eastern Beach|2026-11-27',
+    planned_at: '2026-11-28T13:10:00Z',
+    social_piece_revisions: [{ version: 1, slides: [{ t: 'photo', photo: 'https://x/other-earlier.jpg' }], versions: { instagram: { caption: 'Last day.' } } }],
+    social_piece_decisions: [],
+  }
+  const plan = (rows: Rows, ownerAsked?: { eventId: string }) =>
+    planLifecyclePieces(fakeDb(rows), { now: SUNDAY, nights: [sunday, other], origin: 'https://www.eventlinqs.com.au', ...(ownerAsked ? { ownerAsked } : {}) })
+  const herPieces = <T extends { readonly eventIds: readonly string[] }>(pieces: readonly T[]): T[] => pieces.filter((p) => p.eventIds.includes('e-sun'))
+
+  it("a piece whose day has passed without going frees its photograph: her Sunday photograph is drawn on Sunday", async () => {
+    const { pieces, notes } = await plan({ history: [yesterdaysStory], assets: [photo] })
+    expect(notes.join(' ')).not.toMatch(/Colours of Asia[^;]*no permitted photograph/)
+    expect(herPieces(pieces).map((p) => (p.slides[0] as { photo: string }).photo)).toContain('https://x/her-sunday.jpg')
+  })
+
+  it('a piece the provider accepted keeps its photograph spent, posting row or not', async () => {
+    const { pieces } = await plan({ history: [yesterdaysStory], schedules: [{ piece_id: 'p-tomorrow' }], assets: [photo] })
+    expect(herPieces(pieces)).toEqual([])
+  })
+
+  it("another night's feed post today never takes her day's post (no daily count); the owner's word draws hers alone", async () => {
+    const rows = { history: [yesterdaysStory, todaysOtherFeed], assets: [photo, otherPhoto] }
+    const usual = await plan(rows)
+    // Her one photograph goes once (law 37 (l), never twice): it carries her day's feed post.
+    expect(herPieces(usual.pieces).map((p) => p.format)).toEqual(['feed'])
+    const asked = await plan(rows, { eventId: 'e-sun' })
+    expect(asked.pieces).toHaveLength(1)
+    expect(asked.pieces[0]).toMatchObject({ format: 'feed', eventIds: ['e-sun'] })
+    expect(asked.pieces[0].slides[0]).toMatchObject({ t: 'photo', composition: 'photo_whole', photo: 'https://x/her-sunday.jpg' })
+  })
+
+  it("the owner's word never draws a night that has ended, nor a photograph not permitted", async () => {
+    const ended = await planLifecyclePieces(fakeDb({ assets: [photo] }), { now: new Date('2026-11-29T12:00:00Z'), nights: [sunday], origin: 'https://www.eventlinqs.com.au', ownerAsked: { eventId: 'e-sun' } })
+    expect(ended.pieces).toEqual([])
+    const none = await plan({ assets: [] }, { eventId: 'e-sun' })
+    expect(none.pieces).toEqual([])
   })
 })

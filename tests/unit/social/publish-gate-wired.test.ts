@@ -68,5 +68,12 @@ describe('the publish gate is on every route', () => {
     expect(runners).toEqual(['src/app/api/cron/social-publish/route.ts'])
     const route = read('src/app/api/cron/social-publish/route.ts')
     expect(route).toMatch(/publishDuePieces\(/)
+    // The post now for one night (22 November 2026) is the run's own mode, never an admin press (Lawal's 01:23): it hands
+    // the one publisher to postNightNow, which runs it only through publishDuePieces.
+    const postNow = route.slice(route.indexOf("searchParams.get('post') === 'now'"), route.indexOf('\n  }\n', route.indexOf("searchParams.get('post') === 'now'")))
+    expect(postNow).toMatch(/postNightNow\(db, \{[^}]*publisher: socialPublisherFromEnv\(db, now\)/)
+    expect(route.indexOf("searchParams.get('post') === 'now'")).toBeGreaterThan(route.indexOf('requireCronAuth(request)'))
+    const store = read('src/lib/social/store.ts')
+    expect(store.slice(store.indexOf('export async function postNightNow('))).toMatch(/await publishDuePieces\(db, input\.now, \{ siteOrigin: input\.siteOrigin, publisher: input\.publisher/)
   })
 })

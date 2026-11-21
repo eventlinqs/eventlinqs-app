@@ -72,9 +72,6 @@ type History = {
   readonly byRun: Map<string, { feedDays: string[]; storyDays: string[]; had: string[] }>
   readonly usedPhotos: Set<string>
   readonly recentLines: Set<string>
-  readonly feedToday: number
-  readonly feedLastSeven: number
-  readonly storiesToday: number
 }
 
 /**
@@ -99,13 +96,15 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
     .limit(5000)
   if (posts.error) throw new Error(`the lifecycle history's public posts could not be read: ${posts.error.message}`)
   const postedInPublic = new Set(((posts.data ?? []) as { piece_id: string }[]).map((r) => r.piece_id))
+  // A piece the provider accepted (a schedule published, or one carrying its submission) may have gone before its
+  // posting row is written (recordMissingPostings heals that later): its photograph is spent as if it had posted.
+  const sent = await db.from('social_piece_schedules').select('piece_id').or('state.eq.published,submission_ref.not.is.null').limit(5000)
+  if (sent.error) throw new Error(`the lifecycle history's sent posts could not be read: ${sent.error.message}`)
+  const wentOut = new Set(((sent.data ?? []) as { piece_id: string }[]).map((r) => r.piece_id))
   const today = dayIn(now, LIFECYCLE_ZONE)
   const byRun = new Map<string, { feedDays: string[]; storyDays: string[]; had: string[] }>()
   const usedPhotos = new Set<string>()
   const recentLines = new Set<string>()
-  let feedToday = 0
-  let feedLastSeven = 0
-  let storiesToday = 0
   for (const p of (data ?? []) as Record<string, unknown>[]) {
     if (redrawing.has(p.id as string)) continue
     const parts = parseMomentKey(p.moment_key as string)
@@ -116,9 +115,13 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
     const rejected = ((p.social_piece_decisions as { revision: number; decision: string }[] | null) ?? []).some((d) => d.revision === newest.version && d.decision === 'rejected')
     // A photograph is spent once its piece has posted and reserved while its piece is open, so a post is never repeated
     // and two open pieces never share one (law 37 (l)); a piece rejected before it ever posted frees it (the PM's 12:28
-    // of 21 November 2026, item 1: Sunday's photograph was lost to a story set aside before it could post).
-    const posted = postedInPublic.has(p.id as string)
-    if (posted || !rejected) for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
+    // of 21 November 2026, item 1: Sunday's photograph was lost to a story set aside before it could post). A piece
+    // whose day has passed without it going can never post (law 42: a missed day is never posted late), so it frees its
+    // photograph too: on 22 November Saturday's tomorrow story for Colours of Asia, never approved, still held Asia
+    // Oasis's only Sunday photograph, and her Sunday post could not be drawn ('no permitted photograph for a story').
+    const posted = postedInPublic.has(p.id as string) || wentOut.has(p.id as string)
+    const open = !rejected && parts.day >= today
+    if (posted || open) for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
     if (rejected) continue
     const h = byRun.get(parts.runKey) ?? { feedDays: [], storyDays: [], had: [] }
     if (parts.format === 'feed') h.feedDays.push(parts.day)
@@ -130,13 +133,8 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
       const first = (newest.versions?.instagram?.caption ?? '').split('\n\n')[0]?.trim()
       if (first) recentLines.add(first)
     }
-    if (parts.day === today) {
-      if (parts.format === 'feed') feedToday += 1
-      else storiesToday += 1
-    }
-    if (parts.format === 'feed' && age >= 0 && age < 7) feedLastSeven += 1
   }
-  return { byRun, usedPhotos, recentLines, feedToday, feedLastSeven, storiesToday }
+  return { byRun, usedPhotos, recentLines }
 }
 
 /** Every photograph the register permits for social now, per night (social_usable_images_all, the one rule). */
@@ -235,6 +233,11 @@ export function nightDates(startIso: string, endIso: string | null, zone: string
   return `${head} to ${dateLabel(lastInstant.toISOString(), zone)}`
 }
 
+/** Whether a night has ended by this minute (an owner's Post now is judged at the minute it is pressed). */
+function endedByNow(endIso: string | null, now: Date): boolean {
+  return endIso !== null && Number.isFinite(Date.parse(endIso)) && Date.parse(endIso) <= now.getTime()
+}
+
 function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook', format: 'feed' | 'story', kind: MomentKind, day: string): string {
   const q = new URLSearchParams({ utm_source: platform, utm_medium: format, utm_campaign: 'lifecycle', utm_content: `${kind}-${day}` })
   return `${origin}/events/${slug}?${q.toString()}`
@@ -252,6 +255,14 @@ export async function planLifecyclePieces(
     readonly origin: string
     /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
     readonly redrawing?: ReadonlySet<string>
+    /**
+     * THE OWNER'S WORD FOR ONE NIGHT, CARRIED BY THE ENGINE (store.ts postNightNow, the social run's ?post=now; Lawal, 22
+     * November 2026, 00:32: "her post goes to Facebook and Instagram now ... I don't care about the time ... the
+     * schedule"): only that night's feed moment for today is drawn, judged at this minute rather than at a posting band.
+     * The posting hours are what his word waives; every other check (a permitted photograph not used before, the night
+     * not ended, the publish gate at approval and at scheduling) stands.
+     */
+    readonly ownerAsked?: { readonly eventId: string }
   },
 ): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[]; readonly due: number; readonly photoless: readonly string[] }> {
   const notes: string[] = []
@@ -269,8 +280,9 @@ export async function planLifecyclePieces(
   const photoless: string[] = []
   for (const run of runs) {
     const day = dayIn(input.now, run.zone)
-    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none)
     const night = nightForDay(run, day)
+    if (input.ownerAsked && night.eventId !== input.ownerAsked.eventId) continue
+    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none).filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
       due += 1
       const own = photos.get(night.eventId) ?? []
@@ -291,12 +303,13 @@ export async function planLifecyclePieces(
     if (!n) return 'its night could not be read'
     const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
     if (!photo || photo.width === null || photo.height === null) return `no permitted photograph for a ${c.moment.format}`
+    if (input.ownerAsked) return endedByNow(ln.endDate ?? null, input.now) ? 'it has ended' : null
     const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
     if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
     const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
     return 'why' in band ? band.why : null
   }
-  const choice = chooseToday(candidates, { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday }, drawable)
+  const choice = chooseToday(candidates, drawable)
   for (const p of choice.passedOver) {
     const title = byId.get(nightForDay(p.candidate.run, dayIn(input.now, p.candidate.run.zone)).eventId)?.title ?? p.candidate.run.key
     notes.push(`${title} ${p.candidate.moment.kind} ${p.candidate.moment.format}: passed over, ${p.why}`)
@@ -314,19 +327,30 @@ export async function planLifecyclePieces(
     if (!n) continue
     const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
     if (!photo || photo.width === null || photo.height === null) continue
-    // A piece that could not post on its day is not drawn: its night has ended by the format's first band.
-    if (endedByFirstBand(ln.endDate ?? null, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)) {
-      notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it ends before the ${c.moment.format}'s first band that day; not drawn`)
-      continue
+    let onNow: boolean
+    if (input.ownerAsked) {
+      // Posted at this minute on the owner's word: judged now, never at a band.
+      if (endedByNow(ln.endDate ?? null, input.now)) {
+        notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it has ended; not drawn`)
+        continue
+      }
+      onNow = Date.parse(ln.startDate) <= input.now.getTime()
+    } else {
+      // A piece that could not post on its day is not drawn: its night has ended by the format's first band.
+      if (endedByFirstBand(ln.endDate ?? null, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)) {
+        notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it ends before the ${c.moment.format}'s first band that day; not drawn`)
+        continue
+      }
+      // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
+      // that band says it is on now.
+      const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
+      if ('why' in band) {
+        notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
+        continue
+      }
+      onNow = band.onNow
     }
-    // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
-    // that band says it is on now.
-    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
-    if ('why' in band) {
-      notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
-      continue
-    }
-    const startedByBand = c.moment.kind === 'first_day' && band.onNow
+    const startedByBand = c.moment.kind === 'first_day' && onNow
     const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
