@@ -264,6 +264,20 @@ export function scheduleWindowOf(
   }
 }
 
+/**
+ * LAW 37 (l), A MOMENT IS ITS DAY: a lifecycle piece posts on the day its moment names (moment_key's day), from that day's
+ * midnight until the next midnight or its earliest night's start, whichever comes first. The moment's day governs: the
+ * story rule's 'the night's own day' (scheduleWindowOf) is for a story with no moment, so a TOMORROW story goes the day
+ * BEFORE its night. Found 21 November 2026, 15:43: the run held Colours of Asia's tomorrow story, quoted: 'Not scheduled:
+ * its next free band, Sun 22 Nov, 6:00 pm, is after Colours of Asia: Garden of Wonders starts (Sun 22 Nov, 12:00 am)',
+ * because the window took the later of the two days and was empty. Pure.
+ */
+export function momentWindowOf(day: string, window: { readonly deadline: Date | null }, zone: string = SOCIAL_ZONE): { notBefore: Date; deadline: Date } {
+  const opens = dayStart(new Date(`${day}T02:00:00Z`), zone)
+  const shuts = dayStart(new Date(opens.getTime() + 36 * 3_600_000), zone)
+  return { notBefore: opens, deadline: new Date(Math.min(shuts.getTime(), window.deadline?.getTime() ?? Infinity)) }
+}
+
 export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
   // True on a daylight saving day too (src/lib/dates/zone-midnight.ts; car D, 19 November 2026).
   return midnightIn(at, zone)

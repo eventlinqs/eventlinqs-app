@@ -50,3 +50,42 @@ describe('scheduleWindowOf', () => {
     expect(body).not.toMatch(/deadline: new Date\(soonest\.end\)/)
   })
 })
+
+/*
+ * A TOMORROW STORY GOES THE DAY BEFORE ITS NIGHT (21 November 2026, 15:43: the run after 15:30 held a3adba92, Colours of
+ * Asia's 'tomorrow' story, quoted: 'Not scheduled: its next free band, Sun 22 Nov, 6:00 pm, is after Colours of Asia:
+ * Garden of Wonders starts (Sun 22 Nov, 12:00 am)'). The piece's window took the later of its moment's day and the story
+ * rule's 'the night's own day', so a story about tomorrow could only go on the night's day, after a night listed from
+ * midnight had started. A lifecycle piece's moment names its day (law 37 (l)); the night's start still closes it.
+ */
+describe('momentWindowOf', () => {
+  // Colours of Asia: Garden of Wonders, listed from midnight starting Sunday 22 November, Melbourne (UTC+11).
+  const colours = { title: 'Colours of Asia: Garden of Wonders', start: Date.parse('2026-11-21T13:00:00Z'), end: Date.parse('2026-11-22T11:00:00Z') }
+
+  it("a tomorrow story opens on its moment's day, the day before its night, and closes as the night starts", async () => {
+    const { momentWindowOf } = await import('@/lib/social/cadence')
+    const w = momentWindowOf('2026-11-21', scheduleWindowOf('story', [colours]))
+    expect(w.notBefore.toISOString()).toBe('2026-11-20T13:00:00.000Z') // midnight starting Saturday in Melbourne
+    expect(w.deadline.toISOString()).toBe('2026-11-21T13:00:00.000Z') // the night's start
+  })
+
+  it("its story band that Saturday evening is inside the window, so it is placed, not held", async () => {
+    const { momentWindowOf } = await import('@/lib/social/cadence')
+    const w = momentWindowOf('2026-11-21', scheduleWindowOf('story', [colours]))
+    const placed = planMoments(
+      [{ id: 'a3', format: 'story', approvedAt: new Date('2026-11-21T01:04:00Z'), deadline: w.deadline, notBefore: w.notBefore, days: null }],
+      { feed: rule('feed'), story: rule('story') },
+      { feed: [], story: [] },
+      new Date('2026-11-21T04:40:00Z'),
+    )
+    expect(placed.late).toEqual([])
+    expect(placed.moments.get('a3')?.toISOString()).toBe('2026-11-21T07:00:00.000Z') // Saturday 6 pm in Melbourne
+  })
+
+  it("a tonight story keeps the night's own day", async () => {
+    const { momentWindowOf } = await import('@/lib/social/cadence')
+    const w = momentWindowOf('2026-11-18', scheduleWindowOf('story', [fineLines]))
+    expect(w.notBefore.toISOString()).toBe('2026-11-17T13:00:00.000Z')
+    expect(w.deadline.toISOString()).toBe('2026-11-18T07:00:00.000Z')
+  })
+})
