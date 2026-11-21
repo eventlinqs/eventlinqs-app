@@ -269,6 +269,7 @@
     "/venues/[handle]/claim": 160888,
     "/verify-email-sent": 166684,
     "/waitlist": 175942,
-    "/waitlist/unsubscribe/[token]": 156114
+    "/waitlist/unsubscribe/[token]": 156114,
+    "/weekend": 167224
   }
 }
