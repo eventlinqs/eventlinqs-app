@@ -1,5 +1,6 @@
 import { SOCIAL_SLOT_ZONE, slotDay, slotFromEarlierDay } from '@/lib/ops/stale-slot'
 import { LOST_ID } from './post-state'
+import { withPieceId } from './go-hop'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
 import { generateShareCode, getOrCreateShareLink } from '@/lib/broadcast/share-links'
@@ -1026,8 +1027,9 @@ function revisionRow(pieceId: string, version: number, p: PiecePlan, message: st
     picks: p.picks,
     mode: p.mode,
     slides: p.slides,
-    caption: p.caption,
-    versions: p.versions,
+    // The counted /go hop takes this piece's own id where the planner marked it (go-hop.ts; AV (e)).
+    caption: withPieceId(p.caption, pieceId),
+    versions: withPieceId(p.versions, pieceId),
     message,
     made_by: madeBy,
     made_by_user: by,

@@ -3,6 +3,7 @@ import { tierOf } from '@/lib/events/relevance'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
 import type { CampaignNight, PiecePlan, Slide } from './campaign'
+import { goHop } from './go-hop'
 import {
   captionFor,
   collabWorthIt,
@@ -335,8 +336,11 @@ export async function planLifecyclePieces(
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
     const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
-    const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
-    const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
+    // The page a press lands on, with its tags, is the piece's stored link; the words carry the counted /go hop
+    // (go-hop.ts; AV (e)), its piece id written by revisionRow.
+    const pageLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
+    const igLink = goHop(input.origin, 'instagram')
+    const fbLink = goHop(input.origin, 'facebook')
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })
     const fb = captionFor({ platform: 'facebook', firstLine: first, facts, link: fbLink })
     const collaborators = collaboratorsFor({
@@ -355,7 +359,7 @@ export async function planLifecyclePieces(
       purpose: `Law 37 lifecycle: ${c.moment.kind.replace('_', ' ')} for ${n.title}, its permitted photograph whole`,
       nextStep: 'Open its page at eventlinqs.com.au',
       outcome: "Visits through this post's own link, then tickets sold through EventLinqs",
-      link: igLink,
+      link: pageLink,
       format: c.moment.format,
       eventIds: [n.eventId],
       picks: [{ eventId: n.eventId, reason: `${c.moment.kind.replace('_', ' ')} on ${day}` }],
