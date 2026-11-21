@@ -76,8 +76,12 @@ import type { DetectedLocation } from '@/lib/geo/detect'
  */
 interface LocationPickerProps {
   currentLocation: DetectedLocation
-  /** Visual variant. `pill` = main bar button (light bg). `onDark` = pill on dark/glass header. `inline` = full-width row in mobile sheet. */
-  variant?: 'pill' | 'onDark' | 'inline'
+  /**
+   * Visual variant. `pill` = main bar button (light bg). `onDark` = pill on dark/glass header. `inline` = full-width row in
+   * mobile sheet. `field` = the location half of the white header's search pill (law 46, site.html): no border of its own,
+   * a rule to its left, the city in bold.
+   */
+  variant?: 'pill' | 'onDark' | 'inline' | 'field'
   /** Optional callback fired after selection closes (e.g. to close mobile sheet). */
   onChange?: () => void
 }
@@ -146,6 +150,13 @@ export function LocationPicker({
           'border border-ink-200',
           'hover:border-gold-500 hover:text-gold-600 transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
+        ].join(' ')
+      : variant === 'field'
+      ? [
+          'inline-flex h-11 shrink-0 items-center gap-1.5 border-l border-ink-200 pl-3 pr-2',
+          'font-display text-sm font-bold text-ink-900 bg-transparent',
+          'hover:text-[var(--brand-accent-strong)] transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 rounded-md',
         ].join(' ')
       : variant === 'onDark'
       ? [

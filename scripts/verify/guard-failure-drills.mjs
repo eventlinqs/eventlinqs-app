@@ -1609,8 +1609,8 @@ const DRILLS = [
     name: 'the homepage hero is wrapped in a streaming boundary',
     guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
     file: 'src/app/page.tsx',
-    find: '        <FeaturedHero events={upcoming} />',
-    replace: '        <Suspense fallback={null}><FeaturedHero events={upcoming} /></Suspense>',
+    find: '  return <ChosenHome />',
+    replace: '  return <Suspense fallback={null}><ChosenHome /></Suspense>',
     expect: '<Suspense> boundary',
   },
   {
@@ -1620,7 +1620,7 @@ const DRILLS = [
     find: 'export default async function HomePage() {',
     replace:
       'export default function HomePage() {\n  return <Suspense fallback={null}><HomeDocument /></Suspense>\n}\n\nasync function HomeDocument() {',
-    expect: 'does not render <FeaturedHero>',
+    expect: 'does not render <ChosenHome>',
   },
   /*
    * sender-mode-one-path (the PM's 03:38 of 19 November 2026), two drills: a second file writes the sender's mode, and

@@ -44,7 +44,7 @@ describe('the surfaces use it', () => {
     expect(guide).toMatch(/href=\{`\/events\$\{q\.trim\(\)/)
   })
   it('the header and both bottom bars open Browse on the chosen city', () => {
-    for (const f of ['src/components/layout/site-header-client.tsx', 'src/components/layout/mobile-bottom-nav.tsx', 'src/components/layout/bottom-nav.tsx']) {
+    for (const f of ['src/components/layout/site-header-client.tsx', 'src/components/layout/site-header-white.tsx', 'src/components/layout/mobile-bottom-nav.tsx', 'src/components/layout/bottom-nav.tsx']) {
       expect(read(f), f).toMatch(/useChosenEventsHref\(/)
     }
   })

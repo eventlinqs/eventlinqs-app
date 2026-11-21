@@ -51,8 +51,9 @@ describe('Lawal\u2019s 19:17 notes', () => {
     expect(names).toEqual(['Music', 'Sports', 'Nightlife', 'Education', 'Community', 'All events'])
   })
 
+  // The guide home is kept whole behind SITE_LOOK.marketplaceHome (law 13; train AU moved it beside the marketplace home).
   it('after the guide: the Featured slots, every city, then the communities LAST, each a flag that is on', () => {
-    const home = readFileSync(join(process.cwd(), 'src/app/page.tsx'), 'utf8')
+    const home = readFileSync(join(process.cwd(), 'src/components/features/home-market/city-guide-home.tsx'), 'utf8')
     const featured = home.indexOf('AFTER_THE_GUIDE.featuredSlots')
     const cities = home.indexOf('AFTER_THE_GUIDE.everyCity')
     const communities = home.indexOf('AFTER_THE_GUIDE.communities')

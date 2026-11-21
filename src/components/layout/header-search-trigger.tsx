@@ -60,7 +60,7 @@ import { Search } from 'lucide-react'
 interface Props {
   /** Visual variant - the State B compact desktop pill, or the mobile
    *  icon-only trigger that lives in the header always. */
-  variant: 'desktop-pill' | 'mobile-icon'
+  variant: 'desktop-pill' | 'mobile-icon' | 'light-pill'
   className?: string
 }
 
@@ -73,7 +73,7 @@ interface Props {
  */
 const TRIGGER_DOM_ID_PREFIX = 'header-search-trigger'
 const triggerDomId = (variant: Props['variant']) =>
-  `${TRIGGER_DOM_ID_PREFIX}-${variant === 'desktop-pill' ? 'desktop' : 'mobile'}`
+  `${TRIGGER_DOM_ID_PREFIX}-${variant === 'desktop-pill' ? 'desktop' : variant === 'light-pill' ? 'light' : 'mobile'}`
 
 /**
  * HeaderSearchTrigger - opens the global search overlay (Batch 9.1).
@@ -145,6 +145,33 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
   const overlay = HeaderSearchOverlay ? (
     <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} />
   ) : null
+
+  // THE WHITE HEADER'S PHONE SEARCH (law 46, site.html; the PM's 13:04 of 21 November 2026): one tap target, the whole
+  // width of the row under the bar, opening the same overlay.
+  if (variant === 'light-pill') {
+    return (
+      <>
+        <button
+          ref={triggerRef}
+          id={triggerDomId(variant)}
+          type="button"
+          onClick={openOverlay}
+          {...intentProps}
+          {...openState}
+          aria-label="Open search"
+          className={[
+            'flex h-11 min-w-0 flex-1 items-center gap-3 rounded-full pl-1 pr-2 text-left font-display text-[15px] font-semibold text-ink-400',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
+            className,
+          ].join(' ')}
+        >
+          <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden />
+          <span className="min-w-0 flex-1 truncate">Search events</span>
+        </button>
+        {overlay}
+      </>
+    )
+  }
 
   if (variant === 'desktop-pill') {
     return (

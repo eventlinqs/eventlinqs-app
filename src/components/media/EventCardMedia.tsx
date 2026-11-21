@@ -72,6 +72,8 @@ export type EventCardMediaVariant =
   | 'guide-big-card'
   /* The photograph on a city guide rail card: 78% of a phone's width, 256px from sm. */
   | 'guide-rail-card'
+  /* The photograph on the marketplace home's card: 128px beside the words on a phone, two columns from sm, four from lg. */
+  | 'market-card'
   | 'marquee'
 
 interface Props {
@@ -128,6 +130,7 @@ const SIZES_BY_VARIANT: Record<EventCardMediaVariant, string> = {
   'row-thumb': MEDIA_SIZES.rowThumb,
   'guide-big-card': MEDIA_SIZES.guideBigCard,
   'guide-rail-card': MEDIA_SIZES.guideRailCard,
+  'market-card': MEDIA_SIZES.marketCard,
   marquee: MEDIA_SIZES.marquee,
 }
 
@@ -157,6 +160,7 @@ const QUALITY_BY_VARIANT: Record<EventCardMediaVariant, number> = {
   'row-thumb': MEDIA_QUALITY.rail,
   'guide-big-card': MEDIA_QUALITY.card,
   'guide-rail-card': MEDIA_QUALITY.card,
+  'market-card': MEDIA_QUALITY.card,
   marquee: MEDIA_QUALITY.rail,
 }
 

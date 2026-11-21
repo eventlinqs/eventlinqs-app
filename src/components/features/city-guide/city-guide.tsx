@@ -8,16 +8,16 @@ import {
   ArrowUpRight, Briefcase, CalendarDays, ChevronDown, Drama, GraduationCap, Hammer, HeartHandshake, HeartPulse, Laugh, MapPin, Moon, Music,
   Palette, PartyPopper, Search, Sparkles, Store, Trophy, Users, UtensilsCrossed, X,
 } from 'lucide-react'
-import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
+import type { DirectoryRow } from '@/lib/events/whats-on-directory'
 import { guideSearchWords, matchesGuideSearch } from '@/lib/events/guide-search'
-import { GET_TICKETS, ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
+import { GET_TICKETS } from '@/lib/events/cta'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, sectionOrder, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
-import { archivalNote } from '@/lib/media/photo-credits'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 import { IllustrativeChip } from '@/components/media/illustrative-chip'
+export { bookingLine, cardPhoto } from '@/lib/events/card-facts'
+import { bookingLine, cardPhoto } from '@/lib/events/card-facts'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -747,25 +747,6 @@ function WholePhoto({ src, alt, className, variant, priority = false, illustrati
   )
 }
 
-/**
- * THE PHOTOGRAPH A CARD DRAWS (Lawal, 12 November 2026, 01:01): the night's own, with no credit line (law 17 (d) as
- * narrowed by Lawal, 19 November 2026, 11:36: "You don't put no photo credit"; its permission stays in the register),
- * only, where archival, that it is from a past one (archivalNote);
- * else the venue's own photograph the photo lock dealt to this night (src/lib/events/venue-thumbs.ts), labelled as the
- * venue beside its licence credit, the one credit law 17 (d) keeps, so the venue is never presented as the act; else
- * (law 46 (f), Lawal's 09:16 of 21 November 2026, which replaces 'else none, never a stand-in') the licensed photograph
- * of its kind, looked at, no face its subject, labelled 'Illustrative photo' on the photograph; else none.
- */
-export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: string | null; illustrative?: boolean } | null {
-  if (r.thumb) return { src: r.thumb, alt: r.thumbAlt ?? '', credit: archivalNote(r.thumbCredit) }
-  if (r.venueThumb) {
-    const venue = r.venue ? `The venue, ${r.venue}` : 'The venue'
-    return { src: r.venueThumb, alt: r.venue ? `${r.venue}, the venue` : 'The venue', credit: [venue, r.venueThumbCredit].filter(Boolean).join('. ') }
-  }
-  const stand = illustrativePhoto(r.categorySlug)
-  if (stand) return { src: stand, alt: `${r.category ?? 'An event'}, an illustrative photo`, credit: null, illustrative: true }
-  return null
-}
 
 function BigCard({ e, priority = false }: { e: Entry; priority?: boolean }) {
   const r = e.row
@@ -921,19 +902,6 @@ export function eventsByCategory(rows: readonly DirectoryRow[]): [string, string
   return [...seen.entries()].map(([slug, c]) => [slug, c.label, c.keys.size])
 }
 
-/**
- * ONE ROW, EACH FACT ONCE (Lawal, 2 November 2026, 09:00, refinements 1 and 4). `said` is the row's one meta word for
- * price: 'Free · Walk in' for a free walk-in night, 'Free' for a free night with a booking, else the price; `book` is
- * where it is booked ('Book on EventLinqs', 'Tickets at <seller>', 'Register at <seller>', 'Get tickets'), alone on its
- * line, with the outbound mark when it leaves EventLinqs. Nothing is said twice and no row names a domain.
- */
-export function bookingLine(r: Pick<DirectoryRow, 'price' | 'source' | 'free'>): { said: string | null; book: string | null; outbound: boolean } {
-  if (r.source === WALK_IN_LABEL) return { said: WALK_IN_LABEL, book: null, outbound: false }
-  const said = r.free ? ROW_FREE_WITH_BOOKING : r.price || null
-  if (r.source === OUR_CHECKOUT_LABEL || r.source === OUR_REGISTRATION_LABEL) return { said, book: r.source, outbound: false }
-  if (OUTBOUND_LABEL.test(r.source)) return { said, book: r.source, outbound: true }
-  return { said, book: null, outbound: false }
-}
 
 function Row({ e, cityName }: { e: Entry; cityName: string }) {
   const r = e.row

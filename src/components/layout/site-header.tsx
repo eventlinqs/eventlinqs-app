@@ -1,6 +1,6 @@
 import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
 import { createClient } from '@/lib/supabase/server'
-import { SiteHeaderClient } from './site-header-client'
+import { SiteHeaderChosen } from './site-header-chosen'
 import { deriveAccountUser, type AccountUser } from './site-header-account-button'
 import { isAdminUserId } from '@/lib/admin/auth'
 import { captureException } from '@/lib/observability/sentry'
@@ -80,13 +80,8 @@ export async function SiteHeader({
     }
   }
 
-  return (
-    <SiteHeaderClient
-      location={MELBOURNE_FALLBACK}
-      pageCity={city ? { ...MELBOURNE_FALLBACK, city: city.name, latitude: city.latitude, longitude: city.longitude } : null}
-      user={user}
-      userEmail={userEmail}
-      isAdmin={isAdmin}
-    />
-  )
+  const pageCity = city ? { ...MELBOURNE_FALLBACK, city: city.name, latitude: city.latitude, longitude: city.longitude } : null
+  // THE WHITE HEADER (law 46; the PM's 13:04 of 21 November 2026) while SITE_LOOK.whiteHeader is on; the navy dual state
+  // bar stays behind the flag (law 13), picked by one line in site-header-chosen.ts. Same props either way.
+  return <SiteHeaderChosen location={MELBOURNE_FALLBACK} pageCity={pageCity} user={user} userEmail={userEmail} isAdmin={isAdmin} />
 }
