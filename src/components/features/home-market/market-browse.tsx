@@ -51,7 +51,7 @@ export function MarketBrowse({ grid, city, guideHref }: { grid: MarketGrid; city
       </div>
 
       <div className="mt-4 flex items-end gap-3 border-b border-ink-200">
-        <div role="group" aria-label="Choose when and what" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+        <div role="group" aria-label="Choose when and what" className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {MARKET_TABS.map((t) =>
             t.key === 'for-you' ? (
               <Link key={t.key} href={t.href} prefetch={false} className={`${TAB} border-transparent text-ink-600 hover:text-ink-900`}>

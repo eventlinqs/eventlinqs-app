@@ -180,8 +180,15 @@ export function pickDontMiss(rows: readonly DirectoryRow[]): DirectoryRow | null
   return own[0] ?? [...withPhoto].sort((a, b) => a.ts - b.ts)[0] ?? null
 }
 
+/** 'Saturday 21 November' to 'Sat 21 Nov'. Pure. */
+export function shortDay(dayLabel: string): string {
+  const [weekday = '', day = '', month = ''] = dayLabel.split(' ')
+  return [weekday.slice(0, 3), day, month.slice(0, 3)].filter(Boolean).join(' ')
+}
+
 function DontMiss({ row }: { row: DirectoryRow }) {
-  const when = new Date(`${row.dayKey}T00:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', '')
+  // The row's own day, already in the event's zone (dayLabel 'Saturday 21 November'), shortened; never a Date built in UTC.
+  const when = shortDay(row.dayLabel)
   const facts = [row.time ? `${when}, ${row.time}` : when, row.venue].filter(Boolean).join(' · ')
   return (
     <section aria-labelledby="dont-miss-heading" className="mt-14">
