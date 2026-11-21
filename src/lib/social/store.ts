@@ -10,11 +10,12 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { learn, momentWindowOf, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
+import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
@@ -712,7 +713,7 @@ export async function pieceDependencies(
   db: Db,
   pieceId: string,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date },
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
@@ -735,6 +736,7 @@ export async function pieceDependencies(
       madeAt: await drawnAtOf(db, pieceId, rev),
       nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e)])),
       now,
+      goesAt: opts.goesAt,
     }),
   )
 
@@ -2088,23 +2090,30 @@ export async function scheduleApprovedPieces(
   const ids = [...new Set(due.flatMap((d) => d.eventIds))]
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
-  const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)) }]))
+  const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)), startDate: String(n.start_date), endDate: (n.end_date as string | null) ?? null, zone: (n.timezone as string | null)?.trim() || LIFECYCLE_ZONE }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
   const firstStarting = new Map<string, { title: string; start: Date }>()
   // The operating model's A2 (the PM's 01:39 of 19 November 2026): each family leans to its day of the week, only where
   // that day falls inside its own window (rhythmDays), so law 18's tiers always win and the lean never makes it late.
   const pieces: FloorPiece[] = due.map((d) => {
-    const own = d.eventIds.map((id) => nightOf.get(id)).filter((n): n is { title: string; start: number; end: number } => n !== undefined)
-    const window = scheduleWindowOf(d.format, own, undefined, { onNow: ON_NOW.test(d.rev.caption) })
+    const moment = parseMomentKey(d.momentKey)
+    const onNow = ON_NOW.test(d.rev.caption)
+    // A lifecycle piece's window is its moment's own day of the run (lifecycle.ts sessionOfDay), never a season's first
+    // day (the PM's 09:10 of 22 November 2026): AMCF's last day reads 11am to 8pm on 22 November, not its 20 November start.
+    const own = d.eventIds
+      .map((id) => nightOf.get(id))
+      .filter((n): n is NonNullable<ReturnType<typeof nightOf.get>> => n !== undefined)
+      .map((n) => (moment ? nightOnDay(n, moment.day) : { title: n.title, start: n.start, end: n.end }))
+    const window = scheduleWindowOf(d.format, own, undefined, { onNow })
     // A weekend line with no night of its own goes on a Thursday or a Friday (the PM's 03:10, class 6).
     if (window.first === null) return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, days: weekendDaysOf(d.rev.caption, own.length) ?? rhythmDays(d.kind, {}, now) }
     firstStarting.set(d.id, window.first)
     // LAW 37 (l), A MOMENT IS ITS DAY (train AI-2): a lifecycle piece posts on the day its moment names, or not at all
     // (its window the night's own, cut to that day), never on another day of the week.
-    const moment = parseMomentKey(d.momentKey)
     if (moment) {
-      // The moment's day governs, a tomorrow story the day before its night (momentWindowOf, 21 November 2026).
-      const { notBefore, deadline } = momentWindowOf(moment.day, window)
+      // The moment's day governs, a tomorrow story the day before its night (momentWindowOf, 21 November 2026); words
+      // that say on now never go before that day's doors open ('still on' only after the opening: the PM's 09:00).
+      const { notBefore, deadline } = lifecycleWindow(d.format, moment.day, onNow, own)
       return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline, notBefore, days: null }
     }
     return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
@@ -2163,6 +2172,7 @@ export async function scheduleApprovedPieces(
       madeAt: await drawnAtOf(db, d.id, d.rev),
       nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>)])),
       now,
+      goesAt: at,
     })
     if (quality.length > 0) {
       const reason = `Not scheduled, held by the publish gate: ${quality.join(' ')}`
@@ -2391,7 +2401,8 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     let format: SocialFormat | null
     let misfit: string | null
     try {
-      issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher })
+      // Published at this minute, so words that say on now are judged against that day's doors now (goesAt).
+      issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, goesAt: now })
       rev = issues.length > 0 || opts.publisher === null ? null : await newestRevision(db, pieceId)
       format = rev === null ? null : await ownFormatOf(db, pieceId)
       // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):

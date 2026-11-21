@@ -2,6 +2,7 @@ import { CAPTION_PHOTO_CREDITS, clockOf, EXTRA_TAGS, HUNT_SUMMARY_LINE, lockRefu
 import { namesAStandIn, STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
 import { law37Refusal } from './law37'
+import { LIFECYCLE_ZONE, sessionAt } from './lifecycle'
 import { getAllCities } from '@/lib/cities/data'
 
 /**
@@ -44,6 +45,12 @@ export type QualityInput = {
   readonly madeAt: string
   readonly nights: ReadonlyMap<string, QualityNight>
   readonly now: Date
+  /**
+   * The minute the piece goes, where it is known: the publish run's own minute, or the band the scheduler gives it.
+   * Words that say on now are judged against that day's doors at this minute only; approval and the morning preflight
+   * run hours before a piece goes and leave it out (the PM's 09:10 of 22 November 2026).
+   */
+  readonly goesAt?: Date
 }
 
 /** The nights a slide's photograph stands over: a day or venue slide's rows, a cover's lead cards, a night's own slide. */
@@ -205,8 +212,21 @@ export function pieceQuality(input: QualityInput): string[] {
   const ids = new Set(input.slides.flatMap(nightIdsOf))
   for (const id of ids) {
     const n = input.nights.get(id)
-    const ended = n?.endDate ? Date.parse(n.endDate) <= input.now.getTime() : true
-    if (n && Date.parse(n.startDate) <= input.now.getTime() && (!onNow || ended)) out.push(`[night] ${n.title}: it has started (${n.startDate}); a piece never posts once its night has started. Draw it again without this night.`)
+    if (!n) continue
+    // Judged by today's day of the run (lifecycle.ts sessionAt: the session open or next to open now), never a season's
+    // first day (the PM's 09:10 of 22 November 2026: AMCF's final day feed was held at the 08:40 run for its
+    // 20 November start). A night of under a day is its own one session, judged exactly as before.
+    const zone = n.timezone?.trim() || LIFECYCLE_ZONE
+    const session = sessionAt({ startDate: n.startDate, endDate: n.endDate ?? null }, zone, input.now)
+    const started = Date.parse(session.start) <= input.now.getTime()
+    const ended = n.endDate ? Date.parse(session.end) <= input.now.getTime() : true
+    if (started && (!onNow || ended)) out.push(`[night] ${n.title}: it has started (${session.start}); a piece never posts once its night has started. Draw it again without this night.`)
+    // 'Still on' only once that day's doors are open (the PM's 09:00 of 22 November 2026): a piece about one night whose
+    // words say it is on now, going before that day's session opens, is refused, judged at the minute it goes.
+    else if (input.goesAt && onNow && ids.size === 1) {
+      const then = sessionAt({ startDate: n.startDate, endDate: n.endDate ?? null }, zone, input.goesAt)
+      if (Date.parse(then.start) > input.goesAt.getTime()) out.push(`[night] ${n.title}: its words say it is on now, but it opens at ${clockOf(then.start, zone)}; 'still on' only once its doors are open. Draw it again with words true before it opens.`)
+    }
   }
 
   /* [night] fix (a): one time per night; a row prints its own night's start, the time its caption prints. */

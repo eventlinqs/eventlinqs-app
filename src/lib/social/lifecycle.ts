@@ -1,5 +1,6 @@
 import { momentWindowOf, nextSlot, scheduleWindowOf, STARTING_CALENDAR, withStartingCalendar, type CadenceRule, type SocialFormat } from './cadence'
 import { carriesBannedWord } from './words'
+import { fromZonedInputValue, toZonedInputValue } from '@/lib/dates/event-time'
 
 /**
  * THE ENGINE THINKS IN EVENT LIFECYCLES AND NEVER REPEATS (law 37 (l), Lawal, 20 November 2026, 14:06; his yes to the
@@ -103,6 +104,69 @@ function daysOfNight(n: LifecycleNight, zone: string): string[] {
   const out = [first]
   while (out.length < 60 && out[out.length - 1] < last) out.push(nextDay(out[out.length - 1]))
   return out
+}
+
+/** One day's opening and closing of a night (ISO instants). */
+export type Session = { readonly start: string; readonly end: string }
+
+/**
+ * TODAY'S DAY OF THE RUN, NEVER THE SEASON'S FIRST DAY (the PM's 09:10 of 22 November 2026, a hotfix): a row that runs a
+ * full day or more (AMCF, 11am on 20 November to 8pm on 22 November, one row) is open each day from its start's clock
+ * to its end's clock in its own zone, the first day opening at its start and the last closing at its end; a closing
+ * clock at or before the opening clock closes the next day (a night from 11pm to 3am). A night of under a day is its
+ * one session. Before this the publish gate and the planner judged AMCF by 20 November, so its final day feed was held
+ * at the 08:40 run, quoted: 'it has started (2026-11-20T00:00:00+00:00)'. Pure.
+ */
+export function sessionsOf(night: { readonly startDate: string; readonly endDate: string | null }, zone: string): Session[] {
+  const start = Date.parse(night.startDate)
+  const end = night.endDate ? Date.parse(night.endDate) : start
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end - start >= DAY_MS)) return [{ start: night.startDate, end: night.endDate ?? night.startDate }]
+  const opens = toZonedInputValue(night.startDate, zone).slice(11, 16)
+  const closes = toZonedInputValue(night.endDate as string, zone).slice(11, 16)
+  const out: Session[] = []
+  let day = dayIn(new Date(start), zone)
+  for (let i = 0; i < 62; i++) {
+    const open = Date.parse(fromZonedInputValue(`${day}T${opens}`, zone))
+    if (!(open < end)) break
+    let close = Date.parse(fromZonedInputValue(`${day}T${closes}`, zone))
+    if (close <= open) close = Date.parse(fromZonedInputValue(`${nextDay(day)}T${closes}`, zone))
+    out.push({ start: new Date(Math.max(open, start)).toISOString(), end: new Date(Math.min(close, end)).toISOString() })
+    day = nextDay(day)
+  }
+  return out.length > 0 ? out : [{ start: night.startDate, end: night.endDate ?? night.startDate }]
+}
+
+/** The session a minute is judged by: the one open then or the next to open (the first not yet closed), else the last. */
+export function sessionAt(night: { readonly startDate: string; readonly endDate: string | null }, zone: string, at: Date): Session {
+  const all = sessionsOf(night, zone)
+  return all.find((s) => Date.parse(s.end) > at.getTime()) ?? all[all.length - 1]
+}
+
+/**
+ * A calendar day's own session: the first that is open at some minute of that day (a festival from 11pm to 10pm the
+ * next day is open through that morning), else, for a day before the night, its first, and after it, its last. Pure.
+ */
+export function sessionOfDay(night: { readonly startDate: string; readonly endDate: string | null }, zone: string, day: string): Session {
+  const all = sessionsOf(night, zone)
+  const overlaps = (s: Session) => dayIn(new Date(s.start), zone) <= day && dayIn(new Date(Math.max(Date.parse(s.start), Date.parse(s.end) - 1)), zone) >= day
+  return all.find(overlaps) ?? (day < dayIn(new Date(all[0].start), zone) ? all[0] : all[all.length - 1])
+}
+
+/** A night as the scheduler reads it on a moment's day: that day's own session (sessionOfDay), as start and end ms. */
+export function nightOnDay(n: { readonly title: string; readonly startDate: string; readonly endDate: string | null; readonly zone: string }, day: string): { title: string; start: number; end: number } {
+  const s = sessionOfDay({ startDate: n.startDate, endDate: n.endDate }, n.zone, day)
+  return { title: n.title, start: Date.parse(s.start), end: Date.parse(s.end) }
+}
+
+/**
+ * A lifecycle piece's window on its moment's day (the scheduler's, store.ts scheduleApprovedPieces): the moment's day
+ * (momentWindowOf) over its nights' own sessions that day (nightOnDay), never a season's first day; words that say on
+ * now never go before that day's doors open (the PM's 09:00 and 09:10 of 22 November 2026). Pure.
+ */
+export function lifecycleWindow(format: SocialFormat, day: string, onNow: boolean, own: readonly { readonly title: string; readonly start: number; readonly end: number }[]): { notBefore: Date; deadline: Date } {
+  const { notBefore, deadline } = momentWindowOf(day, scheduleWindowOf(format, own, undefined, { onNow }))
+  const doors = onNow && own.length > 0 ? Math.min(...own.map((n) => n.start)) : 0
+  return { notBefore: new Date(Math.max(notBefore.getTime(), doors)), deadline }
 }
 
 /**
@@ -376,14 +440,13 @@ export function chooseToday(
 }
 
 /**
- * WHETHER A MOMENT'S WORDS SAY THE NIGHT IS ON NOW (piece-quality.ts ON_NOW), by its kind: a running day and a final
- * day always do ('still on'), a first day does when its night has started by its band (FIRST_DAY_ON_NOW), and a moment
- * ahead of its night never does. Held against every first line by tests/unit/social/every-moment-has-a-window.test.ts.
- * Pure.
+ * WHETHER A MOMENT'S WORDS SAY THE NIGHT IS ON NOW (piece-quality.ts ON_NOW), by its kind: a first, running or final day
+ * does when that day's own session is open by its band ('still on' only once the doors are open: the PM's 09:00 of
+ * 22 November 2026), and a moment ahead of its night never does. Held against every first line by
+ * tests/unit/social/every-moment-has-a-window.test.ts and season-day.test.ts. Pure.
  */
 export function momentSaysOnNow(kind: MomentKind, startedByBand: boolean): boolean {
-  if (kind === 'running' || kind === 'final_day') return true
-  if (kind === 'first_day') return startedByBand
+  if (kind === 'first_day' || kind === 'running' || kind === 'final_day') return startedByBand
   return false
 }
 
@@ -410,22 +473,35 @@ export function postableBand(input: {
   const start = Date.parse(input.night.startDate)
   const end = input.night.endDate ? Date.parse(input.night.endDate) : start
   if (!Number.isFinite(start)) return { why: `${input.night.title} has no start` }
-  // A first day tries its words as 'starts today' first, then, when its night is under way by the band it can take, as
-  // on now; every other moment's words are fixed by its kind (momentSaysOnNow).
-  const tries = input.kind === 'first_day' || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  // A first, running or final day tries its words as true before that day's doors open first ('Last day today.'),
+  // then, when that day's session is open by the band it can take, as on now; every other moment's words are fixed by
+  // its kind (momentSaysOnNow). Each is judged by its own day's session (sessionsOf), never the season's first day.
+  const ownDay = input.kind === 'first_day' || input.kind === 'running' || input.kind === 'final_day'
+  const tries = ownDay || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  const night = { startDate: input.night.startDate, endDate: input.night.endDate }
+  const today = sessionOfDay(night, input.zone, input.day)
+  const windowStart = ownDay ? Date.parse(today.start) : start
+  const windowEnd = ownDay ? Date.parse(today.end) : end
   let why = `no ${input.format} band on ${input.day}`
   for (const onNow of tries) {
-    const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start, end }], input.zone, { onNow }), input.zone)
-    const from = new Date(Math.max(input.now.getTime(), w.notBefore.getTime()))
+    const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start: windowStart, end: windowEnd }], input.zone, { onNow }), input.zone)
+    let from = new Date(Math.max(input.now.getTime(), w.notBefore.getTime()))
+    // Words that say on now wait for the doors: never a band before the session open at that minute opens.
+    if (onNow) from = new Date(Math.max(from.getTime(), Date.parse(sessionAt(night, input.zone, from).start)))
     const at = nextSlot(STARTING_RULE(input.format), from, input.zone)
     if (at.getTime() > w.deadline.getTime() || dayIn(at, input.zone) !== input.day) {
       why = `no ${input.format} band on ${input.day} inside its window (it closes ${w.deadline.toISOString()})`
       continue
     }
-    const started = start <= at.getTime()
-    const ended = end <= at.getTime()
+    const session = sessionAt(night, input.zone, at)
+    const started = Date.parse(session.start) <= at.getTime()
+    const ended = Date.parse(session.end) <= at.getTime()
     if (started && !(onNow && !ended)) {
       why = `${input.night.title} would have ${ended ? 'ended' : 'started'} by its ${input.format} band`
+      continue
+    }
+    if (!started && onNow) {
+      why = `${input.night.title} would not be open yet by its ${input.format} band`
       continue
     }
     return { at, onNow }
@@ -547,6 +623,15 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
 }
 
 /**
+ * A running or final day posted before that day's doors open (the PM's 09:00 of 22 November 2026: words true at publish
+ * time, 'still on' only after that day's opening): never on now (piece-quality.ts ON_NOW).
+ */
+const BEFORE_DOORS: Readonly<Record<'running' | 'final_day', readonly string[]>> = {
+  running: ['Open again today.', 'Back again today.', 'Another day of it today.'],
+  final_day: ['Last day today.', 'The final day is today.', 'Today is the last day.'],
+}
+
+/**
  * A first day whose night has already started by the format's first band that day (a night listed from midnight, or one
  * that opens before the morning post): its words say it is on now (piece-quality.ts ON_NOW), which is what lets the
  * scheduler give it the night's run and the publish gate post it after the night's start (law 22, class 1). 'It starts
@@ -590,7 +675,13 @@ export function endedByFirstBand(endIso: string | null, zone: string, format: So
 
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
 export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false): string | null {
-  const bank = repeatDay ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY) : kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
+  const bank = repeatDay
+    ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY)
+    : kind === 'first_day' && startedByBand
+      ? FIRST_DAY_ON_NOW
+      : (kind === 'running' || kind === 'final_day') && !startedByBand
+        ? BEFORE_DOORS[kind]
+        : FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line

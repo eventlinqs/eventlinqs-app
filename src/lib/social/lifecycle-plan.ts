@@ -23,6 +23,7 @@ import {
   chooseToday,
   postableBand,
   repeatDayOf,
+  sessionAt,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -383,7 +384,8 @@ export async function planLifecyclePieces(
         notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it has ended; not drawn`)
         continue
       }
-      onNow = Date.parse(ln.startDate) <= input.now.getTime()
+      // Judged by that day's own session (lifecycle.ts sessionAt), never the season's first day.
+      onNow = Date.parse(sessionAt({ startDate: ln.startDate, endDate: ln.endDate ?? null }, ln.timezone?.trim() || LIFECYCLE_ZONE, input.now).start) <= input.now.getTime()
     } else {
       // A piece that could not post on its day is not drawn: its night has ended by the format's first band.
       if (endedByFirstBand(ln.endDate ?? null, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)) {
@@ -402,7 +404,7 @@ export async function planLifecyclePieces(
     // A run's own first day that is not the season's opening reads neutral (5C's 03:50): its on now form only when
     // its night is under way by its band.
     const repeatDay = repeatDayOf(c.run, c.moment.kind, day)
-    const startedByBand = (c.moment.kind === 'first_day' || repeatDay) && onNow
+    const startedByBand = (c.moment.kind === 'first_day' || c.moment.kind === 'running' || c.moment.kind === 'final_day' || repeatDay) && onNow
     const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand, repeatDay)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
