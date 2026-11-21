@@ -1,0 +1,53 @@
+# EVERY PENDING NEWSLETTER SIGNUP MADE A SUBSCRIBER, ITS CLICK THE RECORD (law 50 (a), Lawal, 21 November 2026, 10:06;
+# the PM's 10:07: "a dry run first, then the script, logged"). Started by hand, never on a schedule: no cron is added.
+# It calls production's own backfill route with the secret only this repository's Actions hold. The route reads our
+# sender's log on production (the sender's key lives there) and answers counts and city slugs only, never an address,
+# because this log is public. dry-run writes nothing; apply records each pending click through the one consent writer.
+name: newsletter pending backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry-run (counts only, writes nothing) or apply (records each pending signup at its click)
+        required: true
+        type: choice
+        default: dry-run
+        options: [dry-run, apply]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: newsletter-pending-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: the pending newsletter signups, once
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's backfill route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            dry-run) APPLY=0 ;;
+            apply) APPLY=1 ;;
+            *) echo "REFUSED: mode $MODE"; exit 2 ;;
+          esac
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 290 -X POST \
+            "https://www.eventlinqs.com.au/api/cron/newsletter-pending-backfill?apply=${APPLY}" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          python3 - <<'PY'
+          import json
+          d = json.load(open('answer.json', encoding='utf-8'))
+          keep = ('ok', 'error', 'mode', 'pagesRead', 'complete', 'confirmsFound', 'pending', 'alreadyListed', 'stopped',
+                  'unknownCity', 'readFailed', 'recorded', 'writeFailed', 'byCity')
+          print(json.dumps({k: d[k] for k in keep if k in d}))
+          PY
+          [ "$code" = 200 ]

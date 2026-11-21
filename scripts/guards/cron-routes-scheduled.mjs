@@ -67,6 +67,8 @@ export const INVOKED_WITHOUT_A_SCHEDULE = {
   // (ISR Writes from US$0.00 to about US$0.49 a day, Fast Origin Transfer doubled). A visitor is served the cached page
   // while it regenerates. The route stays (law 13) as the CRON_SECRET handshake path (src/lib/env/manifest.mjs,
   // handshakePath), which calls it a few times a day.
+  // Law 50 (a), 21 November 2026: a one time backfill, started by hand, dry run first; never scheduled.
+  'newsletter-pending-backfill': 'started by hand from .github/workflows/newsletter-pending-backfill.yml (law 50 (a), 21 November 2026): every pending newsletter signup made a subscriber at its click, dry run first, counts only',
   warm: 'the CRON_SECRET handshake (src/lib/env/manifest.mjs handshakePath); its every minute schedule was removed on 15 November 2026 because it regenerated edge cached pages no visitor needed (VERCEL-BILL-15NOV)',
 }
 
