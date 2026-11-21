@@ -18,7 +18,8 @@
  * WHEN THE DAY-BEFORE REMINDER GOES. From 9am in the event's own zone on the
  * day before its first day. Nine is not a new number: it is the platform's
  * existing morning send, the weekly digest's schedule of "0 22 * * 3" UTC in
- * vercel.json, which is 9am in Melbourne and Sydney under daylight saving. The
+ * vercel.json until 21 November 2026, which is 9am in Melbourne and Sydney under daylight saving (the digest has
+ * since moved to law 45's 07:00 editions, src/lib/newsletter/send-time.ts; the reminder keeps nine). The
  * hourly run keeps offering it until midnight, so one failed run is not the end
  * of the reminder, and the claim makes the retry harmless. The hour is written
  * here once and handed to the database function.

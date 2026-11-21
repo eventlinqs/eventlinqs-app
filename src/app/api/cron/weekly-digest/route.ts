@@ -3,7 +3,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { sendEmail } from '@/lib/email/send'
-import { roundupApproval } from '@/lib/broadcast/roundup'
 import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
 import { getSiteUrl } from '@/lib/site-url'
 import {
@@ -20,15 +19,21 @@ import { buildWhatsOn } from '@/lib/newsletter/whats-on'
 import { readWhatsOnEdition } from '@/lib/newsletter/edition'
 import { filterPermittedRecipients } from '@/lib/consent/resolver'
 import { LOCAL_DIGEST_PURPOSE } from '@/lib/consent/purposes'
+import { sendMoment } from '@/lib/newsletter/send-time'
+import { NEWSLETTER_DESIGN_A_LIVE } from '@/lib/newsletter/design-a-live'
+import { subscriberLetter } from '@/lib/newsletter/subscriber-letter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * The weekly local digest cron (SPEC 3.2). CRON_SECRET-guarded (fail
- * closed), flag-gated on broadcast_digest, and idempotent per city per
- * period through the digest_sends unique key, so a re-run can never double
- * send.
+ * The weekly local digest cron (SPEC 3.2), now law 45 (a)'s two editions: THE
+ * WEEK from 07:00 on Wednesday and THE WEEKEND from 07:00 on Friday, Melbourne
+ * time (src/lib/newsletter/send-time.ts; vercel.json fires it from 20:00 to
+ * 23:00 UTC on Tuesday and Thursday). CRON_SECRET-guarded (fail closed),
+ * flag-gated on broadcast_digest, and idempotent per city per edition per
+ * period through the digest_sends unique key, claimed before the first email,
+ * so a re-run or a duplicate firing can never double send.
  *
  * Operator params (all CRON_SECRET-gated):
  *   ?city=slug        limit the run to one city
@@ -76,25 +81,40 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient()
   const origin = getSiteUrl()
   const now = new Date()
-  // THE WEEK or THE WEEKEND (law 45). The weekend is rehearsed only, never sent to subscribers from here: the send
-  // record keys one row per city per week, so a Friday edition would read Wednesday's row as already sent. Its own
-  // record comes with the newsletter engine (NL-1).
-  const edition: DigestEdition = request.nextUrl.searchParams.get('edition') === 'weekend' ? 'weekend' : 'week'
-  if (edition === 'weekend' && !request.nextUrl.searchParams.get('preview_to') && !request.nextUrl.searchParams.get('test_to')) {
-    return NextResponse.json(
-      { ok: false, error: 'edition=weekend is rehearsed with preview_to or test_to only; its send to subscribers needs its own send record' },
-      { status: 400 },
-    )
-  }
-  const freshPeriod = resolveDigestPeriod(now, edition)
-  // NL-1 (law 46): design=whats-on rehearses Lawal's design A; a send to subscribers keeps the built digest until the
-  // footer's pages answer on production (law 5), stage 2 of the newsletter brief.
-  const design = request.nextUrl.searchParams.get('design') === 'whats-on' && (request.nextUrl.searchParams.get('preview_to') || request.nextUrl.searchParams.get('test_to')) ? 'whats-on' : 'built'
-
   const onlyCity = request.nextUrl.searchParams.get('city')
   const dryRun = request.nextUrl.searchParams.get('dry_run') === '1'
   const testTo = request.nextUrl.searchParams.get('test_to')
   const previewTo = request.nextUrl.searchParams.get('preview_to')
+  // A dry run, a preview and a rehearsal reach nobody but the person who asked, so they run at any hour and name their
+  // edition; a send to subscribers runs only at its own time.
+  const operator = Boolean(dryRun || testTo || previewTo)
+  const asked = request.nextUrl.searchParams.get('edition')
+
+  /*
+   * THE WEEK or THE WEEKEND, AND ONLY AT ITS TIME (law 45 (a)): THE WEEK from 07:00 on Wednesday and THE WEEKEND from
+   * 07:00 on Friday, Melbourne time, whatever the daylight saving offset (src/lib/newsletter/send-time.ts). The edition of
+   * a send to subscribers is the clock's, never a parameter's: one that names the other edition is refused, so a
+   * hand-run cannot send THE WEEKEND on a Wednesday. Each edition has its own send record since 20261121170001.
+   */
+  let edition: DigestEdition
+  if (operator) {
+    edition = asked === 'weekend' ? 'weekend' : 'week'
+  } else {
+    const moment = sendMoment(now)
+    if (moment.edition === null) {
+      return NextResponse.json({ ok: true, skipped: 'not_the_hour', why: moment.why })
+    }
+    if (asked && asked !== moment.edition) {
+      return NextResponse.json({ ok: false, error: `edition=${asked} is not this hour's edition (${moment.edition})` }, { status: 400 })
+    }
+    edition = moment.edition
+  }
+  const freshPeriod = resolveDigestPeriod(now, edition)
+  // NL-1 (law 46): design=whats-on rehearses Lawal's design A on an operator call; a send to subscribers draws design A
+  // only once NEWSLETTER_DESIGN_A_LIVE says so (src/lib/newsletter/design-a-live.ts, where the reasons it waits are).
+  const design: 'whats-on' | 'built' = operator
+    ? request.nextUrl.searchParams.get('design') === 'whats-on' && (previewTo || testTo) ? 'whats-on' : 'built'
+    : NEWSLETTER_DESIGN_A_LIVE ? 'whats-on' : 'built'
 
   const cities = onlyCity ? [onlyCity] : editionDigestCities(await fetchDigestCities(admin))
   const results: Record<string, unknown>[] = []
@@ -132,6 +152,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .from('digest_sends')
       .select('id, period_start, period_end, recipient_count, audience_count, completed_at')
       .eq('city_slug', citySlug)
+      // Each edition's own record (law 45 (a), 20261121170001): Wednesday's week row never stops Friday's weekend.
+      .eq('edition', edition)
       .gte('period_start', earliestPeriodStillThisWeek(now))
       .order('period_start', { ascending: false })
       .limit(1)
@@ -286,19 +308,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     /*
-     * TRAIN C, ROW 9 (window 5, 27 October 2026): "Thursday's edition is drafted from verified listings, approved,
-     * sent". A city goes to its subscribers only once an admin approved its edition on /admin/roundup in the last
-     * seven days (src/lib/broadcast/roundup.ts). The dry run, the preview and the rehearsal above need no approval,
-     * because they reach nobody but the person who asked. A failed read skips the city and says so, never sends it.
+     * NO WEEKLY APPROVAL; THE ENGINE'S OWN CHECKS GATE THE SEND (Lawal, 21 November 2026, 02:09: "no need of approval";
+     * the PM's 02:10: "roundup_approvals no longer gates a send; the engine's own content checks do"). Until then a city
+     * went to its subscribers only once an admin approved its edition on /admin/roundup. The checks that stand: the
+     * audience through the consent ledger above, the nights read at send time (a night ended, cancelled or no longer
+     * listed is not carried), at least one night to send, and, for design A, the copy gate per pick (buildWhatsOn leaves
+     * out a slot that fails it) with at least one pick left. A failed read skips the city and says so, never sends it.
      */
-    const approval = await roundupApproval(admin, citySlug, now)
-    if (approval === 'unreadable') {
-      results.push({ city: citySlug, skipped: 'approval_unreadable' })
-      continue
-    }
-    if (approval === null) {
-      results.push({ city: citySlug, skipped: 'not_approved', events: events.length, recipients: recipients.length })
-      continue
+    let designA: Awaited<ReturnType<typeof readWhatsOnEdition>> | null = null
+    if (design === 'whats-on') {
+      try {
+        designA = await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl: `${origin}/account/notifications`, recipientToken: null })
+      } catch (error) {
+        results.push({ city: citySlug, skipped: 'edition_unreadable', error: error instanceof Error ? error.message : String(error) })
+        continue
+      }
+      if (!designA.edition.featured && designA.edition.highlights.length === 0) {
+        results.push({ city: citySlug, skipped: 'no_picks', recipients: recipients.length })
+        continue
+      }
     }
 
     /*
@@ -323,15 +351,39 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       cap: DIGEST_MAX_RECIPIENTS_PER_RUN,
     })
 
+    /*
+     * THE ROW IS CLAIMED BEFORE THE FIRST EMAIL GOES. Vercel: "Cron delivery can also occasionally invoke the same
+     * scheduled run more than once" (https://vercel.com/docs/schedules/cron-jobs/manage-cron-jobs, read 21 November
+     * 2026). A period with no row is opened here, under the unique key (city_slug, edition, period_start); a second
+     * invocation that reaches this line for the same period meets that key and stops, so two firings never both write
+     * to the city. A resumed period already has its row and carries on from it.
+     */
+    let rowId: string | null = already?.id ?? null
+    if (!rowId) {
+      const claim = await admin
+        .from('digest_sends')
+        .insert({ city_slug: citySlug, edition, period_start: period.start, period_end: period.end, event_count: events.length, recipient_count: 0, audience_count: plan.audience, completed_at: null })
+        .select('id')
+        .single()
+      if (claim.error || !claim.data) {
+        const taken = claim.error?.code === '23505'
+        results.push({ city: citySlug, skipped: taken ? 'claimed_by_another_run' : 'claim_unwritable', ...(taken ? {} : { error: claim.error?.message ?? 'no row returned' }) })
+        continue
+      }
+      rowId = claim.data.id
+    }
+
     let sent = 0
     for (const recipient of plan.toSend) {
-      const { subject, html, text } = buildDigestEmailHtml({
-        cityName: city.name,
-        events,
+      const { subject, html, text } = subscriberLetter({
         origin,
         edition,
+        citySlug,
+        cityName: city.name,
         period,
-        unsubscribeUrl: `${origin}/unsubscribe/digest/${recipient.unsubscribeToken}`,
+        token: recipient.unsubscribeToken,
+        events,
+        designA,
       })
       try {
         await sendEmail({
@@ -372,17 +424,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const written = (already?.recipient_count ?? 0) + sent
     const complete = written >= plan.audience
     const audit = {
-      city_slug: citySlug,
-      period_start: period.start,
-      period_end: period.end,
       event_count: events.length,
       recipient_count: written,
       audience_count: plan.audience,
       completed_at: complete ? new Date().toISOString() : null,
     }
-    const { error: auditError } = already
-      ? await admin.from('digest_sends').update(audit).eq('id', already.id)
-      : await admin.from('digest_sends').insert(audit)
+    // The row this run claimed or resumed; its city, edition and period were written when it was opened.
+    const { error: auditError } = await admin.from('digest_sends').update(audit).eq('id', rowId)
 
     results.push({
       city: citySlug,
