@@ -729,6 +729,8 @@ async function seasonBeganOf(db: Db, rows: readonly Record<string, unknown>[]): 
 function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null = null): QualityNight {
   return {
     seasonBegan,
+    isFree: typeof e.is_free === 'boolean' ? (e.is_free as boolean) : null,
+    venueAddress: (e.venue_address as string | null) ?? null,
     eventId: e.id as string,
     title: String(e.title),
     summary: (e.summary as string | null) ?? null,
@@ -749,7 +751,7 @@ export async function pieceDependencies(
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
-  const { data: piece, error } = await db.from('social_pieces').select('kind, link, format').eq('id', pieceId).maybeSingle()
+  const { data: piece, error } = await db.from('social_pieces').select('kind, link, format, moment_key').eq('id', pieceId).maybeSingle()
   if (error || !piece) return [`The piece could not be read${error ? `: ${error.message}` : ''}.`]
   const rev = await newestRevision(db, pieceId)
   if (rev === null) return ['The piece has no version to approve.']
@@ -772,6 +774,8 @@ export async function pieceDependencies(
     ...pieceQuality({
       slides: rev.slides,
       caption: [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
+      captions: [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].filter((c) => c !== ''),
+      momentKind: parseMomentKey((piece as { moment_key?: string | null }).moment_key ?? null)?.kind ?? null,
       madeAt: await drawnAtOf(db, pieceId, rev),
       nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e, began.get(e.id as string) ?? null)])),
       now,
@@ -2211,6 +2215,8 @@ export async function scheduleApprovedPieces(
     const quality = pieceQuality({
       slides: d.rev.slides,
       caption: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
+      captions: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].filter((c) => c !== ''),
+      momentKind: parseMomentKey(d.momentKey)?.kind ?? null,
       madeAt: await drawnAtOf(db, d.id, d.rev),
       nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>, seasonBegun.get(n.id as string) ?? null)])),
       now,

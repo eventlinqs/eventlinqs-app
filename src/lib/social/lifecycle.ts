@@ -708,9 +708,11 @@ function listOf(items: readonly string[]): string {
  * the publish gate's rule (piece-quality.ts ON_NOW: a first, running or final day under way by its band says 'on now' or
  * 'still on'; momentSaysOnNow). Null when the listing names no experience, and the moment's own bank speaks instead. Pure.
  */
-export function hookFor(kind: MomentKind, experiences: readonly string[], place: string | null, opts: { readonly startedByBand?: boolean; readonly repeatDay?: boolean } = {}): string | null {
-  if (experiences.length === 0) return null
-  const what = listOf(experiences)
+export function hookFor(kind: MomentKind, experiences: readonly string[], place: string | null, opts: { readonly startedByBand?: boolean; readonly repeatDay?: boolean; readonly title?: string | null } = {}): string | null {
+  // The 05:15 standard, check 5: never a stock phrase; with no experience in its words, the night's own title names it.
+  const named = experiences.length > 0 ? experiences : opts.title ? [opts.title] : []
+  if (named.length === 0) return null
+  const what = listOf(named)
   const What = what.charAt(0).toUpperCase() + what.slice(1)
   const at = place && place.length <= 40 ? ` at ${place}` : ''
   if (opts.repeatDay) return opts.startedByBand ? `${What}${at}, on now.` : `${What}${at}, on today.`
@@ -730,6 +732,34 @@ export function hookFor(kind: MomentKind, experiences: readonly string[], place:
     default:
       return `${What}${at}, coming up.`
   }
+}
+
+/** The place line: the venue, its street address and its city, each said once (an address holding the city keeps it). */
+export function whereOf(place: string | null, address: string | null, city: string | null): string {
+  const parts: string[] = []
+  const has = (s: string) => parts.some((p) => p.toLowerCase().includes(s.toLowerCase()))
+  if (place && place.trim()) parts.push(place.trim())
+  if (address && address.trim() && !has(address.trim())) parts.push(address.trim())
+  if (city && city.trim() && !has(city.trim())) parts.push(city.trim())
+  return parts.join(', ')
+}
+
+/** The day word of the 05:15 standard: Today, Tomorrow, or the weekday, as the night's day reads from the post's day. */
+export function dayWordOf(nightDay: string, postDay: string): string {
+  if (nightDay === postDay) return 'Today'
+  const next = new Date(Date.parse(`${postDay}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+  if (nightDay === next) return 'Tomorrow'
+  return new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${nightDay}T12:00:00Z`))
+}
+
+/**
+ * THE PRACTICAL LINE (the 05:15 standard): free and nothing to book, free with a place to register, or how to buy. A free
+ * night never says 'ticket' (check 4).
+ */
+export function practicalLine(cta: { readonly freeEntry: boolean; readonly registrationRequired: boolean; readonly ticketingByEventLinqs: boolean }): string {
+  if (cta.freeEntry) return "It's free, and there's nothing to book."
+  if (cta.registrationRequired) return cta.ticketingByEventLinqs ? "It's free; register your place on EventLinqs." : "It's free; register your place through the link."
+  return cta.ticketingByEventLinqs ? 'Tickets are on EventLinqs.' : 'Tickets are on sale through the link.'
 }
 
 /**
@@ -804,6 +834,13 @@ export type CaptionFacts = {
   readonly dateLabel: string
   /** The night's hours (nightTimes), stated beside its date; none for a date-only listing. */
   readonly times?: string | null
+  /** The 05:15 standard's fact block: who runs it, the street address and city, and the day word (Today, Tomorrow, a weekday). */
+  readonly organiser?: string | null
+  readonly address?: string | null
+  readonly city?: string | null
+  readonly dayWord?: string | null
+  /** The practical line: free and nothing to book, how to register, or how to buy (practicalLine). */
+  readonly practical?: string | null
   readonly priceLine: string | null
   /** The listing's own words, its first sentence only. */
   readonly summary: string | null
@@ -836,14 +873,21 @@ export function captionFor(input: {
   const quotable = sentence.length >= 20 && sentence.length <= 200 && !carriesBannedWord(sentence, f.names ?? [f.title])
   const experience = quotable ? sentence.replace(/!+$/, '.') : ''
   const price = f.priceLine ? f.priceLine.replace(/\.$/, '').trim() : ''
-  const signposts = [
-    f.title,
-    f.place ? `\u{1F4CD} ${f.place}` : '',
-    `\u{1F4C5} ${f.dateLabel}${f.times ? `, ${f.times}` : ''}`,
+  // THE 05:15 STANDARD'S FACT BLOCK: 'Title, by Organiser', then four markers, each a fact: the place with its street
+  // address and city, the day word with the date and the hours, the price or 'Free entry', and the details link.
+  const by = f.organiser && !f.title.toLowerCase().includes(f.organiser.toLowerCase()) ? `${f.title}, by ${f.organiser}` : f.title
+  const where = whereOf(f.place, f.address ?? null, f.city ?? null)
+  const when = [f.dayWord ?? '', f.dateLabel, f.times ?? ''].filter((x) => x !== '').join(', ')
+  const details = input.platform === 'instagram' ? '\u{1F39F} Details on EventLinqs: link in our bio' : `\u{1F39F} Details on EventLinqs:\n${input.link}`
+  const facts = [
+    by,
+    where ? `\u{1F4CD} ${where}` : '',
+    `\u{1F4C5} ${when}`,
     price ? `\u{1F4B2} ${/^free$/i.test(price) ? 'Free entry' : price}` : '',
+    details,
   ]
     .filter((l) => l !== '')
     .join('\n')
-  const link = input.platform === 'instagram' ? '\u{1F39F} Event details and tickets: link in our bio' : `\u{1F39F} Event details and tickets:\n${input.link}`
-  return [input.firstLine, experience, signposts, link].filter((p) => p !== '').join('\n\n')
+  const paragraph = [experience, f.practical ?? ''].filter((x) => x !== '').join(' ')
+  return [input.firstLine, paragraph, facts].filter((p) => p !== '').join('\n\n')
 }

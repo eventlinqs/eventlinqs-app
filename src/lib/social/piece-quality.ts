@@ -38,6 +38,9 @@ export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' |
   /** When its season began: the earliest start of a public night of its title at its venue in the 14 days before it
    * (store.ts seasonBeganOf); none when it is its season's first night. */
   readonly seasonBegan?: string | null
+  /** The row's own price and place, for the fact match (the 05:15 standard, check 3) and the free wording (check 4). */
+  readonly isFree?: boolean | null
+  readonly venueAddress?: string | null
 }
 
 /** A first day's words, in every bank and hook that says one (lifecycle.ts FIRST_LINES, FIRST_DAY_ON_NOW, hookFor). */
@@ -49,6 +52,10 @@ export const ON_NOW = /\b(on now|happening now|on right now|underway now|still o
 export type QualityInput = {
   readonly slides: readonly Slide[]
   readonly caption: string
+  /** Each network's caption whole, for the first line of each (the 05:15 standard, check 5). */
+  readonly captions?: readonly string[]
+  /** A lifecycle piece's moment (social_pieces.moment_key's kind): the 05:15 standard's checks judge these. */
+  readonly momentKind?: string | null
   readonly madeAt: string
   readonly nights: ReadonlyMap<string, QualityNight>
   readonly now: Date
@@ -58,6 +65,52 @@ export type QualityInput = {
    * run hours before a piece goes and leave it out (the PM's 09:10 of 22 November 2026).
    */
   readonly goesAt?: Date
+}
+
+/** A first line that is only a stage word or a stock phrase (the 05:15 standard, check 5). */
+export const STOCK_FIRST_LINES: ReadonlySet<string> = new Set([
+  'One for the calendar.', 'Something new to look forward to.', 'Fresh on the list this week.', 'Put this one in your plans.',
+  'Still a little way off, and worth planning for.', 'One to plan the month around.', 'Coming up, and worth the wait.', 'Mark the date now.',
+  'Only days to go now.', 'Nearly here.', 'Coming up in a few days.', 'Not long now.', 'Tomorrow.', 'See you tomorrow.', 'It is on tomorrow.',
+  'It starts today.', 'Today is the day.', 'Opening today.', 'Still on today.', 'It is still on today.', 'Still on today, so there is time.',
+  'Last day today, and still on.', 'Final day today, still on until it closes.', 'Still on today, for the last time.', 'Last day today.',
+  'Opening day, and on now.', 'Day one, and it is on now.', 'It is on now, from today.', 'On today.', 'On again today.', 'Here again today.',
+  'On now, today.', 'It is on now.', 'On again, and on now.',
+])
+
+const STAGE_WORDS = new Set(['today', 'tomorrow', 'opening', 'still', 'last', 'final', 'day', 'days', 'from', 'coming', 'away', 'only', 'again', 'here', 'now', 'and', 'the', 'for', 'at', 'on', 'it', 'is', 'up', 'there', 'time'])
+const ownWordsOf = (s: string) => (s.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !STAGE_WORDS.has(w))
+const TIME_IN_LINE = /\b\d{1,2}(:\d{2})?(am|pm)\b/i
+
+/** The five checks of the 05:15 standard, for one lifecycle piece's nights. Pure. */
+function standardFaults(input: QualityInput, ids: ReadonlySet<string>): string[] {
+  const out: string[] = []
+  const captions = input.captions && input.captions.length > 0 ? input.captions : [input.caption]
+  for (const id of ids) {
+    const n = input.nights.get(id)
+    if (!n) continue
+    const zone = n.timezone?.trim() || 'Australia/Melbourne'
+    const clock = (iso: string) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).replace(':00', '').replace(/\s/g, '').toLowerCase()
+    const midnight = new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(n.startDate)) === '00:00'
+    for (const caption of captions) {
+      const first = (caption.split('\n')[0] ?? '').trim()
+      const dated = caption.split('\n').find((l) => l.startsWith('\u{1F4C5}')) ?? ''
+      const placed = caption.split('\n').find((l) => l.startsWith('\u{1F4CD}')) ?? ''
+      // 1. RUN DAY: a last day says Last day (a first day's words on a later night are the season rule above).
+      if (input.momentKind === 'final_day' && !/\blast day\b/i.test(caption)) out.push(`[standard] ${n.title}: its last day does not say 'Last day'.`)
+      // 2. TIME STATED: the date line carries the night's hours (none only for a date-only listing).
+      if (!midnight && !TIME_IN_LINE.test(dated)) out.push(`[standard] ${n.title}: its date line states no time ('${dated || 'no date line'}').`)
+      // 3. FACT MATCH: the hours and the place are the row's own, read now.
+      if (!midnight && TIME_IN_LINE.test(dated) && !dated.toLowerCase().includes(clock(n.startDate))) out.push(`[standard] ${n.title}: its date line does not carry its start, ${clock(n.startDate)}, as its row reads now.`)
+      if (n.venueName && placed && !placed.toLowerCase().includes(n.venueName.trim().toLowerCase().slice(0, 12))) out.push(`[standard] ${n.title}: its place line does not name its venue, ${n.venueName}.`)
+      // 4. FREE WORDING: a free night never says 'ticket'.
+      if (n.isFree === true && /ticket/i.test(caption)) out.push(`[standard] ${n.title}: a free night's caption says 'ticket'.`)
+      // 5. FIRST LINE: never only a stage word or a stock phrase; it names something of the night's own words.
+      const own = new Set([...ownWordsOf(n.title), ...ownWordsOf(n.summary ?? ''), ...ownWordsOf(n.venueName ?? '')])
+      if (STOCK_FIRST_LINES.has(first) || !ownWordsOf(first).some((w) => own.has(w))) out.push(`[standard] ${n.title}: its first line ('${first}') names nothing of the night's own words.`)
+    }
+  }
+  return [...new Set(out)]
 }
 
 /** The nights a slide's photograph stands over: a day or venue slide's rows, a cover's lead cards, a night's own slide. */
@@ -248,6 +301,10 @@ export function pieceQuality(input: QualityInput): string[] {
       if (dayOf(n.seasonBegan) < dayOf(n.startDate)) out.push(`[night] ${n.title}: its words say a first day, but its season began on ${dayOf(n.seasonBegan)}; a later night is never an opening. Draw it again.`)
     }
   }
+
+  /* [standard] THE 05:15 CAPTION STANDARD (the PM's 05:15 of 22 November 2026; Lawal, 04:56: nothing that goes out is
+     edited after), on the exact caption at the moment it is judged, for a lifecycle piece of one night. */
+  if (input.momentKind) out.push(...standardFaults(input, ids))
 
   /* [night] fix (a): one time per night; a row prints its own night's start, the time its caption prints. */
   for (const slide of input.slides) {

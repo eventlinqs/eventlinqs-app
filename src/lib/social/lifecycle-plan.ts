@@ -27,6 +27,8 @@ import {
   experiencesOf,
   hookFor,
   nightTimes,
+  dayWordOf,
+  practicalLine,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -409,7 +411,7 @@ export async function planLifecyclePieces(
     const repeatDay = repeatDayOf(c.run, c.moment.kind, day)
     const startedByBand = (c.moment.kind === 'first_day' || c.moment.kind === 'running' || c.moment.kind === 'final_day' || repeatDay) && onNow
     // The night's own first line from its listing's words (the PM's 05:02, item 1), else the moment's bank.
-    const hook = hookFor(c.moment.kind, experiencesOf(n.summary, n.title), n.placeName ?? n.venueName ?? null, { startedByBand, repeatDay })
+    const hook = hookFor(c.moment.kind, experiencesOf(n.summary, n.title), n.placeName ?? n.venueName ?? null, { startedByBand, repeatDay, title: n.title })
     const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand, repeatDay, hook)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
@@ -428,7 +430,22 @@ export async function planLifecyclePieces(
       height: photo.height,
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
-    const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day), times: nightTimes(ln.startDate, ln.endDate ?? null, ln.timezone?.trim() || c.run.zone), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
+    // The 05:15 standard's facts, every one read from the night's own row.
+    const nightDay = dayIn(new Date(ln.startDate), ln.timezone?.trim() || c.run.zone)
+    const facts = {
+      title: n.title,
+      place,
+      dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day),
+      times: nightTimes(ln.startDate, ln.endDate ?? null, ln.timezone?.trim() || c.run.zone),
+      priceLine: n.priceLine,
+      summary: n.summary,
+      names: [n.title, ...(n.host ? [n.host] : [])],
+      organiser: n.host ?? null,
+      address: n.venueAddress ?? null,
+      city: n.cityName ?? null,
+      dayWord: dayWordOf(nightDay < day ? day : nightDay, day),
+      practical: practicalLine(n.cta),
+    }
     // The page a press lands on, with its tags, is the piece's stored link; the words carry the counted /go hop
     // (go-hop.ts; AV (e)), its piece id written by revisionRow.
     const pageLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
