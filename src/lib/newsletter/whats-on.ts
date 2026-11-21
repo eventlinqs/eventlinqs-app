@@ -101,6 +101,15 @@ export function pickProblems(p: NlPick): string[] {
 const esc = (s: string | null | undefined): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
+/**
+ * A URL INSIDE THE <style> ELEMENT (found by looking at the practice weekend editions, 21 November 2026, 14:44). A
+ * <style> element's text is raw: its entities are never decoded, so esc()'s &amp; reached the image proxy as 'amp;src'
+ * and every phone lost the city photograph. Here nothing is written as an entity; the characters that could end the
+ * url('...') or the element itself are percent-encoded instead, which a URL reads as the same character.
+ */
+const cssUrl = (s: string | null | undefined): string =>
+  String(s ?? '').replace(/['"\\()<>\s]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`)
+
 function utm(origin: string, path: string, editionId: string, slot: string): string {
   const [base, hash] = path.split('#')
   const q = new URLSearchParams({ utm_source: 'newsletter', utm_medium: 'email', utm_campaign: editionId, utm_content: slot })
@@ -264,7 +273,7 @@ ${highlights.map((p, i) => card(p, `h${i + 1}`)).join('\n')}
 
   const subject = subjectOf(input)
   const preheader = [featured, ...highlights].filter((p): p is NlPick => p !== null).slice(0, 3).map(titleOf).join(', ')
-  const mobileHero = input.heroImage ? `.hero{background-image:url('${esc(input.heroImage.mobile)}')!important;background-position:center bottom!important;padding:24px 20px 0 20px!important} .hero-space{height:300px!important}` : ''
+  const mobileHero = input.heroImage ? `.hero{background-image:url('${cssUrl(input.heroImage.mobile)}')!important;background-position:center bottom!important;padding:24px 20px 0 20px!important} .hero-space{height:300px!important}` : ''
 
   const html = `<!DOCTYPE html>
 <html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
