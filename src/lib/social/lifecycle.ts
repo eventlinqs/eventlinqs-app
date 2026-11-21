@@ -83,6 +83,12 @@ export type Run = {
   readonly salesOpen: boolean
   readonly ticketedHere: boolean
   readonly tier: 1 | 2 | 3 | 4
+  /** The keys its nights' moments were drawn under before a season was joined (runsOf), read with its own. */
+  readonly aliases?: readonly string[]
+  /** An earlier run of the same season comes before it (its first day is never the season's first day). */
+  readonly continuesSeason?: boolean
+  /** A later run of the same season comes after it (its last day is never the season's final day). */
+  readonly seasonGoesOn?: boolean
 }
 
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -100,25 +106,66 @@ function daysOfNight(n: LifecycleNight, zone: string): string[] {
 }
 
 /**
- * Nights grouped into runs: those sharing a series, else a title and venue, whose days follow on with no gap of more
- * than a day (a festival listed one row a day). A cancelled night stays in its run and marks it cancelled only when every
+ * Nights grouped into runs: those sharing a series OR a title and venue, whose days follow on with no gap of more than
+ * a day (a festival listed one row a day). A cancelled night stays in its run and marks it cancelled only when every
  * night of the run is.
+ *
+ * A SEASON IS ONE RUN (22 November 2026): the listings engine gives every dated night its own one-off series, so
+ * Colours of Asia's 20, 21 and 22 November were three one-day runs and its last night posted 'Opening today.'. Nights
+ * are now joined by a shared series or by the same title at the same venue; a run of one series keeps its series key
+ * (its moments drawn before keep their key), any other takes its title key, and every key its nights were drawn under
+ * before is kept as an alias, so a moment already had is never drawn twice.
  */
 export function runsOf(nights: readonly LifecycleNight[]): Run[] {
-  const groups = new Map<string, LifecycleNight[]>()
+  const titleKey = (n: LifecycleNight) => `t:${norm(n.title)}|${n.venueKey ?? ''}`
+  const oldKey = (n: LifecycleNight) => (n.seriesId ? `s:${n.seriesId}` : titleKey(n))
+  const parent = new Map<string, string>()
+  const find = (k: string): string => {
+    let r = k
+    while (parent.get(r) !== r) r = parent.get(r) as string
+    return r
+  }
+  const join = (a: string, b: string) => {
+    for (const k of [a, b]) if (!parent.has(k)) parent.set(k, k)
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(rb, ra)
+  }
+  for (const n of nights) join(titleKey(n), oldKey(n))
+  const members = new Map<string, LifecycleNight[]>()
   for (const n of nights) {
-    const key = n.seriesId ? `s:${n.seriesId}` : `t:${norm(n.title)}|${n.venueKey ?? ''}`
-    groups.set(key, [...(groups.get(key) ?? []), n])
+    const root = find(titleKey(n))
+    members.set(root, [...(members.get(root) ?? []), n])
+  }
+  const groups = new Map<string, LifecycleNight[]>()
+  for (const list of members.values()) {
+    const series = new Set(list.map((n) => n.seriesId ?? ''))
+    const first = [...list].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.eventId.localeCompare(b.eventId))[0]
+    const key = series.size === 1 && first.seriesId ? `s:${first.seriesId}` : titleKey(first)
+    groups.set(key, [...(groups.get(key) ?? []), ...list])
   }
   const runs: Run[] = []
   for (const [key, list] of groups) {
+    const before = runs.length
     const sorted = [...list].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.eventId.localeCompare(b.eventId))
     let current: { nights: LifecycleNight[]; days: string[]; zone: string } | null = null
     const close = () => {
       if (!current) return
       const ns = current.nights
+      const own = `${key}|${current.days[0]}`
+      const zoneOf = current.zone
+      // Each older key's run began on its earliest night here, so that is the key its moments carry.
+      const firstByOld = new Map<string, string>()
+      for (const n of ns) {
+        const k = oldKey(n)
+        const d = daysOfNight(n, n.timezone?.trim() || zoneOf)[0]
+        const seen = firstByOld.get(k)
+        if (seen === undefined || d < seen) firstByOld.set(k, d)
+      }
+      const aliases = [...firstByOld].map(([k, d]) => `${k}|${d}`).filter((a) => a !== own).sort()
       runs.push({
-        key: `${key}|${current.days[0]}`,
+        key: own,
+        ...(aliases.length > 0 ? { aliases } : {}),
         nights: ns,
         days: current.days,
         zone: current.zone,
@@ -143,6 +190,10 @@ export function runsOf(nights: readonly LifecycleNight[]): Run[] {
       }
     }
     close()
+    // THE SEASON'S RUNS (the PM's 03:39 of 22 November 2026): Colours of Asia's 13 to 15 and 20 to 22 November are one
+    // season in two runs; its 20th is not an opening and its 15th not its final day.
+    const mine = runs.splice(before)
+    mine.forEach((r, i) => runs.push({ ...r, ...(i > 0 ? { continuesSeason: true } : {}), ...(i < mine.length - 1 ? { seasonGoesOn: true } : {}) }))
   }
   return runs.sort((a, b) => a.days[0].localeCompare(b.days[0]) || a.key.localeCompare(b.key))
 }
@@ -156,11 +207,32 @@ export function stageOf(run: Run, now: Date): Stage {
   const first = run.days[0]
   const last = run.days[run.days.length - 1]
   if (today > last) return 'ended'
-  if (run.days.includes(today)) return today === first ? 'first_day' : today === last ? 'final_day' : 'running'
+  if (run.days.includes(today)) {
+    // The season's own first day and final day only (runsOf continuesSeason, seasonGoesOn). A one-night run in a season
+    // of several runs is a repeat (a weekly trivia night: 5C's 03:50, 75 such groups on production), never an opening
+    // and never a last day; its day reads neutral (repeatDayOf).
+    if (isRepeat(run)) return 'running'
+    if (today === first && !run.continuesSeason) return 'first_day'
+    if (today === last && !run.seasonGoesOn) return 'final_day'
+    return 'running'
+  }
   const ahead = daysFrom(today, first)
   if (ahead === 1) return 'tomorrow'
   if (ahead <= 7) return 'this_week'
   return daysFrom(dayIn(new Date(run.listedAt), run.zone), today) < ANNOUNCE_DAYS ? 'announced' : 'upcoming'
+}
+
+/** A one-night run inside a season of several runs: a repeat, never an opening nor a last day. */
+export function isRepeat(run: Run): boolean {
+  return run.days.length === 1 && Boolean(run.continuesSeason || run.seasonGoesOn)
+}
+
+/**
+ * A running day that is its run's own first day (a season's later run beginning today, or a repeat's one night): its
+ * words are neutral, never 'Opening' and never 'Still on' (5C's 03:50 of 22 November 2026). Pure.
+ */
+export function repeatDayOf(run: Run, kind: MomentKind, day: string): boolean {
+  return kind === 'running' && run.days[0] === day
 }
 
 export type MomentKind = 'announce' | 'build' | 'final_push' | 'tomorrow' | 'first_day' | 'running' | 'final_day'
@@ -332,13 +404,15 @@ export function postableBand(input: {
   readonly day: string
   readonly zone: string
   readonly now: Date
+  /** Its run's own first day, not the season's opening (repeatDayOf): its words try neutral first, then on now. */
+  readonly repeatDay?: boolean
 }): { readonly at: Date; readonly onNow: boolean } | { readonly why: string } {
   const start = Date.parse(input.night.startDate)
   const end = input.night.endDate ? Date.parse(input.night.endDate) : start
   if (!Number.isFinite(start)) return { why: `${input.night.title} has no start` }
   // A first day tries its words as 'starts today' first, then, when its night is under way by the band it can take, as
   // on now; every other moment's words are fixed by its kind (momentSaysOnNow).
-  const tries = input.kind === 'first_day' ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  const tries = input.kind === 'first_day' || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
   let why = `no ${input.format} band on ${input.day}`
   for (const onNow of tries) {
     const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start, end }], input.zone, { onNow }), input.zone)
@@ -480,6 +554,11 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
  */
 const FIRST_DAY_ON_NOW: readonly string[] = ['Opening day, and on now.', 'Day one, and it is on now.', 'It is on now, from today.']
 
+/** A run's own first day that is not the season's opening (repeatDayOf): neutral, never 'Opening', never 'Still on'. */
+const REPEAT_DAY: readonly string[] = ['On today.', 'On again today.', 'Here again today.']
+/** The same, its night already under way by its band: its words say it is on now (piece-quality.ts ON_NOW). */
+const REPEAT_DAY_ON_NOW: readonly string[] = ['On now, today.', 'It is on now.', 'On again, and on now.']
+
 /**
  * Whether a night has started by its format's first band on the moment's day (the starting calendar, cadence.ts: feed
  * 9 am, story 6 pm, Melbourne's clock until the account's own posts teach the hours). Pure.
@@ -510,8 +589,8 @@ export function endedByFirstBand(endIso: string | null, zone: string, format: So
 }
 
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false): string | null {
-  const bank = kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false): string | null {
+  const bank = repeatDay ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY) : kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line

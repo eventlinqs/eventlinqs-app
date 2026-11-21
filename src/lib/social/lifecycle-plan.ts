@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { tierOf } from '@/lib/events/relevance'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
@@ -21,6 +22,7 @@ import {
   seedOf,
   chooseToday,
   postableBand,
+  repeatDayOf,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -47,6 +49,44 @@ export const LIFECYCLE_ON = true
 
 /** How far ahead a run is read: far enough for its announce and build posts. */
 export const LIFECYCLE_AHEAD_DAYS = 45
+
+/**
+ * HOW FAR BACK A SEASON'S ENDED NIGHTS ARE READ (the PM's 03:39 of 22 November 2026; 5C's 03:12 trace): the nights the
+ * planner reads are those not yet ended, so at 02:59 on the 22nd Colours of Asia's 20th and 21st were gone and its last
+ * night read as a first day. Its ended nights are read for their days only, never drawn. Fourteen days: the gap inside
+ * that season was five days (15 to 20 November), and a fortnight keeps a two weekend festival whole.
+ */
+export const SEASON_LOOKBACK_DAYS = 14
+
+/** The public nights ended in the last SEASON_LOOKBACK_DAYS, as the runs need them (days and keys only). Fails closed. */
+async function readSeasonPast(db: Db, now: Date): Promise<LifecycleNight[]> {
+  const since = new Date(now.getTime() - SEASON_LOOKBACK_DAYS * 86_400_000).toISOString()
+  // The one public rule (scripts/guards/one-visibility-source.mjs), judged as of the lookback's start: a night public
+  // then and ended since, so exactly the season's ended nights inside the lookback.
+  const { data, error } = await applyPublicEventVisibility(
+    db.from('events').select('id, title, start_date, end_date, timezone, created_at, listing_series_id, venue_id, venue_name'),
+    { now: new Date(since), includeExternal: true },
+  )
+    .lte('end_date', now.toISOString())
+    .order('end_date', { ascending: false })
+    .limit(1000)
+  if (error) throw new Error(`the season's ended nights could not be read: ${error.message}`)
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    eventId: r.id as string,
+    seriesId: (r.listing_series_id as string | null) ?? null,
+    title: String(r.title ?? ''),
+    venueKey: (r.venue_id as string | null) ?? (String(r.venue_name ?? '').trim() || null),
+    startDate: r.start_date as string,
+    endDate: (r.end_date as string | null) ?? null,
+    timezone: (r.timezone as string | null) ?? null,
+    listedAt: (r.created_at as string | null) ?? (r.start_date as string),
+    cancelled: false,
+    salesOpen: false,
+    ticketedHere: false,
+    // The weakest tier, so an ended night never lifts its run's rank (a run takes its nights' best tier).
+    tier: 4,
+  }))
+}
 
 /** A moment piece's key, parsed back. */
 export type MomentKeyParts = { readonly kind: MomentKind; readonly format: 'feed' | 'story'; readonly day: string; readonly runKey: string }
@@ -267,7 +307,9 @@ export async function planLifecyclePieces(
 ): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[]; readonly due: number; readonly photoless: readonly string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
-  const runs = runsOf(input.nights.map(toLifecycleNight))
+  // Every night of each season: those still to come, and those ended inside SEASON_LOOKBACK_DAYS for their days only.
+  const past = (await readSeasonPast(db, input.now)).filter((p) => !byId.has(p.eventId))
+  const runs = runsOf([...input.nights.map(toLifecycleNight), ...past])
   const history = await readHistory(db, input.now, input.redrawing)
   const photos = await readPhotos(db, input.nights.map((n) => n.eventId), input.now)
   const used = new Set(history.usedPhotos)
@@ -282,7 +324,14 @@ export async function planLifecyclePieces(
     const day = dayIn(input.now, run.zone)
     const night = nightForDay(run, day)
     if (input.ownerAsked && night.eventId !== input.ownerAsked.eventId) continue
-    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none).filter((m) => !input.ownerAsked || m.format === 'feed')
+    // Its own history and every key its nights were drawn under before the season was joined (runsOf aliases).
+    const had: RunHistory[] = []
+    for (const k of [run.key, ...(run.aliases ?? [])]) {
+      const h = history.byRun.get(runRef(k))
+      if (h) had.push(h)
+    }
+    const runHistory: RunHistory = had.length === 0 ? none : { feedDays: had.flatMap((h) => h.feedDays), storyDays: had.flatMap((h) => h.storyDays), had: had.flatMap((h) => h.had) }
+    const moments = momentsDue(run, input.now, runHistory).filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
       due += 1
       const own = photos.get(night.eventId) ?? []
@@ -306,7 +355,7 @@ export async function planLifecyclePieces(
     if (input.ownerAsked) return endedByNow(ln.endDate ?? null, input.now) ? 'it has ended' : null
     const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
     if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
-    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
     return 'why' in band ? band.why : null
   }
   const choice = chooseToday(candidates, drawable)
@@ -343,15 +392,18 @@ export async function planLifecyclePieces(
       }
       // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
       // that band says it is on now.
-      const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
+      const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
       if ('why' in band) {
         notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
         continue
       }
       onNow = band.onNow
     }
-    const startedByBand = c.moment.kind === 'first_day' && onNow
-    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
+    // A run's own first day that is not the season's opening reads neutral (5C's 03:50): its on now form only when
+    // its night is under way by its band.
+    const repeatDay = repeatDayOf(c.run, c.moment.kind, day)
+    const startedByBand = (c.moment.kind === 'first_day' || repeatDay) && onNow
+    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand, repeatDay)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
       continue

@@ -35,14 +35,14 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   ...over,
 })
 
-type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
+type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; organisers?: unknown[]; past?: unknown[]; failHistory?: boolean; failPast?: boolean }
 function fakeDb(rows: Rows): SupabaseClient {
   // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
   // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
   const chain = (data: unknown[], error: { message: string } | null = null) => {
     let platformRead = false
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'not', 'neq', 'or', 'order', 'limit', 'in', 'range']) b[m] = () => b
+    for (const m of ['select', 'not', 'neq', 'or', 'order', 'limit', 'in', 'range', 'gt', 'lte']) b[m] = () => b
     b.eq = (col: string) => {
       if (col === 'is_test' || col === 'slug') platformRead = true
       return b
@@ -57,6 +57,8 @@ function fakeDb(rows: Rows): SupabaseClient {
       if (table === 'organisations') return chain([])
       if (table === 'social_piece_postings') return chain(rows.postings ?? [])
       if (table === 'social_piece_schedules') return chain(rows.schedules ?? [])
+      // The season's ended nights (lifecycle-plan.ts readSeasonPast); the fixture holds only those it means as ended.
+      if (table === 'events') return chain(rows.past ?? [], rows.failPast ? { message: 'connection reset' } : null)
       throw new Error(`unexpected table ${table}`)
     },
     rpc: async (name: string) => {
@@ -229,5 +231,77 @@ describe("an owner's Post now and a photograph that can no longer post (Colours 
     expect(ended.pieces).toEqual([])
     const none = await plan({ assets: [] }, { eventId: 'e-sun' })
     expect(none.pieces).toEqual([])
+  })
+})
+
+describe('the season, whole (5C 03:12, the PM 03:39)', () => {
+  // Colours of Asia: Garden of Wonders as production holds it: six rows, each its own one-off series, 11am to 10pm.
+  const DAYS = ['13', '14', '15', '20', '21', '22']
+  const rows = DAYS.map((d, i) =>
+    night({ eventId: `coa-${d}`, slug: `colours-of-asia-2026-11-${d}`, title: 'Colours of Asia: Garden of Wonders', seriesId: `one-off-${i}`, host: null, startDate: `2026-11-${d}T00:00:00Z`, endDate: `2026-11-${d}T11:00:00Z` }),
+  )
+  const assets = DAYS.map((d) => ({ event_id: `coa-${d}`, asset_id: `a-${d}`, asset_url: `https://x/coa-${d}.jpg`, asset_type: 'photo', lead_rank: 1, source_width: 1440, source_height: 1080 }))
+  const asPast = (n: (typeof rows)[number]) => ({ id: n.eventId, title: n.title, start_date: n.startDate, end_date: n.endDate, timezone: n.timezone, created_at: n.listedAt, listing_series_id: n.seriesId, venue_id: null, venue_name: n.venueName })
+  const planOn = (day: string) => {
+    const now = new Date(`2026-11-${day}T01:00:00Z`) // noon in Melbourne
+    const open = rows.filter((n) => Date.parse(n.endDate as string) > now.getTime())
+    const ended = rows.filter((n) => Date.parse(n.endDate as string) <= now.getTime()).map(asPast)
+    return planLifecyclePieces(fakeDb({ assets, past: ended }), { now, nights: open, origin: 'https://www.eventlinqs.com.au' })
+  }
+
+  it('a festival of 13, 14, 15, 20, 21, 22 November reads final_day on the 22nd and never Opening today after the 13th', async () => {
+    for (const day of ['14', '15', '16', '17', '18', '19', '20', '21', '22']) {
+      const { pieces } = await planOn(day)
+      for (const p of pieces) {
+        expect(parseMomentKey(p.momentKey)?.kind, `${day}: ${p.momentKey}`).not.toBe('first_day')
+        expect(p.caption.startsWith('Opening today.'), `${day}: ${p.caption.split('\n')[0]}`).toBe(false)
+      }
+    }
+    const last = await planOn('22')
+    expect(last.pieces.map((p) => parseMomentKey(p.momentKey)?.kind)).toContain('final_day')
+    const first = await planOn('13')
+    expect(first.pieces.map((p) => parseMomentKey(p.momentKey)?.kind)).toContain('first_day')
+  })
+
+  it("an ended night is read for the season's days only and never drawn", async () => {
+    const { pieces } = await planOn('22')
+    for (const p of pieces) expect(p.eventIds).toEqual(['coa-22'])
+  })
+
+  it("a failed read of the season's ended nights plans nothing: the planner fails closed", async () => {
+    const db = fakeDb({ assets, failPast: true })
+    await expect(planLifecyclePieces(db, { now: new Date('2026-11-22T01:00:00Z'), nights: rows.slice(5), origin: 'https://www.eventlinqs.com.au' })).rejects.toThrow(/ended nights could not be read/)
+  })
+})
+
+describe('a weekly repeat is never an opening, never still on, never a last day (5C 03:50)', () => {
+  // Front Bar Trivia as production lists such repeats: one row a week, each its own one-off series, 7pm to 10pm.
+  const TUESDAYS = ['2026-11-24', '2026-12-01', '2026-12-08', '2026-12-15', '2026-12-22', '2026-12-29', '2027-01-05', '2027-01-12']
+  const rows = TUESDAYS.map((d, i) =>
+    night({ eventId: `fbt-${i}`, slug: `front-bar-trivia-${d}`, title: 'Front Bar Trivia', seriesId: `weekly-${i}`, host: null, venueName: 'The Front Bar', placeName: 'The Front Bar', startDate: `${d}T08:00:00Z`, endDate: `${d}T11:00:00Z` }),
+  )
+  const assets = rows.map((n, i) => ({ event_id: n.eventId, asset_id: `t-${i}`, asset_url: `https://x/trivia-${i}.jpg`, asset_type: 'photo', lead_rank: 1, source_width: 1440, source_height: 1080 }))
+  const asPast = (n: (typeof rows)[number]) => ({ id: n.eventId, title: n.title, start_date: n.startDate, end_date: n.endDate, timezone: n.timezone, created_at: n.listedAt, listing_series_id: n.seriesId, venue_id: null, venue_name: n.venueName })
+
+  it('Front Bar Trivia, eight Tuesdays a week apart: no Tuesday reads Opening today, Still on today or Last day today while a later Tuesday is listed', async () => {
+    let drawn = 0
+    for (const day of TUESDAYS) {
+      const now = new Date(`${day}T01:00:00Z`) // noon in Melbourne, before its 7pm start
+      const open = rows.filter((n) => Date.parse(n.endDate as string) > now.getTime())
+      const ended = rows.filter((n) => Date.parse(n.endDate as string) <= now.getTime() && Date.parse(n.endDate as string) > now.getTime() - 14 * 86_400_000).map(asPast)
+      const { pieces } = await planLifecyclePieces(fakeDb({ assets, past: ended }), { now, nights: open, origin: 'https://www.eventlinqs.com.au' })
+      for (const p of pieces) {
+        drawn += 1
+        const kind = parseMomentKey(p.momentKey)?.kind
+        expect(kind, `${day}: ${p.momentKey}`).not.toBe('first_day')
+        expect(kind, `${day}: ${p.momentKey}`).not.toBe('final_day')
+        const line = p.caption.split('\n')[0]
+        expect(line, day).not.toMatch(/^Opening today|still on|^Last day|^Final day/i)
+        const slide = p.slides[0] as { line?: string | null }
+        if (slide.line) expect(slide.line, day).not.toMatch(/^Starts today|^Last day/)
+      }
+    }
+    // Each Tuesday is still posted: the repeat reads neutral, it is never dropped.
+    expect(drawn).toBeGreaterThanOrEqual(TUESDAYS.length)
   })
 })
