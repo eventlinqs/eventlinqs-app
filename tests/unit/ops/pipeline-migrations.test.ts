@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { backupSql, classify, planOf, PRESERVED, splitRefusal, workdirPlan } from '../../../scripts/ops/pipeline-migrations.mjs'
+import { backupSql, classify, planOf, PRESERVED, splitRefusal, withoutFunctionBodies, workdirPlan } from '../../../scripts/ops/pipeline-migrations.mjs'
 
 /*
  * MIGRATIONS BY THE PIPELINE, WITH NO PERSON IN THE LOOP (car M; Lawal's word of 19 November 2026, the PM's 04:42 items 2
@@ -75,6 +75,31 @@ describe('the workflow: the test database first, the backup before production, t
 })
 
 describe('what a migration does, read from its own SQL', () => {
+  it("a delete inside a function's body is the function's code, not a migration step (the search car, 22 November 2026)", () => {
+    const sql = [
+      'create table if not exists public.event_search (event_id uuid primary key);',
+      'create or replace function public.event_search_refresh(p_event uuid) returns void language plpgsql as $$',
+      'begin',
+      '  delete from public.event_search where event_id = p_event;',
+      'end',
+      '$$;',
+      'drop trigger if exists event_search_refresh on public.events;',
+    ].join('\n')
+    const c = classify(sql)
+    expect(c.losesData).toBe(false)
+    expect(c.kinds).toEqual(['drop object'])
+    expect(splitRefusal({ each: [{ file: 'x.sql', ...c }] }, true)).toBeNull()
+  })
+
+  it('DRILL: a do block runs at migration time, so its delete still rides alone; a body deleting a preserved record is refused', () => {
+    const doBlock = classify('do $$ begin delete from public.event_search where true; end $$;')
+    expect(doBlock.losesData).toBe(true)
+    expect(splitRefusal({ each: [{ file: 'y.sql', ...doBlock }] }, true)).toMatch(/rides alone/)
+    const money = classify('create function public.f() returns void language sql as $f$ delete from public.orders where true $f$;')
+    expect(money.refused.length).toBe(1)
+    expect(withoutFunctionBodies('create function public.f() returns int language sql as $q$ select 1 $q$;')).not.toMatch(/select 1/)
+  })
+
   it('a migration that only adds is not destructive', () => {
     expect(classify('create table if not exists public.x (id int);\nalter table public.y add column z text;')).toEqual({ destructive: false, losesData: false, kinds: [], touches: [], refused: [] })
   })

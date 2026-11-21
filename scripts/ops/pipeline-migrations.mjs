@@ -33,11 +33,24 @@ export const PRESERVED = /^(?:public\.)?"?(orders|order_items|tickets|ticket_[a-
 const STRIP_COMMENTS = (sql) => sql.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
 /**
+ * A FUNCTION'S BODY IS CODE, NOT A MIGRATION STEP (22 November 2026: the search car's migration was refused for a delete
+ * inside its own refresh function, which runs only when the function is later called). Every `create [or replace]
+ * function|procedure ... as $tag$ ... $tag$` body is taken out before the kinds are read; a `do $tag$ ... $tag$` block
+ * runs at migration time and is kept. Pure.
+ * @param {string} sql
+ */
+export function withoutFunctionBodies(sql) {
+  return sql.replace(/\bcreate\s+(?:or\s+replace\s+)?(?:function|procedure)\b[\s\S]*?\bas\s+(\$[a-z0-9_]*\$)[\s\S]*?\1/gi, (m) => m.slice(0, m.search(/\bas\s+\$/i)) + 'as $body$ $body$')
+}
+
+/**
  * What a migration's SQL does that cannot be undone by running it again, and which tables it touches so. Pure.
  * @param {string} sql
  */
 export function classify(sql) {
-  const text = STRIP_COMMENTS(sql)
+  const whole = STRIP_COMMENTS(sql)
+  // What runs at migration time: the text without any function's body (withoutFunctionBodies).
+  const text = withoutFunctionBodies(whole)
   const touches = new Set()
   const kinds = new Set()
   const refused = []
@@ -59,6 +72,11 @@ export function classify(sql) {
     }
   }
   if (/\bdrop\s+(?:schema|type|function|view|materialized\s+view|trigger|policy|index)\b/i.test(text)) kinds.add('drop object')
+  // Law 19 (d)'s records are refused anywhere, a function's body included: no migration ever writes code that deletes them.
+  for (const m of whole.matchAll(new RegExp(String.raw`\b(?:delete\s+from\s+(?:only\s+)?|truncate\s+(?:table\s+)?|drop\s+table\s+(?:if\s+exists\s+)?)` + name, 'gi'))) {
+    const table = m[1].replace(/"/g, '').toLowerCase()
+    if (PRESERVED.test(table) && !refused.some((r) => r.endsWith(`on ${table}: law 19 (d) preserves these records; the pipeline never applies it`))) refused.push(`a function body or step on ${table}: law 19 (d) preserves these records; the pipeline never applies it`)
+  }
   const losesData = [...kinds].some((k) => LOSES_DATA.has(k))
   return { destructive: kinds.size > 0, losesData, kinds: [...kinds].sort(), touches: [...touches].sort(), refused }
 }
