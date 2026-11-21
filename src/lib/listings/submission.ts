@@ -70,6 +70,18 @@ export const SUBMISSION_ENTRY_WORDS: Readonly<Record<SubmissionEntry, string>> =
 export const PERMISSION_WORDS =
   "Yes, you're welcome to use our event promotional material for EventLinqs listings and social posts, now and for future events."
 
+/**
+ * WHAT A SELF-LISTED PHOTOGRAPH MAY BE USED FOR, FROM ITS ORGANISER'S OWN WORDS (the PM's 01:21 of 22 November 2026,
+ * Lawal's 01:19: "the planner judges every photograph permitted for a night by every record that grants it"). The form's
+ * words grant "EventLinqs listings and social posts", yet every self-listed photograph was registered for the listing
+ * alone (scope 'site'), so the social planner never saw two organisers' photographs they had given for posts (Kyivska
+ * Perepichka, A Moment of Sanity; read 22 November 2026). Exactly these words grant both; any other wording grants the
+ * listing only, until its own constant says more. A post is still a piece approved before it goes.
+ */
+export function scopeFromPermission(words: string): 'both' | 'site' {
+  return words === PERMISSION_WORDS ? 'both' : 'site'
+}
+
 /** K4's "with authority confirmed": the sender says they may give that permission. */
 export const AUTHORITY_WORDS = 'I organise this event, or act for its organiser or venue, and I can give this permission.'
 

@@ -720,7 +720,7 @@ export default async function EventDetailPage({ params }: Props) {
     getEventInventoryStatic(event.id),
     // The SAME resolver generateMetadata used to register the preload, so the
     // raster this renders is the raster the head asked for.
-    eventPageHero({ ...event, cover_image_url: heroCover.cover_image_url }),
+    eventPageHero({ ...event, cover_image_url: heroCover.cover_image_url, stand_in_url: heroCover.stand_in_url, stand_in_alt: heroCover.stand_in_alt }),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show

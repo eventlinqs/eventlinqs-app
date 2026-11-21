@@ -496,6 +496,7 @@
  *                              .vercelignore, walked down level by level, and a failure
  *                              prints the exact lines to add rather than describing the
  *                              walk-down (close-out C18 FINAL, F1.9.2)
+ *   vercel-route-limits        every route next.config.ts hands Vercel is within Vercel's published schema limits (16 conditions)
  *   excluded-reads-survive-the-upload  and every prebuild entry point whose code names a
  *                              docs/ path is EXECUTED in a materialised .vercelignore
  *                              upload. There is no reviewed-tolerant list any more: one
@@ -3532,6 +3533,11 @@ const GUARDS = [
   // (the occurrence run's held-series hold named none, so eight new nights were refused every hour).
   'scripts/guards/no-text-range-for-a-prefix.mjs',
   'scripts/guards/listing-holds-carry-next-action.mjs',
+
+  // WINDOW 5A, 21 November 2026 (the PM's 22:40 item 2): train AV's gate passed a redirect with 26 conditions and
+  // Vercel refused the preview ('Builder returned invalid routes: should NOT have more than 16 items'); every route
+  // next.config.ts hands Vercel is judged against Vercel's published schema limits before any push.
+  'scripts/guards/vercel-route-limits.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

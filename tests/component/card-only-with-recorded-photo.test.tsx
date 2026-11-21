@@ -93,13 +93,13 @@ describe('a card only where a rights recorded photograph exists', () => {
   })
 })
 
-describe('law 46 (f): a night with no lawful photograph of its own stands on its kind, labelled (the PM 10:15, ruling 2)', () => {
-  it('a kind with a looked-at photograph is a photo card on that photograph, with the one chip top left', () => {
-    const { container } = render(<EventCard event={{ ...night, cover_image_url: composed, category: { name: 'Family', slug: 'family' } }} />)
+describe('law 46 (f) and the image lock: a night with no lawful photograph of its own stands on ITS OWN stand in, labelled', () => {
+  it('a night with its own stand in is a photo card on it, with the one chip top left', () => {
+    const { container } = render(<EventCard event={{ ...night, cover_image_url: composed, category: { name: 'Family', slug: 'family' }, stand_in_url: '/images/test/stand-in-the-beagles.jpg', stand_in_alt: 'A picnic blanket in a park' }} />)
     // The photograph itself, not the blurred copy of it behind (alt empty): shown whole, as law 15 keeps every card.
     const img = container.querySelector('img:not([alt=""])')
-    expect(img?.getAttribute('src') ?? '').toContain('illustrative-family')
-    expect(img?.getAttribute('alt')).toBe('Family, an illustrative photo')
+    expect(img?.getAttribute('src') ?? '').toContain('stand-in-the-beagles')
+    expect(img?.getAttribute('alt')).toBe('A picnic blanket in a park')
     expect(container.querySelector('a.event-row')).toBeNull()
     const chip = container.querySelector('[data-illustrative]')
     expect(chip?.textContent).toBe('Illustrative photo')
@@ -107,9 +107,9 @@ describe('law 46 (f): a night with no lawful photograph of its own stands on its
     expect(chip?.className).toContain('top-2')
   })
 
-  it('a night with no image and an unrecorded image both take the stand in; the facts stay beneath it', () => {
+  it('a night with no image and an unrecorded image both take their own stand in; the facts stay beneath it', () => {
     for (const cover_image_url of [null, '/images/test/beagles.jpg']) {
-      const { container, unmount } = render(<EventCard event={{ ...night, cover_image_url, category: { name: 'Family', slug: 'family' } }} />)
+      const { container, unmount } = render(<EventCard event={{ ...night, cover_image_url, category: { name: 'Family', slug: 'family' }, stand_in_url: '/images/test/stand-in-the-beagles.jpg' }} />)
       expect(container.querySelector('[data-illustrative]')).not.toBeNull()
       expect(text(container)).toContain('The Beagles')
       unmount()

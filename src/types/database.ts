@@ -8427,6 +8427,7 @@ export type Database = {
           rights_holder: string | null
           role: string
           source: string
+          stand_in_photo_id: string | null
           venue_id: string | null
           venue_image_id: string | null
           visual_quality: number | null
@@ -8449,6 +8450,7 @@ export type Database = {
           rights_holder?: string | null
           role?: string
           source: string
+          stand_in_photo_id?: string | null
           venue_id?: string | null
           venue_image_id?: string | null
           visual_quality?: number | null
@@ -8471,6 +8473,7 @@ export type Database = {
           rights_holder?: string | null
           role?: string
           source?: string
+          stand_in_photo_id?: string | null
           venue_id?: string | null
           venue_image_id?: string | null
           visual_quality?: number | null
@@ -8495,6 +8498,13 @@ export type Database = {
             columns: ["listing_series_id"]
             isOneToOne: false
             referencedRelation: "event_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_assignments_stand_in_photo_id_fkey"
+            columns: ["stand_in_photo_id"]
+            isOneToOne: false
+            referencedRelation: "stand_in_photos"
             referencedColumns: ["id"]
           },
           {
@@ -11202,6 +11212,57 @@ export type Database = {
           },
         ]
       }
+      stand_in_photos: {
+        Row: {
+          alt: string
+          created_at: string
+          id: string
+          image_url: string
+          kind: string
+          licence: string
+          looked_at: string
+          looked_at_by: string
+          photo_dhash: number
+          photo_sha256: string
+          photographer: string
+          place: string | null
+          source_url: string
+          subject: string
+        }
+        Insert: {
+          alt: string
+          created_at?: string
+          id?: string
+          image_url: string
+          kind: string
+          licence: string
+          looked_at: string
+          looked_at_by: string
+          photo_dhash: number
+          photo_sha256: string
+          photographer: string
+          place?: string | null
+          source_url: string
+          subject: string
+        }
+        Update: {
+          alt?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          kind?: string
+          licence?: string
+          looked_at?: string
+          looked_at_by?: string
+          photo_dhash?: number
+          photo_sha256?: string
+          photographer?: string
+          place?: string | null
+          source_url?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       stream_messages: {
         Row: {
           answer_body: string | null
@@ -13322,6 +13383,10 @@ export type Database = {
         Returns: number
       }
       assign_order_seats: { Args: { p_order_id: string }; Returns: number }
+      assign_stand_in: {
+        Args: { p_event: string; p_photo: string }
+        Returns: string
+      }
       audience_consent_is_live: {
         Args: { p_email: string }
         Returns: {
@@ -13518,6 +13583,12 @@ export type Database = {
           source_url: string
         }[]
       }
+      event_covers_cleared_for: {
+        Args: { p_events: string[] }
+        Returns: {
+          event_id: string
+        }[]
+      }
       event_has_own_photo: { Args: { p_cover: string }; Returns: boolean }
       event_image_right: {
         Args: { p_at: string; p_event: string; p_org: string; p_url: string }
@@ -13544,6 +13615,14 @@ export type Database = {
       event_seat_status_counts_many: {
         Args: { p_event_ids: string[] }
         Returns: Json
+      }
+      event_stand_ins_for: {
+        Args: { p_events: string[] }
+        Returns: {
+          alt: string
+          event_id: string
+          image_url: string
+        }[]
       }
       event_tags_normalised: { Args: { tags: Json }; Returns: boolean }
       events_within_distance: {
@@ -14044,6 +14123,7 @@ export type Database = {
           rights_holder: string | null
           role: string
           source: string
+          stand_in_photo_id: string | null
           venue_id: string | null
           venue_image_id: string | null
           visual_quality: number | null

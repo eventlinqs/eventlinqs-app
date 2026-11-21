@@ -1,7 +1,7 @@
 /**
  * THE ONE MARK A CARD PHOTOGRAPH MAY CARRY (law 46 (f), Lawal, 21 November 2026, 09:16; the PM's 10:15, ruling 2; the
  * app constitution's Law 6 and Cards and tiles, as amended that day). Where a night has no lawful photograph of its own,
- * a licensed stock photograph of its kind may stand for it (src/lib/images/illustrative.ts), and this chip says so, top
+ * a licensed stock photograph of its kind may stand for it (its OWN stand in, assigned once and never shared: the image lock, src/lib/images/stand-ins.ts), and this chip says so, top
  * left on the photograph, on every card and on the event page's hero. A disclosure, never a credit (law 17 (d) stands).
  * One component, so every surface shows the same words in the same place.
  */

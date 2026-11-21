@@ -79,7 +79,8 @@ describe('the chain, on a page of rows', () => {
   it('a failed read takes nothing away: the rows stand and the card falls to its typographic cover', async () => {
     const failing: ChainDeps = { coversOf: async () => { throw new Error('function not found') } }
     const rows = [{ id: 'e1', cover_image_url: COMPOSED }]
-    expect(await withVenuePhotos(rows, { deps: failing })).toEqual(rows)
+    // The image lock's fields come back unset (no own photo called cleared, no stand in): the card shows less, never a guess.
+    expect(await withVenuePhotos(rows, { deps: failing })).toEqual([{ ...rows[0], cover_rights_recorded: false, stand_in_url: null, stand_in_alt: null }])
   })
 
   it("a CARD never takes a photo whose licence needs a visible credit (the CONTROLLER's 12:55): it keeps the typographic cover", async () => {

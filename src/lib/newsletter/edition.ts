@@ -17,7 +17,6 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { isUnsubscribeToken } from '@/lib/consent/token'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { eventHeroMediaInput, getFeaturedHeroBackground, heroIsTypographic } from '@/lib/images/event-media'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 import { shownSummary } from '@/lib/listings/placeholder-summary'
 import { nightDates } from '@/lib/social/lifecycle-plan'
 import { carriesBannedWord } from '@/lib/social/words'
@@ -118,17 +117,18 @@ export function whenLabelOf(r: WhenFields, now: Date): string {
 async function toNights(rows: readonly Row[], now: Date, origin: string): Promise<ReadNight[]> {
   if (rows.length === 0) return []
   const covers = await withVenuePhotos(rows.map((r) => ({ id: r.id, cover_image_url: r.cover_image_url })), { use: 'event_page' })
-  return Promise.all(rows.map((r, i) => toNight(r, covers[i].cover_image_url ?? null, now, origin)))
+  return Promise.all(rows.map((r, i) => toNight(r, covers[i].cover_image_url ?? null, now, origin, covers[i].stand_in_url ?? null)))
 }
 
-async function toNight(r: Row, cover: string | null, now: Date, origin: string): Promise<ReadNight> {
+async function toNight(r: Row, cover: string | null, now: Date, origin: string, standIn: string | null = null): Promise<ReadNight> {
   const withVenue = { cover_image_url: cover }
   const media = await getFeaturedHeroBackground(eventHeroMediaInput({ ...r, cover_image_url: withVenue.cover_image_url }))
   const typographic = heroIsTypographic(media)
   const ownPhoto = !typographic && media.image === withVenue.cover_image_url
   // A composed poster is never put in a photo slot; the page's licensed category picture is (law 46 (d)).
-  // The illustrative photograph of the night's kind, looked at, no face its subject (law 46 (f)); else the brand panel.
-  const stock = illustrativePhoto(r.category?.slug ?? null)
+  // The night's OWN licensed stand in (the image lock, 21 November 2026: assigned once, never shared, never a picture
+  // by category; law 46 (f)); else the brand panel.
+  const stock = standIn
   const pictured = typographic ? stock : media.image
   const image = pictured === null ? null : pictured.startsWith('http') ? pictured : `${origin}${pictured.startsWith('/') ? '' : '/'}${pictured}`
   const tiers = (r.ticket_tiers ?? []).filter((t) => t.is_active !== false)

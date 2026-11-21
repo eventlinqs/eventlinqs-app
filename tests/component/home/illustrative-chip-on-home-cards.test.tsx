@@ -40,9 +40,10 @@ describe('the homepage cards', () => {
     }
   })
 
-  it('the rail card stands a night with no photograph of its own on its kind before the brand panel', () => {
+  it("the rail card stands a night with no photograph of its own on ITS OWN stand in before the brand panel (the image lock)", () => {
     const src = readFileSync('src/components/features/events/this-week-card.tsx', 'utf8')
-    const stand = src.indexOf('illustrativePhoto(event.category?.slug ?? null)')
+    expect(src).not.toContain('illustrativePhoto')
+    const stand = src.indexOf('imageSrc = event.stand_in_url')
     expect(stand).toBeGreaterThan(0)
     expect(stand).toBeLessThan(src.indexOf('imageSrc = BRANDED_FALLBACK_PHOTO.src'))
   })

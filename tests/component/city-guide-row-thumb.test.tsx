@@ -58,7 +58,7 @@ describe('round 3 (1): a photograph on a row only where one is permitted', () =>
   })
 
   it('a row with no permitted photograph draws no image, no placeholder and no empty box, and keeps its width for text', () => {
-    // A kind with no looked-at photograph yet (src/lib/images/illustrative.ts): law 46 (f) leaves it with none.
+    // No stand in of its own (the image lock): law 46 (f) leaves it with none, whatever its kind.
     guide([row({ id: 'n1', href: '/events/n1', title: 'Storytime', thumb: null, category: 'Other', categorySlug: 'other' })])
     const link = screen.getByRole('link', { name: /Storytime/ })
     expect(link.querySelector('[data-row-thumb]')).toBeNull()
@@ -66,10 +66,10 @@ describe('round 3 (1): a photograph on a row only where one is permitted', () =>
     expect(link.className).not.toMatch(/_7rem\]/)
   })
 
-  it('a row of a kind with a looked-at photograph stands on it, with the one chip (law 46 (f), the PM 10:15 ruling 2)', () => {
-    guide([row({ id: 'n2', href: '/events/n2', title: 'Late Laughs', thumb: null })])
+  it('a row with its own stand in stands on it, with the one chip (law 46 (f) and the image lock)', () => {
+    guide([row({ id: 'n2', href: '/events/n2', title: 'Late Laughs', thumb: null, standIn: '/images/test/stand-in-the-beagles.jpg', standInAlt: 'A microphone under a spotlight' })])
     const link = screen.getByRole('link', { name: /Late Laughs/ })
-    expect(link.querySelector('img:not([alt=""])')?.getAttribute('src') ?? '').toContain('illustrative-comedy')
+    expect(link.querySelector('img:not([alt=""])')?.getAttribute('src') ?? '').toContain('stand-in-the-beagles')
     expect(link.querySelector('[data-illustrative]')?.textContent).toBe('Illustrative photo')
   })
 

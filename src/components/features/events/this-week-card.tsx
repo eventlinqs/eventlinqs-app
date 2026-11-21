@@ -3,7 +3,6 @@ import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import type { BentoEvent } from './event-bento-tile'
 import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
@@ -58,10 +57,10 @@ export async function ThisWeekCard({
   // on the licensed photograph of its kind, looked at, labelled 'Illustrative photo' on the card; else the brand panel.
   let illustrative = false
   if (!imageSrc || isComposedCover(imageSrc)) {
-    const stand = illustrativePhoto(event.category?.slug ?? null)
-    if (stand) {
-      imageSrc = stand
-      imageAlt = `${event.category?.name ?? 'An event'}, an illustrative photo`
+    // THE IMAGE LOCK (Lawal, 21 November 2026): the night's OWN stand in, never a picture by category.
+    if (event.stand_in_url) {
+      imageSrc = event.stand_in_url
+      imageAlt = event.stand_in_alt ?? `${event.title ?? 'An event'}, an illustrative photo`
       illustrative = true
     }
   }
