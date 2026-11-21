@@ -13,6 +13,7 @@ import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
+import { planAsOf } from '@/lib/social/plan-for'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,11 +75,13 @@ export async function GET(request: NextRequest) {
   // it runs only when asked (.github/workflows/social-plan-now.yml).
   if (request.nextUrl.searchParams.get('plan') === 'now') {
     const db = createAdminClient()
-    const week = await planCampaignWeek(db, { plannedBy: null, now: new Date() })
+    // ?for=tomorrow draws tomorrow's moments tonight, as of tomorrow's 05:00 (src/lib/social/plan-for.ts; the PM's 17:42).
+    const asOf = planAsOf({ for: request.nextUrl.searchParams.get('for') }, new Date())
+    const week = await planCampaignWeek(db, { plannedBy: null, now: asOf })
     if (week.created > 0) {
       await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
     }
-    return NextResponse.json({ planned: true, campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+    return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
   }
 
   try {
