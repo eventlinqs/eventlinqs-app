@@ -1770,7 +1770,8 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
 /**
  * AN ORGANISER'S SELF-LISTED PHOTO (organiser self-listing, Lawal's ruling of 8 November 2026, 07:01 (3): a submission
  * "publishes with the organiser's own photo through the photo lock and its credit"). Entered approved, for this night's
- * own page and cards only (scope 'site'): the organiser ticked that they own it and gave permission in the form's own
+ * own page and cards, and for social posts where the organiser's words grant them (scope from scopeFromPermission, the
+ * PM's 01:21 of 22 November 2026): the organiser ticked that they own it and gave permission in the form's own
  * words, the self-listing checks verified the event against their booking page, and Lawal's ruling is the standing
  * approval, named in approved_by as the founder. Never a social post: a post still needs a person's approval of a piece.
  * Here, so the register keeps its one writer (scripts/guards/social-one-writer.mjs).
@@ -1787,6 +1788,8 @@ export async function addSelfListedPhoto(
     readonly receivedOn: string
     readonly permittedUses: string
     readonly restrictions: string
+    /** What the organiser's own words grant (submission.ts scopeFromPermission): the listing, or the listing and posts. */
+    readonly scope: 'site' | 'both'
     readonly approvedBy: string
     readonly now: Date
   },
@@ -1801,7 +1804,7 @@ export async function addSelfListedPhoto(
     rights_holder: input.rightsHolder,
     attribution_text: input.rightsHolder,
     permission_evidence: input.permissionEvidence,
-    scope: 'site',
+    scope: input.scope,
     archival: false,
     original_file: input.originalFile,
     received_on: input.receivedOn,
