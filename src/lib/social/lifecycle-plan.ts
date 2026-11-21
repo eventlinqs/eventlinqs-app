@@ -282,7 +282,10 @@ export async function planLifecyclePieces(
     const day = dayIn(input.now, run.zone)
     const night = nightForDay(run, day)
     if (input.ownerAsked && night.eventId !== input.ownerAsked.eventId) continue
-    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none).filter((m) => !input.ownerAsked || m.format === 'feed')
+    // Its own history and every key its nights were drawn under before the season was joined (runsOf aliases).
+    const had = [run.key, ...(run.aliases ?? [])].map((k) => history.byRun.get(runRef(k))).filter((h): h is RunHistory => h !== undefined)
+    const runHistory: RunHistory = had.length === 0 ? none : { feedDays: had.flatMap((h) => h.feedDays), storyDays: had.flatMap((h) => h.storyDays), had: had.flatMap((h) => h.had) }
+    const moments = momentsDue(run, input.now, runHistory).filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
       due += 1
       const own = photos.get(night.eventId) ?? []

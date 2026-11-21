@@ -83,6 +83,8 @@ export type Run = {
   readonly salesOpen: boolean
   readonly ticketedHere: boolean
   readonly tier: 1 | 2 | 3 | 4
+  /** The keys its nights' moments were drawn under before a season was joined (runsOf), read with its own. */
+  readonly aliases?: readonly string[]
 }
 
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -100,15 +102,43 @@ function daysOfNight(n: LifecycleNight, zone: string): string[] {
 }
 
 /**
- * Nights grouped into runs: those sharing a series, else a title and venue, whose days follow on with no gap of more
- * than a day (a festival listed one row a day). A cancelled night stays in its run and marks it cancelled only when every
+ * Nights grouped into runs: those sharing a series OR a title and venue, whose days follow on with no gap of more than
+ * a day (a festival listed one row a day). A cancelled night stays in its run and marks it cancelled only when every
  * night of the run is.
+ *
+ * A SEASON IS ONE RUN (22 November 2026): the listings engine gives every dated night its own one-off series, so
+ * Colours of Asia's 20, 21 and 22 November were three one-day runs and its last night posted 'Opening today.'. Nights
+ * are now joined by a shared series or by the same title at the same venue; a run of one series keeps its series key
+ * (its moments drawn before keep their key), any other takes its title key, and every key its nights were drawn under
+ * before is kept as an alias, so a moment already had is never drawn twice.
  */
 export function runsOf(nights: readonly LifecycleNight[]): Run[] {
-  const groups = new Map<string, LifecycleNight[]>()
+  const titleKey = (n: LifecycleNight) => `t:${norm(n.title)}|${n.venueKey ?? ''}`
+  const oldKey = (n: LifecycleNight) => (n.seriesId ? `s:${n.seriesId}` : titleKey(n))
+  const parent = new Map<string, string>()
+  const find = (k: string): string => {
+    let r = k
+    while (parent.get(r) !== r) r = parent.get(r) as string
+    return r
+  }
+  const join = (a: string, b: string) => {
+    for (const k of [a, b]) if (!parent.has(k)) parent.set(k, k)
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(rb, ra)
+  }
+  for (const n of nights) join(titleKey(n), oldKey(n))
+  const members = new Map<string, LifecycleNight[]>()
   for (const n of nights) {
-    const key = n.seriesId ? `s:${n.seriesId}` : `t:${norm(n.title)}|${n.venueKey ?? ''}`
-    groups.set(key, [...(groups.get(key) ?? []), n])
+    const root = find(titleKey(n))
+    members.set(root, [...(members.get(root) ?? []), n])
+  }
+  const groups = new Map<string, LifecycleNight[]>()
+  for (const list of members.values()) {
+    const series = new Set(list.map((n) => n.seriesId ?? ''))
+    const first = [...list].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.eventId.localeCompare(b.eventId))[0]
+    const key = series.size === 1 && first.seriesId ? `s:${first.seriesId}` : titleKey(first)
+    groups.set(key, [...(groups.get(key) ?? []), ...list])
   }
   const runs: Run[] = []
   for (const [key, list] of groups) {
@@ -117,8 +147,20 @@ export function runsOf(nights: readonly LifecycleNight[]): Run[] {
     const close = () => {
       if (!current) return
       const ns = current.nights
+      const own = `${key}|${current.days[0]}`
+      const zoneOf = current.zone
+      // Each older key's run began on its earliest night here, so that is the key its moments carry.
+      const firstByOld = new Map<string, string>()
+      for (const n of ns) {
+        const k = oldKey(n)
+        const d = daysOfNight(n, n.timezone?.trim() || zoneOf)[0]
+        const seen = firstByOld.get(k)
+        if (seen === undefined || d < seen) firstByOld.set(k, d)
+      }
+      const aliases = [...firstByOld].map(([k, d]) => `${k}|${d}`).filter((a) => a !== own).sort()
       runs.push({
-        key: `${key}|${current.days[0]}`,
+        key: own,
+        ...(aliases.length > 0 ? { aliases } : {}),
         nights: ns,
         days: current.days,
         zone: current.zone,
