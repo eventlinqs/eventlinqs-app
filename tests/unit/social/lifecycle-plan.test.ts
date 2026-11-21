@@ -105,6 +105,15 @@ describe('the lifecycle planner, end to end on a fixture', () => {
     expect(pieces).toEqual([])
   })
 
+  it('a photograph whose piece was rejected before it ever posted is free again; one that posted is spent for good', async () => {
+    const piece = (decisions: unknown[], postings: unknown[]) => [{ id: 'p0', format: 'feed', moment_key: 'announce|feed|2026-11-01|t:harbour lights festival|Eastern Beach|2026-11-28', planned_at: '2026-11-01T00:00:00Z', social_piece_revisions: [{ version: 1, slides: [{ t: 'photo', photo: 'https://x/lead.jpg' }], versions: { instagram: { caption: 'One for the calendar.' } } }], social_piece_decisions: decisions, social_piece_postings: postings }]
+    const rejected = [{ revision: 1, decision: 'rejected' }]
+    const freed = await planLifecyclePieces(fakeDb({ history: piece(rejected, []), assets: [asset('a1', 'https://x/lead.jpg', 1)] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    expect(freed.pieces.map((p) => p.slides[0])).toEqual([expect.objectContaining({ photo: 'https://x/lead.jpg' })])
+    const spent = await planLifecyclePieces(fakeDb({ history: piece(rejected, [{ id: 'g1' }]), assets: [asset('a1', 'https://x/lead.jpg', 1)] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    expect(spent.pieces).toEqual([])
+  })
+
   it('a history it cannot read plans nothing: the planner fails closed', async () => {
     const db = fakeDb({ failHistory: true, assets: [asset('a1', 'https://x/lead.jpg', 1)] })
     await expect(planLifecyclePieces(db, { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })).rejects.toThrow(/history could not be read/)

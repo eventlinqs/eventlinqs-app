@@ -81,7 +81,7 @@ type History = {
 async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = new Set()): Promise<History> {
   const { data, error } = await db
     .from('social_pieces')
-    .select('id, format, moment_key, planned_at, social_piece_revisions(version, slides, versions), social_piece_decisions(revision, decision)')
+    .select('id, format, moment_key, planned_at, social_piece_revisions(version, slides, versions), social_piece_decisions(revision, decision), social_piece_postings(id)')
     .not('moment_key', 'is', null)
     .order('planned_at', { ascending: false })
     .limit(3000)
@@ -101,8 +101,11 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
     const newest = revs[0]
     if (!newest) continue
     const rejected = ((p.social_piece_decisions as { revision: number; decision: string }[] | null) ?? []).some((d) => d.revision === newest.version && d.decision === 'rejected')
-    // A photograph is never used twice, even one whose piece was rejected after it was drawn (law 37 (l)).
-    for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
+    // A photograph is spent once its piece has posted and reserved while its piece is open, so a post is never repeated
+    // and two open pieces never share one (law 37 (l)); a piece rejected before it ever posted frees it (the PM's 12:28
+    // of 21 November 2026, item 1: Sunday's photograph was lost to a story set aside before it could post).
+    const posted = ((p.social_piece_postings as { id: string }[] | null) ?? []).length > 0
+    if (posted || !rejected) for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
     if (rejected) continue
     const h = byRun.get(parts.runKey) ?? { feedDays: [], storyDays: [], had: [] }
     if (parts.format === 'feed') h.feedDays.push(parts.day)
