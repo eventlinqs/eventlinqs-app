@@ -9,6 +9,7 @@ import { escapeOrValue } from '@/lib/supabase/or-filter'
 import type { CommunitySlug } from '@/lib/communities/data'
 import { tokenise, sanitiseToken, buildSearchOrGroups } from './search-query'
 import { askEngine, orderByRank, type EngineAnswer, type SearchRpcClient } from '@/lib/search/engine'
+import { recordEngineFallback } from '@/lib/analytics/search-record'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
@@ -108,6 +109,13 @@ async function resolveSearch(supabase: LookupClient, q: string | undefined): Pro
   const engine = await askEngine(supabase as unknown as SearchRpcClient, phrase)
   if (engine) {
     return { ops: [{ kind: 'in', column: 'id', values: engine.ids.length > 0 ? [...engine.ids] : [NO_MATCH] }], engine }
+  }
+  // Never silent (the PM's 05:45, condition (b)): every answer the word filter gives in the engine's place is one row in
+  // the search log (surface 'events-fallback'), so a broken engine shows in the log the learning loop reads.
+  try {
+    await recordEngineFallback(createAdminClient(), phrase)
+  } catch {
+    // The log is never the reason a search fails: recordEngineFallback logs its own refusals.
   }
   return { ops: (await searchOrGroups(supabase, phrase)).map((filter): QueryOp => ({ kind: 'or', filter })), engine: null }
 }
