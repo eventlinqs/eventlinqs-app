@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getAllCities } from '@/lib/cities/data'
-import { GUIDED_CITY_SLUGS, isRedirected, redirectFor } from '@/lib/seo/permanent-redirects'
-import { EVENTS_CITY_TO_GUIDE } from '@/lib/seo/query-redirects'
+import { isRedirected, redirectFor } from '@/lib/seo/permanent-redirects'
+import { guideForEventsQuery } from '@/lib/seo/query-redirects'
 
 /*
  * ROUND 3, ITEM 7 (Lawal, 2 November 2026; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\ROUND3-DIRECTIVE-2NOV.md; the
@@ -24,13 +24,25 @@ describe('the old city routes', () => {
     expect(isRedirected('/events/browse/aireys-inlet')).toBe(false)
   })
   it("/events?city=<city> goes to the city's guide too, for the guided cities only, and only when nothing else /events reads is asked", () => {
-    expect(src('next.config.ts')).toContain('EVENTS_CITY_TO_GUIDE,')
-    expect(EVENTS_CITY_TO_GUIDE.source).toBe('/events')
-    expect(EVENTS_CITY_TO_GUIDE.has).toEqual([{ type: 'query', key: 'city', value: `(?<city>${GUIDED_CITY_SLUGS.join('|')})` }])
-    expect(EVENTS_CITY_TO_GUIDE.destination).toBe('/city/:city')
-    expect(EVENTS_CITY_TO_GUIDE.permanent).toBe(true)
-    // The words, the map, a sort, a type or a date stay on /events (21 November 2026; tests/unit/seo/city-controls-end-on-a-page.test.ts).
-    expect(EVENTS_CITY_TO_GUIDE.missing.map((m) => m.key)).toEqual(expect.arrayContaining(['q', 'view', 'sort', 'event_type', 'category', 'date']))
+    expect(src('src/app/events/page.tsx')).toMatch(/if \(guide\) permanentRedirect\(guide\)/)
+    expect(guideForEventsQuery({ city: 'geelong' })).toBe('/city/geelong')
+    expect(guideForEventsQuery({ city: 'Geelong' })).toBe('/city/geelong')
+    expect(guideForEventsQuery({ city: 'geelong', utm_source: 'x' })).toBe('/city/geelong?utm_source=x')
+    expect(guideForEventsQuery({ city: 'aireys-inlet' })).toBeNull()
+    for (const key of ['q', 'view', 'sort', 'event_type', 'category', 'date', 'free']) expect(guideForEventsQuery({ city: 'geelong', [key]: 'x' })).toBeNull()
+    expect(guideForEventsQuery({ city: 'geelong', q: '' })).toBe('/city/geelong')
+  })
+  it('every has and missing in next.config.ts is a literal list of at most 16, which Vercel accepts (21 November 2026)', () => {
+    // Vercel refused AV's preview, quoted: 'Builder returned invalid routes: should NOT have more than 16 items' (26).
+    const cfg = src('next.config.ts')
+    const all = [...cfg.matchAll(/\b(has|missing):\s*([^,\n]*)/g)]
+    expect(all.length).toBeGreaterThan(0)
+    for (const m of all) {
+      expect(m[2].startsWith('['), `${m[1]}: ${m[2]}`).toBe(true)
+      const list = cfg.slice(m.index! + m[0].length - m[2].length, cfg.indexOf(']', m.index!) + 1)
+      expect((list.match(/\btype:/g) ?? []).length, list).toBeLessThanOrEqual(16)
+    }
+    expect(cfg).not.toContain('EVENTS_CITY_TO_GUIDE')
   })
   it('the sitemap publishes no browse page that redirects, and our own links go straight to the guide', () => {
     expect(src('src/app/sitemap.ts')).toMatch(/if \(isRedirected\(`\/events\/browse\/\$\{c\.slug\}`\)\) continue/)

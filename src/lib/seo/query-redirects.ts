@@ -1,24 +1,34 @@
 import { EVENTS_PARAM_KEYS } from '../events/events-param-keys'
-import { GUIDED_CITY_SLUGS } from './permanent-redirects'
+import { resolveCitySlug } from '../events/url-filters'
 
 /**
- * REDIRECTS THAT HOLD ONLY FOR A QUERY (21 November 2026). Kept apart from ./permanent-redirects.ts, whose every source
- * the sitemap guard (scripts/guards/sitemap-resolves.mjs) reads as a page redirected away: /events itself is never
- * redirected, only /events with the query below, so it is no sitemap fault. Relative imports: next.config.ts reads this.
+ * /events?city=<city> GOES TO THE CITY'S GUIDE, ONLY WHEN NOTHING ELSE /events READS IS ASKED (round 3, item 7; the PM's
+ * 20:41 of 21 November 2026). The guide does not honour a search's words, the map, a sort, a type or a date, so any of
+ * those keeps the visitor on /events, which does (EVENTS_PARAM_KEYS, one list held equal to the page's type). The city
+ * may be its slug or its name in any case ('melbourne', 'Melbourne', 'Gold Coast'): resolveCitySlug reads both.
  *
- * /events?city=<city> FOR A CITY WITH A GUIDE GOES TO THE GUIDE (round 3, item 7), ONLY WHEN NOTHING ELSE /events
- * READS IS ASKED (21 November 2026, the PM's 20:41). The guide does not honour a search's words, the map, a sort, a
- * type or a date, so any of those keeps the visitor on /events, which does (EVENTS_PARAM_KEYS, one list with the
- * type). The city is matched in any case at Vercel's edge (it forwarded 'Melbourne', read on production at 20:58) and
- * by exact case under next start; either way /city/<any case or the name> answers 308 to its slug
- * (src/lib/cities/city-route.ts), so every case ends on the guide. Held by
- * tests/unit/seo/city-controls-end-on-a-page.test.ts and read live by scripts/verify/city-controls-live.mjs.
+ * WHY IN THE PAGE, NOT IN next.config.ts (21 November 2026). The rule was a config redirect with a 'has' on city and a
+ * 'missing' on every other key. Two faults, both read on Vercel only: its edge matched the city in any case and forwarded
+ * 'Melbourne' to /city/Melbourne, a 404 on every page (production, 20:58), while next start matched exact case; and with
+ * 26 'missing' conditions Vercel refused the preview, quoted: 'Builder returned invalid routes: should NOT have more than
+ * 16 items'. Decided here, in one pure function called by src/app/events/page.tsx, the rule is the same under next start,
+ * on every preview and on production, and holds any number of keys. Words /events does not read (a utm tag) go with the
+ * visitor to the guide.
  */
-export const EVENTS_CITY_TO_GUIDE = {
-  source: '/events',
-  has: [{ type: 'query' as const, key: 'city', value: `(?<city>${GUIDED_CITY_SLUGS.join('|')})` }],
-  missing: EVENTS_PARAM_KEYS.filter((key) => key !== 'city').map((key) => ({ type: 'query' as const, key })),
-  destination: '/city/:city',
-  permanent: true as const,
+export function guideForEventsQuery(query: Readonly<Record<string, string | readonly string[] | undefined>>): string | null {
+  const last = (v: string | readonly string[] | undefined): string => (typeof v === 'string' ? v : (v?.[v.length - 1] ?? ''))
+  const city = last(query.city).trim()
+  if (!city) return null
+  for (const key of EVENTS_PARAM_KEYS) {
+    if (key !== 'city' && last(query[key]).trim() !== '') return null
+  }
+  const slug = resolveCitySlug(city)
+  if (!slug) return null
+  const rest = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if ((EVENTS_PARAM_KEYS as readonly string[]).includes(key)) continue
+    for (const v of typeof value === 'string' ? [value] : (value ?? [])) rest.append(key, v)
+  }
+  const tail = rest.toString()
+  return `/city/${slug}${tail ? `?${tail}` : ''}`
 }
-

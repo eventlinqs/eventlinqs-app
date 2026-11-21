@@ -6,7 +6,7 @@ import { cityRouteAnswer } from '@/lib/cities/city-route'
 import { EVENTS_PARAM_KEYS, type EventsParamKey } from '@/lib/events/events-param-keys'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import { resolveCityName } from '@/lib/events/url-filters'
-import { EVENTS_CITY_TO_GUIDE } from '@/lib/seo/query-redirects'
+import { guideForEventsQuery } from '@/lib/seo/query-redirects'
 import { cityControlTargets } from '../../../scripts/verify/lib/city-control-targets.mjs'
 
 /*
@@ -16,10 +16,12 @@ import { cityControlTargets } from '../../../scripts/verify/lib/city-control-tar
  * '/events?q=jazz&city=Melbourne -> 404 /city/Melbourne?q=jazz&city=Melbourne'. The same redirect sent the home's Map
  * and Sort links, and the city page's type rail, to a guide that drops view, sort and event_type.
  *
- * For every guide city, every control that sends a city to /events is walked through the redirect exactly as Next
- * matches it (next start: exact case) and as Vercel's edge did (any case), then through the city route. It must end on
- * a page, and on the page that honours what was asked: the guide only when nothing else /events reads was asked, else
- * /events, whose filter names the city. The live read of the same targets is scripts/verify/city-controls-live.mjs.
+ * The rule now lives in the /events page itself (src/lib/seo/query-redirects.ts guideForEventsQuery), one behaviour under
+ * next start and on Vercel; a config redirect with 26 'missing' keys was refused by Vercel, quoted: 'Builder returned
+ * invalid routes: should NOT have more than 16 items'. For every guide city, every control that sends a city to /events
+ * is walked through that rule, then through the city route. It must end on a page, and on the page that honours what
+ * was asked: the guide only when nothing else /events reads was asked, else /events, whose filter names the city. The
+ * live read of the same targets is scripts/verify/city-controls-live.mjs.
  */
 
 // The key list and the type agree both ways; tsc fails on this line otherwise.
@@ -28,32 +30,16 @@ type KeysAgree = [Exclude<keyof EventsSearchParams, EventsParamKey>, Exclude<Eve
   : false
 const KEYS_AGREE: KeysAgree = true
 
-const EDGES = ['next start, exact case', "Vercel's edge, any case"] as const
-type Edge = (typeof EDGES)[number]
-
-/** Next's matchHas (node_modules/next/dist/shared/lib/router/utils/prepare-destination.js), with the case rule given. */
-function forwardOf(url: URL, edge: Edge): string | null {
-  if (url.pathname !== EVENTS_CITY_TO_GUIDE.source) return null
-  const groups: Record<string, string> = {}
-  const matches = (item: { readonly key: string; readonly value?: string }): boolean => {
-    const value = url.searchParams.getAll(item.key).at(-1)
-    if (!value) return false
-    if (!item.value) return true
-    const m = value.match(new RegExp(`^${item.value}$`, edge === "Vercel's edge, any case" ? 'i' : ''))
-    if (m?.groups) Object.assign(groups, m.groups)
-    return Boolean(m)
-  }
-  if (!EVENTS_CITY_TO_GUIDE.has.every(matches) || EVENTS_CITY_TO_GUIDE.missing.some(matches)) return null
-  return EVENTS_CITY_TO_GUIDE.destination.replace(':city', groups.city ?? '')
-}
-
 type End = { readonly page: 'events' } | { readonly page: 'guide'; readonly slug: string } | { readonly page: 'not found'; readonly path: string }
 
-function endOf(path: string, edge: Edge): End {
+/** Where a control's address ends: the /events page's own rule (guideForEventsQuery), then the city route. */
+function endOf(path: string): End {
   const url = new URL(path, 'https://eventlinqs.test')
-  const forward = url.pathname.startsWith('/city/') ? url.pathname : forwardOf(url, edge)
+  const query: Record<string, string> = {}
+  for (const [k, v] of url.searchParams) query[k] = v
+  const forward = url.pathname.startsWith('/city/') ? url.pathname : url.pathname === '/events' ? guideForEventsQuery(query) : null
   if (!forward) return { page: 'events' }
-  const answer = cityRouteAnswer(forward.slice('/city/'.length))
+  const answer = cityRouteAnswer(new URL(forward, 'https://eventlinqs.test').pathname.slice('/city/'.length))
   return answer.kind === 'not-found' ? { page: 'not found', path: forward } : { page: 'guide', slug: answer.slug }
 }
 
@@ -67,11 +53,11 @@ describe('every city control ends on a page that does what was pressed', () => {
     expect(CITIES.length).toBeGreaterThan(0)
   })
 
-  for (const edge of EDGES) {
+  {
     for (const c of CITIES) {
-      it(`${c.name}, ${edge}`, () => {
+      it(c.name, () => {
         for (const [control, path] of cityControlTargets(c)) {
-          const end = endOf(path, edge)
+          const end = endOf(path)
           const asked = [...new URL(path, 'https://eventlinqs.test').searchParams].filter(([, v]) => v !== '')
           expect(end, `${control}: ${path}`).not.toMatchObject({ page: 'not found' })
           if (end.page === 'guide') {

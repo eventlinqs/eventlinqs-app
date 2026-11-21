@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { after } from 'next/server'
 import { headers } from 'next/headers'
+import { permanentRedirect } from 'next/navigation'
+import { guideForEventsQuery } from '@/lib/seo/query-redirects'
 import { Suspense } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordSearch, searchToRecord } from '@/lib/analytics/search-record'
@@ -59,6 +61,10 @@ type Props = {
 
 export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
+  // A CITY ALONE GOES TO ITS GUIDE (round 3, item 7; src/lib/seo/query-redirects.ts): /events?city=melbourne, or
+  // ?city=Melbourne, answers 308 to /city/melbourne; with words, the map, a sort, a type or a date it stays here.
+  const guide = guideForEventsQuery(raw as Readonly<Record<string, string | readonly string[] | undefined>>)
+  if (guide) permanentRedirect(guide)
   const { filters, page, view, notice, tab } = parseEventsSearchParams(raw)
 
   // Server-side geo detection (headers() / IP lookup) was removed to keep
