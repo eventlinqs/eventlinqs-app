@@ -55,7 +55,7 @@ export default async function NewsletterPage() {
       </section>
 
       <section aria-label="The two editions" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {EDITIONS.map((e) => (
             <div key={e.name} data-edition={e.name} className="rounded-2xl border border-ink-200 bg-white p-6">
               <p className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">{e.when}</p>
@@ -71,7 +71,7 @@ export default async function NewsletterPage() {
           <h2 id="newsletter-cities-heading" className="type-rail-heading font-display uppercase text-ink-900">
             Choose your city
           </h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {photos.map((c) => (
               <div key={c.slug} data-city={c.slug} className="flex flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white">
                 <Link href={`/city/${c.slug}`} className="group block" aria-label={`What's on in ${c.name}`}>

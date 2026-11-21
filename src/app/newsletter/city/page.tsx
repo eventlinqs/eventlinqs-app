@@ -79,7 +79,7 @@ export default async function NewsletterManagePage({ searchParams }: Props) {
               {current ? <>, for <span className="font-semibold text-ink-900">{current.name}</span></> : null}.
             </p>
             <h2 className="mt-6 font-display text-xl font-bold text-ink-900">Choose your city</h2>
-            <form action={changeNewsletterCityAction} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <form action={changeNewsletterCityAction} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input type="hidden" name="t" value={sp.t} />
               {NEWSLETTER_CITIES.map((c) => (
                 <div key={c.slug} data-city={c.slug} className="rounded-xl border border-ink-200 p-4">
@@ -115,7 +115,7 @@ export default async function NewsletterManagePage({ searchParams }: Props) {
               Every edition carries its own Manage preferences link at the foot, which opens your settings here. Not
               subscribed yet? Choose your city and it is done in one step.
             </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {NEWSLETTER_CITIES.map((c) => (
                 <div key={c.slug} data-city={c.slug} className="rounded-2xl border border-ink-200 bg-white p-5">
                   <CityNewsletterCapture cityName={c.name} tone="light" />
