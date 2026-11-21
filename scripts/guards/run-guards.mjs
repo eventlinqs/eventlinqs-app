@@ -496,6 +496,7 @@
  *                              .vercelignore, walked down level by level, and a failure
  *                              prints the exact lines to add rather than describing the
  *                              walk-down (close-out C18 FINAL, F1.9.2)
+ *   vercel-route-limits        every route next.config.ts hands Vercel is within Vercel's published schema limits (16 conditions)
  *   excluded-reads-survive-the-upload  and every prebuild entry point whose code names a
  *                              docs/ path is EXECUTED in a materialised .vercelignore
  *                              upload. There is no reviewed-tolerant list any more: one
