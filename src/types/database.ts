@@ -2262,6 +2262,48 @@ export type Database = {
           },
         ]
       }
+      event_search: {
+        Row: {
+          doc: unknown
+          event_id: string
+          names: string
+          refreshed_at: string
+          season_key: string
+          shown_organiser: string | null
+        }
+        Insert: {
+          doc: unknown
+          event_id: string
+          names: string
+          refreshed_at?: string
+          season_key: string
+          shown_organiser?: string | null
+        }
+        Update: {
+          doc?: unknown
+          event_id?: string
+          names?: string
+          refreshed_at?: string
+          season_key?: string
+          shown_organiser?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_search_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_search_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_secondary_categories: {
         Row: {
           assigned_by: string
@@ -9708,6 +9750,27 @@ export type Database = {
           },
         ]
       }
+      search_aliases: {
+        Row: {
+          created_at: string
+          means: string
+          source: string
+          term: string
+        }
+        Insert: {
+          created_at?: string
+          means: string
+          source?: string
+          term: string
+        }
+        Update: {
+          created_at?: string
+          means?: string
+          source?: string
+          term?: string
+        }
+        Relationships: []
+      }
       seat_holds: {
         Row: {
           created_at: string
@@ -13611,6 +13674,7 @@ export type Database = {
         Returns: Json
       }
       event_referencing_tables: { Args: never; Returns: Json }
+      event_search_refresh: { Args: { p_event: string }; Returns: undefined }
       event_seat_status_counts: { Args: { p_event_id: string }; Returns: Json }
       event_seat_status_counts_many: {
         Args: { p_event_ids: string[] }
@@ -14300,6 +14364,36 @@ export type Database = {
           result: string
           seat_label: string
         }[]
+      }
+      search_correct: { Args: { qn: string }; Returns: string }
+      search_events: {
+        Args: { p_limit?: number; p_q: string }
+        Returns: {
+          event_id: string
+          matched: string
+          query: string
+          score: number
+        }[]
+      }
+      search_exact: {
+        Args: { lim: number; qn: string }
+        Returns: {
+          event_id: string
+          score: number
+        }[]
+      }
+      search_initials: { Args: { t: string }; Returns: string }
+      search_norm: { Args: { t: string }; Returns: string }
+      search_relaxed: {
+        Args: { lim: number; qn: string }
+        Returns: {
+          event_id: string
+          score: number
+        }[]
+      }
+      search_season_key: {
+        Args: { title: string; venue: string }
+        Returns: string
       }
       social_asset_usable: {
         Args: { p_at: string; p_event: string; p_url: string }
