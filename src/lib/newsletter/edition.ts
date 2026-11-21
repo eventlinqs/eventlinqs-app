@@ -10,6 +10,7 @@
  */
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { captureException } from '@/lib/observability/sentry'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { endOfLocalDayUtc, isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
@@ -91,15 +92,19 @@ async function readNights(admin: Admin, cities: readonly string[], fromIso: stri
     // toIso is an exclusive end (endOfLocalDayUtc: the next day's first instant).
     return (fromIso ? q.gte('start_date', fromIso) : q).lt('start_date', toIso).order('start_date', { ascending: true }).limit(limit)
   })
-  const rows = ((data ?? []) as unknown as Row[]).filter(
-    (r) => isPubliclyDiscoverable(r.visibility) && r.is_seed_data !== true && isStillListed(r, now) && Date.parse(r.start_date) < Date.parse(toIso) && (!fromIso || Date.parse(r.start_date) >= Date.parse(fromIso)),
-  )
+  const rows = ((data ?? []) as unknown as Row[]).filter((r) => {
+    const starts = Date.parse(r.start_date)
+    const inEdition = starts < Date.parse(toIso) && (!fromIso || starts >= Date.parse(fromIso))
+    return isPubliclyDiscoverable(r.visibility) && r.is_seed_data !== true && isStillListed(r, now) && inEdition
+  })
   const off = nightsLeftOut(rows.map((r) => ({ eventId: r.id, venueId: r.venue_id ?? null })), await venuesOff('weekly_roundup', distributionDeps(admin)))
   return rows.filter((r) => !off.has(r.id))
 }
 
 /** A night's date line: a run dated by its days, one under way by its end, one evening by its start. */
-export function whenLabelOf(r: Pick<Row, 'start_date' | 'end_date' | 'timezone'>, now: Date): string {
+type WhenFields = Pick<Row, 'start_date' | 'end_date' | 'timezone'>
+
+export function whenLabelOf(r: WhenFields, now: Date): string {
   const zone = r.timezone ?? PLATFORM_TIME_ZONE
   if (Date.parse(r.start_date) < now.getTime() && r.end_date) return `Until ${digestDateLabel(r.end_date, zone)}`
   const run = nightDates(r.start_date, r.end_date, zone)
@@ -177,7 +182,9 @@ export async function forTheNewsletter(admin: Pick<Admin, 'rpc'>, n: ReadNight, 
     try {
       const { data } = await admin.rpc('social_asset_usable', { p_url: n.pageImage, p_event: n.id, p_at: now.toISOString() })
       permitted = data === true
-    } catch {
+    } catch (error) {
+      // A failed read is never a yes: the illustrative photograph stands, and the failure is reported.
+      captureException(error, { where: 'lib/newsletter/edition:forTheNewsletter' })
       permitted = false
     }
   }

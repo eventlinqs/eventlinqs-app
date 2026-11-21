@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { buildDigestEmailHtml, fetchDigestEvents, resolveDigestPeriod } from '@/lib/broadcast/digest'
 import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
+import { LOCAL_DIGEST_PURPOSE } from '@/lib/consent/purposes'
+import { filterPermittedRecipients } from '@/lib/consent/resolver'
 import { undeliverableAddresses } from '@/lib/email/delivery-events'
 import { sendEmail } from '@/lib/email/send'
 
@@ -16,7 +18,7 @@ import { sendEmail } from '@/lib/email/send'
 
 type Admin = SupabaseClient<Database>
 
-export type WelcomeOutcome = 'sent' | 'no_picks' | 'no_token' | 'undeliverable' | 'not_sent'
+export type WelcomeOutcome = 'sent' | 'no_picks' | 'no_token' | 'undeliverable' | 'refused' | 'not_sent'
 
 /** The subject of the welcome: the city and what it carries, no exclamation, no dash (copy laws). */
 export function welcomeSubject(cityName: string): string {
@@ -39,6 +41,9 @@ export async function sendNewsletterWelcome(
   if (row.error || !token) return 'no_token'
   try {
     if ((await undeliverableAddresses(admin, [input.email])).has(input.email.trim().toLowerCase())) return 'undeliverable'
+    // The ledger decides, as for the weekly digest itself: a suppression or a withdrawal wins over the click.
+    const verdict = await filterPermittedRecipients(admin, [input.email], { purpose: LOCAL_DIGEST_PURPOSE, channel: 'email' })
+    if (verdict.permitted.length === 0) return 'refused'
   } catch {
     return 'not_sent'
   }

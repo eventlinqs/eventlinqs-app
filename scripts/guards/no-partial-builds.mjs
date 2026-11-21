@@ -169,6 +169,9 @@ const DETECTOR_FILES = new Set([
   // out changeme / placeholder / todo / fixme. It was reported for containing
   // the words it exists to reject.
   'scripts/lib/db-credentials.mjs',
+  // Added 2026-11-21, the same joke once more (WINDOW 5A, train AQ and AR): the newsletter's own copy gate
+  // (whatsOnFaults, law 22) refuses a pick whose words carry a placeholder, so its PLACEHOLDER regex spells them out.
+  'src/lib/newsletter/whats-on.ts',
   // Added 2026-09-11, the same joke again (close-out UX2.5). The launch-screens
   // read asserts that none of the five launch screens carries placeholder copy,
   // so its PLACEHOLDERS list necessarily spells out "coming soon", "lorem

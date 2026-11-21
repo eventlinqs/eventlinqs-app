@@ -13,6 +13,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Only its two parameters: any other query word would make a new cache entry and a new drawing (law 20).
+  if ([...request.nextUrl.searchParams.keys()].some((k) => k !== 'k' && k !== 'src')) {
+    return NextResponse.json({ error: 'only k and src are read' }, { status: 400 })
+  }
   const kind = request.nextUrl.searchParams.get('k')
   const src = request.nextUrl.searchParams.get('src')
   if (!isNlImageKind(kind)) return NextResponse.json({ error: 'unknown image kind' }, { status: 400 })

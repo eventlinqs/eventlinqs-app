@@ -59,6 +59,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
       'Asks the provider to list the sending domains so the health page can say whether mail can leave. It sends no message.',
   },
   {
+    file: 'src/lib/newsletter/welcome.ts',
+    kind: 'marketing',
+    purpose: 'platform_local_digest',
+    reason:
+      "The newsletter's welcome (law 50 (a), 21 November 2026): this week's picks for the city, sent once, at once, to the one address whose subscribe click was just recorded in the ledger for that city, with the one click unsubscribe from the digest's own token; never to an address with a recorded hard bounce.",
+  },
+  {
     file: 'src/app/api/cron/weekly-digest/route.ts',
     kind: 'marketing',
     purpose: 'platform_local_digest',

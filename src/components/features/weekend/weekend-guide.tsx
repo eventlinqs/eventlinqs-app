@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Great_Vibes } from 'next/font/google'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { cleanTitle } from '@/lib/social/campaign'
 import type { ReadNight } from '@/lib/newsletter/edition'
@@ -51,9 +52,8 @@ export function WeekendGuide({
   return (
     <main data-page="weekend" className="bg-[var(--surface-1,#ffffff)] pb-12">
       <section data-section="weekend-hero" aria-label="The Weekend Guide, Victoria" className="relative h-[330px] overflow-hidden bg-[var(--color-navy-950)] text-white sm:h-[380px]">
-        {hero ? <HeroMedia image={hero.src} alt={hero.alt} priority sizes="100vw" objectPosition="50% 40%" /> : null}
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/85 via-[var(--color-navy-950)]/35 to-[var(--color-navy-950)]/20" />
-        <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-between px-5 pb-16 pt-8 sm:px-8">
+        {hero ? <HeroMedia image={hero.src} alt={hero.alt} priority objectPosition="50% 40%" /> : null}
+        <HeroCaption className="mx-auto h-full max-w-7xl" contentClassName="flex h-full flex-col justify-between px-5 pb-16 pt-8 sm:px-8">
           <h1 className="font-display text-[40px] font-extrabold leading-[44px] sm:text-5xl sm:leading-[54px]">
             The Weekend
             <br />
@@ -65,7 +65,7 @@ export function WeekendGuide({
             <span aria-hidden="true" className="font-normal text-white/60">|</span>
             <span>{'\u{1F4CD}'} Victoria</span>
           </p>
-        </div>
+        </HeroCaption>
       </section>
 
       <nav aria-label="This weekend by kind" className="relative z-10 mx-3.5 -mt-9 max-w-3xl rounded-2xl bg-white p-1.5 shadow-[0_10px_28px_rgba(10,22,40,0.12)] sm:mx-auto">
@@ -90,7 +90,7 @@ export function WeekendGuide({
             <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy-950)]/90 via-[var(--color-navy-950)]/30 to-transparent" />
             {featured.ownPhoto || !featured.pageImage ? null : <IllustrativeLabel />}
             <span className="absolute right-3 top-3 rounded-full bg-[var(--brand-accent)] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.05em] text-[var(--color-navy-950)]">This weekend&#8217;s feature</span>
-            <span className="absolute inset-x-[18px] bottom-[18px] block pr-14">
+            <span className="absolute inset-x-5 bottom-5 block pr-14">
               <span className="block font-display text-[28px] font-extrabold leading-[32px]">{cleanTitle(featured.title)}</span>
               {featured.summary ? <span className="mt-1.5 line-clamp-2 block text-sm font-medium leading-5 text-[#E6EAF0]">{featured.summary}</span> : null}
               <span className="mt-2.5 flex flex-wrap gap-x-3.5 gap-y-1 text-sm font-bold leading-5">
@@ -98,7 +98,7 @@ export function WeekendGuide({
                 <span>{'\u{1F4CD}'} {featured.pick.venue}</span>
               </span>
             </span>
-            <span aria-hidden="true" className="absolute bottom-[18px] right-[18px] flex h-[46px] w-[46px] items-center justify-center rounded-full bg-[var(--brand-accent)] text-2xl font-extrabold text-[var(--color-navy-950)]">&rarr;</span>
+            <span aria-hidden="true" className="absolute bottom-5 right-5 flex h-[46px] w-[46px] items-center justify-center rounded-full bg-[var(--brand-accent)] text-2xl font-extrabold text-[var(--color-navy-950)]">&rarr;</span>
           </Link>
         ) : null}
 
@@ -142,8 +142,8 @@ export function WeekendGuide({
         <Link href="/state/victoria" data-explore className="relative mt-6 block h-[190px] overflow-hidden rounded-[18px] bg-[var(--color-navy-950)] text-white sm:h-[240px]">
           {explore ? <EventCardMedia src={explore.src} alt={explore.alt} variant="bento-hero" className="absolute inset-0" /> : null}
           <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[var(--color-navy-950)]/85 via-[var(--color-navy-950)]/45 to-transparent" />
-          <span className="absolute left-[22px] top-[30px] max-w-[260px] font-display text-[30px] font-extrabold italic leading-[34px]">Explore more events across Victoria</span>
-          <span aria-hidden="true" className="absolute bottom-[18px] right-[18px] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-accent)] text-[28px] font-extrabold text-[var(--color-navy-950)]">&rarr;</span>
+          <span className="absolute left-5 top-8 max-w-[260px] font-display text-[30px] font-extrabold italic leading-[34px]">Explore more events across Victoria</span>
+          <span aria-hidden="true" className="absolute bottom-5 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-accent)] text-[28px] font-extrabold text-[var(--color-navy-950)]">&rarr;</span>
         </Link>
       </div>
     </main>

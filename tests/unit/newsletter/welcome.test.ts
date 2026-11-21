@@ -16,6 +16,7 @@ let consentRow: { data: Array<{ unsubscribe_token: string | null; status: string
 }
 let sendFails = false
 let bounced = new Set<string>()
+let ledgerSays = true
 
 vi.mock('@/lib/email/send', () => ({
   sendEmail: vi.fn(async (m: Record<string, unknown>) => {
@@ -23,6 +24,11 @@ vi.mock('@/lib/email/send', () => ({
     sent.push(m)
     return { id: 'resend-1' }
   }),
+}))
+vi.mock('@/lib/consent/resolver', () => ({
+  filterPermittedRecipients: vi.fn(async (_a: unknown, emails: string[]) =>
+    ledgerSays ? { permitted: emails, refused: [] } : { permitted: [], refused: emails.map((email) => ({ email, reason: 'suppressed' })) },
+  ),
 }))
 vi.mock('@/lib/email/delivery-events', () => ({
   undeliverableAddresses: vi.fn(async () => bounced),
@@ -62,6 +68,7 @@ describe('the newsletter welcome', () => {
     consentRow = { data: [{ unsubscribe_token: 'tok-123', status: 'granted' }], error: null }
     sendFails = false
     bounced = new Set<string>()
+    ledgerSays = true
   })
 
   it("sends this week's picks for the city at once, with the one click unsubscribe from the digest's own token", async () => {
@@ -93,6 +100,12 @@ describe('the newsletter welcome', () => {
   it('an address with a recorded hard bounce is never sent to (law 50 (d))', async () => {
     bounced = new Set(['jo@example.com.au'])
     expect(await sendNewsletterWelcome(admin(), input)).toBe('undeliverable')
+    expect(sent).toHaveLength(0)
+  })
+
+  it('the consent ledger decides, as for the digest: a refusal there sends nothing', async () => {
+    ledgerSays = false
+    expect(await sendNewsletterWelcome(admin(), input)).toBe('refused')
     expect(sent).toHaveLength(0)
   })
 
