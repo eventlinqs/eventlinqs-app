@@ -13,6 +13,7 @@ import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
 import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
+import { readCityCookie } from './header-city'
 
 /**
  * Custom event name dispatched on `window` after LocationPicker writes a
@@ -73,20 +74,7 @@ interface SiteHeaderClientProps {
  * does compare with Object.is on every render. That misuse is now
  * gone.
  */
-export function readCityCookie(): DetectedLocation | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
-  if (!match) return null
-  try {
-    const parsed = JSON.parse(decodeURIComponent(match[1]))
-    if (parsed && typeof parsed.city === 'string') {
-      return { ...parsed, source: 'cookie' as const }
-    }
-  } catch {
-    // ignore malformed cookie
-  }
-  return null
-}
+export { readCityCookie } from './header-city'
 
 /**
  * SiteHeaderClient - dual-state solid-navy navigation.
