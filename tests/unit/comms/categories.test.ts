@@ -17,7 +17,7 @@ import {
 // every message record. The code's map and the migration's map are one map: this file reads the migration.
 const MIGRATION = readFileSync(join(process.cwd(), 'supabase/migrations/20261119125001_comms_categories.sql'), 'utf8').replace(/\r\n/g, '\n')
 // The template map is the one the database runs: the migration that replaced comms_subtype_of_template_key last (law 49's
-// two letters, 20261121140001), first written in the migration above.
+// two letters, 20261121150001), first written in the migration above.
 const MIGRATIONS = join(process.cwd(), 'supabase/migrations')
 const MAP_MIGRATION = readdirSync(MIGRATIONS)
   .filter((f) => f.endsWith('.sql') && readFileSync(join(MIGRATIONS, f), 'utf8').includes('create or replace function public.comms_subtype_of_template_key('))
@@ -72,7 +72,7 @@ describe('the seven communication categories (Law 24)', () => {
   })
 
   it('the template map is read from the latest migration that writes it', () => {
-    expect(MAP_MIGRATION).toBe('20261121140001_lifecycle_letters_take_their_class.sql')
+    expect(MAP_MIGRATION).toBe('20261121150001_lifecycle_letters_take_their_class.sql')
   })
 
   it("law 49's photo request is PERM and its offer an acquisition first letter", () => {
