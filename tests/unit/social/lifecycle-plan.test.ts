@@ -273,3 +273,35 @@ describe('the season, whole (5C 03:12, the PM 03:39)', () => {
     await expect(planLifecyclePieces(db, { now: new Date('2026-11-22T01:00:00Z'), nights: rows.slice(5), origin: 'https://www.eventlinqs.com.au' })).rejects.toThrow(/ended nights could not be read/)
   })
 })
+
+describe('a weekly repeat is never an opening, never still on, never a last day (5C 03:50)', () => {
+  // Front Bar Trivia as production lists such repeats: one row a week, each its own one-off series, 7pm to 10pm.
+  const TUESDAYS = ['2026-11-24', '2026-12-01', '2026-12-08', '2026-12-15', '2026-12-22', '2026-12-29', '2027-01-05', '2027-01-12']
+  const rows = TUESDAYS.map((d, i) =>
+    night({ eventId: `fbt-${i}`, slug: `front-bar-trivia-${d}`, title: 'Front Bar Trivia', seriesId: `weekly-${i}`, host: null, venueName: 'The Front Bar', placeName: 'The Front Bar', startDate: `${d}T08:00:00Z`, endDate: `${d}T11:00:00Z` }),
+  )
+  const assets = rows.map((n, i) => ({ event_id: n.eventId, asset_id: `t-${i}`, asset_url: `https://x/trivia-${i}.jpg`, asset_type: 'photo', lead_rank: 1, source_width: 1440, source_height: 1080 }))
+  const asPast = (n: (typeof rows)[number]) => ({ id: n.eventId, title: n.title, start_date: n.startDate, end_date: n.endDate, timezone: n.timezone, created_at: n.listedAt, listing_series_id: n.seriesId, venue_id: null, venue_name: n.venueName })
+
+  it('Front Bar Trivia, eight Tuesdays a week apart: no Tuesday reads Opening today, Still on today or Last day today while a later Tuesday is listed', async () => {
+    let drawn = 0
+    for (const day of TUESDAYS) {
+      const now = new Date(`${day}T01:00:00Z`) // noon in Melbourne, before its 7pm start
+      const open = rows.filter((n) => Date.parse(n.endDate as string) > now.getTime())
+      const ended = rows.filter((n) => Date.parse(n.endDate as string) <= now.getTime() && Date.parse(n.endDate as string) > now.getTime() - 14 * 86_400_000).map(asPast)
+      const { pieces } = await planLifecyclePieces(fakeDb({ assets, past: ended }), { now, nights: open, origin: 'https://www.eventlinqs.com.au' })
+      for (const p of pieces) {
+        drawn += 1
+        const kind = parseMomentKey(p.momentKey)?.kind
+        expect(kind, `${day}: ${p.momentKey}`).not.toBe('first_day')
+        expect(kind, `${day}: ${p.momentKey}`).not.toBe('final_day')
+        const line = p.caption.split('\n')[0]
+        expect(line, day).not.toMatch(/^Opening today|still on|^Last day|^Final day/i)
+        const slide = p.slides[0] as { line?: string | null }
+        if (slide.line) expect(slide.line, day).not.toMatch(/^Starts today|^Last day/)
+      }
+    }
+    // Each Tuesday is still posted: the repeat reads neutral, it is never dropped.
+    expect(drawn).toBeGreaterThanOrEqual(TUESDAYS.length)
+  })
+})

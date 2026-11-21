@@ -208,7 +208,10 @@ export function stageOf(run: Run, now: Date): Stage {
   const last = run.days[run.days.length - 1]
   if (today > last) return 'ended'
   if (run.days.includes(today)) {
-    // The season's own first day and final day only (runsOf continuesSeason, seasonGoesOn).
+    // The season's own first day and final day only (runsOf continuesSeason, seasonGoesOn). A one-night run in a season
+    // of several runs is a repeat (a weekly trivia night: 5C's 03:50, 75 such groups on production), never an opening
+    // and never a last day; its day reads neutral (repeatDayOf).
+    if (isRepeat(run)) return 'running'
     if (today === first && !run.continuesSeason) return 'first_day'
     if (today === last && !run.seasonGoesOn) return 'final_day'
     return 'running'
@@ -217,6 +220,19 @@ export function stageOf(run: Run, now: Date): Stage {
   if (ahead === 1) return 'tomorrow'
   if (ahead <= 7) return 'this_week'
   return daysFrom(dayIn(new Date(run.listedAt), run.zone), today) < ANNOUNCE_DAYS ? 'announced' : 'upcoming'
+}
+
+/** A one-night run inside a season of several runs: a repeat, never an opening nor a last day. */
+export function isRepeat(run: Run): boolean {
+  return run.days.length === 1 && Boolean(run.continuesSeason || run.seasonGoesOn)
+}
+
+/**
+ * A running day that is its run's own first day (a season's later run beginning today, or a repeat's one night): its
+ * words are neutral, never 'Opening' and never 'Still on' (5C's 03:50 of 22 November 2026). Pure.
+ */
+export function repeatDayOf(run: Run, kind: MomentKind, day: string): boolean {
+  return kind === 'running' && run.days[0] === day
 }
 
 export type MomentKind = 'announce' | 'build' | 'final_push' | 'tomorrow' | 'first_day' | 'running' | 'final_day'
@@ -388,13 +404,15 @@ export function postableBand(input: {
   readonly day: string
   readonly zone: string
   readonly now: Date
+  /** Its run's own first day, not the season's opening (repeatDayOf): its words try neutral first, then on now. */
+  readonly repeatDay?: boolean
 }): { readonly at: Date; readonly onNow: boolean } | { readonly why: string } {
   const start = Date.parse(input.night.startDate)
   const end = input.night.endDate ? Date.parse(input.night.endDate) : start
   if (!Number.isFinite(start)) return { why: `${input.night.title} has no start` }
   // A first day tries its words as 'starts today' first, then, when its night is under way by the band it can take, as
   // on now; every other moment's words are fixed by its kind (momentSaysOnNow).
-  const tries = input.kind === 'first_day' ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  const tries = input.kind === 'first_day' || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
   let why = `no ${input.format} band on ${input.day}`
   for (const onNow of tries) {
     const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start, end }], input.zone, { onNow }), input.zone)
@@ -536,6 +554,11 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
  */
 const FIRST_DAY_ON_NOW: readonly string[] = ['Opening day, and on now.', 'Day one, and it is on now.', 'It is on now, from today.']
 
+/** A run's own first day that is not the season's opening (repeatDayOf): neutral, never 'Opening', never 'Still on'. */
+const REPEAT_DAY: readonly string[] = ['On today.', 'On again today.', 'Here again today.']
+/** The same, its night already under way by its band: its words say it is on now (piece-quality.ts ON_NOW). */
+const REPEAT_DAY_ON_NOW: readonly string[] = ['On now, today.', 'It is on now.', 'On again, and on now.']
+
 /**
  * Whether a night has started by its format's first band on the moment's day (the starting calendar, cadence.ts: feed
  * 9 am, story 6 pm, Melbourne's clock until the account's own posts teach the hours). Pure.
@@ -566,8 +589,8 @@ export function endedByFirstBand(endIso: string | null, zone: string, format: So
 }
 
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false): string | null {
-  const bank = kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false): string | null {
+  const bank = repeatDay ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY) : kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line

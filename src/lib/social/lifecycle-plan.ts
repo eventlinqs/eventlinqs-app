@@ -21,6 +21,7 @@ import {
   seedOf,
   chooseToday,
   postableBand,
+  repeatDayOf,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -353,7 +354,7 @@ export async function planLifecyclePieces(
     if (input.ownerAsked) return endedByNow(ln.endDate ?? null, input.now) ? 'it has ended' : null
     const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
     if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
-    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
     return 'why' in band ? band.why : null
   }
   const choice = chooseToday(candidates, drawable)
@@ -390,15 +391,18 @@ export async function planLifecyclePieces(
       }
       // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
       // that band says it is on now.
-      const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
+      const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
       if ('why' in band) {
         notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
         continue
       }
       onNow = band.onNow
     }
-    const startedByBand = c.moment.kind === 'first_day' && onNow
-    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
+    // A run's own first day that is not the season's opening reads neutral (5C's 03:50): its on now form only when
+    // its night is under way by its band.
+    const repeatDay = repeatDayOf(c.run, c.moment.kind, day)
+    const startedByBand = (c.moment.kind === 'first_day' || repeatDay) && onNow
+    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand, repeatDay)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
       continue
