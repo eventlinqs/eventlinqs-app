@@ -132,7 +132,8 @@
     ],
     "offerSubjects": [
       "^Helping more people find .+ on \\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December)$",
-      "^\\d+ people sent to your booking page from EventLinqs$"
+      "^\\d+ people sent to your booking page from EventLinqs$",
+      "^Your .+ listing on EventLinqs: may we use your photo\\?$"
     ],
     "actions": [
       "reply with one image",
@@ -183,6 +184,7 @@
       "^Free listing for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
       "^.+: complimentary EventLinqs listing$",
       "^Complimentary listing in our (Melbourne|Geelong|Ballarat|Bendigo) events guide$",
+      "^\\d{1,2} days to .+: let's fill it$",
       "^More people at your (Melbourne|Geelong|Ballarat|Bendigo) events, at no cost to you$",
       "^Free listings for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
       "^Complimentary EventLinqs listing for .+$",
