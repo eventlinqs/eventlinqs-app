@@ -2731,6 +2731,11 @@ const GUARDS = [
   // do, which is why nothing could see it. Drilled red on the pre-fix vercel.json.
   'scripts/guards/cron-routes-scheduled.mjs',
 
+  // WINDOW 5A, 21 November 2026: #331's CI build failed prerendering /weekend ('supabaseKey is required'), the same
+  // error car 35 met on 2 November. A page that can prerender asks for the key before it reads as admin. Drilled red on
+  // the /weekend that made an admin client with no key.
+  'scripts/guards/a-prerendered-page-asks-for-the-key.mjs',
+
   // Close-out UX4.5. Branch gate failures stop being email. Nothing in this
   // repository may dispatch an alert for a ref that is not main, and every
   // dispatch declares which class it belongs to so an outage never again reads

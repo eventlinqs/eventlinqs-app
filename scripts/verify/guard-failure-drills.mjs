@@ -354,6 +354,19 @@ const DRILLS = [
    * ever): the regression is the invitation card fill coming back into a home rail.
    */
   /*
+   * a-prerendered-page-asks-for-the-key (WINDOW 5A, 21 November 2026): /weekend made an admin client while it
+   * prerendered, and the CI build, which holds no service-role key, failed. The regression is the page reading as admin
+   * without asking for the key again.
+   */
+  {
+    name: '/weekend reads as admin while it prerenders, without asking for the key',
+    guard: `${GUARDS}/a-prerendered-page-asks-for-the-key.mjs`,
+    file: 'src/app/weekend/page.tsx',
+    find: '  if (!getSupabaseServiceRoleKey()) {',
+    replace: '  if (false) {',
+    expect: 'never asks getSupabaseServiceRoleKey() first',
+  },
+  /*
    * forms-say-only-what-happened (WINDOW 5C, 21 November 2026): the contact page opened a mailto: link and said
    * 'Message received' whatever happened. The regression is the form handing the visitor to a mail app again.
    */
