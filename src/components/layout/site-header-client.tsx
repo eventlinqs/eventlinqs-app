@@ -8,6 +8,7 @@ import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { HeaderSearchTrigger } from './header-search-trigger'
 import { SiteHeaderAccountButton, type AccountUser } from './site-header-account-button'
 import { SiteHeaderAccountDropdown } from './site-header-account-dropdown'
+import { useSignedInAccount } from './use-signed-in-account'
 import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
@@ -126,7 +127,10 @@ export function readCityCookie(): DetectedLocation | null {
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
  */
-export function SiteHeaderClient({ location, user, userEmail, isAdmin = false, pageCity = null }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, user: serverUser, userEmail: serverEmail, isAdmin: serverAdmin = false, pageCity = null }: SiteHeaderClientProps) {
+  // On a page cached for everyone the server sends the anonymous header; a browser holding a session asks who is signed
+  // in after the paint (use-signed-in-account.ts; WINDOW 5C's 11:57 and the PM's 12:28 of 21 November 2026, item 4).
+  const { user, email: userEmail, isAdmin } = useSignedInAccount(serverUser, serverEmail ?? null, serverAdmin)
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
   // Browse Events opens on the visitor's chosen city (the CONTROLLER's 08:50 (7)); '/events' until it is read.
