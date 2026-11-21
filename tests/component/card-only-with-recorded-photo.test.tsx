@@ -31,7 +31,7 @@ const night: EventCardData = {
   venue_country: 'Australia',
   created_at: '2026-11-01T00:00:00Z',
   // A kind with no looked-at photograph yet (src/lib/images/illustrative.ts), so its rows stay rows under law 46 (f).
-  category: { name: 'Theatre', slug: 'theatre' },
+  category: { name: 'Other', slug: 'other' },
   ticket_tiers: [],
   is_free: false,
   entry_mode: 'tickets',

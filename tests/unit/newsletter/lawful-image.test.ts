@@ -78,7 +78,8 @@ describe('only a photograph looked at, with no face its subject, stands in for a
     for (const slug of ['music', 'festival', 'community', 'arts-community', 'health-wellness', 'family', 'comedy', 'education', 'sports']) expect(illustrativePhoto(slug)).toMatch(/^(https:\/\/|\/images\/)/)
     expect(illustrativePhoto('arts-community')).toContain('/categories/arts/gallery-day-')
     expect(illustrativePhoto('family')).toBe('/images/library/illustrative-family.jpg')
-    for (const slug of ['food-drink', 'nightlife', 'theatre', 'classes-workshops', null]) expect(illustrativePhoto(slug)).toBeNull()
+    for (const slug of ['food-drink', 'nightlife', 'theatre', 'classes-workshops']) expect(illustrativePhoto(slug)).toBe(`/images/library/illustrative-${slug}.jpg`)
+    for (const slug of ['other', 'technology', null]) expect(illustrativePhoto(slug)).toBeNull()
   })
   it('every library photograph standing in is kept on disk with its photographer and page on record', () => {
     const attr = JSON.parse(readFileSync(join(process.cwd(), 'public/images/library/attribution.json'), 'utf8')).photos as Record<string, { photographer?: string; page?: string }>

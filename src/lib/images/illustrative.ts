@@ -17,8 +17,9 @@ import { getSpineCategoryTile, getSpineCategoryHero, getSpineHero } from '@/lib/
  *   in public/images/library/attribution.json (crayons on yellow; a microphone under stage lights; library shelves;
  *   stadium floodlights over empty seats).
  * Refused that morning, the face being the subject: the library's family picnic, comedy clown, education presenter,
- * sports fans, food stall couple and rooftop friends. Food and drink, nightlife, theatre and classes take the brand
- * panel until a photograph of theirs is looked at and added here.
+ * sports fans, food stall couple and rooftop friends. Food and drink, nightlife, theatre and classes joined that
+ * afternoon (the PM's 13:01, item 2), each looked at whole. A kind not named here takes the brand panel until a
+ * photograph of its own kind is looked at and added.
  */
 const LIBRARY: Record<string, string> = {
   family: '/images/library/illustrative-family.jpg',
@@ -26,6 +27,13 @@ const LIBRARY: Record<string, string> = {
   education: '/images/library/illustrative-education.jpg',
   sports: '/images/library/illustrative-sports.jpg',
   'health-wellness': '/images/library/health-wellness.jpg',
+  // The four kinds left (the PM's 13:01 of 21 November 2026, item 2), each looked at whole that afternoon, kept from
+  // Pexels under the Pexels License with photographer and page in attribution.json: a lit red stage curtain over
+  // empty seats; tapas across a wooden table; a watercolour palette, brushes and a water jar; four cocktails on a bar.
+  theatre: '/images/library/illustrative-theatre.jpg',
+  'food-drink': '/images/library/illustrative-food-drink.jpg',
+  'classes-workshops': '/images/library/illustrative-classes-workshops.jpg',
+  nightlife: '/images/library/illustrative-nightlife.jpg',
 }
 
 export function illustrativePhoto(categorySlug: string | null | undefined): string | null {

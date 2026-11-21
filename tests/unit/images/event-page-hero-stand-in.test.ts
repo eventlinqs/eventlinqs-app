@@ -31,7 +31,7 @@ describe('eventPageHero', () => {
   })
 
   it('a kind with no looked-at photograph keeps the hero as before (the composed cover keeps the typographic band)', async () => {
-    const out = await eventPageHero({ title: 'Hamlet', cover_image_url: composed, category: { slug: 'theatre', name: 'Theatre' } })
+    const out = await eventPageHero({ title: 'A night', cover_image_url: composed, category: { slug: 'other', name: 'Other' } })
     expect(out.illustrative).toBe(false)
     expect(out.media.image).toBe(composed)
   })

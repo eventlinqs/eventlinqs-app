@@ -59,7 +59,7 @@ describe('round 3 (1): a photograph on a row only where one is permitted', () =>
 
   it('a row with no permitted photograph draws no image, no placeholder and no empty box, and keeps its width for text', () => {
     // A kind with no looked-at photograph yet (src/lib/images/illustrative.ts): law 46 (f) leaves it with none.
-    guide([row({ id: 'n1', href: '/events/n1', title: 'Storytime', thumb: null, category: 'Theatre', categorySlug: 'theatre' })])
+    guide([row({ id: 'n1', href: '/events/n1', title: 'Storytime', thumb: null, category: 'Other', categorySlug: 'other' })])
     const link = screen.getByRole('link', { name: /Storytime/ })
     expect(link.querySelector('[data-row-thumb]')).toBeNull()
     expect(link.querySelectorAll('img').length).toBe(0)

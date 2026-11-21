@@ -99,7 +99,7 @@ describe('the venue photograph on a card, labelled as the venue (item 2)', () =>
     )
     // Law 46 (f) (Lawal, 21 November 2026, 09:16), replacing 'else none, never a stand-in' of 12 November.
     expect(cardPhoto(row({}))).toEqual({ src: '/images/library/illustrative-comedy.jpg', alt: 'Comedy, an illustrative photo', credit: null, illustrative: true })
-    expect(cardPhoto(row({ category: 'Nightlife', categorySlug: 'nightlife' }))).toBeNull()
+    expect(cardPhoto(row({ category: 'Other', categorySlug: 'other' }))).toBeNull()
   })
   it('a venue photograph never puts a night in Big nights: law 18 asks for the night\'s own', () => {
     const big = row({ venue: 'GMHBA Stadium', free: false, format: 'ticketed', price: 'From AUD $99', source: 'Tickets at Ticketek', categorySlug: 'music' })
