@@ -53,11 +53,11 @@ describe("a subscriber's edition carries that reader's own links", () => {
     expect(letter.html).toContain(`${ORIGIN}/unsubscribe/digest/${TOKEN}`)
   })
 
-  it('design A waits for subscribers until its pages answer and its greeting is ruled, said in its own module', () => {
-    expect(NEWSLETTER_DESIGN_A_LIVE).toBe(false)
+  it('design A is live for subscribers under the broadcast rule, the ruling said in its own module', () => {
+    expect(NEWSLETTER_DESIGN_A_LIVE).toBe(true)
     const src = readFileSync(join(process.cwd(), 'src/lib/newsletter/design-a-live.ts'), 'utf8')
-    expect(src).toContain('Kind regards,')
-    expect(src).toContain('must read 200 on')
+    expect(src).toContain('ruling 1')
+    expect(src).toContain('src/lib/email/broadcast.ts')
   })
 })
 

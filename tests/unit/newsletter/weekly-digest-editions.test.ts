@@ -18,6 +18,9 @@ const s = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/cron/auth', () => ({ requireCronAuth: () => null }))
+// These judge the send's time and its claims, so they keep the built digest by name; design A's send is held by
+// tests/unit/newsletter/subscriber-letter.test.ts and broadcast-rule.test.ts (the PM's 15:35, ruling 1).
+vi.mock('@/lib/newsletter/design-a-live', () => ({ NEWSLETTER_DESIGN_A_LIVE: false }))
 vi.mock('@/lib/flags/broadcast', () => ({ isFeatureEnabled: async () => true }))
 vi.mock('@/lib/site-url', () => ({ getSiteUrl: () => 'https://www.eventlinqs.com.au' }))
 vi.mock('@/lib/email/send', () => ({ sendEmail: async (m: { to: string; subject: string }) => { s.sent.push({ to: m.to, subject: m.subject }) } }))

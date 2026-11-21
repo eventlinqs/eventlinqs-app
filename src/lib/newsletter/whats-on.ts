@@ -14,6 +14,7 @@
 import { cleanTitle } from '@/lib/social/campaign'
 import { carriesBannedWord } from '@/lib/social/words'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
+import { contactAddress } from '@/lib/email/sender'
 
 export type NewsletterEdition = 'week' | 'weekend'
 
@@ -275,7 +276,7 @@ ${highlights.map((p, i) => card(p, `h${i + 1}`)).join('\n')}
   const editionName = input.edition === 'weekend' ? 'The Weekend' : 'The Week'
   const footer = `
 <tr><td class="pad" style="padding:6px 32px 30px 32px;font:500 13px/20px ${BODY};color:${MUTED}">You&#8217;re receiving ${editionName} from EventLinqs. &nbsp;<a href="${esc(input.manageUrl)}" style="color:${INK}">Manage preferences</a> &nbsp;|&nbsp; <a href="${esc(input.unsubscribeUrl)}" style="color:${INK}">Unsubscribe</a>
-<div style="font:500 12px/18px ${BODY};color:#7A8291;margin-top:8px">EventLinqs${abn ? `, ${esc(abn)}` : ''}, Geelong VIC, Australia. Event details come from organisers and venues; check times before you go.</div></td></tr>`
+<div style="font:500 12px/18px ${BODY};color:#7A8291;margin-top:8px">EventLinqs${abn ? `, ${esc(abn)}` : ''}, Geelong VIC, Australia, ${esc(contactAddress('hello'))}. Event details come from organisers and venues; check times before you go.</div></td></tr>`
 
   const subject = subjectOf(input)
   const preheader = [featured, ...highlights].filter((p): p is NlPick => p !== null).slice(0, 3).map(titleOf).join(', ')
@@ -322,7 +323,7 @@ ${viewInBrowser}${hero}${strip}${intro}${featuredRow}${highlightsRows}${panelsRo
     `You're receiving ${editionName} from EventLinqs.`,
     `Manage preferences: ${input.manageUrl}`,
     `Unsubscribe: ${input.unsubscribeUrl}`,
-    `EventLinqs${abn ? `, ${abn}` : ''}, Geelong VIC, Australia.`,
+    `EventLinqs${abn ? `, ${abn}` : ''}, Geelong VIC, Australia, ${contactAddress('hello')}.`,
   ].join('\n')
 
   return { subject, preheader, html, text, leftOut }
