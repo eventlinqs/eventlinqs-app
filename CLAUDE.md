@@ -466,6 +466,8 @@ Struck by the same ruling: the Midjourney category cover photography planned in
 `docs/MASTER-PLAN-V1.md` (Phase 1, Week 5). Generated imagery on public category
 surfaces is exactly the generic risk Law 1 exists to stop.
 
+AMENDED 21 November 2026 by Lawal's law 46 (f) (C:\dev\CLAUDE.md): where a night has no lawful photograph of its own, a licensed stock photograph labelled 'Illustrative photo' may stand for it, else the brand panel; the 'Illustrative photo' chip is the one permitted mark on a card photograph.
+
 ## Law 7: research before recommending, no generic knowledge (founder ruling 2026-08-09)
 
 No recommendation, specification, dimension, limit, price, format, register, or
@@ -857,6 +859,7 @@ silently re-painted.
   city/venue tiles, one line of identity only.
 - Uniform card dimensions within a rail; no feature-card size mixing in a
   category rail.
+- AMENDED 21 November 2026 by Lawal's law 46 (f) (C:\dev\CLAUDE.md): where a night has no lawful photograph of its own, a licensed stock photograph labelled 'Illustrative photo' may stand for it, else the brand panel; the 'Illustrative photo' chip is the one permitted mark on a card photograph.
 
 **Rails**
 
