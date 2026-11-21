@@ -22,7 +22,16 @@ export const VERCEL_ROUTE_LIMITS = Object.freeze({
 
 const L = VERCEL_ROUTE_LIMITS
 
-/** Every fault, said with the kind, the item's source and the limit, or none. */
+/**
+ * @typedef {Record<string, any>} RouteItem one redirect, rewrite or header rule as next.config.ts returns it
+ * @typedef {{ beforeFiles?: RouteItem[], afterFiles?: RouteItem[], fallback?: RouteItem[] }} RewritePhases
+ */
+
+/**
+ * Every fault, said with the kind, the item's source and the limit, or none.
+ * @param {{ redirects?: RouteItem[], rewrites?: RouteItem[] | RewritePhases, headers?: RouteItem[] }} routes
+ * @returns {string[]}
+ */
 export function routeLimitFaults({ redirects = [], rewrites = [], headers = [] }) {
   const faults = []
   const rewriteList = Array.isArray(rewrites) ? rewrites : [...(rewrites.beforeFiles ?? []), ...(rewrites.afterFiles ?? []), ...(rewrites.fallback ?? [])]
