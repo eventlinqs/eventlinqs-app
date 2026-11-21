@@ -29,12 +29,12 @@ export function searchTerm(q: string | null | undefined): string | null {
  * and the press of every control): their searches are tests, and the search log feeds the learning loop that reads the
  * zero result rate (the PM's 05:25 of 22 November 2026, item 7), so they are never recorded as a person's.
  */
-export const QA_USER_AGENT_TOKEN = 'EventLinqs-QA'
+export const QA_USER_AGENT_MARK = 'EventLinqs-QA'
 
 /** Whether this request's search is recorded: a person's, with a term that may be kept. Pure. */
 export function searchToRecord(q: string | null | undefined, userAgent: string | null): string | null {
   if (isPreviewCrawler(userAgent)) return null
-  if (userAgent?.includes(QA_USER_AGENT_TOKEN)) return null
+  if (userAgent?.includes(QA_USER_AGENT_MARK)) return null
   return searchTerm(q)
 }
 
