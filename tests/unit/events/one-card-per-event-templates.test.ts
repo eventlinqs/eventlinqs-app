@@ -50,8 +50,10 @@ describe('the discovery pages draw cards only in Featured this week, one per ser
     expect(src).not.toMatch(/<EventCard[\s>]/)
     expect(read('src/components/features/events/featured-this-week-loader.tsx')).toMatch(/listing_series_id \?\? e\.id/)
   })
-  it('the homepage and every city page draw the city guide, whose only cards are Featured, one per series', () => {
-    const home = read('src/app/page.tsx')
+  // The guide home is kept whole behind SITE_LOOK.marketplaceHome (law 13; train AU); the marketplace home's grid is one
+  // card per listing too (foldListings, tests/unit/home/marketplace.test.ts).
+  it('the guide home and every city page draw the city guide, whose only cards are Featured, one per series', () => {
+    const home = read('src/components/features/home-market/city-guide-home.tsx')
     expect(home).toMatch(/<CityGuideScreen\s/)
     expect(home).not.toMatch(/<EventRailSection/)
     expect(read('src/app/city/[slug]/page.tsx')).toMatch(/<CityGuideScreen\s/)
