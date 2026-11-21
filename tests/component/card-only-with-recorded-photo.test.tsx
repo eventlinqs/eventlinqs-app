@@ -30,7 +30,8 @@ const night: EventCardData = {
   venue_city: 'Melbourne',
   venue_country: 'Australia',
   created_at: '2026-11-01T00:00:00Z',
-  category: { name: 'Music', slug: 'music' },
+  // A kind with no looked-at photograph yet (src/lib/images/illustrative.ts), so its rows stay rows under law 46 (f).
+  category: { name: 'Theatre', slug: 'theatre' },
   ticket_tiers: [],
   is_free: false,
   entry_mode: 'tickets',
@@ -89,6 +90,35 @@ describe('a card only where a rights recorded photograph exists', () => {
       expect(text(container)).not.toMatch(/EventLinqs\./i)
       unmount()
     }
+  })
+})
+
+describe('law 46 (f): a night with no lawful photograph of its own stands on its kind, labelled (the PM 10:15, ruling 2)', () => {
+  it('a kind with a looked-at photograph is a photo card on that photograph, with the one chip top left', () => {
+    const { container } = render(<EventCard event={{ ...night, cover_image_url: composed, category: { name: 'Family', slug: 'family' } }} />)
+    // The photograph itself, not the blurred copy of it behind (alt empty): shown whole, as law 15 keeps every card.
+    const img = container.querySelector('img:not([alt=""])')
+    expect(img?.getAttribute('src') ?? '').toContain('illustrative-family')
+    expect(img?.getAttribute('alt')).toBe('Family, an illustrative photo')
+    expect(container.querySelector('a.event-row')).toBeNull()
+    const chip = container.querySelector('[data-illustrative]')
+    expect(chip?.textContent).toBe('Illustrative photo')
+    expect(chip?.className).toContain('left-2')
+    expect(chip?.className).toContain('top-2')
+  })
+
+  it('a night with no image and an unrecorded image both take the stand in; the facts stay beneath it', () => {
+    for (const cover_image_url of [null, '/images/test/beagles.jpg']) {
+      const { container, unmount } = render(<EventCard event={{ ...night, cover_image_url, category: { name: 'Family', slug: 'family' } }} />)
+      expect(container.querySelector('[data-illustrative]')).not.toBeNull()
+      expect(text(container)).toContain('The Beagles')
+      unmount()
+    }
+  })
+
+  it("the night's own recorded photograph never carries the chip", () => {
+    const { container } = render(<EventCard event={{ ...night, cover_rights_recorded: true, category: { name: 'Family', slug: 'family' } }} />)
+    expect(container.querySelector('[data-illustrative]')).toBeNull()
   })
 })
 

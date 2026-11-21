@@ -17,6 +17,7 @@ import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { archivalNote } from '@/lib/media/photo-credits'
 import { illustrativePhoto } from '@/lib/images/illustrative'
+import { IllustrativeChip } from '@/components/media/illustrative-chip'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -764,15 +765,6 @@ export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: 
   const stand = illustrativePhoto(r.categorySlug)
   if (stand) return { src: stand, alt: `${r.category ?? 'An event'}, an illustrative photo`, credit: null, illustrative: true }
   return null
-}
-
-/** The words law 46 (f) puts on a photograph that stands for a night: never a credit line, a disclosure. */
-function IllustrativeChip({ small = false }: { readonly small?: boolean }) {
-  return (
-    <span data-illustrative className={`absolute left-2 top-2 z-10 rounded bg-[var(--color-navy-950)]/75 font-bold text-white ${small ? 'px-1 py-0.5 text-[9px]' : 'px-2 py-1 text-[11px]'}`}>
-      Illustrative photo
-    </span>
-  )
 }
 
 function BigCard({ e, priority = false }: { e: Entry; priority?: boolean }) {

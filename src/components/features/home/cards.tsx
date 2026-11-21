@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { EventCardMedia, hasCardPhoto } from '@/components/media/EventCardMedia'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { CategoryTileImage } from '@/components/media/CategoryTileImage'
+import { IllustrativeChip } from '@/components/media/illustrative-chip'
 
 /**
  * Home card system (Phase 1).
@@ -42,6 +43,8 @@ export interface HomeCardEvent {
   timeZone?: string | null
   /** Opt into priority image loading - above-the-fold cards only. */
   priority?: boolean
+  /** A licensed photograph of the night's kind stands for it: the one chip says so (law 46 (f)). */
+  illustrative?: boolean
 }
 
 export interface CityTileData {
@@ -101,6 +104,7 @@ export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
       {hasCardPhoto(event.imageSrc) ? (
         <div className={`${IMG_WRAP} aspect-[16/10]`}>
           <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+          {event.illustrative ? <IllustrativeChip /> : null}
         </div>
       ) : null}
       <div className="flex flex-1 flex-col p-4">
@@ -125,6 +129,7 @@ export function EventCardSquare({ event }: { event: HomeCardEvent }) {
       {hasCardPhoto(event.imageSrc) ? (
         <div className={`${IMG_WRAP} aspect-square`}>
           <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+          {event.illustrative ? <IllustrativeChip small /> : null}
         </div>
       ) : null}
       <div className="flex flex-1 flex-col p-3">
@@ -147,6 +152,7 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
       {hasCardPhoto(event.imageSrc) ? (
         <div className={`${IMG_WRAP} aspect-[16/9]`}>
           <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} startDate={event.startDate ?? null} timeZone={event.timeZone ?? null} className={IMG_MOTION} />
+          {event.illustrative ? <IllustrativeChip /> : null}
         </div>
       ) : null}
       <div className="flex flex-1 flex-col p-5 sm:p-6">
