@@ -695,8 +695,40 @@ async function drawnAtOf(db: Db, pieceId: string, rev: Revision): Promise<string
 }
 
 /** A night as the publish gate reads it, from the row pieceDependencies reads (NIGHT_COLUMNS). */
-function qualityNightOf(e: Record<string, unknown>): QualityNight {
+/** How far before a night its season's earlier nights are read (lifecycle-plan.ts SEASON_LOOKBACK_DAYS, the same memory). */
+const SEASON_BEGAN_LOOKBACK_MS = 14 * DAY_MS
+
+/**
+ * WHEN EACH NIGHT'S SEASON BEGAN (the PM's 04:40 of 22 November 2026): the earliest start of a public night of the same
+ * title at the same venue in the 14 days before it, read through the one public rule as of that lookback's start (a night
+ * ended since still counts). Absent for a season's first night. Throws when it cannot be read, and the gate holds.
+ */
+async function seasonBeganOf(db: Db, rows: readonly Record<string, unknown>[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const starts = rows.map((r) => Date.parse(String(r.start_date))).filter((t) => Number.isFinite(t))
+  if (starts.length === 0) return out
+  const since = new Date(Math.min(...starts) - SEASON_BEGAN_LOOKBACK_MS)
+  const titles = [...new Set(rows.map((r) => String(r.title)))]
+  const { data, error } = await applyPublicEventVisibility(db.from('events').select('id, title, venue_id, venue_name, start_date'), { now: since, includeExternal: true })
+    .in('title', titles)
+    .lt('start_date', new Date(Math.max(...starts)).toISOString())
+    .order('start_date', { ascending: true })
+    .limit(1000)
+  if (error) throw new Error(`when the seasons began could not be read: ${error.message}`)
+  const venueOf = (r: Record<string, unknown>) => (r.venue_id as string | null) ?? (String(r.venue_name ?? '').trim().toLowerCase() || null)
+  for (const r of rows) {
+    const start = Date.parse(String(r.start_date))
+    const earlier = ((data ?? []) as Record<string, unknown>[]).filter(
+      (e) => e.title === r.title && venueOf(e) === venueOf(r) && Date.parse(String(e.start_date)) < start && Date.parse(String(e.start_date)) >= start - SEASON_BEGAN_LOOKBACK_MS,
+    )
+    if (earlier.length > 0) out.set(r.id as string, String(earlier[0].start_date))
+  }
+  return out
+}
+
+function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null = null): QualityNight {
   return {
+    seasonBegan,
     eventId: e.id as string,
     title: String(e.title),
     summary: (e.summary as string | null) ?? null,
@@ -726,6 +758,13 @@ export async function pieceDependencies(
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
   const byId = new Map((events ?? []).map((e) => [e.id as string, e as Record<string, unknown>]))
+  // When each night's season began (seasonBeganOf); a failed read holds the piece, never passes it.
+  let began = new Map<string, string>()
+  try {
+    began = await seasonBeganOf(db, [...byId.values()])
+  } catch (e) {
+    return [e instanceof Error ? e.message : String(e)]
+  }
 
   /* LAW 22, THE PUBLISH GATE (the PM's 21:58 and 22:02 of 17 November 2026): the piece's own content by one rule set
      (piece-quality.ts), here at approval and again at publishing, every platform's caption read; it carries Lawal's lock. */
@@ -734,7 +773,7 @@ export async function pieceDependencies(
       slides: rev.slides,
       caption: [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
       madeAt: await drawnAtOf(db, pieceId, rev),
-      nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e)])),
+      nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e, began.get(e.id as string) ?? null)])),
       now,
       goesAt: opts.goesAt,
     }),
@@ -2090,6 +2129,9 @@ export async function scheduleApprovedPieces(
   const ids = [...new Set(due.flatMap((d) => d.eventIds))]
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
+  // When each night's season began (seasonBeganOf), for the gate's first day rule below; a failed read throws, as the
+  // nights' own read does, and the run holds.
+  const seasonBegun = await seasonBeganOf(db, (nights ?? []) as Record<string, unknown>[])
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)), startDate: String(n.start_date), endDate: (n.end_date as string | null) ?? null, zone: (n.timezone as string | null)?.trim() || LIFECYCLE_ZONE }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
   const firstStarting = new Map<string, { title: string; start: Date }>()
@@ -2170,7 +2212,7 @@ export async function scheduleApprovedPieces(
       slides: d.rev.slides,
       caption: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
       madeAt: await drawnAtOf(db, d.id, d.rev),
-      nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>)])),
+      nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>, seasonBegun.get(n.id as string) ?? null)])),
       now,
       goesAt: at,
     })

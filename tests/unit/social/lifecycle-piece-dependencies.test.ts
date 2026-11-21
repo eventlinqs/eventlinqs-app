@@ -46,6 +46,9 @@ function fakeDb(opts: { event: Record<string, unknown>; usable: boolean }) {
       eq: (k: string, v: unknown) => ((list = list.filter((r) => k === 'piece_id' || String(r[k]) === String(v))), q),
       neq: () => q,
       in: (k: string, vs: unknown[]) => ((list = list.filter((r) => vs.map(String).includes(String(r[k])))), q),
+      // The season read (store.ts seasonBeganOf): its window and the public rule's groups pass every fixture night.
+      or: () => q,
+      lt: () => q,
       order: () => q,
       limit: () => q,
       maybeSingle: () => ((one = true), q),

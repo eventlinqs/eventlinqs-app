@@ -673,8 +673,84 @@ export function endedByFirstBand(endIso: string | null, zone: string, format: So
   return Number(get('hour')) * 60 + Number(get('minute')) <= hour * 60
 }
 
+/**
+ * WHAT A READER WILL FIND THERE, IN THE LISTING'S OWN WORDS (the PM's 05:02 of 22 November 2026, item 1; Lawal, 04:50:
+ * "could it be any better ... a human would do this ... professional"). The first line names the night's own experiences
+ * (what you see, hear, eat) taken only from its listing's words, never invented: each phrase below is matched in the
+ * summary, then the title, in the order the listing says them, at most three, a longer phrase before a shorter one it holds.
+ */
+export const EXPERIENCE_PHRASES: readonly string[] = [
+  'street food', 'food trucks', 'food stalls', 'night market', 'artisan markets', 'live music', 'lantern gardens', 'fireworks',
+  'lanterns', 'markets', 'music', 'dance', 'djs', 'comedy', 'stand-up', 'theatre', 'film', 'art', 'workshops', 'cocktails',
+  'wine', 'beer', 'dumplings', 'rides', 'parade', 'choir', 'orchestra', 'jazz', 'trivia', 'games', 'circus', 'magic',
+]
+
+/** Up to three of the night's experiences, in the order its own words give them (summary first, then title). Pure. */
+export function experiencesOf(summary: string | null, title: string): string[] {
+  const text = ` ${(summary ?? '')} ${title} `.toLowerCase()
+  const found: { phrase: string; at: number }[] = []
+  for (const phrase of EXPERIENCE_PHRASES) {
+    const m = new RegExp(`(?<![a-z])${phrase.replace(/[-]/g, '\\-')}(?![a-z])`).exec(text)
+    if (!m) continue
+    // A shorter phrase inside one already found ('music' inside 'live music') adds nothing.
+    if (found.some((f) => f.phrase.includes(phrase) && Math.abs(f.at - m.index) <= f.phrase.length)) continue
+    found.push({ phrase, at: m.index })
+  }
+  return found.sort((a, b) => a.at - b.at).slice(0, 3).map((f) => (f.phrase === 'djs' ? 'DJs' : f.phrase))
+}
+
+function listOf(items: readonly string[]): string {
+  return items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
+/**
+ * THE NIGHT'S OWN FIRST LINE (the PM's 05:02, item 1): its experiences, its place, and the day's stage in words that keep
+ * the publish gate's rule (piece-quality.ts ON_NOW: a first, running or final day under way by its band says 'on now' or
+ * 'still on'; momentSaysOnNow). Null when the listing names no experience, and the moment's own bank speaks instead. Pure.
+ */
+export function hookFor(kind: MomentKind, experiences: readonly string[], place: string | null, opts: { readonly startedByBand?: boolean; readonly repeatDay?: boolean } = {}): string | null {
+  if (experiences.length === 0) return null
+  const what = listOf(experiences)
+  const What = what.charAt(0).toUpperCase() + what.slice(1)
+  const at = place && place.length <= 40 ? ` at ${place}` : ''
+  if (opts.repeatDay) return opts.startedByBand ? `${What}${at}, on now.` : `${What}${at}, on today.`
+  switch (kind) {
+    case 'first_day':
+      return opts.startedByBand ? `${What}${at}, on now from today.` : `${What}${at}, from today.`
+    // A running or final day says 'still on' only once that day's doors are open by its band (sessionsOf; the PM's 09:00
+    // of 22 November 2026), and words true before them otherwise.
+    case 'running':
+      return opts.startedByBand ? `${What}${at}, still on today.` : `${What}${at}, on again today.`
+    case 'final_day':
+      return opts.startedByBand ? `Last day today for ${what}${at}, and still on.` : `Last day today for ${what}${at}.`
+    case 'tomorrow':
+      return `${What}${at}, tomorrow.`
+    case 'final_push':
+      return `${What}${at}, only days away.`
+    default:
+      return `${What}${at}, coming up.`
+  }
+}
+
+/**
+ * THE NIGHT'S HOURS, ALWAYS STATED (the PM's 05:02, item 2): its start and end in its own zone ('11am to 10pm'), its start
+ * alone for a row running a day or more ('from 10am'), none for a date-only listing (a start at local midnight). Pure.
+ */
+export function nightTimes(startIso: string, endIso: string | null, zone: string): string | null {
+  const start = new Date(startIso)
+  if (!Number.isFinite(start.getTime())) return null
+  const hm = new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(start)
+  if (hm === '00:00') return null
+  const t = (d: Date) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true }).format(d).replace(':00', '').replace(/\s/g, '').toLowerCase()
+  const end = endIso ? new Date(endIso) : null
+  if (!end || !Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) return `from ${t(start)}`
+  return end.getTime() - start.getTime() < 24 * 3_600_000 ? `${t(start)} to ${t(end)}` : `from ${t(start)}`
+}
+
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false): string | null {
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false, hook: string | null = null): string | null {
+  // The night's own line first (hookFor), when it has not been said inside the window; then the moment's bank.
+  if (hook && !usedRecently.has(hook)) return hook
   const bank = repeatDay
     ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY)
     : kind === 'first_day' && startedByBand
@@ -726,6 +802,8 @@ export type CaptionFacts = {
   readonly title: string
   readonly place: string | null
   readonly dateLabel: string
+  /** The night's hours (nightTimes), stated beside its date; none for a date-only listing. */
+  readonly times?: string | null
   readonly priceLine: string | null
   /** The listing's own words, its first sentence only. */
   readonly summary: string | null
@@ -761,7 +839,7 @@ export function captionFor(input: {
   const signposts = [
     f.title,
     f.place ? `\u{1F4CD} ${f.place}` : '',
-    `\u{1F4C5} ${f.dateLabel}`,
+    `\u{1F4C5} ${f.dateLabel}${f.times ? `, ${f.times}` : ''}`,
     price ? `\u{1F4B2} ${/^free$/i.test(price) ? 'Free entry' : price}` : '',
   ]
     .filter((l) => l !== '')

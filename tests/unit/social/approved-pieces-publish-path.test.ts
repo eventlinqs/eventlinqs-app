@@ -78,6 +78,9 @@ function fixtureDb(tables: Record<string, Row[]>, refuse: (table: string, change
       not: (k: string, op: string, v: unknown) => (tests.push((r) => (op === 'is' && v === null ? r[k] !== null && r[k] !== undefined : true)), q),
       in: (k: string, vs: unknown[]) => (tests.push((r) => vs.map(String).includes(String(r[k]))), q),
       lte: (k: string, v: unknown) => (tests.push((r) => time(r[k]) <= time(v)), q),
+      lt: (k: string, v: unknown) => (tests.push((r) => time(r[k]) < time(v)), q),
+      // The public rule's listing window groups (applyPublicEventVisibility): every fixture night is listed, so all pass.
+      or: () => q,
       order: (k: string, o?: { ascending?: boolean }) => ((sort = { key: k, up: o?.ascending !== false }), q),
       limit: (n: number) => ((cap = n), q),
       maybeSingle: () => ((one = true), q),

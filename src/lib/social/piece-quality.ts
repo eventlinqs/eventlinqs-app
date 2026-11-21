@@ -34,7 +34,14 @@ import { getAllCities } from '@/lib/cities/data'
 // stale, which only means the hourly run compares it again; an identical drawing is never written twice (olderLookRedraws).
 export const PIECE_RULES_SINCE = '2026-11-20T19:45:00.000Z'
 
-export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'>
+export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' | 'venueName' | 'host' | 'categorySlug' | 'sourceTitle' | 'startDate' | 'timezone' | 'endDate'> & {
+  /** When its season began: the earliest start of a public night of its title at its venue in the 14 days before it
+   * (store.ts seasonBeganOf); none when it is its season's first night. */
+  readonly seasonBegan?: string | null
+}
+
+/** A first day's words, in every bank and hook that says one (lifecycle.ts FIRST_LINES, FIRST_DAY_ON_NOW, hookFor). */
+export const FIRST_DAY_WORDS = /\b(opening today|opening day|it starts today|starts today|today is the day|day one|from today)\b/i
 
 /** A caption that says the night is happening now (Lawal's 00:12, section 5: an event in progress posts only so). */
 export const ON_NOW = /\b(on now|happening now|on right now|underway now|still on)\b/i
@@ -226,6 +233,19 @@ export function pieceQuality(input: QualityInput): string[] {
     else if (input.goesAt && onNow && ids.size === 1) {
       const then = sessionAt({ startDate: n.startDate, endDate: n.endDate ?? null }, zone, input.goesAt)
       if (Date.parse(then.start) > input.goesAt.getTime()) out.push(`[night] ${n.title}: its words say it is on now, but it opens at ${clockOf(then.start, zone)}; 'still on' only once its doors are open. Draw it again with words true before it opens.`)
+    }
+  }
+
+  /* [night] A FIRST DAY'S WORDS ONLY ON A SEASON'S FIRST DAY (the PM's 04:40 of 22 November 2026): Colours of Asia's last
+     night posted 'Opening today.' (its season began on the 13th), and our provider cannot edit a published post, so the
+     gate refuses the words before they go. */
+  if (FIRST_DAY_WORDS.test(input.caption)) {
+    for (const id of ids) {
+      const n = input.nights.get(id)
+      if (!n?.seasonBegan) continue
+      const zone = n.timezone?.trim() || 'Australia/Melbourne'
+      const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+      if (dayOf(n.seasonBegan) < dayOf(n.startDate)) out.push(`[night] ${n.title}: its words say a first day, but its season began on ${dayOf(n.seasonBegan)}; a later night is never an opening. Draw it again.`)
     }
   }
 
