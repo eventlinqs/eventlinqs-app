@@ -2,7 +2,8 @@ import { cache } from 'react'
 import type { Metadata } from 'next'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { WeekendGuide } from '@/components/features/weekend/weekend-guide'
-import { readWeekendGuide } from '@/lib/newsletter/edition'
+import { emptyWeekendGuide, readWeekendGuide } from '@/lib/newsletter/edition'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 import { getSpineCity } from '@/lib/images/spine'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
@@ -19,7 +20,16 @@ import { noIndexMetadata } from '@/lib/seo/indexing-policy'
 export const revalidate = 300
 
 /** One read for the metadata and the page in a render. */
-const guideNow = cache(() => readWeekendGuide(createAdminClient(), { now: new Date(), origin: getSiteUrl() }))
+// NO SERVICE-ROLE KEY, NO ADMIN READ (#331's CI build, 21 November 2026: 'supabaseKey is required' prerendering /weekend;
+// the rule src/lib/events/featured-with-recorded-rights.ts holds since car 35): the CI build carries only NEXT_PUBLIC
+// values, so there the page renders its thin weekend. Wherever the key exists, nothing changes.
+const guideNow = cache(async () => {
+  if (!getSupabaseServiceRoleKey()) {
+    console.warn('[weekend] no service-role key on this host; the weekend is not read')
+    return emptyWeekendGuide(new Date())
+  }
+  return readWeekendGuide(createAdminClient(), { now: new Date(), origin: getSiteUrl() })
+})
 
 export async function generateMetadata(): Promise<Metadata> {
   const title = 'The Weekend Guide, Victoria | EventLinqs'

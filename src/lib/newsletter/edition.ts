@@ -295,6 +295,12 @@ export function weekendDatesLabel(period: { readonly start: string; readonly end
  * for both: law 18's tier, the night's own photograph, variety, never twice) and pictured by the event page's own
  * resolver. The feature and the top picks; nothing invented when the supply is thin.
  */
+/** The weekend with nothing read: its dates only, so the page renders its thin state (a build host with no key). */
+export function emptyWeekendGuide(now: Date): { readonly period: { start: string; end: string }; readonly datesLabel: string; readonly featured: ReadNight | null; readonly picks: readonly ReadNight[] } {
+  const period = resolveDigestPeriod(now, 'weekend')
+  return { period, datesLabel: weekendDatesLabel(period), featured: null, picks: [] }
+}
+
 export async function readWeekendGuide(
   admin: Admin,
   input: { readonly now: Date; readonly origin: string },
