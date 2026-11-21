@@ -11,7 +11,6 @@ import {
   daysFrom,
   FIRST_LINE_WINDOW_DAYS,
   firstLineFor,
-  startedByFirstBand,
   endedByFirstBand,
   momentKey,
   momentsDue,
@@ -19,7 +18,8 @@ import {
   runRef,
   runsOf,
   seedOf,
-  selectToday,
+  chooseToday,
+  postableBand,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -240,7 +240,7 @@ function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook
 }
 
 /**
- * Today's lifecycle pieces: the history read first, the day's few chosen (selectToday), each with its strongest photo
+ * Today's lifecycle pieces: the history read first, the day's few chosen (chooseToday, which heals), each with its strongest photo
  * not used before, its own first line, its story line, its own link per network, and a Collab where law 40 allows.
  */
 export async function planLifecyclePieces(
@@ -269,7 +269,28 @@ export async function planLifecyclePieces(
       candidates.push({ run, moment, hasPhoto: rankPhotos(photos.get(night.eventId) ?? [], moment.format, used).length > 0 })
     }
   }
-  const chosen = selectToday(candidates, { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday })
+  // THE CHOICE THAT HEALS (lifecycle.ts chooseToday; the PM's 16:30 of 21 November 2026): a moment is drawn only if it
+  // can post on its day, by the same checks the drawing below and the scheduler and the publish gate make; one that
+  // cannot is passed over without spending its cap, and the same moment in the other format, then the next night, is
+  // tried instead.
+  const drawable = (c: Candidate): string | null => {
+    const day = dayIn(input.now, c.run.zone)
+    const ln = nightForDay(c.run, day)
+    const n = byId.get(ln.eventId)
+    if (!n) return 'its night could not be read'
+    const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
+    if (!photo || photo.width === null || photo.height === null) return `no permitted photograph for a ${c.moment.format}`
+    const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
+    if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
+    return 'why' in band ? band.why : null
+  }
+  const choice = chooseToday(candidates, { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday }, drawable)
+  for (const p of choice.passedOver) {
+    const title = byId.get(nightForDay(p.candidate.run, dayIn(input.now, p.candidate.run.zone)).eventId)?.title ?? p.candidate.run.key
+    notes.push(`${title} ${p.candidate.moment.kind} ${p.candidate.moment.format}: passed over, ${p.why}`)
+  }
+  const chosen = choice.chosen
   const hosts = chosen.map((c) => byId.get(nightForDay(c.run, dayIn(input.now, c.run.zone)).eventId)?.host ?? '').filter((h) => h !== '')
   const organisers = await readCollabOrganisers(db, hosts)
 
@@ -287,8 +308,14 @@ export async function planLifecyclePieces(
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it ends before the ${c.moment.format}'s first band that day; not drawn`)
       continue
     }
-    // A first day already under way by its band says it is on now (lifecycle.ts startedByFirstBand).
-    const startedByBand = startedByFirstBand(ln.startDate, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)
+    // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
+    // that band says it is on now.
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
+    if ('why' in band) {
+      notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
+      continue
+    }
+    const startedByBand = c.moment.kind === 'first_day' && band.onNow
     const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
