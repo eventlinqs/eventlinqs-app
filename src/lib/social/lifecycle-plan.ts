@@ -253,7 +253,7 @@ export async function planLifecyclePieces(
     /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
     readonly redrawing?: ReadonlySet<string>
   },
-): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[] }> {
+): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[]; readonly due: number; readonly photoless: readonly string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const runs = runsOf(input.nights.map(toLifecycleNight))
@@ -263,10 +263,20 @@ export async function planLifecyclePieces(
 
   const none: RunHistory = { feedDays: [], storyDays: [], had: [] }
   const candidates: Candidate[] = []
+  // The nights with a moment due today, and those with no permitted photograph in either format (the pre-flight's line,
+  // AV (c)).
+  let due = 0
+  const photoless: string[] = []
   for (const run of runs) {
     const day = dayIn(input.now, run.zone)
-    for (const moment of momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none)) {
-      const night = nightForDay(run, day)
+    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none)
+    const night = nightForDay(run, day)
+    if (moments.length > 0) {
+      due += 1
+      const own = photos.get(night.eventId) ?? []
+      if (rankPhotos(own, 'feed', used).length === 0 && rankPhotos(own, 'story', used).length === 0) photoless.push(byId.get(night.eventId)?.title ?? run.key)
+    }
+    for (const moment of moments) {
       candidates.push({ run, moment, hasPhoto: rankPhotos(photos.get(night.eventId) ?? [], moment.format, used).length > 0 })
     }
   }
@@ -378,5 +388,5 @@ export async function planLifecyclePieces(
       names: [n.title, ...(n.host ? [n.host] : [])],
     })
   }
-  return { pieces, notes }
+  return { pieces, notes, due, photoless }
 }

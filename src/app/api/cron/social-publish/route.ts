@@ -12,6 +12,7 @@ import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
+import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +52,17 @@ export async function GET(request: NextRequest) {
   // anyone'): with ?readback=only the run only reads Blotato for every post still held by its reference, writes each
   // public URL Blotato gives (as the hourly run does), and answers every reference with Blotato's own status; it draws,
   // approves, schedules and publishes nothing. The answer names references and statuses, never a person.
+  // THE PRE FLIGHT, ASKED (AV (c)): with ?preflight=1 the run puts every piece due today through its checks and answers
+  // what it found; it writes nothing unless apply=1, when it rejects and holds each refused piece for the planner to
+  // draw again and records the 08:00 report's line.
+  if (request.nextUrl.searchParams.get('preflight') === '1') {
+    const db = createAdminClient()
+    const apply = request.nextUrl.searchParams.get('apply') === '1'
+    const founder = apply ? await founderAccount(db) : { id: null }
+    const p = await runPreflight(db, { now: new Date(), siteOrigin: getSiteUrl(), apply, by: founder.id })
+    return NextResponse.json({ preflight: true, ...p })
+  }
+
   if (request.nextUrl.searchParams.get('readback') === 'only') {
     const back = await readBackPendingPosts(createAdminClient(), socialPostReaderFromEnv())
     return NextResponse.json({ readBack: true, read: back.read, filled: back.filled, pending: back.pending })
@@ -72,6 +84,20 @@ export async function GET(request: NextRequest) {
   try {
     const db = createAdminClient()
     const now = new Date()
+    /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
+       run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
+       moment, and the line goes to the 08:00 report. A failed pre-flight is said and never stops the run. */
+    if (melbourneHour(now) === PREFLIGHT_HOUR) {
+      try {
+        const founder = await founderAccount(db)
+        const p = await runPreflight(db, { now, siteOrigin: getSiteUrl(), apply: founder.id !== null, by: founder.id })
+        console.log(`[cron/social-publish] pre-flight: ${p.line}${p.applied ? '' : ' (not applied: no founder account to act for)'}`)
+        for (const r of p.redrawn) console.log(`[cron/social-publish] pre-flight redraws: ${r}`)
+        if (p.nothingCanPost) console.log(`[cron/social-publish] pre-flight: nothing can post today: ${p.nothingCanPost}`)
+      } catch (error) {
+        console.error('[cron/social-publish] the pre-flight could not run:', error instanceof Error ? error.message : error)
+      }
+    }
     /* THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026): a draft the lock refuses is drawn
        again by the planner before anything is scheduled, so a week planned by older code reaches the switch-on in the
        look it can be approved in. Never an approved piece. A failed redraw never holds the publishing below. */

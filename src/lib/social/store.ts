@@ -918,6 +918,11 @@ export async function readCampaignCities(db: Db): Promise<CampaignCity[]> {
   return (data ?? []).map((c) => ({ slug: c.slug as string, name: c.name as string }))
 }
 
+/** The nights the lifecycle planner reads now, as the week's plan reads them (the pre-flight's own read, AV (c)). */
+export async function readLifecycleNights(db: Db, now: Date): Promise<CampaignNight[]> {
+  return readCampaignNights(db, await readCampaignCities(db), weekStartOf(now), now, { aheadDays: LIFECYCLE_AHEAD_DAYS })
+}
+
 /** The week's public nights in the guide cities, each with its call to action, its price line and any usable image. */
 export async function readCampaignNights(
   db: Db,
