@@ -200,7 +200,7 @@ describe("an owner's Post now and a photograph that can no longer post (Colours 
   }
   const plan = (rows: Rows, ownerAsked?: { eventId: string }) =>
     planLifecyclePieces(fakeDb(rows), { now: SUNDAY, nights: [sunday, other], origin: 'https://www.eventlinqs.com.au', ...(ownerAsked ? { ownerAsked } : {}) })
-  const herPieces = (pieces: readonly { eventIds: readonly string[] }[]) => pieces.filter((p) => p.eventIds.includes('e-sun'))
+  const herPieces = <T extends { readonly eventIds: readonly string[] }>(pieces: readonly T[]): T[] => pieces.filter((p) => p.eventIds.includes('e-sun'))
 
   it("a piece whose day has passed without going frees its photograph: her Sunday photograph is drawn on Sunday", async () => {
     const { pieces, notes } = await plan({ history: [yesterdaysStory], assets: [photo] })
