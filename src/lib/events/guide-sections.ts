@@ -25,22 +25,31 @@ export { addDaysKey, addMonthsKey }
 export type Range = 'today' | 'weekend' | 'week' | 'month' | 'three' | 'all' | 'date'
 export type GuideDays = { todayKey: string; weekendKeys: readonly string[]; weekKeys: readonly string[] }
 
-export function inRange(r: Pick<DirectoryRow, 'dayKey'>, range: Range, days: GuideDays, date = ''): boolean {
+/**
+ * A NIGHT THAT IS ON NOW IS TODAY'S (WINDOW 5C, 21 November 2026; law 16: a published night that has not ended is
+ * findable on its city guide until it ends). Every dated range used to judge a row by its first day alone, so a
+ * festival on its second day fell out of Today, This week, This month and Next 3 months while it was still on: on
+ * production the Melbourne guide's search for 'AMCF' answered 'Next 3 months: 0 events'. A row whose first day is past
+ * and whose `until` (the instant it leaves every list) is still ahead is read as today's; one with no `until`, as before.
+ */
+export function inRange(r: Pick<DirectoryRow, 'dayKey' | 'until'>, range: Range, days: GuideDays, date = '', now: number = Date.now()): boolean {
+  const onNow = r.dayKey < days.todayKey && typeof r.until === 'number' && r.until > now
+  const key = onNow ? days.todayKey : r.dayKey
   switch (range) {
     case 'all':
       return true
     case 'today':
-      return r.dayKey === days.todayKey
+      return key === days.todayKey
     case 'weekend':
-      return days.weekendKeys.includes(r.dayKey)
+      return days.weekendKeys.includes(r.dayKey) || days.weekendKeys.includes(key)
     case 'week':
-      return days.weekKeys.includes(r.dayKey)
+      return days.weekKeys.includes(key)
     case 'month':
-      return r.dayKey >= days.todayKey && r.dayKey <= addDaysKey(days.todayKey, 31)
+      return key >= days.todayKey && key <= addDaysKey(days.todayKey, 31)
     case 'three':
-      return r.dayKey >= days.todayKey && r.dayKey <= addMonthsKey(days.todayKey, 3)
+      return key >= days.todayKey && key <= addMonthsKey(days.todayKey, 3)
     case 'date':
-      return r.dayKey === date
+      return key === date || r.dayKey === date
   }
 }
 
