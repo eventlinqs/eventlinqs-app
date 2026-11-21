@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { tierOf } from '@/lib/events/relevance'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
@@ -60,12 +61,12 @@ export const SEASON_LOOKBACK_DAYS = 14
 /** The public nights ended in the last SEASON_LOOKBACK_DAYS, as the runs need them (days and keys only). Fails closed. */
 async function readSeasonPast(db: Db, now: Date): Promise<LifecycleNight[]> {
   const since = new Date(now.getTime() - SEASON_LOOKBACK_DAYS * 86_400_000).toISOString()
-  const { data, error } = await db
-    .from('events')
-    .select('id, title, start_date, end_date, timezone, created_at, listing_series_id, venue_id, venue_name')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gt('end_date', since)
+  // The one public rule (scripts/guards/one-visibility-source.mjs), judged as of the lookback's start: a night public
+  // then and ended since, so exactly the season's ended nights inside the lookback.
+  const { data, error } = await applyPublicEventVisibility(
+    db.from('events').select('id, title, start_date, end_date, timezone, created_at, listing_series_id, venue_id, venue_name'),
+    { now: new Date(since), includeExternal: true },
+  )
     .lte('end_date', now.toISOString())
     .order('end_date', { ascending: false })
     .limit(1000)
