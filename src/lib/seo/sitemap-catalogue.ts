@@ -102,6 +102,8 @@ export async function readEventCatalogue(given?: AdminClient, now: Date = new Da
       .from('events')
       .select('slug, facts_changed_at, start_date, end_date, timezone')
       .match(PUBLIC_EVENT_MATCH)
+      // A test account's night is never in the sitemap (the PM's 13:22 of 21 November 2026).
+      .eq('is_test', false)
       .not('slug', 'is', null)
       // DETERMINISTIC ORDER. Without an explicit ORDER BY, PostgREST returns
       // rows in Postgres physical order, which changes as rows are updated.
@@ -206,6 +208,8 @@ export async function readVenueCatalogue(given?: AdminClient): Promise<Catalogue
       .from('events')
       .select('venue_name, updated_at')
       .match(PUBLIC_EVENT_MATCH)
+      // A test account's night is never in the sitemap (the PM's 13:22 of 21 November 2026).
+      .eq('is_test', false)
       .not('venue_name', 'is', null)
       .order('venue_name', { ascending: true })
       .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
@@ -318,6 +322,8 @@ export async function readArtistCatalogue(given?: AdminClient): Promise<Catalogu
       .select('id, start_date, end_date, timezone')
       .in('id', lineupEventIds)
       .match(PUBLIC_EVENT_MATCH)
+      // A test account's night is never in the sitemap (the PM's 13:22 of 21 November 2026).
+      .eq('is_test', false)
       .order('id', { ascending: true })
       .range(from, to), { maxRows: CATALOGUE_ROW_CAP })
 

@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { countPendingRefunds } from '@/lib/admin/refunds'
@@ -11,6 +11,7 @@ import { formatMoneyDisplay } from '@/lib/money/format'
 import { checkStripeHealth, checkSupabaseHealth, checkRedisHealth, type HealthResult } from '@/lib/admin/health'
 import { captureException } from '@/lib/observability/sentry'
 import { PLATFORM_READ_ACTION, readLoggedReadsWithin, readsSentence, totalReads, type ReadTotals } from '@/lib/connect/bookedproof/platform-log'
+import { melbourneDay, melbourneDayBounds } from '@/lib/listings/discovery-day'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -117,6 +118,21 @@ function dayMs() {
   return 24 * 60 * 60 * 1000
 }
 
+/**
+ * EVERY FIGURE OPENS THE LIST BEHIND IT (the PM's 13:22 of 21 November 2026, on Lawal's 13:20: "I can see one organizer
+ * today ... It's unclickable"). The whole tile is the link; scripts/guards/test-accounts-left-out.mjs, clause 3, holds it.
+ */
+function TileLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link prefetch={false}
+      href={href}
+      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+    >
+      {children}
+    </Link>
+  )
+}
+
 function TileSkeleton({ label }: { label: string }) {
   return <AdminStatTile label={label} value={<span className="inline-block h-8 w-24 animate-pulse rounded bg-[var(--admin-tint-strong)]" />} />
 }
@@ -129,40 +145,34 @@ async function RefundsTile() {
     count = null
   }
   if (count == null) {
-    return <AdminStatTile label="Pending refunds" value="-" hint="refunds table query failed" status="warn" />
+    return <TileLink href="/admin/refunds"><AdminStatTile label="Pending refunds" value="-" hint="refunds table query failed" status="warn" /></TileLink>
   }
   return (
-    <Link prefetch={false}
-      href="/admin/refunds"
-      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
-    >
+    <TileLink href="/admin/refunds">
       <AdminStatTile
         label="Pending refunds"
         value={count}
         hint="pending, processing or failed, click to manage"
         status={count > 0 ? 'warn' : 'ok'}
       />
-    </Link>
+    </TileLink>
   )
 }
 
 async function DisputesTile() {
   const res = await countOpenDisputes()
   if (!res.ok) {
-    return <AdminStatTile label="Active disputes" value="-" hint="Stripe disputes unreachable" status="warn" />
+    return <TileLink href="/admin/disputes"><AdminStatTile label="Active disputes" value="-" hint="Stripe disputes unreachable" status="warn" /></TileLink>
   }
   return (
-    <Link prefetch={false}
-      href="/admin/disputes"
-      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
-    >
+    <TileLink href="/admin/disputes">
       <AdminStatTile
         label="Active disputes"
         value={res.count}
         hint="open chargebacks needing a response, click to manage"
         status={res.count > 0 ? 'warn' : 'ok'}
       />
-    </Link>
+    </TileLink>
   )
 }
 
@@ -172,7 +182,7 @@ async function HealthTile({ label, check }: { label: string; check: () => Promis
   const hint = r.ok
     ? `${r.detail}, ${r.status === 'warn' ? 'elevated latency' : 'healthy'}`
     : `unreachable: ${r.detail}`
-  return <AdminStatTile label={label} value={value} hint={hint} status={r.status} />
+  return <TileLink href="/admin/health"><AdminStatTile label={label} value={value} hint={hint} status={r.status} /></TileLink>
 }
 
 async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: number }) {
@@ -192,6 +202,8 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
       .select('id, total_cents, platform_fee_cents, status, currency')
       .in('status', ['confirmed', 'partially_refunded', 'refunded'])
       .eq('currency', ANALYTICS_CURRENCY)
+      // A test account's order is never GMV (the PM's 13:22 of 21 November 2026; migration 20261121140001).
+      .eq('is_test', false)
       .gte('created_at', since)
       .returns<(GmvOrderRow & { id: string; currency: string })[]>()
     if (error) throw error
@@ -212,10 +224,10 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
     const { netGmvCents } = aggregateGmv(orders, refunds)
     // Exact-cents display (item 9 fix): never round revenue to whole dollars.
     const formatted = formatMoneyDisplay(netGmvCents, 'AUD')
-    return <AdminStatTile label={label} value={formatted} hint="AUD, net of refunds; multi-currency view in A4" />
+    return <TileLink href="/admin/orders"><AdminStatTile label={label} value={formatted} hint="AUD, net of refunds; multi-currency view in A4" /></TileLink>
   } catch (error) {
     captureException(error, { where: 'app/admin/(authed)/page:202' })
-    return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />
+    return <TileLink href="/admin/orders"><AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" /></TileLink>
   }
 }
 
@@ -231,32 +243,34 @@ async function BookedproofReadsTile({ label, sinceMsAgo, when }: { label: string
   } catch (error) {
     captureException(error, { where: 'app/admin/(authed)/page:BookedproofReadsTile' })
   }
-  if (!totals) return <AdminStatTile label={label} value="-" hint="the audit log could not be read" status="warn" />
+  if (!totals) return <TileLink href={`/admin/audit?action=${PLATFORM_READ_ACTION}`}><AdminStatTile label={label} value="-" hint="the audit log could not be read" status="warn" /></TileLink>
   const rows = totals.organisations + totals.events + totals.buyers + totals.ledger
   return (
-    <Link prefetch={false}
-      href={`/admin/audit?action=${PLATFORM_READ_ACTION}`}
-      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
-    >
+    <TileLink href={`/admin/audit?action=${PLATFORM_READ_ACTION}`}>
       <AdminStatTile label={label} value={rows.toLocaleString('en-AU')} hint={readsSentence(totals, when)} status="ok" />
-    </Link>
+    </TileLink>
   )
 }
 
+/**
+ * New organisers today: the Melbourne day (it read UTC midnight, 11:00 in Melbourne), TEST accounts left out, opening
+ * /admin/organisers?created=today, the same rows by the same rule (src/lib/admin/organisers.ts, createdToday).
+ */
 async function NewOrganisersTile() {
-  const todayStart = new Date()
-  todayStart.setUTCHours(0, 0, 0, 0)
+  const { from, to } = melbourneDayBounds(melbourneDay(new Date()))
   try {
     const client = createAdminClient()
     const { count, error } = await client
       .from('organisations')
       .select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString())
+      .gte('created_at', from)
+      .lt('created_at', to)
+      .eq('is_test', false)
     if (error) throw error
-    return <AdminStatTile label="New organisers today" value={count ?? 0} />
+    return <TileLink href="/admin/organisers?created=today"><AdminStatTile label="New organisers today" value={count ?? 0} hint="Melbourne day, test accounts left out" /></TileLink>
   } catch (error) {
     captureException(error, { where: 'app/admin/(authed)/page:219' })
-    return <AdminStatTile label="New organisers today" value="-" hint="organisations table query failed" status="warn" />
+    return <TileLink href="/admin/organisers?created=today"><AdminStatTile label="New organisers today" value="-" hint="organisations table query failed" status="warn" /></TileLink>
   }
 }
 
@@ -267,10 +281,11 @@ async function KycQueueTile() {
       .from('organisations')
       .select('id', { count: 'exact', head: true })
       .in('payout_status', ['on_hold', 'restricted'])
+      .eq('is_test', false)
     if (error) throw error
-    return <AdminStatTile label="KYC queue depth" value={count ?? 0} hint="organisations on_hold or restricted" status={count && count > 0 ? 'warn' : 'ok'} />
+    return <TileLink href="/admin/kyc"><AdminStatTile label="KYC queue depth" value={count ?? 0} hint="organisations on_hold or restricted" status={count && count > 0 ? 'warn' : 'ok'} /></TileLink>
   } catch (error) {
     captureException(error, { where: 'app/admin/(authed)/page:234' })
-    return <AdminStatTile label="KYC queue depth" value="-" hint="organisations table query failed" status="warn" />
+    return <TileLink href="/admin/kyc"><AdminStatTile label="KYC queue depth" value="-" hint="organisations table query failed" status="warn" /></TileLink>
   }
 }

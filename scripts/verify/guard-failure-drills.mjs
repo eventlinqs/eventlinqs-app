@@ -354,6 +354,18 @@ const DRILLS = [
    * ever): the regression is the invitation card fill coming back into a home rail.
    */
   /*
+   * test-accounts-left-out (WINDOW 5A, 21 November 2026; the PM's 13:22): the admin home counted WINDOW 5C's QA
+   * organiser as a new organiser. The regression is the count losing its TEST filter again.
+   */
+  {
+    name: "the admin home's new organisers count takes a test account in again",
+    guard: `${GUARDS}/test-accounts-left-out.mjs`,
+    file: 'src/app/admin/(authed)/page.tsx',
+    find: "      .lt('created_at', to)\n      .eq('is_test', false)\n",
+    replace: "      .lt('created_at', to)\n",
+    expect: 'counts organisations with no is_test',
+  },
+  /*
    * a-prerendered-page-asks-for-the-key (WINDOW 5A, 21 November 2026): /weekend made an admin client while it
    * prerendered, and the CI build, which holds no service-role key, failed. The regression is the page reading as admin
    * without asking for the key again.

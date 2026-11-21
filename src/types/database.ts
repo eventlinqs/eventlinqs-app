@@ -2530,6 +2530,7 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          is_test: boolean
           listing_fresh_until: string | null
           listing_series_id: string | null
           listing_source: string
@@ -2623,6 +2624,7 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          is_test?: boolean
           listing_fresh_until?: string | null
           listing_series_id?: string | null
           listing_source?: string
@@ -2716,6 +2718,7 @@ export type Database = {
           is_multi_day?: boolean
           is_recurring?: boolean
           is_seed_data?: boolean
+          is_test?: boolean
           listing_fresh_until?: string | null
           listing_series_id?: string | null
           listing_source?: string
@@ -6291,6 +6294,7 @@ export type Database = {
           guest_email: string | null
           guest_name: string | null
           id: string
+          is_test: boolean
           metadata: Json
           order_number: string
           organisation_id: string
@@ -6324,6 +6328,7 @@ export type Database = {
           guest_email?: string | null
           guest_name?: string | null
           id?: string
+          is_test?: boolean
           metadata?: Json
           order_number: string
           organisation_id: string
@@ -6357,6 +6362,7 @@ export type Database = {
           guest_email?: string | null
           guest_name?: string | null
           id?: string
+          is_test?: boolean
           metadata?: Json
           order_number?: string
           organisation_id?: string
@@ -6478,6 +6484,7 @@ export type Database = {
           id: string
           instagram_handle: string | null
           is_founding: boolean
+          is_test: boolean
           legal_name: string | null
           logo_url: string | null
           metadata: Json | null
@@ -6523,6 +6530,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           is_founding?: boolean
+          is_test?: boolean
           legal_name?: string | null
           logo_url?: string | null
           metadata?: Json | null
@@ -6568,6 +6576,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           is_founding?: boolean
+          is_test?: boolean
           legal_name?: string | null
           logo_url?: string | null
           metadata?: Json | null

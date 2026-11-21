@@ -12,18 +12,19 @@ import { loadGuideUpcoming } from '@/lib/events/guide-queries'
 type Row = { id: string; start_date: string; end_date: string | null; external_ticket_url: string | null }
 
 function fakeClient(all: Row[], pageCap = 1000) {
-  const calls: { from: number; to: number; is: unknown[]; orders: string[] }[] = []
+  const calls: { from: number; to: number; is: unknown[]; orders: string[]; eqs: unknown[] }[] = []
   const client = {
     from() {
-      const q: Record<string, unknown> & { _from?: number; _to?: number; _is: unknown[]; _orders: string[] } = { _is: [], _orders: [] }
+      const q: Record<string, unknown> & { _from?: number; _to?: number; _is: unknown[]; _orders: string[]; _eqs: unknown[] } = { _is: [], _orders: [], _eqs: [] }
       const chain = {
         select: () => chain,
         match: () => chain,
+        eq: (...a: unknown[]) => (q._eqs.push(a), chain),
         or: () => chain,
         is: (...a: unknown[]) => (q._is.push(a), chain),
         order: (c: string) => (q._orders.push(c), chain),
         range(from: number, to: number) {
-          calls.push({ from, to, is: q._is, orders: q._orders })
+          calls.push({ from, to, is: q._is, orders: q._orders, eqs: q._eqs })
           const end = Math.min(to + 1, from + pageCap)
           return Promise.resolve({ data: all.slice(from, end), error: null })
         },
@@ -52,6 +53,8 @@ describe('the city guide reads every listed night', () => {
     for (const c of calls) {
       expect(c.is).toEqual([])
       expect(c.orders).toEqual(['start_date', 'id'])
+      // A test account's night is never in the guide (the PM's 13:22 of 21 November 2026).
+      expect(c.eqs).toEqual([['is_test', false]])
     }
   })
 

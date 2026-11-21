@@ -117,7 +117,7 @@ export const EVENT_STATUS_FILTERS: readonly (EventStatus | 'all')[] = [
 export async function countEventsByStatus(): Promise<Record<'published' | 'draft' | 'paused' | 'archived', number | null>> {
   const admin = createAdminClient()
   const one = async (status: string) => {
-    const { count, error } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', status)
+    const { count, error } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', status).eq('is_test', false)
     return error ? null : (count ?? 0)
   }
   const [published, draft, paused, archived] = await Promise.all([one('published'), one('draft'), one('paused'), one('archived')])

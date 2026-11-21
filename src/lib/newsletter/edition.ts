@@ -88,6 +88,8 @@ async function readNights(admin: Admin, cities: readonly string[], fromIso: stri
       .in('city_primary', [...cities])
       .eq('status', 'published')
       .eq('visibility', PUBLIC_VISIBILITY)
+      // A test account's night is never in an edition (the PM's 13:22 of 21 November 2026).
+      .eq('is_test', false)
       .or(listingWindowOrPredicate(now))
     // toIso is an exclusive end (endOfLocalDayUtc: the next day's first instant).
     return (fromIso ? q.gte('start_date', fromIso) : q).lt('start_date', toIso).order('start_date', { ascending: true }).limit(limit)

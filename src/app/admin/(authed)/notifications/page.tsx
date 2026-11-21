@@ -28,6 +28,7 @@ async function kycCount(): Promise<number> {
     .from('organisations')
     .select('id', { count: 'exact', head: true })
     .in('payout_status', ['on_hold', 'restricted'])
+    .eq('is_test', false)
   if (error) throw error
   return count ?? 0
 }

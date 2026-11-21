@@ -107,7 +107,7 @@ export async function getDemandSignal(): Promise<DemandSignal> {
 
   const [founding, publishedRes, postersRes, clicksRes, convRes] = await Promise.all([
     getFoundingCounts(),
-    admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
+    admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_test', false),
     admin.from('kit_poster_downloads').select('id', { count: 'exact', head: true }),
     admin.from('share_link_events').select('id', { count: 'exact', head: true }).eq('kind', 'click').eq('is_test', false),
     admin.from('share_link_events').select('id', { count: 'exact', head: true }).eq('kind', 'conversion'),

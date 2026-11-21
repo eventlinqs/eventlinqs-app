@@ -965,6 +965,12 @@
  *                              constraint; on an unsold event it cascaded away the
  *                              waitlist, the squads, the access codes and the pricing
  *                              rules while every unit test stayed green
+ *   a-prerendered-page-asks-for-the-key  a page that can prerender asks for the
+ *                              service-role key before it makes an admin client;
+ *                              #331's CI build failed prerendering /weekend without it
+ *   test-accounts-left-out   a TEST account is never an admin figure, a guide or
+ *                              sitemap night, or a notice to the owner, and every
+ *                              figure on the admin home opens the list behind it
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -2735,6 +2741,11 @@ const GUARDS = [
   // error car 35 met on 2 November. A page that can prerender asks for the key before it reads as admin. Drilled red on
   // the /weekend that made an admin client with no key.
   'scripts/guards/a-prerendered-page-asks-for-the-key.mjs',
+
+  // The PM's 13:22 of 21 November 2026 (Lawal, 13:20: 'I can see one organizer today ... It's unclickable'): a TEST
+  // account is never an admin figure, a guide or sitemap night, or a notice to the owner, and every figure on the admin
+  // home opens the list behind it. Drilled red on the new organisers count with its TEST filter taken out.
+  'scripts/guards/test-accounts-left-out.mjs',
 
   // Close-out UX4.5. Branch gate failures stop being email. Nothing in this
   // repository may dispatch an alert for a ref that is not main, and every
