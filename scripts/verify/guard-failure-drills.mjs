@@ -11979,6 +11979,18 @@ const DRILLS = [
     replace: '    const credit = w.credit ? `Photo: ${w.credit}` : null',
     expect: 'builds its own credit prefix',
   },
+  {
+    /*
+     * vercel-route-limits (21 November 2026; the PM's 22:40 item 2): tonight's shape, a route given 26 conditions,
+     * which next build accepts and Vercel's builder refused for train AV ('should NOT have more than 16 items').
+     */
+    name: 'a route in next.config.ts carries more conditions than Vercel allows',
+    guard: `${GUARDS}/vercel-route-limits.mjs`,
+    file: 'next.config.ts',
+    find: "        source: '/events',\n        missing: [{ type: 'cookie', key: 'el-signed-in' }],",
+    replace: "        source: '/events',\n        missing: Array.from({ length: 26 }, (_, i) => ({ type: 'query' as const, key: `k${i}` })),",
+    expect: 'more than the 16 Vercel allows',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

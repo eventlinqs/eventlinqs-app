@@ -79,9 +79,13 @@ begin
     raise exception 'refused: no such night' using errcode = '23514';
   end if;
   select listing_series_id into v_series from public.events where id = p_event;
-  insert into public.photo_assignments (photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, stand_in_photo_id)
+  -- The media registry's own columns (20261031090501), filled from the photo's record: who took it, its licence and
+  -- what it shows, as it was looked at.
+  insert into public.photo_assignments (photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, stand_in_photo_id,
+                                        rights_holder, licence, licence_url, approved_subject)
   values (v_photo.photo_sha256, v_photo.photo_dhash, v_photo.image_url,
-          case when v_series is null then p_event end, v_series, 'cover', 'licensed', v_photo.id)
+          case when v_series is null then p_event end, v_series, 'cover', 'licensed', v_photo.id,
+          v_photo.photographer, 'pexels', 'https://www.pexels.com/license/', v_photo.subject)
   returning id into v_id;
   return v_id;
 end;

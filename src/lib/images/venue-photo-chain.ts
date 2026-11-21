@@ -76,7 +76,10 @@ async function withImageLock<T extends ChainRow>(rows: readonly T[], deps: Chain
   let cleared: ReadonlySet<string> = new Set()
   let stands: ReadonlyMap<string, StandIn> = new Map()
   try {
-    if (deps.clearedOf) cleared = await deps.clearedOf(ids.filter((_, i) => isOwnPhoto(rows[i].cover_image_url)))
+    // The nights to ask about, gathered without narrowing the rows (no-display-time-exclusion): every row comes back.
+    const ownCovers: string[] = []
+    for (const row of rows) if (isOwnPhoto(row.cover_image_url)) ownCovers.push(row.id)
+    if (deps.clearedOf) cleared = await deps.clearedOf(ownCovers)
   } catch (error) {
     console.error('[venue-photo-chain] the cleared covers were not read:', error instanceof Error ? error.message : error)
   }

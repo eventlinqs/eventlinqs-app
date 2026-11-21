@@ -108,7 +108,7 @@ describe('the database holds one photo to one night', () => {
   it('a stand in is assigned through photo_assignments (unique by its hash), one live stand in per night, and pages read it only through the read function', () => {
     expect(sql).toContain('create unique index if not exists photo_assignments_one_stand_in_per_night on public.photo_assignments (event_id)')
     expect(sql).toContain('create unique index if not exists photo_assignments_one_stand_in_per_series on public.photo_assignments (listing_series_id)')
-    expect(sql).toMatch(/insert into public\.photo_assignments \(photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, stand_in_photo_id\)/)
+    expect(sql).toMatch(/insert into public\.photo_assignments \(photo_sha256, photo_dhash, image_url, event_id, listing_series_id, role, source, stand_in_photo_id,/)
     expect(sql).toContain('revoke all on table public.stand_in_photos from anon, authenticated, service_role;')
     expect(sql).toContain('grant execute on function public.event_stand_ins_for(uuid[]) to anon, authenticated, service_role;')
     expect(sql).toContain('grant execute on function public.assign_stand_in(uuid, uuid) to service_role;')
