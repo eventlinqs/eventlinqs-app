@@ -30,6 +30,7 @@ import { graphSendMime, type GraphConfig } from './graph'
 import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 import { firstLetterBlocked, organisationDomain, type LetterRecord } from './one-first-letter'
 import { mailboxFor } from './addresses'
+import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
 
 type Admin = SupabaseClient<Database>
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -198,11 +199,18 @@ async function readFirstLetterRecord(db: Admin, t: Queued): Promise<LetterRecord
  * Null means it may go.
  */
 async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string | null> {
-  if (!t.outreach_templates?.key.startsWith('segment_a_')) return null
+  const key = t.outreach_templates?.key ?? ''
+  if (!key.startsWith('segment_a_') && !isLifecycleKey(key)) return null
   const slug = t.body.match(/\/events\/([a-z0-9-]+)/)?.[1]
   if (!slug) return 'it names no night of theirs to check the timing against'
   const ev = await db.from('events').select('start_date, timezone').eq('slug', slug).maybeSingle()
   if (ev.error || !ev.data) return `its night could not be read again: ${ev.error?.message ?? 'no such night'}`
+  // A law 49 letter goes only while its night is more than 7 days ahead (no new ask inside T-7), by the event's clock.
+  if (isLifecycleKey(key)) {
+    return lifecycleStillAsks(ev.data.start_date as string, (ev.data.timezone as string | null) ?? null, now)
+      ? null
+      : 'its night is now inside its final week, where no new ask goes (law 49, T-7); set aside, never sent'
+  }
   const landsOn = melbourneDayOf(now.toISOString())
   return isSegmentANight(ev.data.start_date as string, landsOn, (ev.data.timezone as string | null) ?? null)
     ? null

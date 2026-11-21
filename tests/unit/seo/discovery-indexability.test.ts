@@ -454,6 +454,8 @@ const ALWAYS_PUBLISHED = [
   '/legal/organiser-terms',
   '/legal/accessibility',
   '/about',
+  // The newsletter's own page (21 November 2026): it answered 404 while every edition linked the pages beside it.
+  '/newsletter',
   '/press',
   '/careers',
   '/contact',

@@ -53,6 +53,11 @@ const SEED_PATHS = [
   // the family uncrawled.
   '/free/geelong/this-week',
   '/free/melbourne/this-week',
+  // THE NEWSLETTER'S PAGES (21 November 2026): every edition links /newsletter/city and /newsletter/refer, and both
+  // answered 404 on production that afternoon.
+  '/newsletter',
+  '/newsletter/city',
+  '/newsletter/refer',
   '/legal/terms',
   '/legal/privacy',
   '/login',

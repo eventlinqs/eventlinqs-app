@@ -9,7 +9,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
-import { dayStart, learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
+import { learn, momentWindowOf, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
 import { law37Refusal } from './law37'
@@ -2052,11 +2052,8 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     // (its window the night's own, cut to that day), never on another day of the week.
     const moment = parseMomentKey(d.momentKey)
     if (moment) {
-      const opens = dayStart(new Date(`${moment.day}T02:00:00Z`))
-      const closes = new Date(opens.getTime() + 36 * 3_600_000)
-      const shuts = dayStart(closes)
-      const notBefore = new Date(Math.max(opens.getTime(), window.notBefore?.getTime() ?? 0))
-      const deadline = new Date(Math.min(shuts.getTime(), window.deadline?.getTime() ?? Infinity))
+      // The moment's day governs, a tomorrow story the day before its night (momentWindowOf, 21 November 2026).
+      const { notBefore, deadline } = momentWindowOf(moment.day, window)
       return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline, notBefore, days: null }
     }
     return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }

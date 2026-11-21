@@ -42,7 +42,7 @@ const ORIGIN = 'https://www.eventlinqs.com.au'
 const WEEK = '2026-10-26'
 const CITIES: CampaignCity[] = [
   { slug: 'geelong', name: 'Geelong' },
-  { slug: 'ballarat', name: 'Ballarat' },
+  { slug: 'sydney', name: 'Sydney' },
 ]
 let seq = 0
 function night(iso: string, over: Partial<CampaignNight> = {}): CampaignNight {
@@ -72,8 +72,9 @@ describe('the Coming Up edition, the consideration stage', () => {
   const thisWeek = night('2026-10-30T09:00:00Z')
   const soon = [night('2026-11-04T09:00:00Z'), night('2026-11-10T09:00:00Z'), night('2026-11-15T09:00:00Z')] // days 9, 15, 20
   const tooFar = night('2026-11-17T09:00:00Z') // day 22
-  const ballarat = [night('2026-11-05T09:00:00Z', { citySlug: 'ballarat', cityName: 'Ballarat' }), night('2026-11-06T09:00:00Z', { citySlug: 'ballarat', cityName: 'Ballarat' })]
-  const { pieces } = planCampaign({ nights: [thisWeek, ...soon, tooFar, ...ballarat], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
+  // A city off the edition list (Ballarat and Bendigo joined on the PM's 15:35).
+  const sydney = [night('2026-11-05T09:00:00Z', { citySlug: 'sydney', cityName: 'Sydney' }), night('2026-11-06T09:00:00Z', { citySlug: 'sydney', cityName: 'Sydney' })]
+  const { pieces } = planCampaign({ nights: [thisWeek, ...soon, tooFar, ...sydney], cities: CITIES, weekStart: WEEK, origin: ORIGIN })
   const coming = pieces.filter((p) => p.kind === 'coming_up')
 
   it("holds the edition city's nights 8 to 20 days from the week's start, and no other", () => {

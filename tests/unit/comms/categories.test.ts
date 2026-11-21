@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -16,9 +16,17 @@ import {
 // Law 24 (Lawal's master communications directive of 18 November 2026, section 1): one category and one subtype on
 // every message record. The code's map and the migration's map are one map: this file reads the migration.
 const MIGRATION = readFileSync(join(process.cwd(), 'supabase/migrations/20261119125001_comms_categories.sql'), 'utf8').replace(/\r\n/g, '\n')
+// The template map is the one the database runs: the migration that replaced comms_subtype_of_template_key last (law 49's
+// two letters, 20261121150001), first written in the migration above.
+const MIGRATIONS = join(process.cwd(), 'supabase/migrations')
+const MAP_MIGRATION = readdirSync(MIGRATIONS)
+  .filter((f) => f.endsWith('.sql') && readFileSync(join(MIGRATIONS, f), 'utf8').includes('create or replace function public.comms_subtype_of_template_key('))
+  .sort()
+  .at(-1) as string
+const MAP = readFileSync(join(MIGRATIONS, MAP_MIGRATION), 'utf8').replace(/\r\n/g, '\n')
 
 function migrationTemplateMap(): Record<string, string> {
-  const block = MIGRATION.slice(MIGRATION.indexOf('select m.subtype from (values'), MIGRATION.indexOf(') as m(key, subtype)'))
+  const block = MAP.slice(MAP.indexOf('select m.subtype from (values'), MAP.indexOf(') as m(key, subtype)'))
   return Object.fromEntries([...block.matchAll(/\('([a-z0-9_]+)', '([A-Z0-9-]+)'\)/g)].map((m) => [m[1], m[2]]))
 }
 
@@ -30,6 +38,8 @@ const PRODUCTION_KEYS = [
   'first_invitation_referred', 'reply_change', 'reply_cost', 'reply_existing_ticketing', 'reply_not_now', 'reply_stop', 'reply_take_down',
   'reply_who_are_you', 'reply_why_listed', 'segment_a_day10', 'segment_a_day4', 'segment_a_first', 'thank_you', 'twenty_advice', 'twenty_day10',
   'twenty_day4', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events', 'withdrawal_confirmed',
+  // Law 49's two letters (21 November 2026): written to production with their plays (C:/dev/EVIDENCE/EL-21NOV/train-at).
+  'lifecycle_perm', 'lifecycle_acq',
 ]
 
 describe('the seven communication categories (Law 24)', () => {
@@ -61,6 +71,15 @@ describe('the seven communication categories (Law 24)', () => {
     for (const [key, c] of Object.entries(TEMPLATE_CLASS)) expect(sql[key], key).toBe(c.subtype)
   })
 
+  it('the template map is read from the latest migration that writes it', () => {
+    expect(MAP_MIGRATION).toBe('20261121150001_lifecycle_letters_take_their_class.sql')
+  })
+
+  it("law 49's photo request is PERM and its offer an acquisition first letter", () => {
+    expect(TEMPLATE_CLASS.lifecycle_perm).toEqual({ category: 'PERM', subtype: 'PERM-IMAGE' })
+    expect(TEMPLATE_CLASS.lifecycle_acq).toEqual({ category: 'ACQ', subtype: 'ACQ-FIRST' })
+  })
+
   it('segment A asks a listed organiser for an image: PERM, never acquisition, never toward the 20', () => {
     expect(TEMPLATE_CLASS.segment_a_first).toEqual({ category: 'PERM', subtype: 'PERM-IMAGE' })
     expect(TEMPLATE_CLASS.segment_a_day4.subtype).toBe('PERM-REMINDER')
@@ -69,7 +88,7 @@ describe('the seven communication categories (Law 24)', () => {
 
   it('the 20 a business day counts an acquisition first letter only', () => {
     const counted = Object.entries(TEMPLATE_CLASS).filter(([, c]) => countsTowardTheTwenty(c)).map(([k]) => k).sort()
-    expect(counted).toEqual(['acq_first', 'first_dm', 'first_invitation', 'first_invitation_referred', 'twenty_advice', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events'])
+    expect(counted).toEqual(['acq_first', 'first_dm', 'first_invitation', 'first_invitation_referred', 'lifecycle_acq', 'twenty_advice', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events'])
     expect(countsTowardTheTwenty({ category: 'ACQ', subtype: 'ACQ-FOLLOWUP' })).toBe(false)
   })
 

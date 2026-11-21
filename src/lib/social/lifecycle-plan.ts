@@ -11,6 +11,8 @@ import {
   daysFrom,
   FIRST_LINE_WINDOW_DAYS,
   firstLineFor,
+  startedByFirstBand,
+  endedByFirstBand,
   momentKey,
   momentsDue,
   rankPhotos,
@@ -280,7 +282,14 @@ export async function planLifecyclePieces(
     if (!n) continue
     const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
     if (!photo || photo.width === null || photo.height === null) continue
-    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`))
+    // A piece that could not post on its day is not drawn: its night has ended by the format's first band.
+    if (endedByFirstBand(ln.endDate ?? null, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)) {
+      notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it ends before the ${c.moment.format}'s first band that day; not drawn`)
+      continue
+    }
+    // A first day already under way by its band says it is on now (lifecycle.ts startedByFirstBand).
+    const startedByBand = startedByFirstBand(ln.startDate, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)
+    const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
       continue

@@ -14,6 +14,7 @@ import { captureException } from '@/lib/observability/sentry'
 import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { endOfLocalDayUtc, isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { isUnsubscribeToken } from '@/lib/consent/token'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { eventHeroMediaInput, getFeaturedHeroBackground, heroIsTypographic } from '@/lib/images/event-media'
 import { illustrativePhoto } from '@/lib/images/illustrative'
@@ -220,10 +221,30 @@ export function introOf(cityName: string, edition: DigestEdition, nights: readon
   return `Here is the best of this ${edition === 'weekend' ? 'weekend' : 'week'} in ${cityName}: ${words}. Our top picks to help you plan it.`
 }
 
+/**
+ * EVERY LINK AN EDITION CARRIES TO A PAGE OF OURS THAT IS NOT AN EVENT, in one place (law 5). Read on production at
+ * 14:58 on 21 November 2026 (OUR DATA): the editions shipped in #331 linked /newsletter/city and /newsletter/refer, and
+ * both answered 404. Each of these now has its page, and tests/unit/newsletter/edition-links-have-routes.test.ts
+ * fails the build when any of them, or any other link a built edition carries, has no route under src/app.
+ * The manage link carries the recipient's own token, the one their unsubscribe link carries, so a reader changes their
+ * city without signing in; a send with no token (a preview to a non subscriber) links the page without one.
+ */
+export function newsletterLinks(
+  origin: string,
+  input: { readonly edition: DigestEdition; readonly citySlug: string; readonly periodStart: string; readonly recipientToken?: string | null },
+): { readonly manageUrl: string; readonly referUrl: string; readonly webUrl: string } {
+  const token = input.recipientToken && isUnsubscribeToken(input.recipientToken) ? input.recipientToken : null
+  return {
+    manageUrl: token ? `${origin}/newsletter/city?t=${token}` : `${origin}/newsletter/city`,
+    referUrl: `${origin}/newsletter/refer`,
+    webUrl: `${origin}/newsletter/${input.edition}/${input.citySlug}/${input.periodStart}`,
+  }
+}
+
 /** The edition for one city, read and picked; the drawing is buildWhatsOn's. */
 export async function readWhatsOnEdition(
   admin: Admin,
-  input: { readonly citySlug: string; readonly cityName: string; readonly edition: DigestEdition; readonly now: Date; readonly origin: string; readonly unsubscribeUrl: string },
+  input: { readonly citySlug: string; readonly cityName: string; readonly edition: DigestEdition; readonly now: Date; readonly origin: string; readonly unsubscribeUrl: string; readonly recipientToken?: string | null },
 ): Promise<{ readonly edition: WhatsOnInput; readonly period: { start: string; end: string } }> {
   const { citySlug, cityName, edition, now, origin } = input
   const period = resolveDigestPeriod(now, edition)
@@ -270,8 +291,7 @@ export async function readWhatsOnEdition(
       alerts: slots.alerts.map((n) => n.pick),
       origin,
       unsubscribeUrl: input.unsubscribeUrl,
-      manageUrl: `${origin}/newsletter/city`,
-      referUrl: `${origin}/newsletter/refer`,
+      ...newsletterLinks(origin, { edition, citySlug, periodStart: period.start, recipientToken: input.recipientToken }),
     },
   }
 }

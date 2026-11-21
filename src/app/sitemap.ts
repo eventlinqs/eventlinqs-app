@@ -234,6 +234,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.6,
     },
+    // THE NEWSLETTER'S OWN PAGE (law 45; it answered 404 until 21 November 2026 while every edition linked the pages
+    // beside it).
+    {
+      url: `${baseUrl}/newsletter`,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
     {
       url: `${baseUrl}/press`,
       changeFrequency: 'monthly',

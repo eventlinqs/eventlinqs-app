@@ -5,7 +5,8 @@
  *
  * This module is the one map from a message's source to its category and subtype. The database holds the same map
  * (migration 20261119125001_comms_categories.sql: comms_category_of_template and the social, report, digest and notice
- * columns), and tests/unit/comms/categories.test.ts reads that migration and fails if the two ever disagree.
+ * columns; the template map as the latest migration replacing comms_subtype_of_template_key writes it), and
+ * tests/unit/comms/categories.test.ts reads that migration and fails if the two ever disagree.
  */
 export const COMMS_CATEGORIES = {
   ACQ: 'Organiser Acquisition',
@@ -33,6 +34,8 @@ export function isCommsPair(category: string, subtype: string): boolean {
  *   invitations, the direct message, and the letter asking a venue who looks after its nights);
  * - the replies inside an acquisition thread (who are you, not now, what does it cost, yes on a direct message) are ACQ;
  * - segment A, an organiser whose nights are already listed asked for one image, is PERM (directive section 4);
+ * - law 49's two letters on each event's clock (21 November 2026): the photo permission request is PERM, the free
+ *   promotion offer an acquisition first letter (src/lib/outreach/lifecycle-letters.ts);
  * - a listing's own news and its replies (featured, why listed, take it down, change it, withdrawn) are LIST;
  * - the after the night report, the next night ask and the thank you are RET;
  * - the reply to an organiser with their own ticketing is TKT;
@@ -59,6 +62,8 @@ export const TEMPLATE_CLASS: Readonly<Record<string, CommsClass>> = {
   segment_a_first: { category: 'PERM', subtype: 'PERM-IMAGE' },
   segment_a_day4: { category: 'PERM', subtype: 'PERM-REMINDER' },
   segment_a_day10: { category: 'PERM', subtype: 'PERM-REMINDER' },
+  lifecycle_perm: { category: 'PERM', subtype: 'PERM-IMAGE' },
+  lifecycle_acq: { category: 'ACQ', subtype: 'ACQ-FIRST' },
   featured: { category: 'LIST', subtype: 'LIST-FEATURED' },
   reply_why_listed: { category: 'LIST', subtype: 'LIST-REPLY' },
   reply_take_down: { category: 'LIST', subtype: 'LIST-REPLY' },

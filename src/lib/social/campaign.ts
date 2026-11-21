@@ -55,7 +55,9 @@ export type PieceKind =
  * weekend guide still plan for every guide city, as before.
  */
 // Melbourne first (Lawal, 12 November 2026, 09:16 to 09:19; growth plan version 6): the weekly edition starts with it.
-export const EDITION_CITIES: readonly string[] = ['melbourne', 'geelong']
+// Ballarat and Bendigo joined on the PM's word (15:35 of 21 November 2026, ruling 2: 'the four guide cities; Lawal's
+// practice editions were four').
+export const EDITION_CITIES: readonly string[] = ['melbourne', 'geelong', 'ballarat', 'bendigo']
 
 /** A Category Spotlight needs this many of one category's nights in a city's week. */
 export const SPOTLIGHT_MIN_NIGHTS = 3

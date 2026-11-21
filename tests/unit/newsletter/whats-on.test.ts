@@ -154,3 +154,53 @@ describe('the selection is written out: tier, own photograph, variety, never twi
     expect(slots.alerts.map((n) => n.id)).toEqual(['beck'])
   })
 })
+
+/*
+ * A URL INSIDE <style> IS NEVER HTML-ESCAPED (found by looking, 21 November 2026, 14:44: the practice weekend editions at
+ * 390 showed an empty navy band where the city photograph belongs). The phone hero's URL sat inside the <style> element
+ * written with &amp;, and a <style> element's text is raw, its entities never decoded, so the image proxy received
+ * 'amp;src' and answered 400 (the same URL with & answered 200 image/jpeg). Attribute values are decoded, so the desktop
+ * hero, the featured card and the cards were whole. Every edition on a phone lost its city photograph.
+ */
+describe('the edition writes each image URL for the context it sits in', () => {
+  const proxied = (k: string) => `${ORIGIN}/api/newsletter/image?k=${k}&src=https%3A%2F%2Fimages.example%2Fa.jpg`
+  const styleOf = (html: string) => html.slice(html.indexOf('<style'), html.indexOf('</style>'))
+
+  it('the phone hero inside <style> keeps its & and carries no HTML entity', () => {
+    const { html } = buildWhatsOn(input({ heroImage: { desktop: proxied('hero-d'), mobile: proxied('hero-m') } }))
+    expect(styleOf(html)).toContain(`url('${proxied('hero-m')}')`)
+    expect(styleOf(html)).not.toMatch(/&(amp|quot|lt|gt|#\d+);/)
+  })
+
+  it('a character that could end the url() or the element is percent-encoded there, never written as an entity', () => {
+    const { html } = buildWhatsOn(input({ heroImage: { desktop: 'https://img.example/d.jpg', mobile: "https://img.example/m.jpg?x=a'b)c</style>" } }))
+    expect(styleOf(html)).toContain("url('https://img.example/m.jpg?x=a%27b%29c%3C/style%3E')")
+  })
+
+  it('the desktop hero in its attributes stays escaped, as an attribute must be', () => {
+    const { html } = buildWhatsOn(input({ heroImage: { desktop: proxied('hero-d'), mobile: proxied('hero-m') } }))
+    expect(html).toContain(`background="${ORIGIN}/api/newsletter/image?k=hero-d&amp;src=`)
+  })
+})
+
+/*
+ * 'VIEW IN BROWSER' (the PM's order of 21 November 2026, about 03:30): an edition opens its own web copy
+ * (/newsletter/<edition>/<city>/<date>) from above the masthead and from the plain text part; the web copy itself carries
+ * no link to itself.
+ */
+describe('View in browser', () => {
+  const web = `${ORIGIN}/newsletter/weekend/melbourne/2026-11-21`
+
+  it('the edition links its web copy above the masthead and first in the text part', () => {
+    const { html, text } = buildWhatsOn(input({ webUrl: web }))
+    expect(html).toContain(`<a href="${web}" style="color:#4A5466;text-decoration:underline">View in browser</a>`)
+    expect(html.indexOf('View in browser')).toBeLessThan(html.indexOf('class="hero"'))
+    expect(text.split('\n')[0]).toBe(`View in browser: ${web}`)
+  })
+
+  it('the web copy carries none', () => {
+    const { html, text } = buildWhatsOn(input({ webUrl: null }))
+    expect(html).not.toContain('View in browser')
+    expect(text).not.toContain('View in browser')
+  })
+})

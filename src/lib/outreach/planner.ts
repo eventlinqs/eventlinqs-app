@@ -19,6 +19,8 @@ import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 import { draftSegmentALetter } from './segment-a-play'
+import { draftLifecycleLetter } from './lifecycle-play'
+import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
 import { organiserCitySlugs } from './organiser-city'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
@@ -143,6 +145,10 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
   const firstKeys = firstIds.length ? await db.from('outreach_templates').select('id, key').in('id', firstIds) : { data: [] as { id: string; key: string }[], error: null }
   if (firstKeys.error) throw new Error(`the plays' first letters: ${firstKeys.error.message}`)
   const segmentAPlays = new Set((firstKeys.data ?? []).filter((t) => t.key === 'segment_a_first').map((t) => t.id as string))
+  // LAW 49 (Lawal, 21 November 2026, 09:20): a play whose first letter is lifecycle_perm or lifecycle_acq writes on each
+  // event's clock (./lifecycle-play.ts): its cohort is the organisers one of whose nights has that letter due today.
+  const lifecyclePlays = new Map<string, LifecycleKey>()
+  for (const t of firstKeys.data ?? []) if (isLifecycleKey(t.key as string)) lifecyclePlays.set(t.id as string, t.key as LifecycleKey)
 
   for (const play of plays.data ?? []) {
     const capAnswer = await db.rpc('outreach_play_cap_today', { p_play: play.id })
@@ -160,6 +166,7 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     let room = cap - report.usedToday
     let slot = 0
     const segmentA = play.step1_template_id !== null && segmentAPlays.has(play.step1_template_id)
+    const lifecycle = play.step1_template_id !== null ? (lifecyclePlays.get(play.step1_template_id) ?? null) : null
 
     const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null, first?: { id: string; subject: string | null }) => {
       if (segmentA) {
@@ -204,8 +211,9 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       }
     }
 
-    // 1. Follow-ups that are due.
-    const firsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
+    // 1. Follow-ups that are due. A law 49 play has none: the event's clock owns its follow ups, and their words wait on
+    // Lawal's one template approval.
+    const firsts = lifecycle ? { data: [] } : await db.from('outreach_touches').select('id, contact_id, sent_at, subject').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
     for (const first of firsts.data ?? []) {
       if (room <= 0) break
       const days = melbourneDaysBetween(new Date(first.sent_at as string), deps.now)
@@ -244,7 +252,36 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         allowed = new Set(real.filter((o) => rule.cities!.includes(cities.get(o.id) ?? '')).map((o) => o.id))
       }
       const seenOrganiser = new Set<string>()
-      for (const c of candidates.data ?? []) {
+      if (lifecycle) {
+        // THE CLOCK'S COHORT (law 49): each organiser once, the clock deciding whether its letter is due today and on
+        // which night (./lifecycle-read.ts). Being written to before does not end it: PERM and ACQ are two letters, from
+        // two addresses (law 33), never mixed (law 24); a letter of the same kind already gone, or a reply, does.
+        for (const c of candidates.data ?? []) {
+          if (room <= 0) break
+          if (seenOrganiser.has(c.organiser_id)) continue
+          if (allowed && !allowed.has(c.organiser_id)) continue
+          if (rule.organisers && rule.organisers.length > 0 && !rule.organisers.includes(c.organiser_id)) continue
+          seenOrganiser.add(c.organiser_id)
+          const l = await draftLifecycleLetter(db, {
+            play: { id: play.id, name: play.name },
+            key: lifecycle,
+            contactId: c.id,
+            templateId: play.step1_template_id,
+            scheduledFor: new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
+            now: deps.now,
+            origin: deps.origin,
+            actingUser: deps.actingUser,
+          })
+          if (l.state === 'queued') {
+            report.queued++
+            room--
+            slot++
+          } else if (l.state === 'held') report.held.push({ contactId: c.id, why: [...l.why] })
+          else if (l.state === 'refused') report.refused.push({ contactId: c.id, why: l.why })
+          else (report.notDrafted ??= []).push({ contactId: c.id, why: l.why })
+        }
+      }
+      for (const c of lifecycle ? [] : (candidates.data ?? [])) {
         if (room <= 0) break
         if (written.has(c.id) || seenOrganiser.has(c.organiser_id)) continue
         if (allowed && !allowed.has(c.organiser_id)) continue

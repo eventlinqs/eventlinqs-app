@@ -1,4 +1,4 @@
-import type { SocialFormat } from './cadence'
+import { STARTING_CALENDAR, type SocialFormat } from './cadence'
 import { carriesBannedWord } from './words'
 
 /**
@@ -390,9 +390,46 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
   final_day: ['Last day today, and still on.', 'Final day today, still on until it closes.', 'Still on today, for the last time.'],
 }
 
+/**
+ * A first day whose night has already started by the format's first band that day (a night listed from midnight, or one
+ * that opens before the morning post): its words say it is on now (piece-quality.ts ON_NOW), which is what lets the
+ * scheduler give it the night's run and the publish gate post it after the night's start (law 22, class 1). 'It starts
+ * today' at 9 am for a night under way since midnight could never post (21 November 2026, the PM's 16:05).
+ */
+const FIRST_DAY_ON_NOW: readonly string[] = ['Opening day, and on now.', 'Day one, and it is on now.', 'It is on now, from today.']
+
+/**
+ * Whether a night has started by its format's first band on the moment's day (the starting calendar, cadence.ts: feed
+ * 9 am, story 6 pm, Melbourne's clock until the account's own posts teach the hours). Pure.
+ */
+export function startedByFirstBand(startIso: string, zone: string, format: SocialFormat, day: string): boolean {
+  const hour = Math.min(...STARTING_CALENDAR[format].map((h) => h % 24))
+  const local = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(startIso))
+  const get = (t: string) => local.find((p) => p.type === t)?.value ?? ''
+  const startDay = `${get('year')}-${get('month')}-${get('day')}`
+  if (startDay < day) return true
+  if (startDay > day) return false
+  return Number(get('hour')) * 60 + Number(get('minute')) <= hour * 60
+}
+
+/**
+ * Whether a night has ended by its format's first band on the moment's day, so a piece of that format could not post that
+ * day (a morning market's story: the market closes at 4 pm, stories go from 6 pm). The planner never draws it. Pure.
+ */
+export function endedByFirstBand(endIso: string | null, zone: string, format: SocialFormat, day: string): boolean {
+  if (!endIso) return false
+  const hour = Math.min(...STARTING_CALENDAR[format].map((h) => h % 24))
+  const local = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(endIso))
+  const get = (t: string) => local.find((p) => p.type === t)?.value ?? ''
+  const endDay = `${get('year')}-${get('month')}-${get('day')}`
+  if (endDay < day) return true
+  if (endDay > day) return false
+  return Number(get('hour')) * 60 + Number(get('minute')) <= hour * 60
+}
+
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number): string | null {
-  const bank = FIRST_LINES[kind]
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false): string | null {
+  const bank = kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line
