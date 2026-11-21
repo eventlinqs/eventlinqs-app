@@ -13582,6 +13582,7 @@ export type Database = {
           is_multi_day: boolean
           is_recurring: boolean
           is_seed_data: boolean
+          is_test: boolean
           listing_fresh_until: string | null
           listing_series_id: string | null
           listing_source: string
