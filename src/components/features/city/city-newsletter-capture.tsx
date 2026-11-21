@@ -17,17 +17,22 @@ interface Props {
 /**
  * CityNewsletterCapture: email capture for the city CTA panel.
  *
- * Submits to /api/newsletter/subscribe, which emails the address a link to
- * confirm the weekly guide (double opt in, 12 November 2026): the guide starts
- * only when the owner of the address presses Confirm on that page.
+ * Submits to /api/newsletter/subscribe. ONE STEP (law 50 (a), Lawal, 21 November
+ * 2026, 10:06: "If somebody clicks on 'Subscribe to a newsletter,' that is the
+ * record"): the click subscribes, and this week's picks are sent at once; no
+ * confirm email, ever. A hidden honeypot field stops scripts without a step
+ * for a person (law 50 (d)).
  *
- * Says "check your inbox" only when the confirmation email was sent; falls
- * back to an inline error when the network or API returns a 4xx/5xx. Never
- * throws to the boundary: the marketing surface must keep working.
+ * Says "subscribed" only when the server recorded it, and "on their way" only
+ * when the welcome was sent; falls back to an inline error when the network or
+ * API returns a 4xx/5xx. Never throws to the boundary: the marketing surface
+ * must keep working.
  */
 export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
   const [email, setEmail] = useState('')
+  const [website, setWebsite] = useState('')
   const [state, setState] = useState<'idle' | 'submitting' | 'ok' | 'error'>('idle')
+  const [welcome, setWelcome] = useState<string | null>(null)
   const dark = tone === 'dark'
   const c = {
     heading: dark ? 'text-white' : 'text-ink-900',
@@ -47,10 +52,13 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'city', city: cityName }),
+        body: JSON.stringify({ email, source: 'city', city: cityName, website }),
       })
-      if (res.ok) setState('ok')
-      else setState('error')
+      if (res.ok) {
+        const answer = (await res.json().catch(() => null)) as { welcome?: string } | null
+        setWelcome(answer?.welcome ?? null)
+        setState('ok')
+      } else setState('error')
     } catch (error) {
       reportClientError(error, { where: 'components/features/city/city-newsletter-capture:55' })
       setState('error')
@@ -67,13 +75,23 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
       </p>
       {state === 'ok' ? (
         <p className={`mt-4 rounded-md border px-4 py-3 text-sm ${c.ok}`}>
-          Check your inbox. We have sent you a link to confirm your weekly guide.
+          {welcome === 'already'
+            ? `You're already on the ${cityName} guide.`
+            : welcome === 'sent'
+              ? "You're subscribed. This week's picks are on their way to your inbox."
+              : "You're subscribed. Your weekly guide arrives each Wednesday."}
         </p>
       ) : (
         <form method="post" onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
           <label htmlFor="city-newsletter-email" className="sr-only">
             Email address
           </label>
+          {/* The honeypot (law 50 (d)): off screen, out of the tab order and hidden from assistive technology, so
+              only a script fills it. */}
+          <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+            <label htmlFor="city-newsletter-website">Website</label>
+            <input id="city-newsletter-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} />
+          </div>
           <input
             id="city-newsletter-email"
             name="email"

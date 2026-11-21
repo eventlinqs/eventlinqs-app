@@ -120,6 +120,8 @@ export async function recordPlatformDigestConsent(
      * standing in for it. */
     consentText?: string
     consentVersion?: string
+    /** The request's IP, so the record says who, when and how (law 50 (a); ACMA, acma.gov.au/avoid-sending-spam). */
+    reference?: string | null
   },
 ): Promise<boolean> {
   try {
@@ -138,6 +140,7 @@ export async function recordPlatformDigestConsent(
       captureSurface: params.source ?? 'checkout',
       citySlug: params.citySlug ?? null,
       at: params.at,
+      reference: params.reference ?? null,
     })
   } catch (error) {
     captureException(error, { where: 'lib/consent/record:recordPlatformDigestConsent' })

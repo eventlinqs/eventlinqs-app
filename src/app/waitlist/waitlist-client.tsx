@@ -58,7 +58,7 @@ export function WaitlistClient({
     cityName: string
     foundingCandidate: boolean
     role: WaitlistRole
-    confirmationEmailed: boolean
+    alertsOn: boolean
   } | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLDivElement>(null)
@@ -84,7 +84,7 @@ export function WaitlistClient({
           cityName: result.cityName,
           foundingCandidate: result.foundingCandidate,
           role: result.role,
-          confirmationEmailed: result.confirmationEmailed,
+          alertsOn: result.alertsOn,
         })
       } else {
         setError(result.error)
@@ -170,7 +170,7 @@ export function WaitlistClient({
                 You are on the list
               </p>
               <h2 className="mt-2 font-display text-2xl font-bold text-ink-900">
-                {joined.confirmationEmailed ? 'Check your inbox to confirm.' : `You are on the ${joined.cityName} list.`}
+                {`You are on the ${joined.cityName} list.`}
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-600">
                 {joined.foundingCandidate && joined.role === 'organiser'
@@ -180,9 +180,9 @@ export function WaitlistClient({
                     : `We will email you when there is something on near you in ${joined.cityName}. No noise, and one click unsubscribes you.`}
               </p>
               <p className="mt-2 text-xs text-ink-500">
-                {joined.confirmationEmailed
-                  ? `Press Confirm my alerts in the email we just sent. Your ${joined.cityName} alerts start then, and every email has a one-click unsubscribe link.`
-                  : 'You are recorded, but the email with your Confirm link could not be sent just now, so no alerts will start yet. Join again in a few minutes for a new one.'}
+                {joined.alertsOn
+                  ? `Your ${joined.cityName} alerts start now, and every email has a one-click unsubscribe link.`
+                  : 'You are recorded, but your alerts could not be switched on just now. Join again in a few minutes.'}
               </p>
               <button
                 type="button"

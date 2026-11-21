@@ -19,11 +19,38 @@ const PANEL = readFileSync(
 )
 
 const CONFIRM = readFileSync('src/lib/newsletter/confirm.ts', 'utf8')
+const WELCOME = readFileSync('src/lib/newsletter/welcome.ts', 'utf8')
 
-describe('the endpoint does what it says: double opt in (Release 2, item 8)', () => {
-  it('records nothing itself: the consent is written only by the Confirm press', () => {
-    expect(ROUTE).not.toContain('recordPlatformDigestConsent')
+describe('the endpoint does what it says: one step (law 50 (a), Lawal, 21 November 2026)', () => {
+  it('the click is the record: the route writes the consent itself, with the page, the wording, its version and the IP', () => {
+    expect(ROUTE).toContain('recordPlatformDigestConsent')
+    expect(ROUTE).toContain('consentText: cityNewsletterConsentWording(cityName)')
+    expect(ROUTE).toContain('consentVersion: CITY_NEWSLETTER_CONSENT_VERSION')
+    expect(ROUTE).toContain('reference: ip')
+    expect(ROUTE).toContain('pageOf(request)')
+    // A link from before the change still subscribes its owner on Confirm.
     expect(CONFIRM).toContain('recordPlatformDigestConsent')
+  })
+
+  it('never sends a confirm email; the welcome with this week\'s picks goes at once', () => {
+    expect(ROUTE).not.toContain('sendConfirmationEmail')
+    expect(ROUTE).not.toContain('sealConfirmRequest')
+    expect(ROUTE).toContain('sendNewsletterWelcome')
+    expect(WELCOME).toContain('buildDigestEmailHtml')
+    expect(WELCOME).toContain('oneClickUnsubscribeHeaders')
+  })
+
+  it('a filled honeypot is answered as a person would be and recorded as nothing (law 50 (d))', () => {
+    const honeypot = ROUTE.indexOf("(parsed.data.website ?? '').trim() !== ''")
+    expect(honeypot).toBeGreaterThan(0)
+    expect(honeypot).toBeLessThan(ROUTE.indexOf('recordPlatformDigestConsent(admin'))
+    expect(PANEL).toContain('name="website"')
+    expect(PANEL).toContain('tabIndex={-1}')
+    expect(PANEL).toContain('aria-hidden="true"')
+  })
+
+  it('a person already on the list is not written twice and gets no second welcome', () => {
+    expect(ROUTE).toMatch(/status === 'granted'[\s\S]*welcome: 'already'/)
   })
 
   it('the press writes into the table the weekly digest actually reads', () => {
@@ -33,9 +60,8 @@ describe('the endpoint does what it says: double opt in (Release 2, item 8)', ()
     expect(recorder).toContain("from('marketing_consents')")
   })
 
-  it('emails the confirmation link and never reports success when it was not sent', () => {
-    expect(ROUTE).toContain('sendConfirmationEmail')
-    expect(ROUTE).toMatch(/catch \(error\)[\s\S]*not_sent[\s\S]*status: 500/)
+  it('never reports a subscription when nothing was written', () => {
+    expect(ROUTE).toMatch(/if \(!recorded\)[\s\S]*not_recorded[\s\S]*status: 500/)
   })
 
   it('refuses a locality that has no digest, rather than confirming an unreachable row', () => {
@@ -48,9 +74,11 @@ describe('the endpoint does what it says: double opt in (Release 2, item 8)', ()
     expect(ROUTE).toMatch(/status: 429/)
   })
 
-  it('tells the person what is true: check the inbox, not subscribed', () => {
-    expect(PANEL).toContain('Check your inbox. We have sent you a link to confirm your weekly guide.')
-    expect(PANEL).not.toContain('Subscribed.')
+  it('tells the person what is true for each answer, and never asks them to confirm', () => {
+    expect(PANEL).toContain("You're subscribed. This week's picks are on their way to your inbox.")
+    expect(PANEL).toContain("You're subscribed. Your weekly guide arrives each Wednesday.")
+    expect(PANEL).toContain("You're already on the ${cityName} guide.")
+    expect(PANEL).not.toMatch(/Check your inbox|link to confirm/)
   })
 })
 
