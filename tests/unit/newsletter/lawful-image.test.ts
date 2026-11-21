@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { forTheNewsletter, type ReadNight } from '@/lib/newsletter/edition'
 import { buildWhatsOn, type NlPick } from '@/lib/newsletter/whats-on'
 import { illustrativePhoto } from '@/lib/images/illustrative'
@@ -70,6 +70,11 @@ describe("the night's own photograph in an email only with its recorded basis", 
 
 describe('only a photograph looked at, with no face its subject, stands in for a night', () => {
   it('the kinds looked at and passed have one; a kind with none yet takes the brand panel', () => {
+    // The library's spine photographs resolve through the project's storage URL, which tests/setup-clean-env.ts strips.
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
     for (const slug of ['music', 'festival', 'community', 'arts-community', 'health-wellness', 'family', 'comedy', 'education', 'sports']) expect(illustrativePhoto(slug)).toMatch(/^(https:\/\/|\/images\/)/)
     expect(illustrativePhoto('arts-community')).toContain('/categories/arts/gallery-day-')
     expect(illustrativePhoto('family')).toBe('/images/library/illustrative-family.jpg')
