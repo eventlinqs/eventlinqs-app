@@ -15,6 +15,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, monthOrder, moreDatesLine, PAGE, sectionOrder, whenLine, type Entry, type Range } from '@/lib/events/guide-sections'
 import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { archivalNote } from '@/lib/media/photo-credits'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -744,12 +745,15 @@ function WholePhoto({ src, alt, className, variant, priority = false }: { src: s
 }
 
 /**
- * THE PHOTOGRAPH A CARD DRAWS (Lawal, 12 November 2026, 01:01): the night's own, with its credit; else the venue's own
- * photograph the photo lock dealt to this night (src/lib/events/venue-thumbs.ts), labelled as the venue beside its
- * licence credit, so the venue is never presented as the act; else none, never a stand-in.
+ * THE PHOTOGRAPH A CARD DRAWS (Lawal, 12 November 2026, 01:01): the night's own, with no credit line (law 17 (d) as
+ * narrowed by Lawal, 19 November 2026, 11:36: "You don't put no photo credit"; its permission stays in the register),
+ * only, where archival, that it is from a past one (archivalNote);
+ * else the venue's own photograph the photo lock dealt to this night (src/lib/events/venue-thumbs.ts), labelled as the
+ * venue beside its licence credit, the one credit law 17 (d) keeps, so the venue is never presented as the act; else
+ * none, never a stand-in.
  */
 export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: string | null } | null {
-  if (r.thumb) return { src: r.thumb, alt: r.thumbAlt ?? '', credit: r.thumbCredit ?? null }
+  if (r.thumb) return { src: r.thumb, alt: r.thumbAlt ?? '', credit: archivalNote(r.thumbCredit) }
   if (r.venueThumb) {
     const venue = r.venue ? `The venue, ${r.venue}` : 'The venue'
     return { src: r.venueThumb, alt: r.venue ? `${r.venue}, the venue` : 'The venue', credit: [venue, r.venueThumbCredit].filter(Boolean).join('. ') }

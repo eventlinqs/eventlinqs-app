@@ -72,6 +72,24 @@ export function creditWords(credit: string | null | undefined): string | null {
   return words || null
 }
 
+/**
+ * THE ARCHIVAL NOTE, NEVER THE CREDIT (law 17 (d) as narrowed by Lawal, 19 November 2026, 11:36: "You don't put no photo
+ * credit"; and the project manager's ruling of 29 October 2026, 15:56: an archival photograph says it is from a past
+ * festival wherever it is drawn). Event pages and cards print no credit line; where the register's own words mark a
+ * photograph as archival ('AMCF, past festival (2024)', by the database's own rule), they print only that it is from a
+ * past one: 'From a past festival (2024)', or for a set 'From past festivals'. No name, no 'Photo:'. Pure.
+ */
+export function archivalNote(credit: string | null | undefined, options: { readonly plural?: boolean } = {}): string | null {
+  const words = creditWords(credit)
+  const m = words?.match(/\bpast ([a-z]+)\b(?:\s*\((\d{4})\))?/i)
+  if (!m) return null
+  const word = m[1].toLowerCase()
+  // One of the kind: 'festivals' festival, 'classes' class, 'class' stays class.
+  const kind = /(ss|us|is)$/.test(word) ? word : /(sses|xes|ches|shes)$/.test(word) ? word.slice(0, -2) : word.replace(/s$/, '')
+  const year = m[2] ? ` (${m[2]})` : ''
+  return options.plural ? `From past ${kind}${/(s|x|ch|sh)$/.test(kind) ? 'es' : 's'}${year}` : `From a past ${kind}${year}`
+}
+
 /** Reads one night's credits on the server (service role). A failed read credits nothing and says so to the caller. */
 export async function readPhotoCredits(db: SupabaseClient, eventId: string, now: Date = new Date()): Promise<Map<string, string>> {
   const { data, error } = await db

@@ -28,6 +28,7 @@ import { OrganiserContactPanel } from '@/components/features/organisers/organise
 import { OrganiserMobileStickyBar } from '@/components/features/organisers/organiser-mobile-sticky-bar'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { ORGANISER_HERO_PHOTOS } from '@/lib/images/organiser-hero-photo'
+import { archivalNote } from '@/lib/media/photo-credits'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
@@ -493,8 +494,10 @@ export default async function OrganiserProfilePage({ params }: Props) {
           }
         />
 
-        {heroPhoto && (
-          <p className="mx-auto mt-2 max-w-7xl px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{heroPhoto.credit}</p>
+        {/* No photo credit (law 17 (d) as narrowed by Lawal, 19 November 2026: "You don't put no photo credit"); an
+            archival photograph says it is from a past one, with no name (archivalNote, the PM's 29 October 2026 ruling). */}
+        {heroPhoto && archivalNote(heroPhoto.credit) && (
+          <p className="mx-auto mt-2 max-w-7xl px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{archivalNote(heroPhoto.credit)}</p>
         )}
 
         {/* OP2 Bio */}

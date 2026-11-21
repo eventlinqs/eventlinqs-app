@@ -89,10 +89,14 @@ describe('the venue photograph on a card, labelled as the venue (item 2)', () =>
       credit: 'The venue, Federation Square. Photo: A. Photographer, CC BY-SA 4.0',
     })
   })
-  it("the night's own photograph wins, with its own credit; no photograph at all draws none", () => {
+  it("the night's own photograph wins and prints no credit (law 17 (d), 19 November 2026: 'You don't put no photo credit'); no photograph at all draws none", () => {
     expect(cardPhoto(row({ thumb: 'https://o/x.jpg', thumbAlt: 'The band on stage', thumbCredit: 'Photo: the organiser', venueThumb: 'https://v/f.jpg' }))).toEqual({
-      src: 'https://o/x.jpg', alt: 'The band on stage', credit: 'Photo: the organiser',
+      src: 'https://o/x.jpg', alt: 'The band on stage', credit: null,
     })
+    // An archival photograph still says it is from a past one (the PM's 29 October 2026 ruling), with no name.
+    expect(cardPhoto(row({ thumb: 'https://o/a.jpg', thumbAlt: 'Dancers', thumbCredit: 'Photo: AMCF, past festival (2024)' }))?.credit).toBe(
+      'From a past festival (2024)',
+    )
     expect(cardPhoto(row({}))).toBeNull()
   })
   it('a venue photograph never puts a night in Big nights: law 18 asks for the night\'s own', () => {

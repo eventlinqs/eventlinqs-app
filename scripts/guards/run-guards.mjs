@@ -713,6 +713,7 @@
  *                              (LAW 24 retired, Lawal 15 November 2026)
  *   no-filler-in-event-collections  no public collection draws an invitation or any card
  *   forms-say-only-what-happened  no form sends a visitor to a mail app or thanks them from a timer
+ *   no-photo-credit-on-pages  no event page or card prints a photo credit line (law 17 (d), 19 November 2026)
  *                              made from a count, and an empty rail is hidden
  *                              (31 October 2026, Lawal's emergency correction)
  *   organiser-links-have-a-page  every public /organisers/<slug> link asks whether the organiser
@@ -2107,6 +2108,11 @@ const GUARDS = [
   // link and said 'Message received' whatever happened. No form hands a visitor to a mail app or thanks them from a
   // timer. Drilled red on the old contact form.
   'scripts/guards/forms-say-only-what-happened.mjs',
+  // 21 November 2026, WINDOW 5C (law 17 (d) as narrowed by Lawal, 19 November 2026: "You don't put no photo credit"):
+  // the event page, the gallery, the walk-in page and the guide cards still printed the register's credit. No page or
+  // component a visitor sees calls creditLine or prints a recorded organiser credit; licence credits come from their
+  // own fields. Drilled red on the old card and gallery.
+  'scripts/guards/no-photo-credit-on-pages.mjs',
   // 15 November 2026, Lawal 00:19 and 00:37: LAW 24 is retired, every organiser pays the fee from day one, and the
   // whole website says so. The retired words live in one file, scripts/guards/lib/retired-offer-words.mjs.
   'scripts/guards/no-free-months-promise.mjs',
