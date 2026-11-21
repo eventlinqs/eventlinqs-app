@@ -57,7 +57,7 @@ describe('the broadcast rule', () => {
 
   it('names each fault: no contact address, no unsubscribe, a dash, a placeholder', () => {
     const unsubscribeUrl = `${ORIGIN}/unsubscribe/digest/tok123`
-    const html = `<html><body><p>Big night — on now</p><p>Tickets TBA</p><p>EventLinqs, Geelong VIC, Australia.</p></body></html>`
+    const html = `<html><body><p>Big night \u2014 on now</p><p>Tickets TBA</p><p>EventLinqs, Geelong VIC, Australia.</p></body></html>`
     const problems = broadcastProblems({ html, text: 'Big night - on now\nEventLinqs, Geelong VIC, Australia.', unsubscribeUrl })
     expect(problems.join('\n')).toMatch(/footer does not name EventLinqs/)
     expect(problems.join('\n')).toMatch(/em or en dash/)

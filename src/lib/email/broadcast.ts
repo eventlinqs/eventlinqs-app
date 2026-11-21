@@ -24,7 +24,7 @@ export function broadcastProblems(message: { readonly html: string; readonly tex
   for (const [part, body] of [['html', visible], ['text', message.text]] as const) {
     const tail = body.slice(-1200)
     if (!/EventLinqs/.test(tail) || !tail.includes(contact)) problems.push(`the ${part} footer does not name EventLinqs with ${contact}`)
-    if (/[–—]/.test(body)) problems.push(`the ${part} part carries an em or en dash`)
+    if (/[\u2013\u2014]/.test(body)) problems.push(`the ${part} part carries an em or en dash`)
     if (/\s-\s/.test(body)) problems.push(`the ${part} part carries a spaced hyphen`)
     const fill = /\b(undefined|NaN)\b|\[object|\bTBA\b|\{\{|\[(?:[a-z][a-z ]{1,30})\]|(?:^|\s)null(?:\s|$)/m.exec(body)
     if (fill) problems.push(`the ${part} part carries a placeholder (${fill[0].trim()})`)
@@ -45,7 +45,7 @@ function visibleText(html: string): string {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&#8217;|&rsquo;/g, '’')
+    .replace(/&#8217;|&rsquo;/g, '\u2019')
     .replace(/&amp;/g, '&')
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)))
     .replace(/[ \t]+/g, ' ')
