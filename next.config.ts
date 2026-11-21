@@ -522,6 +522,8 @@ const nextConfig: NextConfig = {
       { source: '/go/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/api/venues/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/out/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      // An edition's web copy (View in browser, train AT): the same edition every subscriber of the city receives, never indexed.
+      { source: '/newsletter/:edition/:city/:date', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       // Edge-cache the discovery surfaces so a crawler burst (e.g. Facebook
       // scraping Open Graph tags) is served from Vercel's CDN instead of
       // re-rendering against the database on every hit. CDN-Cache-Control only
