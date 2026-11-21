@@ -94,7 +94,15 @@ describe('the publish run', () => {
             }),
           }
         }
-        if (table === 'social_pieces') throw new Error('the piece could not be read: connection reset')
+        // The identity read (store.ts publishedAlready) asks for the piece's moment first; then its checks' read fails.
+        if (table === 'social_pieces') {
+          return {
+            select: (cols: string) => {
+              if (cols === 'moment_key') return answers({ data: null, error: null })
+              throw new Error('the piece could not be read: connection reset')
+            },
+          }
+        }
         throw new Error(`no other table is read before a check fails: ${table}`)
       },
     }

@@ -32,6 +32,7 @@ function fakeDb(tables: Record<string, Row[]>, opts: { postingError?: { code: st
       eq: (k: string, v: unknown) => (where.push([k, v]), tests.push((r) => String(r[k]) === String(v)), q),
       not: (k: string, op: string, v: unknown) => (tests.push((r) => (op === 'is' && v === null ? r[k] != null : true)), q),
       neq: (k: string, v: unknown) => (tests.push((r) => String(r[k]) !== String(v)), q),
+      in: (k: string, vs: unknown[]) => (tests.push((r) => vs.map(String).includes(String(r[k]))), q),
       like: (k: string, pattern: string) => (tests.push((r) => String(r[k] ?? '').startsWith(pattern.replace('%', ''))), q),
       lte: () => q,
       order: () => q,

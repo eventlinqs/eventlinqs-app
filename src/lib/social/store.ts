@@ -2362,12 +2362,24 @@ export async function recordMissingPostings(db: Db): Promise<{ readonly recorded
 
 /** The submission a provider already accepted for this piece on this network, if any schedule kept one (newest). */
 /**
- * ONE PUBLICATION PER PIECE PER NETWORK (Lawal's hardening order of 22 November 2026, section 3): a piece already
- * published on this network, on any schedule but this one, answers its reference; null when none. 5C's reconciliation
- * of 22 November found c126bbf0 sent to Facebook three times under successive approvals.
+ * ONE PUBLICATION PER MOMENT PER NETWORK (Lawal's hardening order of 22 November 2026, section 3; the PM's 09:55 item 2:
+ * keyed on event, event day, platform, type and occurrence, never on the approval). A lifecycle piece's moment_key is its
+ * kind, format, day and run; a piece redrawn for the same moment has a new id. The piece and every piece drawn for its
+ * moment are read: any of them already published on this network, on any schedule but this one, answers its
+ * reference; null when none. 5C's reconciliation of 22 November found c126bbf0 sent to Facebook three times and
+ * 31d92f7e twice, under successive approvals.
  */
 export async function publishedAlready(db: Db, pieceId: string, platform: SocialPlatform, exceptId: string): Promise<string | null> {
-  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('piece_id', pieceId).eq('platform', platform).eq('state', 'published').neq('id', exceptId).limit(1)
+  const { data: piece, error: perr } = await db.from('social_pieces').select('moment_key').eq('id', pieceId).maybeSingle()
+  if (perr) throw new Error(`its moment could not be read: ${perr.message}`)
+  const key = ((piece ?? null) as { moment_key?: string | null } | null)?.moment_key ?? null
+  let ids = [pieceId]
+  if (key) {
+    const { data: same, error: serr } = await db.from('social_pieces').select('id').eq('moment_key', key)
+    if (serr) throw new Error(`the pieces of its moment could not be read: ${serr.message}`)
+    ids = [...new Set([pieceId, ...((same ?? []) as { id: string }[]).map((r) => r.id)])]
+  }
+  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').in('piece_id', ids).eq('platform', platform).eq('state', 'published').neq('id', exceptId).limit(1)
   if (error) throw new Error(`its earlier publications could not be read: ${error.message}`)
   const row = ((data ?? [])[0] as { id?: string; published_ref?: string | null } | undefined) ?? null
   return row ? String(row.published_ref ?? row.id) : null
@@ -2422,7 +2434,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
       continue
     }
-    // ONE PUBLICATION PER PIECE PER NETWORK (publishedAlready): published once on this network, it is never sent again.
+    // ONE PUBLICATION PER MOMENT PER NETWORK (publishedAlready): published once on this network, it is never sent again.
     let already: string | null = null
     try {
       already = await publishedAlready(db, pieceId, platform, id)
@@ -2431,7 +2443,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       continue
     }
     if (already !== null) {
-      await hold(id, `Not published: this piece is already published on ${platform} (${already}); one publication per piece per network, never sent again.`)
+      await hold(id, `Not published: this piece or its moment is already published on ${platform} (${already}); one publication per moment per network, never sent again.`)
       continue
     }
     // NEVER A BLIND RESEND (AV (a), the PM's 16:40 of 21 November 2026): where the provider already accepted this piece
