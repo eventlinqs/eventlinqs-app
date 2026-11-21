@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { graphCaller, metaConfigFrom } from '@/lib/social/meta-publisher'
 import { readBackHandle, verifiedOnReadBack } from '@/lib/social/handle-readback'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 /**
  * POST /api/cron/instagram-handle-readback (law 40 (c); the PM's 10:15 of 21 November 2026, ruling 8). Started by hand
@@ -31,9 +32,12 @@ export async function POST(request: NextRequest) {
     .order('id', { ascending: true })
     .limit(100)
   if (read.error) return NextResponse.json({ ok: false, error: 'organisers_unreadable' }, { status: 502 })
+  // The platform's own listings organisation and every test organiser are never invited (the one rule, readPlatformOrganiserIds).
+  const platform = await readPlatformOrganiserIds(db)
+  const theirs = (read.data ?? []).filter((o) => !platform.has(o.id))
   const call = graphCaller(config.pageToken)
   const outcomes: Array<{ handle: string; found: boolean; verified: boolean; reason?: string }> = []
-  for (const [i, o] of (read.data ?? []).entries()) {
+  for (const [i, o] of theirs.entries()) {
     if (i > 0) await new Promise((r) => setTimeout(r, 1000))
     const r = await readBackHandle(call, config.igUserId, o.instagram_handle as string)
     const ok = verifiedOnReadBack(r, o.instagram_verified_source)
