@@ -104,7 +104,9 @@ describe('A1 and A2 are wired where approved pieces are scheduled', () => {
   it('the scheduler leans each piece by its kind and applies the floor to the plan', () => {
     const body = store.slice(store.indexOf('export async function scheduleApprovedPieces('))
     expect(body).toMatch(/rhythmDays\(d\.kind, window, now\)/)
-    expect(body).toMatch(/applyDailyFloor\(\{ pieces, plan: planMoments\(pieces, rules, taken, now\)/)
+    // Every piece but one an owner asked to post at this minute (postNightNow, 22 November 2026) is banded and floored.
+    expect(body).toMatch(/const banded = pieces\.filter\(\(p\) => !goNow\.has\(p\.id\)\)/)
+    expect(body).toMatch(/applyDailyFloor\(\{ pieces: banded, plan: planMoments\(banded, rules, taken, now\)/)
     expect(body).toMatch(/floor: plan\.report/)
   })
   it('the hourly run names every day the floor could not fill', () => {

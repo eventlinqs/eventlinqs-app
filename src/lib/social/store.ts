@@ -1068,7 +1068,17 @@ function revisionRow(pieceId: string, version: number, p: PiecePlan, message: st
  * existing counts today's plan found already kept; kept is every piece the week holds after this press, which is the
  * number the founder is told (a night ended since Monday takes its partner kit out of today's plan, not out of the week).
  */
-export type CampaignPlanned = { readonly campaignId: string; readonly weekStart: string; readonly created: number; readonly existing: number; readonly kept: number; readonly held: readonly string[]; readonly requests: number }
+export type CampaignPlanned = {
+  readonly campaignId: string
+  readonly weekStart: string
+  readonly created: number
+  readonly existing: number
+  readonly kept: number
+  readonly held: readonly string[]
+  readonly requests: number
+  /** The lifecycle moments this plan drew or found kept already (social_pieces.moment_key), for postNightNow. */
+  readonly momentKeys?: readonly string[]
+}
 
 /**
  * "Plan this week": ONE campaign for the week, found again on a second press (F7), each piece kept once (the
@@ -1077,7 +1087,7 @@ export type CampaignPlanned = { readonly campaignId: string; readonly weekStart:
  * here (F9). plannedBy is the person who pressed it, or null when the daily social run planned it (car 58: the daily
  * picks wait in /admin/social for Lawal's approval; the run never writes his name on what he did not press).
  */
-export async function planCampaignWeek(db: Db, input: { readonly plannedBy: string | null; readonly now: Date }): Promise<CampaignPlanned> {
+export async function planCampaignWeek(db: Db, input: { readonly plannedBy: string | null; readonly now: Date; readonly ownerAsked?: { readonly eventId: string } }): Promise<CampaignPlanned> {
   const weekStart = weekStartOf(input.now)
   const { error: cerr } = await db
     .from('social_campaigns')
@@ -1086,7 +1096,10 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) throw new Error("the week's campaign could not be read")
 
-  const { pieces: weekPlans, imageRequests } = await planNow(db, campaignId, weekStart, input.now)
+  // An owner's Post now for one night draws that night's lifecycle piece alone (postNightNow), never the week's others.
+  const week = input.ownerAsked ? null : await planNow(db, campaignId, weekStart, input.now)
+  const weekPlans = week?.pieces ?? []
+  const imageRequests = week?.imageRequests ?? []
   // LAW 37 (l), THE LIFECYCLE (train AI-2): today's few moments, the history read first (lifecycle-plan.ts). A failed read
   // plans no lifecycle piece and is said in held, never a guess.
   const held: string[] = []
@@ -1094,7 +1107,7 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
   if (LIFECYCLE_ON) {
     try {
       const nights = await readCampaignNights(db, await readCampaignCities(db), weekStart, input.now, { aheadDays: LIFECYCLE_AHEAD_DAYS })
-      const planned = await planLifecyclePieces(db, { now: input.now, nights, origin: ORIGIN })
+      const planned = await planLifecyclePieces(db, { now: input.now, nights, origin: ORIGIN, ownerAsked: input.ownerAsked })
       lifecycle = planned.pieces
       held.push(...planned.notes)
     } catch (error) {
@@ -1174,7 +1187,8 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
     if (qerr) held.push(`image requests: ${refusalOf(qerr.message) ?? qerr.message}`)
     else requests = (req ?? []).length
   }
-  return { campaignId, weekStart, created, existing, kept: kept.size + created, held, requests }
+  const momentKeys = lifecycle.map((p) => p.momentKey).filter((k): k is string => typeof k === 'string' && k !== '')
+  return { campaignId, weekStart, created, existing, kept: kept.size + created, held, requests, momentKeys }
 }
 
 export type PieceState = 'drafted' | 'rejected' | 'approved' | 'gone'
@@ -2040,7 +2054,12 @@ async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
  * approval. Writes schedules only; publishes nothing (F9). A second run finds them scheduled already (the database keeps
  * one per piece, network and approval).
  */
-export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly fetcher?: Fetcher } = {}): Promise<Scheduled> {
+export async function scheduleApprovedPieces(
+  db: Db,
+  now: Date,
+  /** goNow: pieces an owner asked to post at this minute (postNightNow): given now, never a band; every other check stands. */
+  opts: { readonly fetcher?: Fetcher; readonly goNow?: ReadonlySet<string> } = {},
+): Promise<Scheduled> {
   const { data: approvals, error } = await db.from('social_piece_approvals').select('id, piece_id, revision, approved_at').order('approved_at', { ascending: true }).limit(2000)
   if (error) throw new Error(`the approvals could not be read: ${error.message}`)
   const { data: gone } = await db.from('social_piece_postings').select('piece_id').limit(5000)
@@ -2099,13 +2118,32 @@ export async function scheduleApprovedPieces(db: Db, now: Date, opts: { readonly
     if (last) taken[format].push(last)
   }
   // A1, the daily floor: a thin day takes a discovery family piece from a day that has two; a day nothing can fill is named.
-  const plan = applyDailyFloor({ pieces, plan: planMoments(pieces, rules, taken, now), rules, taken, now })
+  const goNow = opts.goNow ?? new Set<string>()
+  const banded = pieces.filter((p) => !goNow.has(p.id))
+  const plan = applyDailyFloor({ pieces: banded, plan: planMoments(banded, rules, taken, now), rules, taken, now })
   const lateOf = new Map(plan.late.map((l) => [l.id, l]))
+  // An owner's piece goes at this minute only inside its own window: from its day, and before its night starts unless
+  // its words say it is on now (scheduleWindowOf); outside it, it is held with the reason, as a late piece is.
+  const nowRefusal = (id: string): string | null => {
+    const fp = pieces.find((p) => p.id === id)
+    if (!fp) return null
+    if (fp.notBefore && now.getTime() < fp.notBefore.getTime()) return `Not posted now: its day has not come (${dayTime(fp.notBefore.toISOString(), now)}).`
+    if (fp.deadline && now.getTime() > fp.deadline.getTime()) return `Not posted now: ${firstStarting.get(id)?.title ?? 'its night'} has started (${dayTime(fp.deadline.toISOString(), now)}), and a piece never posts once its night has started.`
+    return null
+  }
   const scheduled: { pieceId: string; goAt: string }[] = []
   const held: string[] = []
   for (const d of due) {
-    const late = lateOf.get(d.id)
-    const at = plan.moments.get(d.id) ?? late?.firstFree
+    const asked = goNow.has(d.id)
+    if (asked) {
+      const refused = nowRefusal(d.id)
+      if (refused) {
+        held.push(`${d.id}: ${refused}`)
+        continue
+      }
+    }
+    const late = asked ? undefined : lateOf.get(d.id)
+    const at = asked ? now : (plan.moments.get(d.id) ?? late?.firstFree)
     if (!at) continue
     const goAt = at.toISOString()
     const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt }))
@@ -2505,4 +2543,57 @@ export async function readSchedules(db: Db, pieceIds: readonly string[]): Promis
     out.set(r.piece_id as string, list)
   }
   return out
+}
+
+export type PostedNow = {
+  readonly state: 'posted' | 'held'
+  readonly pieceId: string | null
+  /** Each network's own answer: published with the provider's reference, or held with its reason. */
+  readonly lines: readonly string[]
+}
+
+/**
+ * POST THIS NIGHT NOW, ON THE OWNER'S WORD (Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram now
+ * ... I don't care about the time ... the schedule"; the PM's 00:33 and 00:56). On 22 November the engine could not post
+ * Asia Oasis's Colours of Asia on its last night: the day's one feed place was AMCF's, and the posting hours start at
+ * 06:40. The owner's press in the admin is now the software's own path for that word, each step the engine's own:
+ *   1. the planner draws the night's feed moment for today on its best permitted photograph not used before
+ *      (planCampaignWeek with ownerAsked: outside the day's feed count, judged at this minute);
+ *   2. the checked approval, the publish gate at approval (approvePieceChecked), in the presser's name;
+ *   3. a slot at this minute on Instagram and Facebook (scheduleApprovedPieces with goNow), with the publish gate and each
+ *      network's fit at scheduling, and never once its night has started unless its words say it is on now;
+ *   4. the publisher (publishDuePieces: Blotato, the switch, never a blind resend), then the provider's read back.
+ * Waived, and only these: the posting hours and the account's daily feed count. How the leaders do it (read 22 November
+ * 2026): Meta Business Suite publishes a scheduled post at once by 'Publish now'
+ * (https://www.facebook.com/business/help/816464273497113), and Buffer keeps a 'Share Now' button beside every queued post
+ * (https://support.buffer.com/article/656-saving-and-scheduling-draft-posts).
+ */
+export async function postNightNow(
+  db: Db,
+  input: { readonly eventId: string; readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly publisher: Publisher | null; readonly reader?: BlotatoPostReader | null; readonly fetcher?: Fetcher },
+): Promise<PostedNow> {
+  const planned = await planCampaignWeek(db, { plannedBy: input.by, now: input.now, ownerAsked: { eventId: input.eventId } })
+  const keys = planned.momentKeys ?? []
+  if (keys.length === 0) return { state: 'held', pieceId: null, lines: [planned.held.join(' ') || 'No feed post is due for this night today.'] }
+  const { data: found, error: ferr } = await db.from('social_pieces').select('id').in('moment_key', [...keys]).order('planned_at', { ascending: false }).limit(1)
+  if (ferr) throw new Error(`the drawn piece could not be read: ${ferr.message}`)
+  const pieceId = ((found ?? [])[0] as { id?: string } | undefined)?.id ?? null
+  if (pieceId === null) return { state: 'held', pieceId: null, lines: [planned.held.join(' ') || 'The post was drawn but could not be read back.'] }
+  const approved = await approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin, fetcher: input.fetcher })
+  if (approved.state === 'refused' && !/approved already/.test(approved.reason)) return { state: 'held', pieceId, lines: [approved.reason] }
+  const scheduled = await scheduleApprovedPieces(db, input.now, { fetcher: input.fetcher, goNow: new Set([pieceId]) })
+  const lines = scheduled.held.filter((h) => h.startsWith(pieceId))
+  if (!scheduled.scheduled.some((s) => s.pieceId === pieceId)) return { state: 'held', pieceId, lines: lines.length > 0 ? lines : ['It was not given a slot now.'] }
+  const published = await publishDuePieces(db, input.now, { siteOrigin: input.siteOrigin, publisher: input.publisher, fetcher: input.fetcher, reader: input.reader ?? null })
+  const mine = (list: readonly string[]) => list.filter((l) => l.includes(pieceId))
+  lines.push(...mine(published.published), ...mine(published.held), ...mine(published.wouldPublish).map((w) => `not sent, publishing is switched off: ${w}`), ...mine(published.waiting))
+  if (input.reader) {
+    try {
+      const back = await readBackPendingPosts(db, input.reader)
+      lines.push(...back.filled.filter((f) => f.includes(pieceId)).map((f) => `read back: ${f}`))
+    } catch (e) {
+      lines.push(`the provider's read back waits for the next run: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return { state: mine(published.published).length > 0 ? 'posted' : 'held', pieceId, lines }
 }

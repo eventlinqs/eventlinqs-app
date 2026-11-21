@@ -20,6 +20,8 @@ import {
   excludeNight,
   planCampaignWeek,
   planPost,
+  postNightNow,
+  type PostedNow,
   planWeek,
   recordPiecePosting,
   recordPosting,
@@ -32,6 +34,7 @@ import {
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { captureException } from '@/lib/observability/sentry'
 import { pickSpotlight } from '@/lib/social/spotlight-math'
+import { socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { readSpotlightNights } from '@/lib/social/three-posts'
 
 /**
@@ -216,6 +219,43 @@ export async function excludeNightAction(formData: FormData): Promise<void> {
   await recordAuditEvent({ action: 'admin.social.night.exclude', targetType: 'event', targetId: event, session, metadata: { reason } })
   revalidatePath('/admin/social')
   back('Left out of this week. Regenerate a piece to take it out of its set.')
+}
+
+const NightNowSchema = z.object({ event: z.string().uuid() })
+
+/**
+ * POST THIS NIGHT NOW (store.ts postNightNow; Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram
+ * now"). The owner's alone (admin.social.post_now, super_admin only). The press waives the posting hours and the day's
+ * feed count, and nothing else; it is written to the audit log with each network's answer, and the piece stands in
+ * /admin/social with its state and the provider's references like every other.
+ */
+export async function postNightNowAction(formData: FormData): Promise<void> {
+  const session = await requireAdminSession()
+  if (!can(session, 'admin.social.post_now')) back('Only the owner may post a night now.')
+  const limited = await actionRateLimit('admin-social-press', session.userId)
+  if (!limited.ok) back(`Too many presses in a few minutes. Try again in ${Math.ceil(limited.retryAfterSeconds / 60)} minute${limited.retryAfterSeconds > 60 ? 's' : ''}.`)
+  const parsed = NightNowSchema.safeParse({ event: formData.get('event') })
+  if (!parsed.success) back('That night could not be read.')
+  const { event } = parsed.data as z.infer<typeof NightNowSchema>
+  const db = createAdminClient()
+  const now = new Date()
+  let result: PostedNow
+  try {
+    result = await postNightNow(db, { eventId: event, by: session.userId, now, siteOrigin: await siteOrigin(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
+  } catch (error) {
+    captureException(error, { where: 'admin/social/actions:postNightNow' })
+    result = { state: 'held', pieceId: null, lines: [`it could not be posted: ${error instanceof Error ? error.message : String(error)}`] }
+  }
+  await recordAuditEvent({
+    action: 'admin.social.night.post_now',
+    targetType: 'event',
+    targetId: event,
+    session,
+    metadata: { piece: result.pieceId, state: result.state, lines: result.lines.slice(0, 10), waived: ['the posting hours', "the day's feed count"] },
+  })
+  revalidatePath('/admin/social')
+  revalidatePath('/admin/today')
+  back(result.state === 'posted' ? `Posted now. ${result.lines.join(' ')}` : `Not posted. ${result.lines.join(' ')}`)
 }
 
 const PieceGoneSchema = z.object({ piece: z.string().uuid(), url: z.string().min(1).max(500) })
