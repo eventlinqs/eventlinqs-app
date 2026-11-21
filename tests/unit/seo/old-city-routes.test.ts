@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getAllCities } from '@/lib/cities/data'
-import { EVENTS_CITY_TO_GUIDE, GUIDED_CITY_SLUGS, isRedirected, redirectFor } from '@/lib/seo/permanent-redirects'
+import { GUIDED_CITY_SLUGS, isRedirected, redirectFor } from '@/lib/seo/permanent-redirects'
+import { EVENTS_CITY_TO_GUIDE } from '@/lib/seo/query-redirects'
 
 /*
  * ROUND 3, ITEM 7 (Lawal, 2 November 2026; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\ROUND3-DIRECTIVE-2NOV.md; the

@@ -6,7 +6,7 @@ import { cityRouteAnswer } from '@/lib/cities/city-route'
 import { EVENTS_PARAM_KEYS, type EventsParamKey } from '@/lib/events/events-param-keys'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import { resolveCityName } from '@/lib/events/url-filters'
-import { EVENTS_CITY_TO_GUIDE } from '@/lib/seo/permanent-redirects'
+import { EVENTS_CITY_TO_GUIDE } from '@/lib/seo/query-redirects'
 import { cityControlTargets } from '../../../scripts/verify/lib/city-control-targets.mjs'
 
 /*

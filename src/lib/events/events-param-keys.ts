@@ -1,6 +1,6 @@
 /**
  * EVERY QUERY KEY /events READS (src/lib/events/search-params.ts, EventsSearchParams), as one list. The redirect that
- * sends /events?city=<city> to the city's guide (src/lib/seo/permanent-redirects.ts, EVENTS_CITY_TO_GUIDE) stands aside
+ * sends /events?city=<city> to the city's guide (src/lib/seo/query-redirects.ts, EVENTS_CITY_TO_GUIDE) stands aside
  * when any of these other than city is asked, because the guide does not honour them: a search's words, the map, a
  * sort, a type or a date stay on /events. The type and this list are held equal by
  * tests/unit/seo/city-controls-end-on-a-page.test.ts, so a key added to one and not the other fails the gate.
