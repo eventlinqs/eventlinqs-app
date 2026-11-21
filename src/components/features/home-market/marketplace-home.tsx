@@ -191,7 +191,7 @@ function DontMiss({ row }: { row: DirectoryRow }) {
       <Link
         href={row.href}
         prefetch={false}
-        className="group mt-4 grid overflow-hidden rounded-[20px] bg-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
+        className="group mt-4 grid grid-cols-1 overflow-hidden rounded-[20px] bg-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
       >
         <span className="relative order-1 block aspect-[16/10] md:order-2 md:aspect-auto md:min-h-[320px]">
           <EventCardMedia src={row.thumb as string} alt={row.thumbAlt ?? row.title} variant="guide-big-card" />
