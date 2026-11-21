@@ -60,6 +60,8 @@ export type WhatsOnInput = {
   readonly unsubscribeUrl: string
   readonly manageUrl: string
   readonly referUrl: string
+  /** The edition's web copy, opened by 'View in browser' (/newsletter/<edition>/<city>/<date>); none on the web copy itself. */
+  readonly webUrl?: string | null
 }
 
 const NAVY = '#0A1628'
@@ -162,6 +164,10 @@ export function buildWhatsOn(input: WhatsOnInput): { subject: string; preheader:
   const eventLink = (p: NlPick, slot: string) => link(`/events/${p.slug}`, slot)
   const weekendWord = input.edition === 'weekend' ? 'weekend' : 'week'
 
+  // 'View in browser' (the PM's order of 21 November 2026, about 03:30): the edition's own web copy, above the masthead.
+  const viewInBrowser = input.webUrl
+    ? `\n<tr><td align="right" style="padding:8px 24px;background:#EFEDE8;font:500 12px/16px ${BODY};color:${MUTED}"><a href="${esc(input.webUrl)}" style="color:${MUTED};text-decoration:underline">View in browser</a></td></tr>`
+    : ''
   const hero = `
 <tr><td class="hero"${input.heroImage ? ` background="${esc(input.heroImage.desktop)}"` : ''} bgcolor="${NAVY}" style="background:${NAVY}${input.heroImage ? ` url('${esc(input.heroImage.desktop)}') right center / cover no-repeat` : ''};padding:30px 36px 30px 36px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -294,11 +300,12 @@ img{border:0;display:block} a{color:${NAVY}} table{border-collapse:separate}
 <div style="display:none;max-height:0;overflow:hidden">${esc(preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${CANVAS}"><tr><td align="center">
 <table role="presentation" class="wrap" width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="${WHITE}" style="width:640px;max-width:640px">
-${hero}${strip}${intro}${featuredRow}${highlightsRows}${panelsRow}${alertRow}${guide}${share}${footer}
+${viewInBrowser}${hero}${strip}${intro}${featuredRow}${highlightsRows}${panelsRow}${alertRow}${guide}${share}${footer}
 </table></td></tr></table></body></html>`
 
   const line = (p: NlPick, slot: string) => `${titleOf(p)}\n${p.whenLabel} | ${p.venue} | ${p.priceLabel}\n${eventLink(p, slot)}`
   const text = [
+    ...(input.webUrl ? [`View in browser: ${input.webUrl}`, ''] : []),
     `What's On in ${input.cityName}`,
     input.datesLabel,
     '',

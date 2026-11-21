@@ -239,7 +239,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // failed the copy gate are said in leftOut.
       const built =
         design === 'whats-on'
-          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl })).edition)
+          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl, recipientToken: own?.unsubscribeToken ?? null })).edition)
           : { ...buildDigestEmailHtml({ cityName: city.name, events, origin, edition, period, unsubscribeUrl }), leftOut: [] as string[] }
       results.push({
         city: citySlug,
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const unsubscribeUrl = token ? `${origin}/unsubscribe/digest/${token}` : `${origin}/account/notifications`
       const { subject, html, text } =
         design === 'whats-on'
-          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl })).edition)
+          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl, recipientToken: token ?? null })).edition)
           : buildDigestEmailHtml({ cityName: city.name, events, origin, edition, period, unsubscribeUrl })
       await sendEmail({
         to: testTo,

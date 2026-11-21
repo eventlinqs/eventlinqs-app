@@ -182,3 +182,25 @@ describe('the edition writes each image URL for the context it sits in', () => {
     expect(html).toContain(`background="${ORIGIN}/api/newsletter/image?k=hero-d&amp;src=`)
   })
 })
+
+/*
+ * 'VIEW IN BROWSER' (the PM's order of 21 November 2026, about 03:30): an edition opens its own web copy
+ * (/newsletter/<edition>/<city>/<date>) from above the masthead and from the plain text part; the web copy itself carries
+ * no link to itself.
+ */
+describe('View in browser', () => {
+  const web = `${ORIGIN}/newsletter/weekend/melbourne/2026-11-21`
+
+  it('the edition links its web copy above the masthead and first in the text part', () => {
+    const { html, text } = buildWhatsOn(input({ webUrl: web }))
+    expect(html).toContain(`<a href="${web}" style="color:#4A5466;text-decoration:underline">View in browser</a>`)
+    expect(html.indexOf('View in browser')).toBeLessThan(html.indexOf('class="hero"'))
+    expect(text.split('\n')[0]).toBe(`View in browser: ${web}`)
+  })
+
+  it('the web copy carries none', () => {
+    const { html, text } = buildWhatsOn(input({ webUrl: null }))
+    expect(html).not.toContain('View in browser')
+    expect(text).not.toContain('View in browser')
+  })
+})
