@@ -144,4 +144,6 @@ export type FetchPublicEventsResult = {
   page: number
   pageSize: number
   totalPages: number
+  /** How the search engine matched a free-text query and the query that answered ('Did you mean' when corrected). */
+  search?: { matched: 'exact' | 'corrected' | 'relaxed' | null; query: string | null }
 }
