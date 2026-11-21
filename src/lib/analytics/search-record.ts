@@ -24,17 +24,38 @@ export function searchTerm(q: string | null | undefined): string | null {
   return term
 }
 
+/**
+ * EventLinqs' own checks say who they are in their user agent (the search reach guard, scripts/verify/search-reach.mjs,
+ * and the press of every control): their searches are tests, and the search log feeds the learning loop that reads the
+ * zero result rate (the PM's 05:25 of 22 November 2026, item 7), so they are never recorded as a person's.
+ */
+export const QA_USER_AGENT_MARK = 'EventLinqs-QA'
+
 /** Whether this request's search is recorded: a person's, with a term that may be kept. Pure. */
 export function searchToRecord(q: string | null | undefined, userAgent: string | null): string | null {
   if (isPreviewCrawler(userAgent)) return null
+  if (userAgent?.includes(QA_USER_AGENT_MARK)) return null
   return searchTerm(q)
 }
 
-export type SearchInsert = { term: string; results: number | null; surface: 'events' }
+export type SearchInsert = { term: string; results: number | null; surface: 'events' | 'events-fallback' }
 type SearchClient = { from: (t: 'site_searches') => { insert: (row: SearchInsert) => PromiseLike<{ error: { message: string } | null }> } }
 
 /** Writes the row; a refusal is logged and never thrown, since the page has already answered. */
 export async function recordSearch(client: SearchClient, term: string, results: number | null): Promise<void> {
   const { error } = await client.from('site_searches').insert({ term, results, surface: 'events' })
   if (error) console.error(`[search-record] the search was not recorded: ${error.message}`)
+}
+
+/**
+ * THE SEARCH FALLBACK IS NEVER SILENT (the PM's order of 22 November 2026, 05:45, condition (b)). When the one search
+ * engine cannot answer and the old word filter answers instead (src/lib/events/fetchers.ts resolveSearch), one row is
+ * written with surface 'events-fallback' (migration 20261122060002), the term kept by the same rule as every search row
+ * (searchTerm). A refused write is logged, never thrown: the search has already been answered.
+ */
+export async function recordEngineFallback(client: SearchClient, q: string): Promise<void> {
+  const term = searchTerm(q)
+  if (!term) return
+  const { error } = await client.from('site_searches').insert({ term, results: null, surface: 'events-fallback' })
+  if (error) console.error(`[search-record] the search fallback was not recorded: ${error.message}`)
 }

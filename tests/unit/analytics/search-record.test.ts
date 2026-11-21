@@ -38,6 +38,11 @@ describe('the term kept', () => {
     expect(searchToRecord('comedy', null)).toBeNull()
     expect(searchToRecord('comedy', PERSON)).toBe('comedy')
   })
+
+  test("EventLinqs' own checks are never recorded as a person's search (the search reach guard, the press)", () => {
+    expect(searchToRecord('asia oasis', 'EventLinqs-QA search-reach (+https://www.eventlinqs.com.au)')).toBeNull()
+    expect(searchToRecord('jazz', `${PERSON} EventLinqs-QA press`)).toBeNull()
+  })
 })
 
 describe('the write', () => {

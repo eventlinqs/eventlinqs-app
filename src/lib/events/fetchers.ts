@@ -8,6 +8,8 @@ import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import { escapeOrValue } from '@/lib/supabase/or-filter'
 import type { CommunitySlug } from '@/lib/communities/data'
 import { tokenise, sanitiseToken, buildSearchOrGroups } from './search-query'
+import { askEngine, orderByRank, type EngineAnswer, type SearchRpcClient } from '@/lib/search/engine'
+import { recordEngineFallback } from '@/lib/analytics/search-record'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
@@ -88,6 +90,46 @@ async function searchOrGroups(supabase: LookupClient, q: string | undefined): Pr
   if (!phrase) return []
   const organisationIds = await resolveOrganisationIdsByToken(supabase as unknown as EventsQueryClient, phrase)
   return buildSearchOrGroups(phrase, organisationIds)
+}
+
+type SearchResolution = { ops: QueryOp[]; engine: EngineAnswer | null }
+
+/**
+ * THE ONE SEARCH ENGINE ANSWERS THE FREE TEXT (the PM's order of 22 November 2026, 05:25). The word filter above read
+ * the organisation's name, so a listing, whose organisation is the listings organisation no page shows, was never found
+ * by the host its page names: '/events?q=asia+oasis' answered 'No results' while Colours of Asia ran. The engine
+ * (src/lib/search/engine.ts, search_events in the database) reads one document per event written from what its page
+ * shows, and ranks. Its ids become ONE `in` op, so every other filter and the one visibility rule apply exactly as
+ * before. When the engine cannot answer, the word filter answers as it did, so search never answers nothing for want
+ * of the engine.
+ */
+async function resolveSearch(supabase: LookupClient, q: string | undefined): Promise<SearchResolution> {
+  const phrase = q?.trim()
+  if (!phrase) return { ops: [], engine: null }
+  const engine = await askEngine(supabase as unknown as SearchRpcClient, phrase)
+  if (engine) {
+    return { ops: [{ kind: 'in', column: 'id', values: engine.ids.length > 0 ? [...engine.ids] : [NO_MATCH] }], engine }
+  }
+  // Never silent (the PM's 05:45, condition (b)): every answer the word filter gives in the engine's place is one row in
+  // the search log (surface 'events-fallback'), so a broken engine shows in the log the learning loop reads.
+  try {
+    await recordEngineFallback(createAdminClient(), phrase)
+  } catch {
+    // The log is never the reason a search fails: recordEngineFallback logs its own refusals.
+  }
+  return { ops: (await searchOrGroups(supabase, phrase)).map((filter): QueryOp => ({ kind: 'or', filter })), engine: null }
+}
+
+/**
+ * Whether a search's results are in the ENGINE's order (best first), which pages in memory: the order is the
+ * engine's, not the database's, and the engine answers at most ENGINE_LIMIT ids, within MAX_SORT_ROWS. Only for free
+ * text the search itself reads (not the Organisers tab) and only when no other order was chosen. Pure.
+ */
+export function ranksBySearch(filters: Pick<FetchPublicEventsFilters, 'q' | 'tab' | 'sort'>): boolean {
+  if (!filters.q?.trim()) return false
+  if (filters.sort && filters.sort !== 'relevance') return false
+  const tab = resolveSearchTab(filters.tab, filters.q)
+  return tab.keepFreeText && !tab.organisersOnly
 }
 
 /**
@@ -230,10 +272,9 @@ async function eventIdsInDistrict(
 async function resolveEventFilterOps(
   supabase: LookupClient,
   filters: FetchPublicEventsFilters,
-): Promise<QueryOp[]> {
-  const ops: QueryOp[] = []
-
-  for (const filter of await searchOrGroups(supabase, filters.q)) ops.push({ kind: 'or', filter })
+): Promise<SearchResolution> {
+  const search = await resolveSearch(supabase, filters.q)
+  const ops: QueryOp[] = [...search.ops]
 
   if (filters.category) {
     const id = await lookupId(supabase, 'event_categories', filters.category)
@@ -305,7 +346,7 @@ async function resolveEventFilterOps(
     }
   }
 
-  return ops
+  return { ops, engine: search.engine }
 }
 
 /**
@@ -765,7 +806,7 @@ export async function fetchPublicEvents(
   // range is the thing it changes. See paginatesInMemory for what goes wrong
   // when a post-query filter runs on a database-paginated page.
   const priceFiltered = hasPriceFilter(filters)
-  const inMemoryPagination = paginatesInMemory(filters)
+  const inMemoryPagination = paginatesInMemory(filters) || ranksBySearch(filters)
 
   let query = supabase
     .from('events')
@@ -818,7 +859,8 @@ export async function fetchPublicEvents(
       ? effective
       : { ...effective, q: undefined }
 
-  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver))
+  const resolved = await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver)
+  query = applyOps(query, resolved.ops)
 
   if (filters.preset === 'free') {
     query = query.eq('is_free', true)
@@ -865,6 +907,9 @@ export async function fetchPublicEvents(
     })
   }
 
+  // A search's rows in the engine's order (best first), before the page is sliced out of them.
+  if (resolved.engine && ranksBySearch(filters)) events = orderByRank(events, resolved.engine.rank)
+
   // Captured BEFORE the page is sliced out, so pagination reflects how many
   // events actually matched rather than how many are on this page.
   const matchedBeforeSlice = events.length
@@ -880,7 +925,14 @@ export async function fetchPublicEvents(
   const total = priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
-  return { events, total, page, pageSize, totalPages }
+  return {
+    events,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    ...(resolved.engine ? { search: { matched: resolved.engine.matched, query: resolved.engine.query } } : {}),
+  }
 }
 
 
@@ -1149,7 +1201,7 @@ async function runFetchPublicEventsAdmin(
 
   // Same decision, same reason, as fetchPublicEvents above.
   const priceFiltered = hasPriceFilter(filters)
-  const inMemoryPagination = paginatesInMemory(filters)
+  const inMemoryPagination = paginatesInMemory(filters) || ranksBySearch(filters)
 
   let query = supabase
     .from('events')
@@ -1194,7 +1246,8 @@ async function runFetchPublicEventsAdmin(
       ? effective
       : { ...effective, q: undefined }
 
-  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver))
+  const resolved = await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver)
+  query = applyOps(query, resolved.ops)
   if (filters.preset === 'free') query = query.eq('is_free', true)
 
   query = applyDateWindow(query, filters.preset, now)
@@ -1224,6 +1277,9 @@ async function runFetchPublicEventsAdmin(
     })
   }
 
+  // A search's rows in the engine's order (best first), before the page is sliced out of them.
+  if (resolved.engine && ranksBySearch(filters)) events = orderByRank(events, resolved.engine.rank)
+
   // Captured BEFORE the page is sliced out, so pagination reflects how many
   // events actually matched rather than how many are on this page.
   const matchedBeforeSlice = events.length
@@ -1235,7 +1291,14 @@ async function runFetchPublicEventsAdmin(
 
   const total = priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return { events, total, page, pageSize, totalPages }
+  return {
+    events,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    ...(resolved.engine ? { search: { matched: resolved.engine.matched, query: resolved.engine.query } } : {}),
+  }
 }
 
 /**
