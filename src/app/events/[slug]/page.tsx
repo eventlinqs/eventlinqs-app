@@ -37,7 +37,11 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
+import { eventPageHero, heroIsTypographic } from '@/lib/images/event-media'
+import { IllustrativeChip } from '@/components/media/illustrative-chip'
+import { CityNewsletterCapture } from '@/components/features/city/city-newsletter-capture'
+import { resolveCitySlug } from '@/lib/cities/resolve'
+import { getCity } from '@/lib/cities/data'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
@@ -699,7 +703,7 @@ export default async function EventDetailPage({ params }: Props) {
   const [
     dynamicPriceMap,
     eventInventory,
-    media,
+    heroPick,
     seatsData,
     feeRates,
     seatedFlagEnabled,
@@ -716,7 +720,7 @@ export default async function EventDetailPage({ params }: Props) {
     getEventInventoryStatic(event.id),
     // The SAME resolver generateMetadata used to register the preload, so the
     // raster this renders is the raster the head asked for.
-    getFeaturedHeroBackground(eventHeroMediaInput({ ...event, cover_image_url: heroCover.cover_image_url })),
+    eventPageHero({ ...event, cover_image_url: heroCover.cover_image_url }),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show
@@ -762,6 +766,11 @@ export default async function EventDetailPage({ params }: Props) {
   ])
   // A night whose only image is our composed cover: the title is set in type over the hero, so no raster is drawn
   // behind it (src/lib/images/event-media.ts heroIsTypographic; the layout skips its preload the same way).
+  // The night's city, when it has a weekly guide (the subscribe route takes exactly these: resolveCitySlug).
+  const guideSlug = resolveCitySlug(event.city_primary ?? event.venue_city ?? null)
+  const guideCity = guideSlug ? (getCity(guideSlug)?.name ?? null) : null
+  const media = heroPick.media
+  const heroIllustrative = heroPick.illustrative
   const typographicHero = heroIsTypographic(media)
   // The ticket column of an event sold on other sites (src/lib/listings/ticket-panel.ts); null with no links read,
   // where the panel falls back to events.external_ticket_url, the database's mirror of the button.
@@ -1237,11 +1246,13 @@ export default async function EventDetailPage({ params }: Props) {
             <div data-hero-photo-whole className="relative aspect-[3/2] w-full overflow-hidden bg-navy-950 lg:mx-auto lg:aspect-[16/7] lg:max-w-7xl">
               <HeroMedia
                 image={media.image}
-                alt={event.cover_image_alt || media.alt}
+                alt={heroIllustrative ? media.alt : event.cover_image_alt || media.alt}
                 videoSrc={media.videoSrc}
                 objectPosition="50% 50%"
                 fit="contain"
               />
+              {/* Law 46 (f), the PM's 10:15 ruling 2: a stand in says so, top left on the photograph. */}
+              {heroIllustrative ? <IllustrativeChip /> : null}
             </div>
           )}
           {typographicHero ? (
@@ -1747,6 +1758,15 @@ export default async function EventDetailPage({ params }: Props) {
                 </Reveal>
                 )}
                 </EventSection>
+
+                {/* THE WEEKLY GUIDE ON THE EVENT PAGE (the PM's 11:58 of 21 November 2026, item 4, engine 2: the event page
+                    had no subscribe point). The city guide's own block, one step (law 50 (a)), shown only where the
+                    night's city has a weekly guide, below the night's facts and organiser so the page stays clean. */}
+                {guideCity ? (
+                  <section aria-label={`${guideCity}'s weekly guide`} data-event-subscribe className="mt-10 rounded-xl border border-ink-200 bg-[var(--surface-1)] p-5 sm:p-6">
+                    <CityNewsletterCapture cityName={guideCity} tone="light" />
+                  </section>
+                ) : null}
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}

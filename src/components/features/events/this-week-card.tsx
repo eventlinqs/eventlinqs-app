@@ -3,6 +3,8 @@ import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { BRANDED_FALLBACK_PHOTO } from '@/lib/images/category-photo'
+import { illustrativePhoto } from '@/lib/images/illustrative'
+import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import type { BentoEvent } from './event-bento-tile'
 import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
@@ -52,6 +54,17 @@ export async function ThisWeekCard({
     imageSrc = media.src
     imageAlt = media.alt ?? imageAlt
   }
+  // LAW 46 (f) (Lawal, 21 November 2026, 09:16; the PM's 10:15, ruling 2): a night with no photograph of its own stands
+  // on the licensed photograph of its kind, looked at, labelled 'Illustrative photo' on the card; else the brand panel.
+  let illustrative = false
+  if (!imageSrc || isComposedCover(imageSrc)) {
+    const stand = illustrativePhoto(event.category?.slug ?? null)
+    if (stand) {
+      imageSrc = stand
+      imageAlt = `${event.category?.name ?? 'An event'}, an illustrative photo`
+      illustrative = true
+    }
+  }
   if (!imageSrc) {
     imageSrc = BRANDED_FALLBACK_PHOTO.src
   }
@@ -70,6 +83,7 @@ export async function ThisWeekCard({
       .filter(Boolean)
       .join(' · '),
     priceLabel: formatPrice(event),
+    illustrative,
     startDate: event.start_date ?? null,
     timeZone: event.timezone ?? null,
     // Feature cards default to priority=true (built for above-fold hero use).

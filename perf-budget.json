@@ -14,6 +14,14 @@
   "overBudget": {},
   "_attributedMovesDoc": "WHY A MARK WENT UP. A mark rewritten is a cost ACCEPTED, so a move that is not noise is explained here, beside the number, rather than in a commit message nobody reading this file will find. Written by a person; --write-baseline preserves it and never adds to it, exactly as it treats overBudget. Each entry carries the mark it moved FROM, the mark it moved TO, the delta, the CAUSE, and the METHOD that established the cause, because an attribution with no method is an opinion. The guard refuses an entry whose route has no mark, and refuses one whose `to` has drifted further than the 64-byte SHA jitter allowance from the mark the file now carries, so an explanation cannot outlive the move it explains. An entry may record a PARTIAL result: saying what a measurement ruled OUT is worth more than a guess, and is the honest output when the remainder needs a differential build nobody has run.",
   "attributedMoves": {
+    "/weekend": {
+      "date": "2026-11-21",
+      "from": 167224,
+      "to": 175951,
+      "delta": 8727,
+      "cause": "The shared SiteHeader (static safe) and SiteFooter added to /weekend (commit 2faa38b9; the PM's 15:03 of 21 November 2026: the page had neither, so a visitor at 1440 had no way off it). The header's client island, its menu and search, is the move; every page that carries the shared chrome already pays it (/this-weekend reads 177,235 on the same build).",
+      "method": "scripts/perf/first-load-budget.mjs --route /weekend on a gate-equivalent production build of 2faa38b9 (the gate's parity Sentry DSN, no --env-file), 21 November 2026, 15:07, in wt-fix: 171.8 KB gzip, 175,951 bytes; initial-bundle-budget --built PASS on that build."
+    },
     "/": {
       "date": "2026-09-21",
       "from": 177245,
@@ -270,6 +278,6 @@
     "/verify-email-sent": 166684,
     "/waitlist": 175942,
     "/waitlist/unsubscribe/[token]": 156114,
-    "/weekend": 167224
+    "/weekend": 175951
   }
 }

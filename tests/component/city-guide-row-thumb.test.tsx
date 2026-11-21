@@ -58,11 +58,19 @@ describe('round 3 (1): a photograph on a row only where one is permitted', () =>
   })
 
   it('a row with no permitted photograph draws no image, no placeholder and no empty box, and keeps its width for text', () => {
-    guide([row({ id: 'n1', href: '/events/n1', title: 'Storytime', thumb: null })])
+    // A kind with no looked-at photograph yet (src/lib/images/illustrative.ts): law 46 (f) leaves it with none.
+    guide([row({ id: 'n1', href: '/events/n1', title: 'Storytime', thumb: null, category: 'Other', categorySlug: 'other' })])
     const link = screen.getByRole('link', { name: /Storytime/ })
     expect(link.querySelector('[data-row-thumb]')).toBeNull()
     expect(link.querySelectorAll('img').length).toBe(0)
     expect(link.className).not.toMatch(/_7rem\]/)
+  })
+
+  it('a row of a kind with a looked-at photograph stands on it, with the one chip (law 46 (f), the PM 10:15 ruling 2)', () => {
+    guide([row({ id: 'n2', href: '/events/n2', title: 'Late Laughs', thumb: null })])
+    const link = screen.getByRole('link', { name: /Late Laughs/ })
+    expect(link.querySelector('img:not([alt=""])')?.getAttribute('src') ?? '').toContain('illustrative-comedy')
+    expect(link.querySelector('[data-illustrative]')?.textContent).toBe('Illustrative photo')
   })
 
   it('the photo box has its own size hint, never a larger cell\'s', () => {

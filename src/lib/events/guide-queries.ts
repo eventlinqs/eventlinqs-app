@@ -28,6 +28,8 @@ export async function loadGuideUpcoming(supabase: SupabaseClient, now: Date): Pr
       .from('events')
       .select(GUIDE_SELECT)
       .match(PUBLIC_EVENT_MATCH)
+      // A test account's night is never in the guide (the PM's 13:22 of 21 November 2026).
+      .eq('is_test', false)
       .or(listingWindowOrPredicate(now))
       .order('start_date', { ascending: true })
       .order('id', { ascending: true })

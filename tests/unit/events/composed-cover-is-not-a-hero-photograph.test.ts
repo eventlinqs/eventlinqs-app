@@ -40,7 +40,8 @@ describe('the event page and its preload ask it', () => {
     const layout = readFileSync('src/app/events/[slug]/layout.tsx', 'utf8')
     // The row's cover after the venue chain (withVenuePhotos), the raster both pages paint.
     expect(layout).toMatch(
-      /eventHeroPreloadLink\(\{ \.\.\.event, cover_image_url: heroCover\.cover_image_url \}, \{ typographicHasNoRaster: !isWalkIn\(event\) \}\)/,
+      // ... and, since law 46 (f) (21 November 2026), the event page's own resolver, so a labelled stand in is preloaded.
+      /eventHeroPreloadLink\(\{ \.\.\.event, cover_image_url: heroCover\.cover_image_url \}, \{ typographicHasNoRaster: !isWalkIn\(event\), eventPage: !isWalkIn\(event\) \}\)/,
     )
   })
 })

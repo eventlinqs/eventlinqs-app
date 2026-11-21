@@ -16,6 +16,8 @@ import { byMonth, foldListings, guideSections, inRange, LATER_FOLD, listingKey, 
 import { rememberCity } from '@/lib/events/chosen-city'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { archivalNote } from '@/lib/media/photo-credits'
+import { illustrativePhoto } from '@/lib/images/illustrative'
+import { IllustrativeChip } from '@/components/media/illustrative-chip'
 
 /**
  * THE CITY GUIDE (the city-first directive of 1 November 2026, C:\dev\DESIGN\CITY-FIRST-1NOV, sections 1 and 6). One
@@ -729,7 +731,7 @@ function RailHead({ title, onAll }: { title: string; onAll?: () => void }) {
  * Its box is named by the caller (`variant`), because one size hint for three boxes sent the 112px row hint to the
  * full-width Big nights and rail cards, and phones fetched a 128px photograph for a 356px slot (11 November 2026).
  */
-function WholePhoto({ src, alt, className, variant, priority = false }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb'; priority?: boolean }) {
+function WholePhoto({ src, alt, className, variant, priority = false, illustrative = false }: { src: string; alt?: string | null; className: string; variant: 'guide-big-card' | 'guide-rail-card' | 'row-thumb'; priority?: boolean; illustrative?: boolean }) {
   // The one second law (Lawal, 12 November 2026, 01:01, item 5): only the first section's first big or rail photograph,
   // the first screen's candidate, is fetched first; every other, and every small row photograph, is lazy. Both layers
   // name the same source and size, so the browser fetches it once.
@@ -740,6 +742,7 @@ function WholePhoto({ src, alt, className, variant, priority = false }: { src: s
       </span>
       {/* What the photograph shows, from the cover's own alt, written from a look (round 5 fault 5). */}
       <EventCardMedia src={src} alt={alt ?? ''} variant={variant} objectFit="contain" priority={priority} />
+      {illustrative ? <IllustrativeChip small={variant === 'row-thumb'} /> : null}
     </span>
   )
 }
@@ -750,14 +753,17 @@ function WholePhoto({ src, alt, className, variant, priority = false }: { src: s
  * only, where archival, that it is from a past one (archivalNote);
  * else the venue's own photograph the photo lock dealt to this night (src/lib/events/venue-thumbs.ts), labelled as the
  * venue beside its licence credit, the one credit law 17 (d) keeps, so the venue is never presented as the act; else
- * none, never a stand-in.
+ * (law 46 (f), Lawal's 09:16 of 21 November 2026, which replaces 'else none, never a stand-in') the licensed photograph
+ * of its kind, looked at, no face its subject, labelled 'Illustrative photo' on the photograph; else none.
  */
-export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: string | null } | null {
+export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: string | null; illustrative?: boolean } | null {
   if (r.thumb) return { src: r.thumb, alt: r.thumbAlt ?? '', credit: archivalNote(r.thumbCredit) }
   if (r.venueThumb) {
     const venue = r.venue ? `The venue, ${r.venue}` : 'The venue'
     return { src: r.venueThumb, alt: r.venue ? `${r.venue}, the venue` : 'The venue', credit: [venue, r.venueThumbCredit].filter(Boolean).join('. ') }
   }
+  const stand = illustrativePhoto(r.categorySlug)
+  if (stand) return { src: stand, alt: `${r.category ?? 'An event'}, an illustrative photo`, credit: null, illustrative: true }
   return null
 }
 
@@ -770,7 +776,7 @@ function BigCard({ e, priority = false }: { e: Entry; priority?: boolean }) {
       href={r.href}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
     >
-      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[3/2] w-full" variant="guide-big-card" priority={priority} /> : null}
+      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[3/2] w-full" variant="guide-big-card" priority={priority} illustrative={photo.illustrative} /> : null}
       <span className="flex flex-1 flex-col gap-2 p-4">
         <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)] [overflow-wrap:anywhere]">
           {[r.category, r.venue].filter(Boolean).join(' · ')}
@@ -806,7 +812,7 @@ function CardRail({ entries, priorityFirst = false }: { entries: readonly Entry[
             href={e.row.href}
             className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]"
           >
-            {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-full" variant="guide-rail-card" priority={priorityFirst && i === 0} /> : null}
+            {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-full" variant="guide-rail-card" priority={priorityFirst && i === 0} illustrative={photo.illustrative} /> : null}
             <span className="flex flex-1 flex-col gap-1 p-3">
               <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--brand-accent-strong)]">{[whenLine(e), moreDatesLine(e)].filter(Boolean).join(' · ')}</span>
               <span className="font-headline text-base font-bold leading-snug text-[var(--text-primary)] [overflow-wrap:anywhere] group-hover:underline">{e.row.title}</span>
@@ -972,7 +978,7 @@ function Row({ e, cityName }: { e: Entry; cityName: string }) {
         {photo?.credit ? <span className="mt-1 block font-display text-xs text-[var(--text-muted)] [overflow-wrap:anywhere]">{photo.credit}</span> : null}
         {booking ? <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">{booking}</span> : null}
       </span>
-      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" /> : null}
+      {photo ? <WholePhoto src={photo.src} alt={photo.alt} className="aspect-[4/3] w-28 shrink-0 self-start rounded-lg md:w-40" variant="row-thumb" illustrative={photo.illustrative} /> : null}
     </Link>
   )
 }

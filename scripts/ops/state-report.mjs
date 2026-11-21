@@ -294,6 +294,34 @@ async function collectLastPush(token, repo) {
  * worth carrying an unzip for. Verified against run 34308099399 job
  * 102328905716, which named preview-deployment-state.
  */
+/**
+ * A TRAIN THAT LANDED IS NOT A BRANCH RED (the PM's 14:19 of 21 November 2026, item 4 (b)): the 12:48 report listed two
+ * branches whose pull requests merged after they went red (#324, #323). A run is left out when its branch's pull request
+ * merged at or after the run began; a branch that went red again after its merge stays. Pure.
+ *
+ * @param {{ head_branch: string, created_at: string }[]} runs
+ * @param {Map<string, string>} mergedAt the newest merge time of each branch's pull request
+ */
+export function leaveOutLanded(runs, mergedAt) {
+  return runs.filter((r) => {
+    const merged = mergedAt.get(r.head_branch)
+    return !(merged && Date.parse(merged) >= Date.parse(r.created_at))
+  })
+}
+
+/** The newest merge time of each branch's pull request, read from GitHub; a branch never merged is absent. */
+async function readMergedAt(token, repo, branches) {
+  const owner = repo.split('/')[0]
+  const out = new Map()
+  for (const branch of branches) {
+    const res = await gh(token, `/repos/${repo}/pulls?state=closed&per_page=10&head=${encodeURIComponent(`${owner}:${branch}`)}`)
+    if (res.status !== 200 || !Array.isArray(res.body)) continue
+    const merges = res.body.map((p) => p.merged_at).filter(Boolean).sort()
+    if (merges.length > 0) out.set(branch, merges.at(-1))
+  }
+  return out
+}
+
 async function collectFailingBranches(token, repo, sinceIso) {
   const res = await gh(token, `/repos/${repo}/actions/runs?status=failure&per_page=50`)
   if (res.status !== 200 || !Array.isArray(res.body?.workflow_runs)) {
@@ -314,9 +342,10 @@ async function collectFailingBranches(token, repo, sinceIso) {
       return true
     })
     .slice(0, MAX_FAILING_RUNS)
+  const landed = await readMergedAt(token, repo, [...new Set(runs.map((r) => r.head_branch))])
 
   const out = []
-  for (const run of runs) {
+  for (const run of leaveOutLanded(runs, landed)) {
     let guard = null
     const jobs = await gh(token, `/repos/${repo}/actions/runs/${run.id}/jobs?per_page=30`)
     const failed = Array.isArray(jobs.body?.jobs) ? jobs.body.jobs.filter((j) => j.conclusion === 'failure') : []

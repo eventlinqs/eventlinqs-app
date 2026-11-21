@@ -102,9 +102,9 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
     }
   })
   const listings = await safely('Event Listings', async () => ({
-    published: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('published_at', w.yesterday.from).lt('published_at', w.yesterday.to), 'events published'),
-    ended: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('end_date', w.yesterday.from).lt('end_date', w.yesterday.to), 'events ended'),
-    onToday: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').lt('start_date', w.today.to).gte('end_date', w.today.from), 'events on today'),
+    published: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_test', false).gte('published_at', w.yesterday.from).lt('published_at', w.yesterday.to), 'events published'),
+    ended: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_test', false).gte('end_date', w.yesterday.from).lt('end_date', w.yesterday.to), 'events ended'),
+    onToday: await counted(db.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_test', false).lt('start_date', w.today.to).gte('end_date', w.today.from), 'events on today'),
   }))
   const ticketing = await safely('Ticketing & Revenue', async () => {
     // Revenue truth (law 2 of 31 October): EventLinqs' own retained fee, never the gross ticket sales.

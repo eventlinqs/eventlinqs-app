@@ -1,0 +1,53 @@
+# THE INSTAGRAM READ BACK (law 40 (c); the PM's 10:15 of 21 November 2026, ruling 8: "No collaborator invite until read
+# back"). Started by hand until proved, never on a schedule yet. It calls production's own read back route with the
+# secret only this repository's Actions hold; Meta's token lives on production. dry-run writes nothing; apply writes
+# instagram_verified_at for each handle Instagram shows whose own website already links it. The log prints business
+# usernames and their outcomes only.
+name: instagram handle read back
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry-run (read only) or apply (verify each handle Instagram shows)
+        required: true
+        type: choice
+        default: dry-run
+        options: [dry-run, apply]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: instagram-handle-readback
+  cancel-in-progress: false
+
+jobs:
+  readback:
+    name: the organisers' handles, read back on Instagram
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's read back route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            dry-run) APPLY=0 ;;
+            apply) APPLY=1 ;;
+            *) echo "REFUSED: mode $MODE"; exit 2 ;;
+          esac
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 290 -X POST \
+            "https://www.eventlinqs.com.au/api/cron/instagram-handle-readback?apply=${APPLY}" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          python3 - <<'PY'
+          import json
+          d = json.load(open('answer.json', encoding='utf-8'))
+          print(json.dumps({k: d.get(k) for k in ('ok', 'error', 'mode', 'read', 'shown', 'verified')}))
+          for o in d.get('outcomes', []):
+              print(json.dumps(o))
+          PY
+          [ "$code" = 200 ]

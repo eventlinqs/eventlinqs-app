@@ -5,6 +5,8 @@ import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { IllustrativeChip } from '@/components/media/illustrative-chip'
+import { illustrativePhoto } from '@/lib/images/illustrative'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { SaveEventButton } from './save-event-button'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
@@ -168,8 +170,12 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   const isVenuePhoto = Boolean(event.image_credit)
   const photo = cover_image_url && !isComposedCover(cover_image_url) ? cover_image_url : null
   const recorded = Boolean(photo) && (isVenuePhoto || event.cover_rights_recorded === true)
+  // LAW 46 (f) (Lawal, 21 November 2026, 09:16; the PM's 10:15, ruling 2; the app constitution as amended that day):
+  // a night with no lawful photograph of its own stands on the licensed photograph of its kind, looked at, no face its
+  // subject, with the one chip 'Illustrative photo' on it; a kind with none yet keeps the row.
+  const stand = recorded ? null : illustrativePhoto(event.category?.slug ?? null)
 
-  if (!recorded) {
+  if (!recorded && !stand) {
     const source = sourceLabel({
       ticket_tiers: event.ticket_tiers,
       external_ticket_url: event.external_ticket_url ?? null,
@@ -210,17 +216,25 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             </div>
             <EventCardMedia src={photo} alt={title} variant={variant} priority={priority} title={event.image_credit ?? null} objectFit="contain" />
           </>
-        ) : photo ? (
+        ) : recorded && photo ? (
           <>
             <div className="ledger-blur" aria-hidden="true">
               <EventCardMedia src={photo} alt="" variant={variant} />
             </div>
             <EventCardMedia src={photo} alt={title} variant={variant} priority={priority} objectFit="contain" />
           </>
+        ) : stand ? (
+          <>
+            <div className="ledger-blur" aria-hidden="true">
+              <EventCardMedia src={stand} alt="" variant={variant} />
+            </div>
+            <EventCardMedia src={stand} alt={`${event.category?.name ?? 'An event'}, an illustrative photo`} variant={variant} priority={priority} objectFit="contain" />
+            <IllustrativeChip />
+          </>
         ) : null}
 
         {m5Mode && badge ? (
-          <span data-m5-badge={badge} className={`event-card-badge ${BADGE_STYLES[badge]}`}>
+          <span data-m5-badge={badge} className={`event-card-badge ${BADGE_STYLES[badge]}`} style={stand ? { top: '2.5rem' } : undefined}>
             {BADGE_LABELS[badge]}
           </span>
         ) : null}

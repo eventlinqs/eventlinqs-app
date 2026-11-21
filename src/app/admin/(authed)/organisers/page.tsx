@@ -40,6 +40,8 @@ type SearchParams = Promise<{
   status?: string
   q?: string
   page?: string
+  /** 'today': the admin home's 'New organisers today', the same rows by the same rule. */
+  created?: string
   notice?: string
   action?: string
 }>
@@ -77,7 +79,8 @@ export default async function AdminOrganisersPage({ searchParams }: { searchPara
     metadata: { statusFilter, search: search ?? null, page },
   })
 
-  const result = await listOrganisations({ status: statusFilter, search, page })
+  const createdToday = sp.created === 'today'
+  const result = await listOrganisations({ status: statusFilter, search, page, createdToday })
   const returnTo = buildReturnTo(statusFilter, search, page)
 
   return (
@@ -92,6 +95,13 @@ export default async function AdminOrganisersPage({ searchParams }: { searchPara
       </header>
 
       <NoticeBanner notice={sp.notice} action={sp.action} />
+
+      {createdToday ? (
+        <p className="mb-6 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 text-sm text-[var(--admin-soft)]">
+          New organisers today, Melbourne time, test accounts left out: the rows behind the figure on the dashboard.{' '}
+          <Link prefetch={false} href="/admin/organisers" className="font-semibold text-[var(--brand-accent-strong)] underline">Show every organiser</Link>
+        </p>
+      ) : null}
 
       <form method="GET" className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 md:grid-cols-4">
         <label className="block md:col-span-2">
@@ -176,6 +186,9 @@ function OrganiserRow({ row, returnTo }: { row: AdminOrganiserRow; returnTo: str
         >
           {row.name}
         </Link>
+        {row.isTest ? (
+          <span className="ml-2 inline-block rounded border border-[var(--admin-line)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--admin-muted)]">Test</span>
+        ) : null}
         <div className="text-[11px] text-[var(--admin-muted)]">{row.slug}</div>
         {row.email ? <div className="text-[11px] text-[var(--admin-muted)]">{row.email}</div> : null}
       </td>

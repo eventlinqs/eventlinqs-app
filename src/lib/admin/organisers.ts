@@ -2,6 +2,7 @@ import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { ilikeAnyOf } from '@/lib/supabase/or-filter'
+import { melbourneDay, melbourneDayBounds } from '@/lib/listings/discovery-day'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { retrieveAccount } from '@/lib/stripe/connect'
 import { captureException } from '@/lib/observability/sentry'
@@ -160,6 +161,8 @@ export interface AdminOrganiserRow {
   stripeChargesEnabled: boolean
   totalEventCount: number
   createdAt: string
+  /** A test account (migration 20261121140001), shown marked TEST and never counted. */
+  isTest: boolean
 }
 
 export const ORGANISER_STATUS_FILTERS: readonly (OrgStatus | 'all')[] = [
@@ -174,6 +177,11 @@ export interface OrganiserListFilters {
   status?: OrgStatus | 'all'
   search?: string
   page?: number
+  /**
+   * The admin home's 'New organisers today' (the PM's 13:22 of 21 November 2026): created on today's Melbourne day,
+   * test accounts left out, so the list behind the figure holds exactly the rows it counted.
+   */
+  createdToday?: boolean
 }
 
 export interface OrganiserListResult {
@@ -193,13 +201,17 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
   let q = admin
     .from('organisations')
     .select(
-      'id, name, slug, status, email, payout_status, stripe_charges_enabled, created_at',
+      'id, name, slug, status, email, payout_status, stripe_charges_enabled, created_at, is_test',
     )
     .order('created_at', { ascending: false })
     .range(fromIdx, fromIdx + PAGE_SIZE) // fetch one extra to detect hasMore
 
   if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
   if (filters.search) q = q.or(ilikeAnyOf(['name', 'slug', 'email'], filters.search))
+  if (filters.createdToday) {
+    const { from, to } = melbourneDayBounds(melbourneDay(new Date()))
+    q = q.gte('created_at', from).lt('created_at', to).eq('is_test', false)
+  }
 
   const { data, error } = await q
   if (error) throw error
@@ -220,6 +232,7 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
       stripeChargesEnabled: r.stripe_charges_enabled,
       totalEventCount: counted.get(r.id)?.events ?? 0,
       createdAt: r.created_at,
+      isTest: r.is_test,
     })),
     page,
     pageSize: PAGE_SIZE,

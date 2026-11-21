@@ -86,6 +86,16 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
     .order('planned_at', { ascending: false })
     .limit(3000)
   if (error) throw new Error(`the lifecycle history could not be read: ${error.message}`)
+  // The pieces that have posted in public, read on their own: a partner kit marked sent (post_url 'sent') is not a post
+  // (scripts/guards/kit-sent-reads-the-touch.mjs). A failed read fails the plan closed, as the history's does.
+  const posts = await db
+    .from('social_piece_postings')
+    .select('piece_id')
+    .neq('post_url', 'sent')
+    .order('posted_at', { ascending: false })
+    .limit(5000)
+  if (posts.error) throw new Error(`the lifecycle history's public posts could not be read: ${posts.error.message}`)
+  const postedInPublic = new Set(((posts.data ?? []) as { piece_id: string }[]).map((r) => r.piece_id))
   const today = dayIn(now, LIFECYCLE_ZONE)
   const byRun = new Map<string, { feedDays: string[]; storyDays: string[]; had: string[] }>()
   const usedPhotos = new Set<string>()
@@ -101,8 +111,11 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
     const newest = revs[0]
     if (!newest) continue
     const rejected = ((p.social_piece_decisions as { revision: number; decision: string }[] | null) ?? []).some((d) => d.revision === newest.version && d.decision === 'rejected')
-    // A photograph is never used twice, even one whose piece was rejected after it was drawn (law 37 (l)).
-    for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
+    // A photograph is spent once its piece has posted and reserved while its piece is open, so a post is never repeated
+    // and two open pieces never share one (law 37 (l)); a piece rejected before it ever posted frees it (the PM's 12:28
+    // of 21 November 2026, item 1: Sunday's photograph was lost to a story set aside before it could post).
+    const posted = postedInPublic.has(p.id as string)
+    if (posted || !rejected) for (const s of newest.slides ?? []) if (s.t === 'photo') usedPhotos.add(s.photo)
     if (rejected) continue
     const h = byRun.get(parts.runKey) ?? { feedDays: [], storyDays: [], had: [] }
     if (parts.format === 'feed') h.feedDays.push(parts.day)

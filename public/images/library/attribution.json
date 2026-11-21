@@ -2105,6 +2105,50 @@
       "query": "empty stadium lights",
       "looked_at": "2026-11-21: stadium floodlights over empty seats, no person (law 46 (f): illustrative, no recognisable person its subject)",
       "downloaded_on": "2026-11-21"
+    },
+    "illustrative-theatre": {
+      "file": "/images/library/illustrative-theatre.jpg",
+      "photographer": "Ann Hannes",
+      "photographer_url": "https://www.pexels.com/@ann-hannes-45017",
+      "page": "https://www.pexels.com/photo/red-theater-chairs-near-red-curtains-12616961/",
+      "pexels_id": 12616961,
+      "alt": "Empty theater stage with red curtains and seating, ready for a performance.",
+      "query": "theatre stage curtain",
+      "looked_at": "2026-11-21: a lit red stage curtain over empty red seats, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-food-drink": {
+      "file": "/images/library/illustrative-food-drink.jpg",
+      "photographer": "Bas Linders",
+      "photographer_url": "https://www.pexels.com/@studio1345",
+      "page": "https://www.pexels.com/photo/traditional-indian-dishes-on-trays-14009277/",
+      "pexels_id": 14009277,
+      "alt": "A delightful assortment of traditional tapas served on rustic wooden boards for an appetizing meal.",
+      "query": "tapas table overhead",
+      "looked_at": "2026-11-21: tapas in terracotta dishes across a wooden table, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-classes-workshops": {
+      "file": "/images/library/illustrative-classes-workshops.jpg",
+      "photographer": "betül nur akyürek",
+      "photographer_url": "https://www.pexels.com/@cileklipalet",
+      "page": "https://www.pexels.com/photo/art-supplies-on-wooden-tabletop-34334764/",
+      "pexels_id": 34334764,
+      "alt": "Close-up of watercolor palette and brushes on a wooden table, perfect for artistic needs.",
+      "query": "art supplies paint brushes table",
+      "looked_at": "2026-11-21: a watercolour palette, brushes and a water jar on a wooden table, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-nightlife": {
+      "file": "/images/library/illustrative-nightlife.jpg",
+      "photographer": "Skills Media",
+      "photographer_url": "https://www.pexels.com/@skills-media-437558258",
+      "page": "https://www.pexels.com/photo/colorful-cocktails-in-glasses-on-bar-counter-16859958/",
+      "pexels_id": 16859958,
+      "alt": "Vibrant cocktails lined up beautifully on a bar counter with a blurred background.",
+      "query": "cocktail glasses bar counter",
+      "looked_at": "2026-11-21: four cocktails along a bar counter, bottles lit behind, no person, no brand (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
     }
   }
 }
