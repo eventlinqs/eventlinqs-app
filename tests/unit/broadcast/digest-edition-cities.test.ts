@@ -10,13 +10,14 @@ import { EDITION_CITIES } from '@/lib/social/campaign'
 describe('the cities the weekly digest goes to', () => {
   test('are the edition cities that have someone who said yes, in the list order', () => {
     // Melbourne first (Lawal, 12 November 2026, 09:16 to 09:19; growth plan version 6).
-    expect(editionDigestCities(['ballarat', 'melbourne', 'geelong', 'sydney'])).toEqual(['melbourne', 'geelong'])
+    // Ballarat and Bendigo joined on the PM's word (15:35 of 21 November 2026, ruling 2).
+    expect(editionDigestCities(['ballarat', 'melbourne', 'geelong', 'sydney', 'bendigo'])).toEqual(['melbourne', 'geelong', 'ballarat', 'bendigo'])
   })
   test('a city on the list with nobody who said yes is not sent', () => {
     expect(editionDigestCities(['melbourne'])).toEqual(['melbourne'])
     expect(editionDigestCities([])).toEqual([])
   })
   test('it is the planner list itself, not a copy', () => {
-    expect(editionDigestCities([...EDITION_CITIES, 'bendigo'])).toEqual([...EDITION_CITIES])
+    expect(editionDigestCities([...EDITION_CITIES, 'sydney'])).toEqual([...EDITION_CITIES])
   })
 })

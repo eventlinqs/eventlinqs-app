@@ -14,7 +14,7 @@ const ORIGIN = 'https://www.eventlinqs.com.au'
 const WEEK = '2026-10-26' // Monday
 const CITIES: CampaignCity[] = [
   { slug: 'geelong', name: 'Geelong' },
-  { slug: 'ballarat', name: 'Ballarat' },
+  { slug: 'sydney', name: 'Sydney' },
   { slug: 'melbourne', name: 'Melbourne' },
 ]
 
@@ -51,11 +51,11 @@ const geelong = [
   night({ at: '2026-10-31T09:00:00Z' }), // Sat 8pm
   night({ at: '2026-10-31T00:00:00Z', categorySlug: 'family', title: 'Bp Market' }), // Sat 11am
 ]
-// Ballarat: enough for both editions, but not yet an edition city.
-const ballarat = [
-  night({ at: '2026-10-28T09:00:00Z', citySlug: 'ballarat', cityName: 'Ballarat' }),
-  night({ at: '2026-10-30T09:00:00Z', citySlug: 'ballarat', cityName: 'Ballarat' }),
-  night({ at: '2026-10-31T09:00:00Z', citySlug: 'ballarat', cityName: 'Ballarat' }),
+// Sydney: enough for both editions, but not an edition city (Ballarat and Bendigo joined on the PM's 15:35).
+const sydney = [
+  night({ at: '2026-10-28T09:00:00Z', citySlug: 'sydney', cityName: 'Sydney' }),
+  night({ at: '2026-10-30T09:00:00Z', citySlug: 'sydney', cityName: 'Sydney' }),
+  night({ at: '2026-10-31T09:00:00Z', citySlug: 'sydney', cityName: 'Sydney' }),
 ]
 // Melbourne: one Friday night only, so no Tonight and Tomorrow; two comedy nights, so no spotlight.
 const melbourne = [
@@ -63,7 +63,7 @@ const melbourne = [
   night({ at: '2026-10-27T09:00:00Z', citySlug: 'melbourne', cityName: 'Melbourne', categorySlug: 'comedy' }),
 ]
 
-const pieces = planCampaign({ nights: [...geelong, ...ballarat, ...melbourne], cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces
+const pieces = planCampaign({ nights: [...geelong, ...sydney, ...melbourne], cities: CITIES, weekStart: WEEK, origin: ORIGIN }).pieces
 /* A busy week (the PM's 16:40 fix 3: two list posts in one city and one week share at most one night): five headline
    nights Monday to Thursday carry the week post, so the later list posts have nights of their own. */
 function busyWeek(at: (o: Partial<CampaignNight> & { at: string; state?: CtaInput }) => CampaignNight) {
@@ -88,11 +88,11 @@ const of = (kind: string, city?: string) => pieces.filter((p) => (p.kind as stri
 
 describe('the edition cities', () => {
   it('are Geelong then Melbourne, held in one place', () => {
-    expect(EDITION_CITIES).toEqual(['melbourne', 'geelong'])
+    expect(EDITION_CITIES).toEqual(['melbourne', 'geelong', 'ballarat', 'bendigo'])
   })
   it('plan no new edition for a city not yet on the list, however many nights it has', () => {
-    expect(of('tonight_tomorrow', 'ballarat')).toHaveLength(0)
-    expect(of('category_spotlight', 'ballarat')).toHaveLength(0)
+    expect(of('tonight_tomorrow', 'sydney')).toHaveLength(0)
+    expect(of('category_spotlight', 'sydney')).toHaveLength(0)
   })
 })
 
@@ -161,7 +161,7 @@ describe('the Category Spotlight', () => {
 
 describe('the pieces already planned', () => {
   it('are unchanged: the week ahead and the weekend guide still plan for every guide city', () => {
-    expect(of('week_ahead', 'ballarat')).toHaveLength(1)
+    expect(of('week_ahead', 'sydney')).toHaveLength(1)
     expect(of('weekend_carousel', 'geelong')).toHaveLength(1)
   })
 })
