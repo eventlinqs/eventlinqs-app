@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countSuburb } from '@/lib/seo/discovery-counts'
@@ -7,8 +7,8 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCity,
   getSuburb,
-  isCitySlug,
 } from '@/lib/cities/data'
+import { cityRouteAnswer } from '@/lib/cities/city-route'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
@@ -74,9 +74,13 @@ function weekendWindow(now: Date) {
 }
 
 export default async function SuburbPage({ params }: Props) {
-  const { slug, suburb } = await params
-  if (!isCitySlug(slug)) notFound()
-  const city = getCity(slug)!
+  const { slug: asked, suburb: askedSuburb } = await params
+  // The city in another case or by name, or the suburb in capitals, answers 308 to the lower case path (cityRouteAnswer).
+  const answer = cityRouteAnswer(asked)
+  if (answer.kind === 'not-found') notFound()
+  const suburb = askedSuburb.toLowerCase()
+  if (answer.kind === 'redirect' || suburb !== askedSuburb) permanentRedirect(`/city/${answer.slug}/${encodeURIComponent(suburb)}`)
+  const city = getCity(answer.slug)!
   const fullSuburbSlug = `${city.slug}-${suburb}`
   const suburbContent = getSuburb(fullSuburbSlug)
   if (!suburbContent) notFound()

@@ -3,6 +3,7 @@ import { tierOf } from '@/lib/events/relevance'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
 import type { CampaignNight, PiecePlan, Slide } from './campaign'
+import { goHop } from './go-hop'
 import {
   captionFor,
   collabWorthIt,
@@ -11,7 +12,6 @@ import {
   daysFrom,
   FIRST_LINE_WINDOW_DAYS,
   firstLineFor,
-  startedByFirstBand,
   endedByFirstBand,
   momentKey,
   momentsDue,
@@ -19,7 +19,8 @@ import {
   runRef,
   runsOf,
   seedOf,
-  selectToday,
+  chooseToday,
+  postableBand,
   storyLine,
   LIFECYCLE_ZONE,
   type Candidate,
@@ -240,7 +241,7 @@ function linkFor(origin: string, slug: string, platform: 'instagram' | 'facebook
 }
 
 /**
- * Today's lifecycle pieces: the history read first, the day's few chosen (selectToday), each with its strongest photo
+ * Today's lifecycle pieces: the history read first, the day's few chosen (chooseToday, which heals), each with its strongest photo
  * not used before, its own first line, its story line, its own link per network, and a Collab where law 40 allows.
  */
 export async function planLifecyclePieces(
@@ -252,7 +253,7 @@ export async function planLifecyclePieces(
     /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
     readonly redrawing?: ReadonlySet<string>
   },
-): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[] }> {
+): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[]; readonly due: number; readonly photoless: readonly string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
   const runs = runsOf(input.nights.map(toLifecycleNight))
@@ -262,14 +263,45 @@ export async function planLifecyclePieces(
 
   const none: RunHistory = { feedDays: [], storyDays: [], had: [] }
   const candidates: Candidate[] = []
+  // The nights with a moment due today, and those with no permitted photograph in either format (the pre-flight's line,
+  // AV (c)).
+  let due = 0
+  const photoless: string[] = []
   for (const run of runs) {
     const day = dayIn(input.now, run.zone)
-    for (const moment of momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none)) {
-      const night = nightForDay(run, day)
+    const moments = momentsDue(run, input.now, history.byRun.get(runRef(run.key)) ?? none)
+    const night = nightForDay(run, day)
+    if (moments.length > 0) {
+      due += 1
+      const own = photos.get(night.eventId) ?? []
+      if (rankPhotos(own, 'feed', used).length === 0 && rankPhotos(own, 'story', used).length === 0) photoless.push(byId.get(night.eventId)?.title ?? run.key)
+    }
+    for (const moment of moments) {
       candidates.push({ run, moment, hasPhoto: rankPhotos(photos.get(night.eventId) ?? [], moment.format, used).length > 0 })
     }
   }
-  const chosen = selectToday(candidates, { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday })
+  // THE CHOICE THAT HEALS (lifecycle.ts chooseToday; the PM's 16:30 of 21 November 2026): a moment is drawn only if it
+  // can post on its day, by the same checks the drawing below and the scheduler and the publish gate make; one that
+  // cannot is passed over without spending its cap, and the same moment in the other format, then the next night, is
+  // tried instead.
+  const drawable = (c: Candidate): string | null => {
+    const day = dayIn(input.now, c.run.zone)
+    const ln = nightForDay(c.run, day)
+    const n = byId.get(ln.eventId)
+    if (!n) return 'its night could not be read'
+    const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
+    if (!photo || photo.width === null || photo.height === null) return `no permitted photograph for a ${c.moment.format}`
+    const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
+    if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
+    return 'why' in band ? band.why : null
+  }
+  const choice = chooseToday(candidates, { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday }, drawable)
+  for (const p of choice.passedOver) {
+    const title = byId.get(nightForDay(p.candidate.run, dayIn(input.now, p.candidate.run.zone)).eventId)?.title ?? p.candidate.run.key
+    notes.push(`${title} ${p.candidate.moment.kind} ${p.candidate.moment.format}: passed over, ${p.why}`)
+  }
+  const chosen = choice.chosen
   const hosts = chosen.map((c) => byId.get(nightForDay(c.run, dayIn(input.now, c.run.zone)).eventId)?.host ?? '').filter((h) => h !== '')
   const organisers = await readCollabOrganisers(db, hosts)
 
@@ -287,8 +319,14 @@ export async function planLifecyclePieces(
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it ends before the ${c.moment.format}'s first band that day; not drawn`)
       continue
     }
-    // A first day already under way by its band says it is on now (lifecycle.ts startedByFirstBand).
-    const startedByBand = startedByFirstBand(ln.startDate, ln.timezone?.trim() || LIFECYCLE_ZONE, c.moment.format, day)
+    // The band it can post in (lifecycle.ts postableBand, the one rule the choice above used): a first day under way by
+    // that band says it is on now.
+    const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now })
+    if ('why' in band) {
+      notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
+      continue
+    }
+    const startedByBand = c.moment.kind === 'first_day' && band.onNow
     const first = firstLineFor(c.moment.kind, c.run.salesOpen, lines, seedOf(`${c.run.key}|${day}|${c.moment.format}`), startedByBand)
     if (first === null) {
       notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: every first line was used inside ${FIRST_LINE_WINDOW_DAYS} days; not posted`)
@@ -308,8 +346,11 @@ export async function planLifecyclePieces(
       line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
     }
     const facts = { title: n.title, place, dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day), priceLine: n.priceLine, summary: n.summary, names: [n.title, ...(n.host ? [n.host] : [])] }
-    const igLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
-    const fbLink = linkFor(input.origin, n.slug, 'facebook', c.moment.format, c.moment.kind, day)
+    // The page a press lands on, with its tags, is the piece's stored link; the words carry the counted /go hop
+    // (go-hop.ts; AV (e)), its piece id written by revisionRow.
+    const pageLink = linkFor(input.origin, n.slug, 'instagram', c.moment.format, c.moment.kind, day)
+    const igLink = goHop(input.origin, 'instagram')
+    const fbLink = goHop(input.origin, 'facebook')
     const ig = captionFor({ platform: 'instagram', firstLine: first, facts, link: igLink })
     const fb = captionFor({ platform: 'facebook', firstLine: first, facts, link: fbLink })
     const collaborators = collaboratorsFor({
@@ -328,7 +369,7 @@ export async function planLifecyclePieces(
       purpose: `Law 37 lifecycle: ${c.moment.kind.replace('_', ' ')} for ${n.title}, its permitted photograph whole`,
       nextStep: 'Open its page at eventlinqs.com.au',
       outcome: "Visits through this post's own link, then tickets sold through EventLinqs",
-      link: igLink,
+      link: pageLink,
       format: c.moment.format,
       eventIds: [n.eventId],
       picks: [{ eventId: n.eventId, reason: `${c.moment.kind.replace('_', ' ')} on ${day}` }],
@@ -347,5 +388,5 @@ export async function planLifecyclePieces(
       names: [n.title, ...(n.host ? [n.host] : [])],
     })
   }
-  return { pieces, notes }
+  return { pieces, notes, due, photoless }
 }

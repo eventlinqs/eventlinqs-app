@@ -38,7 +38,7 @@ export type MorningFacts = {
   /** Each area is null when its read failed: that row says so, and never prints a calm zero. */
   readonly marketing: null | { readonly firstLettersSent: number; readonly positiveReplies: number; readonly readyToday: number; readonly poolToday?: number | null; readonly businessDay?: boolean }
   readonly permissions: null | { readonly requestsSent: number; readonly photosReceived: number; readonly photosApproved: number; readonly requestsDueToday: number }
-  readonly social: null | { readonly published: readonly { readonly platform: string; readonly ref: string | null }[]; readonly scheduledToday: number; readonly held: number }
+  readonly social: null | { readonly published: readonly { readonly platform: string; readonly ref: string | null }[]; readonly scheduledToday: number; readonly held: number; readonly preflight?: { readonly line: string; readonly nothingCanPost: string | null } | null }
   readonly listings: null | { readonly published: number; readonly ended: number; readonly onToday: number }
   readonly relationships: null | { readonly repliesReceived: number; readonly waitingForLawal: number }
   readonly ticketing: null | { readonly ordersConfirmed: number; readonly feeRevenueCents: number; readonly activations: number }
@@ -91,7 +91,10 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
         yesterday: published.length > 0 ? `${countOf(published.length, 'post')} published (${byPlatform.join(', ')}).` : 'No posts published.',
         today:
           `${f.social.scheduledToday > 0 ? `${countOf(f.social.scheduledToday, 'post')} scheduled.` : 'No posts scheduled.'}` +
-          (f.social.held > 0 ? ` ${countOf(f.social.held, 'post')} held back with ${f.social.held === 1 ? 'its reason' : 'their reasons'}.` : ''),
+          (f.social.held > 0 ? ` ${countOf(f.social.held, 'post')} held back with ${f.social.held === 1 ? 'its reason' : 'their reasons'}.` : '') +
+          // The pre-flight's one line, and only on a day with nothing that can post, that and why (AV (c) and (g)).
+          (f.social.preflight ? ` Pre-flight, ${f.social.preflight.line}.` : '') +
+          (f.social.preflight?.nothingCanPost ? ` Nothing can post today: ${f.social.preflight.nothingCanPost}.` : ''),
       }
     }
     case 'Event Listings':
@@ -135,5 +138,5 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
 export function allWell(f: MorningFacts): boolean {
   const areas = [f.marketing, f.permissions, f.social, f.listings, f.relationships, f.ticketing, f.system]
   if (areas.some((a) => a === null)) return false
-  return (f.system?.failures ?? []).every((x) => x.recovered === true) && (f.relationships?.waitingForLawal ?? 0) === 0 && (f.system?.unreadable.length ?? 0) === 0
+  return (f.system?.failures ?? []).every((x) => x.recovered === true) && (f.relationships?.waitingForLawal ?? 0) === 0 && (f.system?.unreadable.length ?? 0) === 0 && !f.social?.preflight?.nothingCanPost
 }

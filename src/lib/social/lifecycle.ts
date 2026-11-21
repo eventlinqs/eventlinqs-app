@@ -1,4 +1,4 @@
-import { STARTING_CALENDAR, type SocialFormat } from './cadence'
+import { momentWindowOf, nextSlot, scheduleWindowOf, STARTING_CALENDAR, withStartingCalendar, type CadenceRule, type SocialFormat } from './cadence'
 import { carriesBannedWord } from './words'
 
 /**
@@ -250,8 +250,24 @@ export type AccountToday = { readonly feedToday: number; readonly feedLastSeven:
  * sessions, story time, classes) never takes a feed place. A run takes at most one place per format.
  */
 export function selectToday(candidates: readonly Candidate[], account: AccountToday): Candidate[] {
+  return chooseToday(candidates, account, (c) => (c.hasPhoto ? null : 'no permitted photograph')).chosen
+}
+
+/**
+ * THE DAY'S CHOICE THAT HEALS (the PM's 16:30 of 21 November 2026, item 1; Lawal, 16:26: "Why is there no intelligence on
+ * the system?"). On 21 November the only eligible night offered a tomorrow story whose window was empty, and one wrong
+ * window stopped the day. Now each ranked moment is asked whether it can be drawn (the planner's own checks, passed in
+ * as `drawable`: a photograph for its format, a band on its day, the publish gate's rule at that band); one that cannot
+ * is passed over WITHOUT spending its cap, the same moment for that night in the other format is tried next, and only
+ * then the next night. So a day with any drawable moment never ends with nothing. The caps stand (FEED_PER_DAY,
+ * FEED_PER_WEEK, STORIES_PER_DAY) and each run takes at most one piece of a format. Pure.
+ */
+export function chooseToday(
+  candidates: readonly Candidate[],
+  account: AccountToday,
+  drawable: (c: Candidate) => string | null,
+): { readonly chosen: Candidate[]; readonly passedOver: { readonly candidate: Candidate; readonly why: string }[] } {
   const ranked = candidates
-    .filter((c) => c.hasPhoto)
     .filter((c) => !(c.moment.format === 'feed' && c.run.tier === 4))
     .sort(
       (a, b) =>
@@ -265,16 +281,91 @@ export function selectToday(candidates: readonly Candidate[], account: AccountTo
   let storiesLeft = Math.max(0, STORIES_PER_DAY - account.storiesToday)
   const taken = new Set<string>()
   const out: Candidate[] = []
-  for (const c of ranked) {
-    const k = `${c.run.key}|${c.moment.format}`
-    if (taken.has(k)) continue
-    if (c.moment.format === 'feed' ? feedLeft === 0 : storiesLeft === 0) continue
-    taken.add(k)
+  const passedOver: { candidate: Candidate; why: string }[] = []
+  const offered = new Set(candidates.map((c) => `${c.run.key}|${c.moment.format}`))
+  const room = (f: SocialFormat) => (f === 'feed' ? feedLeft > 0 : storiesLeft > 0)
+  const take = (c: Candidate) => {
+    taken.add(`${c.run.key}|${c.moment.format}`)
     out.push(c)
     if (c.moment.format === 'feed') feedLeft--
     else storiesLeft--
   }
-  return out
+  for (const c of ranked) {
+    if (taken.has(`${c.run.key}|${c.moment.format}`)) continue
+    if (!room(c.moment.format)) continue
+    const why = drawable(c)
+    if (why === null) {
+      take(c)
+      continue
+    }
+    passedOver.push({ candidate: c, why })
+    // The same moment for that night in the other format, where the run has not offered that format already, its cap
+    // has room, a tier 4 night is never a feed post, and it can be drawn.
+    const other: SocialFormat = c.moment.format === 'feed' ? 'story' : 'feed'
+    const alt: Candidate = { ...c, moment: { kind: c.moment.kind, format: other } }
+    const key = `${c.run.key}|${other}`
+    if (offered.has(key) || taken.has(key) || !room(other) || (other === 'feed' && c.run.tier === 4)) continue
+    const altWhy = drawable(alt)
+    if (altWhy === null) take(alt)
+    else passedOver.push({ candidate: alt, why: altWhy })
+  }
+  return { chosen: out, passedOver }
+}
+
+/**
+ * WHETHER A MOMENT'S WORDS SAY THE NIGHT IS ON NOW (piece-quality.ts ON_NOW), by its kind: a running day and a final
+ * day always do ('still on'), a first day does when its night has started by its band (FIRST_DAY_ON_NOW), and a moment
+ * ahead of its night never does. Held against every first line by tests/unit/social/every-moment-has-a-window.test.ts.
+ * Pure.
+ */
+export function momentSaysOnNow(kind: MomentKind, startedByBand: boolean): boolean {
+  if (kind === 'running' || kind === 'final_day') return true
+  if (kind === 'first_day') return startedByBand
+  return false
+}
+
+const STARTING_RULE = (format: SocialFormat): CadenceRule =>
+  withStartingCalendar({ version: 0, gapHours: 0, slots: [], basis: 'starting', learnedFrom: 0, floorPosts: 0, settleHours: 0, setAt: new Date(0) }, format)
+
+/**
+ * WHETHER A MOMENT CAN POST ON ITS DAY, AND AT WHICH BAND (the PM's 16:30 of 21 November 2026, items 1 and 3): the band
+ * the starting calendar gives it inside its window (momentWindowOf over scheduleWindowOf, the scheduler's own rule), no
+ * earlier than now, and the publish gate's rule at that band (piece-quality.ts, class 1: a started night posts only while
+ * its words say it is on now and it has not ended). The planner draws only what this answers with a band, and the class
+ * test proves every moment kind has one. Pure.
+ */
+export function postableBand(input: {
+  readonly kind: MomentKind
+  readonly format: SocialFormat
+  readonly night: { readonly title: string; readonly startDate: string; readonly endDate: string | null }
+  readonly day: string
+  readonly zone: string
+  readonly now: Date
+}): { readonly at: Date; readonly onNow: boolean } | { readonly why: string } {
+  const start = Date.parse(input.night.startDate)
+  const end = input.night.endDate ? Date.parse(input.night.endDate) : start
+  if (!Number.isFinite(start)) return { why: `${input.night.title} has no start` }
+  // A first day tries its words as 'starts today' first, then, when its night is under way by the band it can take, as
+  // on now; every other moment's words are fixed by its kind (momentSaysOnNow).
+  const tries = input.kind === 'first_day' ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  let why = `no ${input.format} band on ${input.day}`
+  for (const onNow of tries) {
+    const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start, end }], input.zone, { onNow }), input.zone)
+    const from = new Date(Math.max(input.now.getTime(), w.notBefore.getTime()))
+    const at = nextSlot(STARTING_RULE(input.format), from, input.zone)
+    if (at.getTime() > w.deadline.getTime() || dayIn(at, input.zone) !== input.day) {
+      why = `no ${input.format} band on ${input.day} inside its window (it closes ${w.deadline.toISOString()})`
+      continue
+    }
+    const started = start <= at.getTime()
+    const ended = end <= at.getTime()
+    if (started && !(onNow && !ended)) {
+      why = `${input.night.title} would have ${ended ? 'ended' : 'started'} by its ${input.format} band`
+      continue
+    }
+    return { at, onNow }
+  }
+  return { why }
 }
 
 /** A photograph the register permits for social use now (social_usable_images_all). */

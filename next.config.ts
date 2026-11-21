@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
-import { GUIDED_CITY_SLUGS, PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
+import { PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -448,13 +448,9 @@ const nextConfig: NextConfig = {
     // the fact, read by the config, the sitemap and the guard.
     return [
       ...PERMANENT_REDIRECTS,
-      // /events?city=<city> for a city with a guide goes to the guide (round 3, item 7); other query words pass through.
-      {
-        source: '/events',
-        has: [{ type: 'query', key: 'city', value: `(?<city>${GUIDED_CITY_SLUGS.join('|')})` }],
-        destination: '/city/:city',
-        permanent: true,
-      },
+      // /events?city=<city> goes to the city's guide in the page itself (src/lib/seo/query-redirects.ts,
+      // guideForEventsQuery, called by src/app/events/page.tsx): no route here carries a condition, since Vercel refuses a
+      // route with more than 16 (21 November 2026) and its edge matches a query value in any case where next start does not.
     ]
   },
   async headers() {

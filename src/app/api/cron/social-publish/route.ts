@@ -6,12 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
+import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
+import { planAsOf } from '@/lib/social/plan-for'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +53,17 @@ export async function GET(request: NextRequest) {
   // anyone'): with ?readback=only the run only reads Blotato for every post still held by its reference, writes each
   // public URL Blotato gives (as the hourly run does), and answers every reference with Blotato's own status; it draws,
   // approves, schedules and publishes nothing. The answer names references and statuses, never a person.
+  // THE PRE FLIGHT, ASKED (AV (c)): with ?preflight=1 the run puts every piece due today through its checks and answers
+  // what it found; it writes nothing unless apply=1, when it rejects and holds each refused piece for the planner to
+  // draw again and records the 08:00 report's line.
+  if (request.nextUrl.searchParams.get('preflight') === '1') {
+    const db = createAdminClient()
+    const apply = request.nextUrl.searchParams.get('apply') === '1'
+    const founder = apply ? await founderAccount(db) : { id: null }
+    const p = await runPreflight(db, { now: new Date(), siteOrigin: getSiteUrl(), apply, by: founder.id })
+    return NextResponse.json({ preflight: true, ...p })
+  }
+
   if (request.nextUrl.searchParams.get('readback') === 'only') {
     const back = await readBackPendingPosts(createAdminClient(), socialPostReaderFromEnv())
     return NextResponse.json({ readBack: true, read: back.read, filled: back.filled, pending: back.pending })
@@ -62,16 +75,32 @@ export async function GET(request: NextRequest) {
   // it runs only when asked (.github/workflows/social-plan-now.yml).
   if (request.nextUrl.searchParams.get('plan') === 'now') {
     const db = createAdminClient()
-    const week = await planCampaignWeek(db, { plannedBy: null, now: new Date() })
+    // ?for=tomorrow draws tomorrow's moments tonight, as of tomorrow's 05:00 (src/lib/social/plan-for.ts; the PM's 17:42).
+    const asOf = planAsOf({ for: request.nextUrl.searchParams.get('for') }, new Date())
+    const week = await planCampaignWeek(db, { plannedBy: null, now: asOf })
     if (week.created > 0) {
       await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
     }
-    return NextResponse.json({ planned: true, campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+    return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
   }
 
   try {
     const db = createAdminClient()
     const now = new Date()
+    /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
+       run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
+       moment, and the line goes to the 08:00 report. A failed pre-flight is said and never stops the run. */
+    if (melbourneHour(now) === PREFLIGHT_HOUR) {
+      try {
+        const founder = await founderAccount(db)
+        const p = await runPreflight(db, { now, siteOrigin: getSiteUrl(), apply: founder.id !== null, by: founder.id })
+        console.log(`[cron/social-publish] pre-flight: ${p.line}${p.applied ? '' : ' (not applied: no founder account to act for)'}`)
+        for (const r of p.redrawn) console.log(`[cron/social-publish] pre-flight redraws: ${r}`)
+        if (p.nothingCanPost) console.log(`[cron/social-publish] pre-flight: nothing can post today: ${p.nothingCanPost}`)
+      } catch (error) {
+        console.error('[cron/social-publish] the pre-flight could not run:', error instanceof Error ? error.message : error)
+      }
+    }
     /* THE WEEK DRAWN AGAIN IN THE LOCKED LOOK (the PM's 09:35 of 16 November 2026): a draft the lock refuses is drawn
        again by the planner before anything is scheduled, so a week planned by older code reaches the switch-on in the
        look it can be approved in. Never an approved piece. A failed redraw never holds the publishing below. */
@@ -129,7 +158,8 @@ export async function GET(request: NextRequest) {
       }
     }
     const scheduled = await scheduleApprovedPieces(db, now)
-    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
+    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
+    for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
     // THE SWITCH GOES OFF BY CODE on any fault of this run while it reads on (policy-guard.ts), with its alarm row.
     if (published.switchOn) {
       const trips = [...policyFaults, ...switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })]
@@ -146,6 +176,10 @@ export async function GET(request: NextRequest) {
     try {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
       for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
+      // Every post that went public with no posting is recorded (AV (a)); a failure is said and never stops the run.
+      const missing = await recordMissingPostings(db)
+      for (const m of missing.recorded) console.log(`[cron/social-publish] posting recorded: ${m}`)
+      for (const m of missing.notRecorded) console.log(`[cron/social-publish] posting not recorded: ${m}`)
       for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
       const held = await heldPostsNeedingInvestigation(db)
       for (const h of held) console.log(`[cron/social-publish] ${h}`)

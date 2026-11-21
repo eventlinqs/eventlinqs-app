@@ -1,4 +1,5 @@
-import { postState } from '@/lib/social/post-state'
+import { piecePlainState, postState, type PlainState } from '@/lib/social/post-state'
+import { parseMomentKey } from '@/lib/social/lifecycle-plan'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
@@ -161,6 +162,9 @@ const MODE_NAME: Record<PieceRow['revision']['mode'], string> = {
   type_led: 'Treatment B, editorial type, no image needed',
 }
 const STATE_NAME: Record<PieceRow['state'], string> = { drafted: 'Drafted', rejected: 'Rejected', approved: 'Approved', gone: 'Gone' }
+/** A piece's state in plain words (post-state.ts piecePlainState; the PM's 16:40 of 21 November 2026, AV (f)). */
+const PLAIN_NAME: Record<PlainState, string> = { planned: 'Planned', ready: 'Ready', scheduled: 'Scheduled', published: 'Published', blocked: 'Blocked', failed: 'Failed', expired: 'Expired' }
+const melbourneToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const ASSET_STATE_NAME: Record<string, string> = {
   organiser_authorised: 'Organiser authorised',
   separately_licensed: 'Separately licensed',
@@ -171,6 +175,14 @@ const ASSET_STATE_NAME: Record<string, string> = {
 /** One piece of the week's campaign, phone ready, with its picks, its history and every decision on it (A6, B4, K6, K7). */
 function Piece({ p }: { p: PieceRow }) {
   const r = p.revision
+  const plain = piecePlainState({
+    state: p.state,
+    postUrl: p.postUrl,
+    schedule: p.schedule,
+    rejectedReason: p.decisions.find((d) => d.revision === r.version && d.decision === 'rejected')?.reason ?? null,
+    momentDay: parseMomentKey(p.momentKey ?? null)?.day ?? null,
+    today: melbourneToday(),
+  })
   return (
     <li id={`piece-${p.id}`} data-piece={p.id} data-kind={p.kind} data-state={p.state} data-version={r.version} className="scroll-mt-24 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -178,10 +190,11 @@ function Piece({ p }: { p: PieceRow }) {
           {KIND_NAME[p.kind]}
           {p.partnerName ? `: ${p.partnerName}` : ''} <span className="text-[var(--admin-muted)]">· {p.city}</span>
         </h3>
-        <span className="text-xs uppercase tracking-[0.14em] text-[var(--admin-soft)]">
-          {STATE_NAME[p.state]} · version {r.version}
+        <span data-plain-state={plain.state} className="text-xs uppercase tracking-[0.14em] text-[var(--admin-soft)]">
+          {PLAIN_NAME[plain.state]} · {STATE_NAME[p.state]} · version {r.version}
         </span>
       </div>
+      <p data-plain-why className="mt-1 text-sm text-[var(--admin-soft)]">{plain.why}</p>
       {p.schedule.length > 0 && p.state !== 'gone' ? (
         <p data-schedule className="mt-2 text-sm text-[var(--admin-soft)]">
           {p.schedule
