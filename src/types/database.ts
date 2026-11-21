@@ -1249,6 +1249,7 @@ export type Database = {
           audience_count: number
           city_slug: string
           completed_at: string | null
+          edition: string
           event_count: number
           id: string
           period_end: string
@@ -1260,6 +1261,7 @@ export type Database = {
           audience_count?: number
           city_slug: string
           completed_at?: string | null
+          edition?: string
           event_count?: number
           id?: string
           period_end: string
@@ -1271,6 +1273,7 @@ export type Database = {
           audience_count?: number
           city_slug?: string
           completed_at?: string | null
+          edition?: string
           event_count?: number
           id?: string
           period_end?: string
