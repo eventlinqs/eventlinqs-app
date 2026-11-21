@@ -85,6 +85,10 @@ export type Run = {
   readonly tier: 1 | 2 | 3 | 4
   /** The keys its nights' moments were drawn under before a season was joined (runsOf), read with its own. */
   readonly aliases?: readonly string[]
+  /** An earlier run of the same season comes before it (its first day is never the season's first day). */
+  readonly continuesSeason?: boolean
+  /** A later run of the same season comes after it (its last day is never the season's final day). */
+  readonly seasonGoesOn?: boolean
 }
 
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -142,6 +146,7 @@ export function runsOf(nights: readonly LifecycleNight[]): Run[] {
   }
   const runs: Run[] = []
   for (const [key, list] of groups) {
+    const before = runs.length
     const sorted = [...list].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.eventId.localeCompare(b.eventId))
     let current: { nights: LifecycleNight[]; days: string[]; zone: string } | null = null
     const close = () => {
@@ -185,6 +190,10 @@ export function runsOf(nights: readonly LifecycleNight[]): Run[] {
       }
     }
     close()
+    // THE SEASON'S RUNS (the PM's 03:39 of 22 November 2026): Colours of Asia's 13 to 15 and 20 to 22 November are one
+    // season in two runs; its 20th is not an opening and its 15th not its final day.
+    const mine = runs.splice(before)
+    mine.forEach((r, i) => runs.push({ ...r, ...(i > 0 ? { continuesSeason: true } : {}), ...(i < mine.length - 1 ? { seasonGoesOn: true } : {}) }))
   }
   return runs.sort((a, b) => a.days[0].localeCompare(b.days[0]) || a.key.localeCompare(b.key))
 }
@@ -198,7 +207,12 @@ export function stageOf(run: Run, now: Date): Stage {
   const first = run.days[0]
   const last = run.days[run.days.length - 1]
   if (today > last) return 'ended'
-  if (run.days.includes(today)) return today === first ? 'first_day' : today === last ? 'final_day' : 'running'
+  if (run.days.includes(today)) {
+    // The season's own first day and final day only (runsOf continuesSeason, seasonGoesOn).
+    if (today === first && !run.continuesSeason) return 'first_day'
+    if (today === last && !run.seasonGoesOn) return 'final_day'
+    return 'running'
+  }
   const ahead = daysFrom(today, first)
   if (ahead === 1) return 'tomorrow'
   if (ahead <= 7) return 'this_week'

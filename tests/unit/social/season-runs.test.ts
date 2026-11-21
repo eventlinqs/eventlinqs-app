@@ -37,12 +37,15 @@ describe('a festival listed one dated event a night is one season', () => {
     ])
   })
 
-  it('its last night is its final day, never a first day: the final day feed post and story are due', () => {
-    const second = runsOf(colours)[1]
+  it('its last night is its final day, its later weekend never an opening, its first weekend never a final day', () => {
+    const [first, second] = runsOf(colours)
+    expect([first.continuesSeason, first.seasonGoesOn, second.continuesSeason, second.seasonGoesOn]).toEqual([undefined, true, true, undefined])
     expect(stageOf(second, melb('2026-11-22'))).toBe('final_day')
     expect(momentsDue(second, melb('2026-11-22'), none).map((m) => `${m.kind} ${m.format}`).sort()).toEqual(['final_day feed', 'final_day story'])
-    expect(stageOf(second, melb('2026-11-20'))).toBe('first_day')
+    expect(stageOf(second, melb('2026-11-20'))).toBe('running')
     expect(stageOf(second, melb('2026-11-21'))).toBe('running')
+    expect(stageOf(first, melb('2026-11-13'))).toBe('first_day')
+    expect(stageOf(first, melb('2026-11-15'))).toBe('running')
   })
 
   it("the keys its nights' moments were drawn under before stay aliases, so nothing had is drawn twice", () => {

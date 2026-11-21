@@ -48,6 +48,44 @@ export const LIFECYCLE_ON = true
 /** How far ahead a run is read: far enough for its announce and build posts. */
 export const LIFECYCLE_AHEAD_DAYS = 45
 
+/**
+ * HOW FAR BACK A SEASON'S ENDED NIGHTS ARE READ (the PM's 03:39 of 22 November 2026; 5C's 03:12 trace): the nights the
+ * planner reads are those not yet ended, so at 02:59 on the 22nd Colours of Asia's 20th and 21st were gone and its last
+ * night read as a first day. Its ended nights are read for their days only, never drawn. Fourteen days: the gap inside
+ * that season was five days (15 to 20 November), and a fortnight keeps a two weekend festival whole.
+ */
+export const SEASON_LOOKBACK_DAYS = 14
+
+/** The public nights ended in the last SEASON_LOOKBACK_DAYS, as the runs need them (days and keys only). Fails closed. */
+async function readSeasonPast(db: Db, now: Date): Promise<LifecycleNight[]> {
+  const since = new Date(now.getTime() - SEASON_LOOKBACK_DAYS * 86_400_000).toISOString()
+  const { data, error } = await db
+    .from('events')
+    .select('id, title, start_date, end_date, timezone, created_at, listing_series_id, venue_id, venue_name')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gt('end_date', since)
+    .lte('end_date', now.toISOString())
+    .order('end_date', { ascending: false })
+    .limit(1000)
+  if (error) throw new Error(`the season's ended nights could not be read: ${error.message}`)
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    eventId: r.id as string,
+    seriesId: (r.listing_series_id as string | null) ?? null,
+    title: String(r.title ?? ''),
+    venueKey: (r.venue_id as string | null) ?? (String(r.venue_name ?? '').trim() || null),
+    startDate: r.start_date as string,
+    endDate: (r.end_date as string | null) ?? null,
+    timezone: (r.timezone as string | null) ?? null,
+    listedAt: (r.created_at as string | null) ?? (r.start_date as string),
+    cancelled: false,
+    salesOpen: false,
+    ticketedHere: false,
+    // The weakest tier, so an ended night never lifts its run's rank (a run takes its nights' best tier).
+    tier: 4,
+  }))
+}
+
 /** A moment piece's key, parsed back. */
 export type MomentKeyParts = { readonly kind: MomentKind; readonly format: 'feed' | 'story'; readonly day: string; readonly runKey: string }
 
@@ -267,7 +305,9 @@ export async function planLifecyclePieces(
 ): Promise<{ readonly pieces: PiecePlan[]; readonly notes: string[]; readonly due: number; readonly photoless: readonly string[] }> {
   const notes: string[] = []
   const byId = new Map(input.nights.map((n) => [n.eventId, n]))
-  const runs = runsOf(input.nights.map(toLifecycleNight))
+  // Every night of each season: those still to come, and those ended inside SEASON_LOOKBACK_DAYS for their days only.
+  const past = (await readSeasonPast(db, input.now)).filter((p) => !byId.has(p.eventId))
+  const runs = runsOf([...input.nights.map(toLifecycleNight), ...past])
   const history = await readHistory(db, input.now, input.redrawing)
   const photos = await readPhotos(db, input.nights.map((n) => n.eventId), input.now)
   const used = new Set(history.usedPhotos)
@@ -283,7 +323,11 @@ export async function planLifecyclePieces(
     const night = nightForDay(run, day)
     if (input.ownerAsked && night.eventId !== input.ownerAsked.eventId) continue
     // Its own history and every key its nights were drawn under before the season was joined (runsOf aliases).
-    const had = [run.key, ...(run.aliases ?? [])].map((k) => history.byRun.get(runRef(k))).filter((h): h is RunHistory => h !== undefined)
+    const had: RunHistory[] = []
+    for (const k of [run.key, ...(run.aliases ?? [])]) {
+      const h = history.byRun.get(runRef(k))
+      if (h) had.push(h)
+    }
     const runHistory: RunHistory = had.length === 0 ? none : { feedDays: had.flatMap((h) => h.feedDays), storyDays: had.flatMap((h) => h.storyDays), had: had.flatMap((h) => h.had) }
     const moments = momentsDue(run, input.now, runHistory).filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
