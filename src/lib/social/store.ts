@@ -439,6 +439,26 @@ function usableOf(r: Record<string, unknown>): UsableImage {
  * 20261028205501), asked here and never restated, so the planner, the slide route and the sweep cannot disagree with
  * the approval and posting triggers. No row means the night is drawn in type (treatment B), which needs no licence (K1).
  */
+/**
+ * EVERY photograph the register permits for social now, per night (social_usable_images_all, the planner's own read in
+ * ./lifecycle-plan.ts): the night's lead and the rest. A slide's photograph is permitted when it is any of these, so the
+ * second photograph the planner gives a story (its feed holds the first) is judged as permitted as the lead (the story
+ * of AMCF's final day, refused at 00:11 on 22 November 2026 though both records were identical).
+ */
+export async function usableImagesAll(db: Db, eventIds: readonly string[], now: Date): Promise<Map<string, UsableImage[]>> {
+  const out = new Map<string, UsableImage[]>()
+  if (eventIds.length === 0) return out
+  const { data, error } = await db.rpc('social_usable_images_all', { p_events: [...new Set(eventIds)], p_at: now.toISOString() })
+  if (error) throw new Error(`the photographs permitted for social could not be read: ${error.message}`)
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    if (isLibraryPhoto(r.asset_url as string)) continue
+    const list = out.get(r.event_id as string) ?? []
+    list.push({ ...usableOf(r), credit: (r.attribution_text as string | undefined) ?? '' })
+    out.set(r.event_id as string, list)
+  }
+  return out
+}
+
 export async function usableImages(db: Db, eventIds: readonly string[], now: Date): Promise<Map<string, UsableImage>> {
   const usable = new Map<string, UsableImage>()
   if (eventIds.length === 0) return usable
@@ -523,13 +543,15 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
     return id ? [id] : []
   })
   const byNight = await usableImages(db, nights, now)
+  // Every permitted photograph of each night, not only its lead (usableImagesAll): the planner may give a story the second.
+  const allByNight = await usableImagesAll(db, nights, now)
   const noNight = (sl: Slide) => 'photo' in sl && sl.photo !== null && (sl.t === 'brand' || sl.t === 'days' || sl.t === 'venue' || (sl.t === 'week_cover' && !sl.photoEventId))
   const brands = slides.some((sl) => 'photo' in sl && noNight(sl)) ? await brandImages(db, now) : []
   slides.forEach((sl, i) => {
     const id = ownPhotoNightOf(sl)
     if (id && 'photo' in sl) {
       const u = byNight.get(id)
-      out.set(i, u && u.url === sl.photo ? u : null)
+      out.set(i, u && u.url === sl.photo ? u : ((allByNight.get(id) ?? []).find((x) => x.url === sl.photo) ?? null))
     } else if (sl.t === 'brand' && sl.photo) {
       // A brand piece takes the newest that is not a stand-in, as brandImage planned it.
       const newest = brands.find((x) => !standInOf(x.url))

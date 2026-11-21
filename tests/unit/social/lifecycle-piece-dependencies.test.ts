@@ -60,6 +60,8 @@ function fakeDb(opts: { event: Record<string, unknown>; usable: boolean }) {
       if (name === 'venue_distribution_off') return { data: [], error: null }
       if (name === 'social_asset_usable') return { data: opts.usable, error: null }
       if (name === 'social_usable_images') return { data: opts.usable ? [usableRow] : [], error: null }
+      // Every permitted photograph of the night (slideImagesNow, 22 November 2026): here the same one.
+      if (name === 'social_usable_images_all') return { data: opts.usable ? [usableRow] : [], error: null }
       throw new Error(`the check called a function the fixture does not hold: ${name}`)
     },
   }
