@@ -12,6 +12,8 @@ import {
 import { buildConnectBusinessProfile } from '@/lib/stripe/business-profile'
 import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 import { getAppUrl } from '@/lib/site-url'
+import { emailIsChecked } from '@/lib/auth/email-check'
+import { dispatchPayoutEmailCheck } from '@/lib/auth/dispatch-auth-link'
 
 export const dynamic = 'force-dynamic'
 
@@ -110,6 +112,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Only the organisation owner can manage payouts.' },
       { status: 403 }
+    )
+  }
+
+  // THE EMAIL CHECK, HERE AND NOWHERE ELSE (law 50 (b), Lawal, 21 November 2026): signing up signs a person in at once,
+  // so before money is paid out the address is proved by one tap on a link we email to it. Never to browse, save, buy
+  // or list (src/lib/auth/email-check.ts).
+  if (!emailIsChecked(user)) {
+    const sent = user.email ? await dispatchPayoutEmailCheck({ email: user.email, origin: appUrl() }) : null
+    if (sent?.outcome === 'sent') {
+      return NextResponse.json(
+        { error: `One tap first: we have emailed a link to ${user.email}. Press it to confirm the address is yours, then set up payouts.`, emailCheck: 'sent' },
+        { status: 403 }
+      )
+    }
+    console.error('[connect/onboard] the payout email check could not be sent', { outcome: sent?.outcome ?? 'no_email' })
+    return NextResponse.json(
+      { error: 'We could not email your confirmation link just now. Try again in a few minutes.', emailCheck: 'not_sent' },
+      { status: 503 }
     )
   }
 

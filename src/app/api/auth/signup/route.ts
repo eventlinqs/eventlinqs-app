@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
-import { sendSignupConfirmation } from '@/lib/email/auth-emails'
+import { createClient as createSessionClient } from '@/lib/supabase/server'
 import {
   decodeRefCode,
   isReferralSource,
@@ -61,6 +61,8 @@ const BodySchema = z.object({
   digestOptIn: z.boolean().optional(),
   // Which line the box showed (src/lib/consent/wording.ts signupConsentLine): a tick records exactly that consent.
   consentShown: z.string().max(20).optional(),
+  // The honeypot (law 50 (d)): hidden from people, so only a script fills it.
+  website: z.string().max(500).optional(),
 })
 
 /**
@@ -163,6 +165,11 @@ export async function POST(request: NextRequest) {
     return fail('signup_rejected', 400)
   }
 
+  // A filled honeypot is a script: answered as a person would be, nothing created, so it learns nothing (law 50 (d)).
+  if ((body.website ?? '').trim() !== '') {
+    return NextResponse.json({ ok: true, signedIn: false }, { status: 200 })
+  }
+
   const origin = safeAuthOrigin(request)
   const redirectTo =
     body.role === 'organiser'
@@ -184,9 +191,10 @@ export async function POST(request: NextRequest) {
     return fail('service_unavailable', 503)
   }
 
-  // generateLink with type 'signup' creates the user (email_confirmed=false)
-  // and returns the action_link. We send that link via Resend rather than
-  // letting Supabase send via its configured SMTP.
+  // generateLink with type 'signup' creates the user (email_confirmed=false).
+  // Until 21 November 2026 its link was emailed for the person to confirm; since
+  // law 50 (b) the account is confirmed below and signed in at once, and nothing
+  // is emailed (Supabase sends nothing for an admin generateLink).
   //
   // An address that already has an UNCONFIRMED account does not fail here:
   // GoTrue re-mints a fresh link for the same user, which is what lets someone
@@ -246,54 +254,43 @@ export async function POST(request: NextRequest) {
     return fail(failure, status)
   }
 
-  // Email a link to OUR /auth/confirm route built from the hashed token, never
-  // the raw GoTrue action_link. The action_link runs the implicit flow and
-  // redirects with the session in the URL FRAGMENT (#access_token=...), which a
-  // server route can never read: /auth/callback saw no ?code= and every
-  // email-confirm click dead-ended on /login?error=auth_callback_failed with
-  // the organiser role never applied. /auth/confirm verifies the token_hash
-  // server-side (verifyOtp), sets the session cookies, applies the organiser
-  // role, and lands the user signed in on /dashboard.
-  const hashedToken = data?.properties?.hashed_token
-  if (!hashedToken) {
-    // The user was created but we got no verification token - delete-and-fail
-    // is the safe move; otherwise the account is stranded with no way to verify.
-    if (data?.user?.id) {
-      await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
-    }
-    console.error('[auth/signup] generateLink returned no hashed_token', {
-      at: new Date().toISOString(),
-    })
-    // Ours, and nothing about the details typed. Same sentence as any other
-    // failure of our account service, because to the person it is the same
-    // thing: try again shortly, nothing to change.
+  // ONE STEP (law 50 (b), Lawal, 21 November 2026, 10:06: "our process should be smooth, fluid, and easy: easy,
+  // one-step processes"). generateLink made the account (or found the unconfirmed one an earlier sign up left); it is
+  // confirmed here with the password just typed, and the person is signed in at the end of this handler, at once. No
+  // 'confirm your email' email is sent. The address is marked pending, so the one place that asks for proof of the
+  // inbox, payout set up (src/lib/auth/email-check.ts), asks there and nowhere else. The project's own Confirm email
+  // setting stays on, so an account made by calling Supabase directly, around this route's honeypot and limits,
+  // still cannot sign in. A confirmed account never reaches here: generateLink answers email_exists for it.
+  const userId = data?.user?.id
+  if (!userId) {
+    console.error('[auth/signup] generateLink returned no user', { at: new Date().toISOString() })
     return fail('service_unavailable', 503)
   }
-
-  const confirmationUrl =
-    `${origin}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup` +
-    (body.role === 'organiser' ? '&role=organiser' : '') +
-    `&next=${encodeURIComponent('/dashboard')}`
-
+  let confirmed = false
   try {
-    await sendSignupConfirmation({ to: body.email, confirmationUrl })
-  } catch (sendErr) {
-    // Email send failed. We must not leave a half-created account that can
-    // never receive a re-send via the same path. Roll back the user so the
-    // form retry creates a fresh account end-to-end.
-    if (data?.user?.id) {
-      await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
+    const result = await admin.auth.admin.updateUserById(userId, {
+      password: body.password,
+      email_confirm: true,
+      app_metadata: { email_check: 'pending' },
+    })
+    confirmed = !result.error
+    if (result.error) {
+      console.error('[auth/signup] the account could not be confirmed', {
+        code: result.error.code ?? null,
+        status: result.error.status ?? null,
+        at: new Date().toISOString(),
+      })
     }
-    const message = sendErr instanceof Error ? sendErr.message : 'Could not send confirmation email.'
-    // Cause logged server-side with enough detail to diagnose (brief 1.5); the
-    // response carries only the copy-deck sentence. `detail` used to echo the
-    // transport's own error back to the browser.
-    console.error('[auth/signup] transport failure', {
-      email: body.email,
-      reason: message,
+  } catch (thrown) {
+    console.error('[auth/signup] the account could not be confirmed', {
+      reason: thrown instanceof Error ? thrown.message : String(thrown),
       at: new Date().toISOString(),
     })
-    return fail('mail_transport_failed', 502)
+  }
+  if (!confirmed) {
+    // Never leave an account that can neither sign in nor be signed up again: removed, so the retry starts clean.
+    await admin.auth.admin.deleteUser(userId).catch(() => {})
+    return fail('service_unavailable', 503)
   }
 
   // Persist first-touch attribution onto the new profile (best-effort). The
@@ -493,5 +490,22 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  return NextResponse.json({ ok: true }, { status: 200 })
+  // SIGNED IN AT ONCE (law 50 (b)): the session cookies are set on this response, so the form lands on the dashboard.
+  // A failed sign in never undoes the account: the form sends the person to sign in with the password just chosen.
+  let signedIn = false
+  try {
+    const session = await createSessionClient()
+    const { error: signInError } = await session.auth.signInWithPassword({ email: body.email, password: body.password })
+    signedIn = !signInError
+    if (signInError) {
+      console.error('[auth/signup] created but not signed in', { code: signInError.code ?? null, status: signInError.status ?? null, at: new Date().toISOString() })
+    }
+    if (signedIn && body.role === 'organiser' && newUserId) {
+      await session.from('profiles').update({ role: 'organiser' }).eq('id', newUserId)
+    }
+  } catch (error) {
+    captureException(error, { where: 'app/api/auth/signup/route:signIn' })
+  }
+
+  return NextResponse.json({ ok: true, signedIn, next: '/dashboard' }, { status: 200 })
 }

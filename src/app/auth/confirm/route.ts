@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { emailCheckedMetadata } from '@/lib/auth/email-check'
 import { NextResponse } from 'next/server'
 import { type EmailOtpType } from '@supabase/supabase-js'
 
@@ -13,11 +15,18 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.verifyOtp({ type, token_hash })
     if (!error) {
-      if (role === 'organiser') {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await supabase.from('profiles').update({ role: 'organiser' }).eq('id', user.id)
+      const { data: { user } } = await supabase.auth.getUser()
+      // A press on a link we emailed proves the inbox: the one email check, kept for payout set up (law 50 (b),
+      // src/lib/auth/email-check.ts). Best effort: a failed write only means payouts ask again.
+      if (user && !(user.app_metadata as Record<string, unknown> | undefined)?.email_checked_at) {
+        try {
+          await createAdminClient().auth.admin.updateUserById(user.id, { app_metadata: emailCheckedMetadata() })
+        } catch {
+          // payouts will ask for the check again
         }
+      }
+      if (role === 'organiser' && user) {
+        await supabase.from('profiles').update({ role: 'organiser' }).eq('id', user.id)
       }
       return NextResponse.redirect(`${origin}${next}`)
     }

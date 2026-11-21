@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendMagicLink, sendPasswordReset, sendSignupConfirmation } from '@/lib/email/auth-emails'
+import { sendMagicLink, sendPasswordReset, sendPayoutEmailCheck, sendSignupConfirmation } from '@/lib/email/auth-emails'
 
 /**
  * ONE server-side path for every auth link EventLinqs emails.
@@ -174,6 +174,35 @@ export async function dispatchMagicLink(input: {
 
   try {
     const { id } = await sendMagicLink({ to: input.email, signInUrl: minted.url })
+    return { outcome: 'sent', messageId: id }
+  } catch (err) {
+    return { outcome: 'send_failed', reason: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * The email check before payouts (law 50 (b)): a magic link whose press, on /auth/confirm, records the address as
+ * checked and lands the organiser back on payouts, signed in.
+ */
+export async function dispatchPayoutEmailCheck(input: {
+  email: string
+  origin: string
+  next?: string
+}): Promise<DispatchResult> {
+  const minted = await mintConfirmUrl({
+    kind: 'magiclink',
+    email: input.email,
+    origin: input.origin,
+    next: input.next ?? '/dashboard/payouts',
+  })
+  if (!minted.ok) {
+    return minted.absent
+      ? { outcome: 'no_account', reason: minted.reason }
+      : { outcome: 'send_failed', reason: minted.reason }
+  }
+
+  try {
+    const { id } = await sendPayoutEmailCheck({ to: input.email, checkUrl: minted.url })
     return { outcome: 'sent', messageId: id }
   } catch (err) {
     return { outcome: 'send_failed', reason: err instanceof Error ? err.message : String(err) }

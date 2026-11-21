@@ -58,6 +58,8 @@ export function SignupForm({ role = 'attendee', googleEnabled, digestOn }: Props
   // Unticked by default (Spam Act 2003): express opt-in only, never a
   // signup condition.
   const [digestOptIn, setDigestOptIn] = useState(false)
+  // The honeypot (law 50 (d)): hidden from people, so only a script fills it.
+  const [website, setWebsite] = useState('')
   // Close-out AN1: the one question, asked of organisers only, and never a
   // condition of signing up. Empty is a real answer and is stored as one.
   // Fired once, the first time somebody actually types (close-out AN1). Mount
@@ -143,10 +145,13 @@ export function SignupForm({ role = 'attendee', googleEnabled, digestOn }: Props
           heardFromOther: heardFromOther || undefined,
           digestOptIn,
           consentShown: consentLine.shown,
+          website,
         }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
         ok?: boolean
+        signedIn?: boolean
+        next?: string
         failure?: AuthFailureClass
         error?: string
         field?: 'fullName' | 'email' | 'password' | null
@@ -171,8 +176,15 @@ export function SignupForm({ role = 'attendee', googleEnabled, digestOn }: Props
       // told about, because it is the one a browser can honestly witness.
       trackFunnel('signup_completed', { role })
 
-      const nextParam = isOrganiser ? '&next=/dashboard' : ''
-      router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
+      // ONE STEP (law 50 (b), Lawal, 21 November 2026): the account is made and signed in by the same press, so the
+      // person lands on their dashboard. No 'confirm your email' step; if the sign in itself failed, the sign in page
+      // takes the password they just chose.
+      if (payload.signedIn) {
+        router.push(payload.next ?? '/dashboard')
+        router.refresh()
+      } else {
+        router.push(`/login?email=${encodeURIComponent(email)}`)
+      }
     } catch (error) {
       reportClientError(error, { where: 'components/auth/signup-form:146' })
       failLocally('network')
@@ -260,6 +272,11 @@ export function SignupForm({ role = 'attendee', googleEnabled, digestOn }: Props
       )}
 
       <form method="post" onSubmit={handleSignup} className="space-y-4">
+        {/* The honeypot (law 50 (d)): off screen, out of the tab order and hidden from assistive technology. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <label htmlFor="signup-website">Website</label>
+          <input id="signup-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+        </div>
         <div>
           <label htmlFor="fullName" className="block text-sm font-medium text-ink-900">
             Full name
