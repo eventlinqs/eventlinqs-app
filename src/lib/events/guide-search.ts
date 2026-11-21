@@ -3,14 +3,15 @@ import type { DirectoryRow } from './whats-on-directory'
 /**
  * WHAT A VISITOR'S WORDS FIND ON A CITY GUIDE (WINDOW 5C, 21 November 2026; Lawal, 09:02: "Every function works to
  * completion"). The production journey (tests/e2e/production-journeys/c-buyer.journey.ts) typed what people ask for into
- * Melbourne's guide at 390: 'AMCF', the name the African Music and Cultural Festival goes by on every poster and post,
+ * Melbourne's guide at 390: 'AMCF', the short name the festival goes by on every poster and post (its title spells the
+ * name out in full),
  * found nothing, because the guide matched only the title, venue, category and suburb; and 'free' found almost nothing,
  * because no free night carries the word in its title. Ticketmaster and Eventbrite answer both.
  *
  * Every word must match (as before), and a word now matches:
  *   - the title, venue, category or suburb, as before;
  *   - the event's own address (/events/amcf-2026), which organisers often write as the short name;
- *   - the title's initials, for a word of three letters or more ('amcf' from 'African Music and Cultural Festival 2026';
+ *   - the title's initials, for a word of three letters or more ('amcf' from the festival's own four word title;
  *     'and', 'of', 'the' and numbers are skipped, as people skip them when they shorten a name);
  *   - 'free' also matches every free night.
  */

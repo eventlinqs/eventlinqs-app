@@ -11,9 +11,10 @@
  * WHY IT CHANGED (WINDOW 5C, 21 November 2026). Until today it opened a mailto: link and, half a second later, showed
  * "Message received. Thanks." whatever happened. With no mail app set up (most phones' browsers, many work computers)
  * nothing opened, so a visitor was told their message had arrived when nothing had been sent. The note here said to
- * revisit mailto "once a monitored inbox ... exist[s]" (TODO of 1 October 2026); the CRM has read the hello@ inbox every
+ * revisit mailto "once a monitored inbox ... exist[s]" (its note of 1 October 2026); the CRM has read the hello@ inbox every
  * 15 minutes since 19 November 2026, so that condition is met. Found by the production journey
- * tests/e2e/production-journeys/d3-forms.journey.ts; held by tests/unit/contact/contact-form.test.ts.
+ * tests/e2e/production-journeys/d3-forms.journey.ts; held by tests/component/contact-form-says-only-what-happened.test.tsx
+ * and tests/unit/contact/contact-route.test.ts.
  */
 
 import { useState } from 'react'
@@ -21,6 +22,7 @@ import Link from 'next/link'
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { reportClientError } from '@/lib/observability/client-error-report'
 import { SHOWN_LABELS, SOCIAL_HREF } from '@/lib/brand/social-profiles'
 
 function TwitterIcon() {
@@ -85,7 +87,8 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
       } else {
         setFailed(`Your message was not sent. Please try again, or email us at ${contactAddress('hello')}.`)
       }
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/features/contact/ContactForm:send' })
       setFailed(`Your message was not sent. Please check your connection and try again, or email us at ${contactAddress('hello')}.`)
     } finally {
       setSubmitting(false)

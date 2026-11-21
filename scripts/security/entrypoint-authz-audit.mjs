@@ -200,6 +200,8 @@ const PUBLIC_BY_DESIGN = {
   'api/auth/recover/POST': 'password reset request; generic response, rate limited',
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
   'api/auth/resend-verification/POST': 'verification resend; generic response, rate limited',
+  'api/contact/POST':
+    'the /contact page\'s Send message (WINDOW 5C, 21 November 2026), pressed by visitors who hold no account, so requiring a caller identity would defeat it. It reads nothing and writes nothing of ours: it validates the message (zod), drops a filled hidden field, and sends one email to the platform support inbox only, never to an address the caller typed; rate limited per IP and fail closed (policies.ts contact-form).',
   'api/newsletter/subscribe/POST':
     'public newsletter opt-in. Since 12 November 2026 it records nothing: it emails the address typed one confirmation link (double opt in, src/lib/newsletter/confirmation-email.ts), rate limited per IP and per address, both fail closed (policies.ts newsletter-subscribe, newsletter-confirm-address).',
   'subscribe/confirm/[token]/actions.ts::confirmCityGuideAction':

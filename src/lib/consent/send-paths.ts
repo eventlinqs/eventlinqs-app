@@ -210,6 +210,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Hands a support conversation to the platform support address.',
   },
   {
+    file: 'src/app/api/contact/route.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason:
+      "A visitor's own message from the /contact page, sent to the platform support inbox (supportDestination) and to no one else; the visitor receives no email from it (WINDOW 5C, 21 November 2026).",
+  },
+  {
     file: 'src/lib/health/runner.ts',
     kind: 'operations',
     purpose: 'platform_operations',
