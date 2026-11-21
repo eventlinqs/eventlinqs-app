@@ -11084,6 +11084,84 @@ export type Database = {
           },
         ]
       }
+      social_publish_lease: {
+        Row: {
+          claimed_at: string | null
+          expires_at: string
+          holder: string | null
+          id: number
+        }
+        Insert: {
+          claimed_at?: string | null
+          expires_at?: string
+          holder?: string | null
+          id?: number
+        }
+        Update: {
+          claimed_at?: string | null
+          expires_at?: string
+          holder?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
+      social_publish_runs: {
+        Row: {
+          approved: number
+          created_at: string
+          deployment: string | null
+          drawn: number
+          due: number
+          ended_at: string
+          failed: number
+          held: number
+          id: string
+          ok: boolean
+          published: number
+          result: string
+          route: string
+          scheduled: number
+          started_at: string
+          switch_on: boolean
+        }
+        Insert: {
+          approved?: number
+          created_at?: string
+          deployment?: string | null
+          drawn?: number
+          due?: number
+          ended_at: string
+          failed?: number
+          held?: number
+          id?: string
+          ok: boolean
+          published?: number
+          result: string
+          route?: string
+          scheduled?: number
+          started_at: string
+          switch_on: boolean
+        }
+        Update: {
+          approved?: number
+          created_at?: string
+          deployment?: string | null
+          drawn?: number
+          due?: number
+          ended_at?: string
+          failed?: number
+          held?: number
+          id?: string
+          ok?: boolean
+          published?: number
+          result?: string
+          route?: string
+          scheduled?: number
+          started_at?: string
+          switch_on?: boolean
+        }
+        Relationships: []
+      }
       social_report_decisions: {
         Row: {
           campaign_id: string
@@ -13487,6 +13565,10 @@ export type Database = {
         Args: { p_city_slug: string; p_org_id: string }
         Returns: number
       }
+      claim_social_publish_lease: {
+        Args: { p_holder: string; p_seconds: number }
+        Returns: boolean
+      }
       comms_subtype_of_template_key: {
         Args: { p_key: string }
         Returns: string
@@ -14297,6 +14379,10 @@ export type Database = {
       release_expired_discount_claims: { Args: never; Returns: number }
       release_expired_seat_reservations: { Args: never; Returns: number }
       release_holds: { Args: never; Returns: number }
+      release_social_publish_lease: {
+        Args: { p_holder: string }
+        Returns: boolean
+      }
       rematerialize_seats_additive: {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: Json

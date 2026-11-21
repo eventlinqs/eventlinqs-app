@@ -5,6 +5,7 @@ import { routeAlerts } from '@/lib/health/runner'
 import { recordSentinelRun } from '@/lib/health/sentinel-runs'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
+import { socialWatchdog } from '@/lib/social/publish-run'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -61,6 +62,19 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  /* THE PUBLISHING WATCHDOG (src/lib/social/publish-run.ts socialWatchdog; Lawal's hardening order of 22 November 2026,
+     section 4): every five minutes, independent of the social cron, a missed run or a piece overdue with the switch on
+     is reported and the one publish route is called once, through the same lease. It never publishes itself. A drill
+     never calls it; a dry run reports only. */
+  let watchdog: { readonly overdue: readonly string[]; readonly action: string } | null = null
+  if (!drill) {
+    try {
+      watchdog = await socialWatchdog(createAdminClient(), { now: new Date(), origin: getSiteUrl(), secret: process.env.CRON_SECRET, dry })
+    } catch (err) {
+      watchdog = { overdue: [], action: `the watchdog could not run: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
   const httpStatus = status === 'critical' ? 503 : 200
   return NextResponse.json(
     {
@@ -72,6 +86,7 @@ export async function GET(request: NextRequest) {
       toAlertIds,
       recovered,
       stored,
+      watchdog,
       dry,
       drill: drill ?? null,
       checks: results,

@@ -5,8 +5,9 @@ import { ALREADY_WORDS, LATE_HOLD_WORDS, POLICY_SWITCH, switchOffByCode, switchT
 
 /*
  * THE STANDING POLICY FAILS CLOSED (the PM's 10:47 of 20 November 2026, item 1): the dry run logged first; approvals only
- * of what it read eligible; any approval outside it, any failed check of an approved piece, or any publish error turns
- * the switch off by code, with an alarm row the board and the 08:00 report read.
+ * of what it read eligible; an approval outside it turns the switch off by code, with an alarm row the board and the
+ * 08:00 report read. ONE PIECE NEVER STOPS THE ENGINE (Lawal's hardening order of 22 November 2026, section 2 A): a
+ * refused, held or failed piece is held alone, drilled red on main a4c40783's rule, which tripped the switch for them.
  */
 // Line endings normalised (the tree carries CRLF).
 const route = readFileSync(join(process.cwd(), 'src/app/api/cron/social-publish/route.ts'), 'utf8').replace(/\r\n/g, '\n')
@@ -24,21 +25,25 @@ describe('the switch trips', () => {
     expect(switchTrips({ policy: hour(['a'], ['a', 'z']), scheduleHeld: [], publishHeld: [] })).toEqual(["z was approved outside this hour's dry run"])
   })
 
-  it('a piece the dry run read eligible and the approval refused trips it, with the reason', () => {
-    const trips = switchTrips({ policy: hour(['a'], [], [{ id: 'a', reason: 'Its night has started.' }]), scheduleHeld: [], publishHeld: [] })
-    expect(trips).toEqual(['a, read eligible by the dry run, was refused at approval: Its night has started.'])
+  it('a piece the dry run read eligible and the approval refused is held alone, never a trip', () => {
+    expect(switchTrips({ policy: hour(['a'], [], [{ id: 'a', reason: 'Its night has started.' }]), scheduleHeld: [], publishHeld: [] })).toEqual([])
   })
 
-  it('a hold at scheduling trips it, except the late hold and a schedule another run wrote first', () => {
+  it('a hold at scheduling is held alone, never a trip', () => {
     const late = `p1: ${LATE_HOLD_WORDS}, Sat 6 pm, is after Torquay Dance Academy starts (Sat 5 pm), and a piece never posts once its night has started.`
     const already = `p2${ALREADY_WORDS}`
     const gate = 'p3: Not scheduled, held by the publish gate: [night] Showtime: it has started.'
-    expect(switchTrips({ policy: null, scheduleHeld: [late, already, gate], publishHeld: [] })).toEqual([`held at scheduling: ${gate}`])
+    expect(switchTrips({ policy: null, scheduleHeld: [late, already, gate], publishHeld: [] })).toEqual([])
   })
 
-  it('any hold or error at publishing trips it', () => {
+  it('a provider error at publishing holds that piece alone, never every piece', () => {
     const held = 's9: Not published: Blotato refused POST /posts: media too large'
-    expect(switchTrips({ policy: null, scheduleHeld: [], publishHeld: [held] })).toEqual([`held at publishing: ${held}`])
+    expect(switchTrips({ policy: null, scheduleHeld: [], publishHeld: [held] })).toEqual([])
+  })
+
+  it("AMCF's final day feed held by the gate at the 08:40 run of 22 November: held alone, the switch stays on", () => {
+    const amcf = '70329a33: Not published: [night] African Music and Cultural Festival 2026: it has started (2026-11-20T00:00:00+00:00); a piece never posts once its night has started.'
+    expect(switchTrips({ policy: hour(['b'], ['b']), scheduleHeld: [], publishHeld: [amcf] })).toEqual([])
   })
 })
 
@@ -91,8 +96,8 @@ describe('the run is wired to fail closed', () => {
     expect(after).toMatch(/if \(trips\.length > 0\) await switchOffByCode\(db, /)
   })
 
-  it('a policy that could not run is a fault too', () => {
+  it('a policy that could not run is said and recorded, never a global stop', () => {
     expect(route).toMatch(/policyFaults\.push\(`the standing policy could not run: /)
-    expect(route).toMatch(/const trips = \[\.\.\.policyFaults, \.\.\.switchTrips\(/)
+    expect(route).toMatch(/const trips = switchTrips\(\{ policy: policyHour, scheduleHeld: scheduled\.held, publishHeld: published\.held \}\)/)
   })
 })
