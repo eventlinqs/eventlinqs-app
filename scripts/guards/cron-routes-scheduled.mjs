@@ -69,6 +69,8 @@ export const INVOKED_WITHOUT_A_SCHEDULE = {
   // handshakePath), which calls it a few times a day.
   // Law 50 (a), 21 November 2026: a one time backfill, started by hand, dry run first; never scheduled.
   'newsletter-pending-backfill': 'started by hand from .github/workflows/newsletter-pending-backfill.yml (law 50 (a), 21 November 2026): every pending newsletter signup made a subscriber at its click, dry run first, counts only',
+  // Law 40 (c), the PM's 10:15 ruling 8, 21 November 2026: started by hand until proved, dry run first; never scheduled yet.
+  'instagram-handle-readback': 'started by hand from .github/workflows/instagram-handle-readback.yml (law 40 (c), 21 November 2026): each organiser handle its own site links, read back on Instagram through the Graph API before any collaborator invite',
   warm: 'the CRON_SECRET handshake (src/lib/env/manifest.mjs handshakePath); its every minute schedule was removed on 15 November 2026 because it regenerated edge cached pages no visitor needed (VERCEL-BILL-15NOV)',
 }
 
