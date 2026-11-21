@@ -35,14 +35,14 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   ...over,
 })
 
-type Rows = { history?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
+type Rows = { history?: unknown[]; postings?: unknown[]; assets?: unknown[]; organisers?: unknown[]; failHistory?: boolean }
 function fakeDb(rows: Rows): SupabaseClient {
   // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
   // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
   const chain = (data: unknown[], error: { message: string } | null = null) => {
     let platformRead = false
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'not', 'order', 'limit', 'in', 'range']) b[m] = () => b
+    for (const m of ['select', 'not', 'neq', 'order', 'limit', 'in', 'range']) b[m] = () => b
     b.eq = (col: string) => {
       if (col === 'is_test' || col === 'slug') platformRead = true
       return b
@@ -55,6 +55,7 @@ function fakeDb(rows: Rows): SupabaseClient {
       if (table === 'social_pieces') return chain(rows.history ?? [], rows.failHistory ? { message: 'connection reset' } : null)
       if (table === 'organisers') return chain(rows.organisers ?? [])
       if (table === 'organisations') return chain([])
+      if (table === 'social_piece_postings') return chain(rows.postings ?? [])
       throw new Error(`unexpected table ${table}`)
     },
     rpc: async (name: string) => {
@@ -106,11 +107,11 @@ describe('the lifecycle planner, end to end on a fixture', () => {
   })
 
   it('a photograph whose piece was rejected before it ever posted is free again; one that posted is spent for good', async () => {
-    const piece = (decisions: unknown[], postings: unknown[]) => [{ id: 'p0', format: 'feed', moment_key: 'announce|feed|2026-11-01|t:harbour lights festival|Eastern Beach|2026-11-28', planned_at: '2026-11-01T00:00:00Z', social_piece_revisions: [{ version: 1, slides: [{ t: 'photo', photo: 'https://x/lead.jpg' }], versions: { instagram: { caption: 'One for the calendar.' } } }], social_piece_decisions: decisions, social_piece_postings: postings }]
+    const piece = (decisions: unknown[], postings: unknown[]) => [{ id: 'p0', format: 'feed', moment_key: 'announce|feed|2026-11-01|t:harbour lights festival|Eastern Beach|2026-11-28', planned_at: '2026-11-01T00:00:00Z', social_piece_revisions: [{ version: 1, slides: [{ t: 'photo', photo: 'https://x/lead.jpg' }], versions: { instagram: { caption: 'One for the calendar.' } } }], social_piece_decisions: decisions, posted: postings }]
     const rejected = [{ revision: 1, decision: 'rejected' }]
     const freed = await planLifecyclePieces(fakeDb({ history: piece(rejected, []), assets: [asset('a1', 'https://x/lead.jpg', 1)] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
     expect(freed.pieces.map((p) => p.slides[0])).toEqual([expect.objectContaining({ photo: 'https://x/lead.jpg' })])
-    const spent = await planLifecyclePieces(fakeDb({ history: piece(rejected, [{ id: 'g1' }]), assets: [asset('a1', 'https://x/lead.jpg', 1)] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    const spent = await planLifecyclePieces(fakeDb({ history: piece(rejected, []), postings: [{ piece_id: 'p0' }], assets: [asset('a1', 'https://x/lead.jpg', 1)] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
     expect(spent.pieces).toEqual([])
   })
 
