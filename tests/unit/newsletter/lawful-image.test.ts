@@ -1,9 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { forTheNewsletter, type ReadNight } from '@/lib/newsletter/edition'
 import { buildWhatsOn, type NlPick } from '@/lib/newsletter/whats-on'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 
 /*
  * LAW 46 (f) (Lawal, 21 November 2026, 09:16, through the PM: "he does not handle permissions; we do it right"): every
@@ -69,28 +66,8 @@ describe("the night's own photograph in an email only with its recorded basis", 
 })
 
 describe('only a photograph looked at, with no face its subject, stands in for a night', () => {
-  it('the kinds looked at and passed have one; a kind with none yet takes the brand panel', () => {
-    // The library's spine photographs resolve through the project's storage URL, which tests/setup-clean-env.ts strips.
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
-    onTestFinished(() => {
-      vi.unstubAllEnvs()
-    })
-    for (const slug of ['music', 'festival', 'community', 'arts-community', 'health-wellness', 'family', 'comedy', 'education', 'sports']) expect(illustrativePhoto(slug)).toMatch(/^(https:\/\/|\/images\/)/)
-    expect(illustrativePhoto('arts-community')).toContain('/categories/arts/gallery-day-')
-    expect(illustrativePhoto('family')).toBe('/images/library/illustrative-family.jpg')
-    for (const slug of ['food-drink', 'nightlife', 'theatre', 'classes-workshops']) expect(illustrativePhoto(slug)).toBe(`/images/library/illustrative-${slug}.jpg`)
-    for (const slug of ['other', 'technology', null]) expect(illustrativePhoto(slug)).toBeNull()
-  })
-  it('every library photograph standing in is kept on disk with its photographer and page on record', () => {
-    const attr = JSON.parse(readFileSync(join(process.cwd(), 'public/images/library/attribution.json'), 'utf8')).photos as Record<string, { photographer?: string; page?: string }>
-    for (const slug of ['family', 'comedy', 'education', 'sports', 'health-wellness']) {
-      const src = illustrativePhoto(slug)!
-      expect(existsSync(join(process.cwd(), 'public', src))).toBe(true)
-      const rec = attr[src.replace('/images/library/', '').replace(/\.jpg$/, '')]
-      expect(rec?.photographer).toBeTruthy()
-      expect(rec?.page).toMatch(/^https:\/\/www\.pexels\.com\/photo\//)
-    }
-  })
+  // THE IMAGE LOCK (Lawal, 21 November 2026): no picture by category exists any more; a night stands on its OWN
+  // stand in (tests/unit/images/image-lock.test.ts) or takes the brand panel, below.
   it('a night of a kind with none takes the brand panel: no picture and no label', async () => {
     const out = await forTheNewsletter(answering(async () => ({ data: false, error: null })), night({ stockImage: null }), NOW, ORIGIN)
     expect(out.image).toBeNull()

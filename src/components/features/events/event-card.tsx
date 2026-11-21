@@ -6,7 +6,6 @@ import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { seriesAlsoOn } from '@/lib/events/series-also-on'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { IllustrativeChip } from '@/components/media/illustrative-chip'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { SaveEventButton } from './save-event-button'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
@@ -74,6 +73,13 @@ export type EventCardData = {
    * separately_licensed; read by the caller with readCoverRights). Absent means not on record: the night is a row.
    */
   cover_rights_recorded?: boolean | null
+  /**
+   * THE IMAGE LOCK (Lawal, 21 November 2026; the PM's 21:42): this night's OWN licensed stand in, assigned once and never
+   * shared (public.photo_assignments through event_stand_ins_for, set by the card chain, src/lib/images/venue-photo-chain.ts),
+   * and its alt words. Absent: the brand panel. There is no picture by category.
+   */
+  stand_in_url?: string | null
+  stand_in_alt?: string | null
   /** The series a night belongs to, and its later nights on this page (src/lib/events/one-card-per-event.ts, P4). */
   listing_series_id?: string | null
   also_on?: string[]
@@ -170,10 +176,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   const isVenuePhoto = Boolean(event.image_credit)
   const photo = cover_image_url && !isComposedCover(cover_image_url) ? cover_image_url : null
   const recorded = Boolean(photo) && (isVenuePhoto || event.cover_rights_recorded === true)
-  // LAW 46 (f) (Lawal, 21 November 2026, 09:16; the PM's 10:15, ruling 2; the app constitution as amended that day):
-  // a night with no lawful photograph of its own stands on the licensed photograph of its kind, looked at, no face its
-  // subject, with the one chip 'Illustrative photo' on it; a kind with none yet keeps the row.
-  const stand = recorded ? null : illustrativePhoto(event.category?.slug ?? null)
+  // LAW 46 (f) AND THE IMAGE LOCK (Lawal, 21 November 2026, 09:16 and 20:50 to 21:40): a night with no lawful photograph of
+  // its own stands on ITS OWN licensed stand in, looked at, assigned to it alone, with the one chip 'Illustrative photo';
+  // a night with none keeps the row. Never a picture by category, so never the same picture on two nights.
+  const stand = recorded ? null : (event.stand_in_url ?? null)
 
   if (!recorded && !stand) {
     const source = sourceLabel({
@@ -228,7 +234,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             <div className="ledger-blur" aria-hidden="true">
               <EventCardMedia src={stand} alt="" variant={variant} />
             </div>
-            <EventCardMedia src={stand} alt={`${event.category?.name ?? 'An event'}, an illustrative photo`} variant={variant} priority={priority} objectFit="contain" />
+            <EventCardMedia src={stand} alt={event.stand_in_alt ?? `${title}, an illustrative photo`} variant={variant} priority={priority} objectFit="contain" />
             <IllustrativeChip />
           </>
         ) : null}

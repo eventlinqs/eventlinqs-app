@@ -82,6 +82,11 @@ export type DirectoryRow = {
   readonly venueThumb?: string | null
   /** The venue photo's printed credit and licence ('Photo: <author>, CC BY-SA 4.0'), or null where the licence asks none. */
   readonly venueThumbCredit?: string | null
+  /** THE IMAGE LOCK (Lawal, 21 November 2026): this night's OWN licensed stand in, assigned once and never shared
+   * (event_stand_ins_for, src/lib/events/venue-thumbs.ts withStandIns), and its alt words; drawn labelled 'Illustrative
+   * photo' where the night has neither its own photograph nor a venue photo. Null: the row keeps no picture. */
+  readonly standIn?: string | null
+  readonly standInAlt?: string | null
   /** The event's own one line, where it says more than the row already does (rowTeaser); else null. */
   readonly teaser?: string | null
   /** When the listing was first published, as epoch ms, else null. */

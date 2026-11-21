@@ -21,6 +21,9 @@ import { broadcastPriceLabel } from '@/lib/broadcast/price-line'
 
 export interface BentoEvent extends EventMediaInput {
   id: string
+  /** The night's own stand in and its alt words (the image lock, src/lib/images/venue-photo-chain.ts). */
+  stand_in_url?: string | null
+  stand_in_alt?: string | null
   /** The series a night belongs to, and the series' later nights on this page (the photo system's P4). */
   listing_series_id?: string | null
   also_on?: string[]

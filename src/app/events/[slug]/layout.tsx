@@ -102,7 +102,7 @@ export default async function EventSlugLayout({
    */
   return (
     <>
-      {await eventHeroPreloadLink({ ...event, cover_image_url: heroCover.cover_image_url }, { typographicHasNoRaster: !isWalkIn(event), eventPage: !isWalkIn(event) })}
+      {await eventHeroPreloadLink({ ...event, cover_image_url: heroCover.cover_image_url, stand_in_url: heroCover.stand_in_url, stand_in_alt: heroCover.stand_in_alt }, { typographicHasNoRaster: !isWalkIn(event), eventPage: !isWalkIn(event) })}
       {children}
     </>
   )

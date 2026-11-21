@@ -2,7 +2,6 @@ import { BRANDED_FALLBACK_PHOTO } from './category-photo'
 import { isComposedCover } from '@/lib/events/generated-cover-prefix'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { isLibraryPhoto } from '@/lib/media/library-photo'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts - no Pexels stock.
@@ -348,21 +347,24 @@ export interface EventHeroFields {
   thumbnail_url?: string | null
   gallery_urls?: unknown
   category?: { slug?: string | null; name?: string | null } | null
+  /** The night's own stand in and its alt words (the image lock; src/lib/images/venue-photo-chain.ts sets them). */
+  stand_in_url?: string | null
+  stand_in_alt?: string | null
 }
 
 /**
  * THE EVENT PAGE'S HERO, RESOLVED ONCE (law 46 (f), Lawal, 21 November 2026, 09:16; the PM's 10:15, ruling 2). The
- * night's own photograph, or its venue's approved one, when it has one; else the licensed photograph of its kind,
- * looked at, no face its subject, which the page labels 'Illustrative photo' top left; else the hero as before (our
+ * night's own photograph, or its venue's approved one, when it has one; else ITS OWN licensed stand in (the image lock,
+ * 21 November 2026: assigned once, never shared, never a picture by category), which the page labels 'Illustrative
+ * photo' top left; else the hero as before (our
  * composed cover keeps the typographic band). The layout's preload and the page's raster both ask this, so the
  * preloaded image is the painted one.
  */
 export async function eventPageHero(event: EventHeroFields): Promise<{ media: HeroBackgroundMedia; illustrative: boolean }> {
   const own = event.cover_image_url ?? null
   if (!own || isComposedCover(own) || isLibraryPhoto(own)) {
-    const stand = illustrativePhoto(event.category?.slug ?? null)
-    if (stand) {
-      return { media: { image: stand, alt: `${event.category?.name ?? 'An event'}, an illustrative photo` }, illustrative: true }
+    if (event.stand_in_url) {
+      return { media: { image: event.stand_in_url, alt: event.stand_in_alt ?? `${event.title ?? 'An event'}, an illustrative photo` }, illustrative: true }
     }
   }
   return { media: await getFeaturedHeroBackground(eventHeroMediaInput(event)), illustrative: false }

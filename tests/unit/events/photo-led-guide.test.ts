@@ -89,7 +89,7 @@ describe('the venue photograph on a card, labelled as the venue (item 2)', () =>
       credit: 'The venue, Federation Square. Photo: A. Photographer, CC BY-SA 4.0',
     })
   })
-  it("the night's own photograph wins and prints no credit (law 17 (d), 19 November 2026: 'You don't put no photo credit'); with none, the labelled illustrative photograph of its kind; a kind with none draws none", () => {
+  it("the night's own photograph wins and prints no credit (law 17 (d), 19 November 2026: 'You don't put no photo credit'); with none, its OWN labelled stand in (the image lock); with none of those, none", () => {
     expect(cardPhoto(row({ thumb: 'https://o/x.jpg', thumbAlt: 'The band on stage', thumbCredit: 'Photo: the organiser', venueThumb: 'https://v/f.jpg' }))).toEqual({
       src: 'https://o/x.jpg', alt: 'The band on stage', credit: null,
     })
@@ -97,9 +97,9 @@ describe('the venue photograph on a card, labelled as the venue (item 2)', () =>
     expect(cardPhoto(row({ thumb: 'https://o/a.jpg', thumbAlt: 'Dancers', thumbCredit: 'Photo: AMCF, past festival (2024)' }))?.credit).toBe(
       'From a past festival (2024)',
     )
-    // Law 46 (f) (Lawal, 21 November 2026, 09:16), replacing 'else none, never a stand-in' of 12 November.
-    expect(cardPhoto(row({}))).toEqual({ src: '/images/library/illustrative-comedy.jpg', alt: 'Comedy, an illustrative photo', credit: null, illustrative: true })
-    expect(cardPhoto(row({ category: 'Other', categorySlug: 'other' }))).toBeNull()
+    // The image lock (Lawal, 21 November 2026, 20:50 to 21:40): the night's OWN stand in, never a picture by category.
+    expect(cardPhoto(row({ standIn: 'https://x/stand-ins/n.jpg', standInAlt: 'A stage under lights' }))).toEqual({ src: 'https://x/stand-ins/n.jpg', alt: 'A stage under lights', credit: null, illustrative: true })
+    expect(cardPhoto(row({}))).toBeNull()
   })
   it('a venue photograph never puts a night in Big nights: law 18 asks for the night\'s own', () => {
     const big = row({ venue: 'GMHBA Stadium', free: false, format: 'ticketed', price: 'From AUD $99', source: 'Tickets at Ticketek', categorySlug: 'music' })

@@ -1,7 +1,6 @@
 import { OUR_CHECKOUT_LABEL, OUR_REGISTRATION_LABEL, OUTBOUND_LABEL, WALK_IN_LABEL, type DirectoryRow } from '@/lib/events/whats-on-directory'
 import { ROW_FREE_WITH_BOOKING } from '@/lib/events/cta'
 import { archivalNote } from '@/lib/media/photo-credits'
-import { illustrativePhoto } from '@/lib/images/illustrative'
 
 /**
  * THE FACTS A CARD DRAWS, ONE SOURCE (moved here word for word from the city guide's client module on 21 November 2026,
@@ -24,8 +23,8 @@ export function cardPhoto(r: DirectoryRow): { src: string; alt: string; credit: 
     const venue = r.venue ? `The venue, ${r.venue}` : 'The venue'
     return { src: r.venueThumb, alt: r.venue ? `${r.venue}, the venue` : 'The venue', credit: [venue, r.venueThumbCredit].filter(Boolean).join('. ') }
   }
-  const stand = illustrativePhoto(r.categorySlug)
-  if (stand) return { src: stand, alt: `${r.category ?? 'An event'}, an illustrative photo`, credit: null, illustrative: true }
+  // THE IMAGE LOCK (Lawal, 21 November 2026): the night's OWN stand in, never a picture by category.
+  if (r.standIn) return { src: r.standIn, alt: r.standInAlt ?? `${r.title}, an illustrative photo`, credit: null, illustrative: true }
   return null
 }
 
