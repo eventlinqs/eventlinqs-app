@@ -84,7 +84,8 @@ describe('the publish run', () => {
         if (table === 'feature_flags') return answers({ data: { enabled: true }, error: null })
         if (table === 'social_piece_schedules') {
           return {
-            select: () => answers({ data: rows, error: null }),
+            // The identity read (store.ts publishedAlready) finds no earlier publication of either piece.
+            select: (cols: string) => answers({ data: cols === 'id, published_ref' ? [] : rows, error: null }),
             update: (payload: Record<string, unknown>) => ({
               eq: (_key: string, id: unknown) => {
                 held.push({ id, payload })

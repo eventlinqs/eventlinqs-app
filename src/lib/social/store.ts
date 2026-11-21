@@ -2361,6 +2361,18 @@ export async function recordMissingPostings(db: Db): Promise<{ readonly recorded
 }
 
 /** The submission a provider already accepted for this piece on this network, if any schedule kept one (newest). */
+/**
+ * ONE PUBLICATION PER PIECE PER NETWORK (Lawal's hardening order of 22 November 2026, section 3): a piece already
+ * published on this network, on any schedule but this one, answers its reference; null when none. 5C's reconciliation
+ * of 22 November found c126bbf0 sent to Facebook three times under successive approvals.
+ */
+export async function publishedAlready(db: Db, pieceId: string, platform: SocialPlatform, exceptId: string): Promise<string | null> {
+  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('piece_id', pieceId).eq('platform', platform).eq('state', 'published').neq('id', exceptId).limit(1)
+  if (error) throw new Error(`its earlier publications could not be read: ${error.message}`)
+  const row = ((data ?? [])[0] as { id?: string; published_ref?: string | null } | undefined) ?? null
+  return row ? String(row.published_ref ?? row.id) : null
+}
+
 async function earlierSubmission(db: Db, pieceId: string, platform: SocialPlatform): Promise<string | null> {
   const { data, error } = await db
     .from('social_piece_schedules')
@@ -2408,6 +2420,18 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     }
     if (!switchOn) {
       wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
+      continue
+    }
+    // ONE PUBLICATION PER PIECE PER NETWORK (publishedAlready): published once on this network, it is never sent again.
+    let already: string | null = null
+    try {
+      already = await publishedAlready(db, pieceId, platform, id)
+    } catch (e) {
+      waiting.push(`${id}: ${e instanceof Error ? e.message : String(e)}; left scheduled`)
+      continue
+    }
+    if (already !== null) {
+      await hold(id, `Not published: this piece is already published on ${platform} (${already}); one publication per piece per network, never sent again.`)
       continue
     }
     // NEVER A BLIND RESEND (AV (a), the PM's 16:40 of 21 November 2026): where the provider already accepted this piece
