@@ -39,6 +39,9 @@ import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { eventPageHero, heroIsTypographic } from '@/lib/images/event-media'
 import { IllustrativeChip } from '@/components/media/illustrative-chip'
+import { CityNewsletterCapture } from '@/components/features/city/city-newsletter-capture'
+import { resolveCitySlug } from '@/lib/cities/resolve'
+import { getCity } from '@/lib/cities/data'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
@@ -763,6 +766,9 @@ export default async function EventDetailPage({ params }: Props) {
   ])
   // A night whose only image is our composed cover: the title is set in type over the hero, so no raster is drawn
   // behind it (src/lib/images/event-media.ts heroIsTypographic; the layout skips its preload the same way).
+  // The night's city, when it has a weekly guide (the subscribe route takes exactly these: resolveCitySlug).
+  const guideSlug = resolveCitySlug(event.city_primary ?? event.venue_city ?? null)
+  const guideCity = guideSlug ? (getCity(guideSlug)?.name ?? null) : null
   const media = heroPick.media
   const heroIllustrative = heroPick.illustrative
   const typographicHero = heroIsTypographic(media)
@@ -1752,6 +1758,15 @@ export default async function EventDetailPage({ params }: Props) {
                 </Reveal>
                 )}
                 </EventSection>
+
+                {/* THE WEEKLY GUIDE ON THE EVENT PAGE (the PM's 11:58 of 21 November 2026, item 4, engine 2: the event page
+                    had no subscribe point). The city guide's own block, one step (law 50 (a)), shown only where the
+                    night's city has a weekly guide, below the night's facts and organiser so the page stays clean. */}
+                {guideCity ? (
+                  <section aria-label={`${guideCity}'s weekly guide`} data-event-subscribe className="mt-10 rounded-xl border border-ink-200 bg-[var(--surface-1)] p-5 sm:p-6">
+                    <CityNewsletterCapture cityName={guideCity} tone="light" />
+                  </section>
+                ) : null}
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
