@@ -2156,6 +2156,95 @@ export type Published = {
   readonly held: readonly string[]
   /** Switched off: what would have gone, and when, and nothing written. */
   readonly wouldPublish: readonly string[]
+  /** Left scheduled as it was, and why: an earlier submission the provider could not be asked about (AV (a)). */
+  readonly waiting: readonly string[]
+}
+
+/**
+ * A POST AS IT WENT, RECORDED IN THE STEP THAT CONFIRMS IT (the PM's 16:40 of 21 November 2026, AV (a); the cause found
+ * at 12:12 by 5A and 12:17 by 5C: the auto publisher marked schedules published and wrote no social_piece_postings row,
+ * so /go, the link in bio and every reader of postings saw nothing go). One function marks a schedule published and,
+ * once its reference is the post's own public address, records the posting with that address, the schedule's own
+ * approval, and the person that approval names. Our own Meta app answers the address at once; Blotato's is confirmed by
+ * the read back (readBackPendingPosts), which records it through recordAutoPosting. A piece has one posting, its first
+ * network's address; the second network finds it recorded already. A failed record never undoes the publish: it is said.
+ */
+export async function markPublished(
+  db: Db,
+  input: { readonly scheduleId: string; readonly pieceId: string; readonly approvalId: string; readonly ref: string; readonly now: Date },
+): Promise<{ readonly error: string | null; readonly posting: string }> {
+  const { error } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: input.ref, published_at: input.now.toISOString() }).eq('id', input.scheduleId).eq('state', 'scheduled')
+  if (error) return { error: refusalOf(error.message) ?? error.message, posting: 'not recorded: the schedule was not marked published' }
+  const posting = PUBLIC_POST_URL.test(input.ref)
+    ? await recordAutoPosting(db, { pieceId: input.pieceId, approvalId: input.approvalId, postUrl: input.ref, postedAt: input.now })
+    : 'waits for its public address (the read back records it)'
+  return { error: null, posting }
+}
+
+/** The posting of a post the engine published, by its approval's own person; never throws, it says. */
+export async function recordAutoPosting(
+  db: Db,
+  input: { readonly pieceId: string | null; readonly approvalId: string | null; readonly postUrl: string; readonly postedAt: Date },
+): Promise<string> {
+  if (!input.pieceId || !input.approvalId) return 'not recorded: its piece or approval is not known'
+  if (!PUBLIC_POST_URL.test(input.postUrl)) return 'not recorded: not a public post address'
+  try {
+    const { data: approval, error: aerr } = await db.from('social_piece_approvals').select('approved_by').eq('id', input.approvalId).maybeSingle()
+    const by = (approval as { approved_by?: string } | null)?.approved_by
+    if (aerr || !by) return `not recorded: its approval could not be read (${aerr?.message ?? 'no row'})`
+    const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: input.approvalId, post_url: input.postUrl, posted_at: input.postedAt.toISOString(), recorded_by: by })
+    if (!error) return 'recorded'
+    if (error.code === '23505') return 'recorded already'
+    console.error('[social] the posting could not be recorded (the post went out):', { pieceId: input.pieceId, error: error.message })
+    return `not recorded: ${refusalOf(error.message) ?? error.message}`
+  } catch (e) {
+    console.error('[social] the posting could not be recorded (the post went out):', { pieceId: input.pieceId, error: e instanceof Error ? e.message : String(e) })
+    return `not recorded: ${e instanceof Error ? e.message : String(e)}`
+  }
+}
+
+/**
+ * EVERY POST THAT WENT PUBLIC WITH NO POSTING, RECORDED (AV (a)): a published schedule whose reference is a public post
+ * address, whose piece has no posting yet (the posts before AV, and any whose record failed), is recorded now. A write of
+ * what already happened, never a send.
+ */
+export async function recordMissingPostings(db: Db): Promise<{ readonly recorded: readonly string[]; readonly notRecorded: readonly string[] }> {
+  const { data, error } = await db
+    .from('social_piece_schedules')
+    .select('piece_id, approval_id, published_ref, published_at, social_pieces(social_piece_postings(id))')
+    .eq('state', 'published')
+    .like('published_ref', 'https://%')
+    .order('published_at', { ascending: true })
+    .limit(100)
+  if (error) throw new Error(`the published posts could not be read: ${error.message}`)
+  const recorded: string[] = []
+  const notRecorded: string[] = []
+  const seen = new Set<string>()
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    const pieceId = r.piece_id as string
+    const piece = (Array.isArray(r.social_pieces) ? r.social_pieces[0] : r.social_pieces) as { social_piece_postings?: unknown[] | null } | null
+    if (seen.has(pieceId) || (piece?.social_piece_postings ?? []).length > 0) continue
+    seen.add(pieceId)
+    const said = await recordAutoPosting(db, { pieceId, approvalId: r.approval_id as string, postUrl: String(r.published_ref), postedAt: new Date(String(r.published_at)) })
+    if (said === 'recorded' || said === 'recorded already') recorded.push(`${pieceId}: ${String(r.published_ref)}`)
+    else notRecorded.push(`${pieceId}: ${said}`)
+  }
+  return { recorded, notRecorded }
+}
+
+/** The submission a provider already accepted for this piece on this network, if any schedule kept one (newest). */
+async function earlierSubmission(db: Db, pieceId: string, platform: SocialPlatform): Promise<string | null> {
+  const { data, error } = await db
+    .from('social_piece_schedules')
+    .select('submission_ref')
+    .eq('piece_id', pieceId)
+    .eq('platform', platform)
+    .not('submission_ref', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error) throw new Error(`its earlier submissions could not be read: ${error.message}`)
+  const ref = ((data ?? [])[0] as { submission_ref?: string | null } | undefined)?.submission_ref ?? null
+  return ref && ref.startsWith('blotato:') ? ref : null
 }
 
 /**
@@ -2165,7 +2254,7 @@ export type Published = {
  * published state if the approval is no longer of the newest revision or an image has gone. A refusal holds the
  * schedule with its reason; nothing is retried silently.
  */
-export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly publisher: Publisher | null; readonly fetcher?: Fetcher }): Promise<Published> {
+export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly publisher: Publisher | null; readonly fetcher?: Fetcher; readonly reader?: BlotatoPostReader | null }): Promise<Published> {
   const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
   const switchOn = flag?.enabled === true
   const { data: rows, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, platform, go_at').eq('state', 'scheduled').lte('go_at', now.toISOString()).order('go_at').limit(50)
@@ -2173,6 +2262,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
   const published: string[] = []
   const held: string[] = []
   const wouldPublish: string[] = []
+  const waiting: string[] = []
   const hold = async (id: string, reason: string) => {
     await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('id', id).eq('state', 'scheduled')
     held.push(`${id}: ${reason}`)
@@ -2191,6 +2281,37 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     if (!switchOn) {
       wouldPublish.push(`${pieceId} on ${platform} at ${r.go_at as string}`)
       continue
+    }
+    // NEVER A BLIND RESEND (AV (a), the PM's 16:40 of 21 November 2026): where the provider already accepted this piece
+    // on this network (a submission kept on any of its schedules), the provider's own record of it is read first. Unless
+    // the provider says it failed, it went (or is going) and is recorded as published, never sent again; if the provider
+    // cannot be asked, the schedule stays as it was and says why.
+    let earlier: string | null = null
+    try {
+      earlier = await earlierSubmission(db, pieceId, platform)
+    } catch (e) {
+      waiting.push(`${id}: ${e instanceof Error ? e.message : String(e)}; left scheduled`)
+      continue
+    }
+    if (earlier !== null) {
+      if (!opts.reader) {
+        waiting.push(`${id}: its earlier submission ${earlier} cannot be asked about (no provider reader is connected); left scheduled, never sent again blind`)
+        continue
+      }
+      let said: { readonly status: string; readonly publicUrl: string | null }
+      try {
+        said = await opts.reader(earlier.slice('blotato:'.length))
+      } catch (e) {
+        waiting.push(`${id}: its earlier submission ${earlier} could not be read (${e instanceof Error ? e.message : String(e)}); left scheduled`)
+        continue
+      }
+      if (said.status !== 'failed') {
+        const ref = said.status === 'published' && said.publicUrl !== null && PUBLIC_POST_URL.test(said.publicUrl) ? said.publicUrl : earlier
+        const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now })
+        if (marked.error) await hold(id, `Sent as ${ref}; the database refused that reference: ${marked.error}`)
+        else published.push(`${pieceId} on ${platform}: ${ref} (its earlier submission, read on the provider: ${said.status}; not sent again)`)
+        continue
+      }
     }
     // A CHECK THAT FAILS HOLDS ITS OWN PIECE, NEVER THE RUN (law 23: one failed post never stops unrelated operations).
     // On 18 November 2026 at 15:13 a check threw on the first of Lawal's twelve approved posts and the whole run stopped
@@ -2239,9 +2360,10 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
         const { error: serr } = await db.from('social_piece_schedules').update({ submission_ref: `blotato:${submission}` }).eq('id', id).eq('state', 'scheduled')
         if (serr) console.error('[social] the submission could not be written to its own column', { id, submission, error: serr.message })
       }
-      const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: ref, published_at: now.toISOString() }).eq('id', id).eq('state', 'scheduled')
+      // Marked published and, with a public address, recorded as it went, in one step (markPublished, AV (a)).
+      const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now })
       // A reference the database refuses is kept FIRST in the held reason, so the post it names can always be read back.
-      if (uerr) await hold(id, `Sent as ${ref}; the database refused that reference: ${refusalOf(uerr.message) ?? uerr.message}`)
+      if (marked.error) await hold(id, `Sent as ${ref}; the database refused that reference: ${marked.error}`)
       else published.push(`${pieceId} on ${platform}: ${ref}`)
       // LAW 40 (c): each Collab invitation the post carried is recorded in the CRM as pending (never 'accepted': only
       // Instagram's own read of the post's collaborators can say that, law 40 (b)). A failed record never stops
@@ -2251,7 +2373,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
-  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish }
+  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish, waiting }
 }
 
 /**
@@ -2301,7 +2423,7 @@ export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | nul
   // >= 'blotato:' and < 'blotato;', which holds only in byte order; the column collates as en_US.UTF-8, and production
   // found 0 of the 4 posts waiting that way ('like' found 4, the range in byte order 4), so no Blotato post's URL was
   // ever read back. A prefix asked with like is the same in every collation. No URL begins 'blotato:'.
-  const { data, error } = await db.from('social_piece_schedules').select('id, published_ref').eq('state', 'published').like('published_ref', 'blotato:%').order('go_at').limit(20)
+  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, published_ref, published_at').eq('state', 'published').like('published_ref', 'blotato:%').order('go_at').limit(20)
   if (error) throw new Error(`the posts waiting for their URL could not be read: ${error.message}`)
   const filled: string[] = []
   const pending: string[] = []
@@ -2317,7 +2439,12 @@ export async function readBackPendingPosts(db: Db, read: BlotatoPostReader | nul
     if (answer.status === 'published' && answer.publicUrl !== null && PUBLIC_POST_URL.test(answer.publicUrl)) {
       const { error: uerr } = await db.from('social_piece_schedules').update({ published_ref: answer.publicUrl }).eq('id', r.id as string).eq('published_ref', ref)
       if (uerr) pending.push(`${ref}: ${refusalOf(uerr.message) ?? uerr.message}`)
-      else filled.push(`${ref} is ${answer.publicUrl}`)
+      else {
+        filled.push(`${ref} is ${answer.publicUrl}`)
+        // The provider confirmed the address: the post is recorded as it went (AV (a)), with its own approval.
+        const posting = await recordAutoPosting(db, { pieceId: (r.piece_id as string | undefined) ?? null, approvalId: (r.approval_id as string | undefined) ?? null, postUrl: answer.publicUrl, postedAt: new Date(String(r.published_at ?? new Date().toISOString())) })
+        if (posting !== 'recorded' && posting !== 'recorded already') console.error(`[social] ${ref}: the posting ${posting}`)
+      }
     } else {
       pending.push(`${ref}: ${answer.status || 'no status yet'}`)
     }

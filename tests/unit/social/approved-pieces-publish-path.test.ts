@@ -74,6 +74,8 @@ function fixtureDb(tables: Record<string, Row[]>, refuse: (table: string, change
       select: () => q,
       eq: (k: string, v: unknown) => (where.push([k, v]), tests.push((r) => String(r[k]) === String(v)), q),
       neq: (k: string, v: unknown) => (tests.push((r) => String(r[k]) !== String(v)), q),
+      // PostgREST's not(k, 'is', null): the row holds a value (the earlier submission read, AV (a)).
+      not: (k: string, op: string, v: unknown) => (tests.push((r) => (op === 'is' && v === null ? r[k] !== null && r[k] !== undefined : true)), q),
       in: (k: string, vs: unknown[]) => (tests.push((r) => vs.map(String).includes(String(r[k]))), q),
       lte: (k: string, v: unknown) => (tests.push((r) => time(r[k]) <= time(v)), q),
       order: (k: string, o?: { ascending?: boolean }) => ((sort = { key: k, up: o?.ascending !== false }), q),

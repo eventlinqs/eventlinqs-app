@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
@@ -129,7 +129,8 @@ export async function GET(request: NextRequest) {
       }
     }
     const scheduled = await scheduleApprovedPieces(db, now)
-    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now) })
+    const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
+    for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
     // THE SWITCH GOES OFF BY CODE on any fault of this run while it reads on (policy-guard.ts), with its alarm row.
     if (published.switchOn) {
       const trips = [...policyFaults, ...switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })]
@@ -146,6 +147,10 @@ export async function GET(request: NextRequest) {
     try {
       const back = await readBackPendingPosts(db, socialPostReaderFromEnv())
       for (const f of back.filled) console.log(`[cron/social-publish] URL read back: ${f}`)
+      // Every post that went public with no posting is recorded (AV (a)); a failure is said and never stops the run.
+      const missing = await recordMissingPostings(db)
+      for (const m of missing.recorded) console.log(`[cron/social-publish] posting recorded: ${m}`)
+      for (const m of missing.notRecorded) console.log(`[cron/social-publish] posting not recorded: ${m}`)
       for (const p of back.pending) console.log(`[cron/social-publish] URL not yet: ${p}`)
       const held = await heldPostsNeedingInvestigation(db)
       for (const h of held) console.log(`[cron/social-publish] ${h}`)
