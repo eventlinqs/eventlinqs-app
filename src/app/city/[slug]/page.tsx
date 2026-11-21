@@ -1,8 +1,9 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
 import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
-import { getCity, getAllCities, isCitySlug } from '@/lib/cities/data'
+import { getCity, getAllCities } from '@/lib/cities/data'
+import { cityRouteAnswer } from '@/lib/cities/city-route'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import { JsonLd } from '@/components/seo/json-ld'
@@ -43,9 +44,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * (src/components/features/city-guide). The City markup and the breadcrumb stay; the event list markup is the guide's.
  */
 export default async function CityPage({ params }: Props) {
-  const { slug } = await params
-  if (!isCitySlug(slug)) notFound()
-  const city = getCity(slug)!
+  const { slug: asked } = await params
+  // /city/Melbourne or /city/Gold%20Coast answers 308 to the slug; no city is a 404 (cityRouteAnswer).
+  const answer = cityRouteAnswer(asked)
+  if (answer.kind === 'redirect') permanentRedirect(`/city/${answer.slug}`)
+  if (answer.kind === 'not-found') notFound()
+  const city = getCity(answer.slug)!
 
   const baseUrl = getSiteUrl()
   const cityLd = {

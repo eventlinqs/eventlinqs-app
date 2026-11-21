@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readEngine } from './engine'
+import { PREFLIGHT_ACTION } from '@/lib/social/preflight-line'
 import { readAcqPool } from '@/lib/outreach/acq-pool'
 import { readPageChecks } from '@/lib/outreach/page-checks'
 import { allWell, areaOfPlay, morningRows, type MorningFacts, type MorningRow } from './morning-report-math'
@@ -99,6 +100,13 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
       published: (pub.data ?? []).map((p) => ({ platform: p.platform as string, ref: (p.published_ref as string | null) ?? null })),
       scheduledToday: await counted(db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'scheduled').gte('go_at', w.today.from).lt('go_at', w.today.to), 'posts scheduled'),
       held: await counted(db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'held').gte('go_at', w.today.from), 'posts held'),
+      preflight: await (async () => {
+        // Today's pre-flight (src/lib/social/preflight.ts), its line and, only when nothing can post, why.
+        const pre = await db.from('audit_log').select('metadata').eq('action', PREFLIGHT_ACTION).gte('created_at', w.today.from).order('created_at', { ascending: false }).limit(1)
+        if (pre.error) throw new Error(`the pre-flight: ${pre.error.message}`)
+        const meta = ((pre.data ?? [])[0]?.metadata ?? null) as { line?: unknown; nothingCanPost?: unknown } | null
+        return meta && typeof meta.line === 'string' ? { line: meta.line, nothingCanPost: typeof meta.nothingCanPost === 'string' ? meta.nothingCanPost : null } : null
+      })(),
     }
   })
   const listings = await safely('Event Listings', async () => ({

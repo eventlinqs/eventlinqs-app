@@ -7,6 +7,13 @@ name: social plan now
 
 on:
   workflow_dispatch:
+    inputs:
+      for:
+        description: today (as the 06:40 run plans) or tomorrow (tomorrow's moments drawn tonight, as of its 05:00)
+        required: true
+        type: choice
+        default: today
+        options: [today, tomorrow]
 
 permissions:
   contents: read
@@ -24,9 +31,11 @@ jobs:
       - name: Ask production's social run to plan now
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FOR: ${{ inputs.for }}
         run: |
           set -euo pipefail
-          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 'https://www.eventlinqs.com.au/api/cron/social-publish?plan=now' \
+          case "$FOR" in today|tomorrow) ;; *) echo "REFUSED: for $FOR"; exit 2 ;; esac
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "https://www.eventlinqs.com.au/api/cron/social-publish?plan=now&for=${FOR}" \
             -H "Authorization: Bearer $CRON_SECRET")
           echo "HTTP $code"
           cat answer.json; echo

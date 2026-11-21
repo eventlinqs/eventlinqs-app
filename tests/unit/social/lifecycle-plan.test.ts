@@ -91,7 +91,9 @@ describe('the lifecycle planner, end to end on a fixture', () => {
     // Its moment and its day.
     expect(parseMomentKey(feed.momentKey)).toMatchObject({ kind: 'first_day', format: 'feed', day: '2026-11-28' })
     // Each network's own link, and every rule of the publish path holds.
-    expect(feed.versions.facebook.cta).toMatch(/utm_source=facebook/)
+    // The words carry the counted /go hop, its id written when the piece is written (go-hop.ts; AV (e)); a press lands
+    // on the stored link, the event page with its tags.
+    expect(feed.versions.facebook.cta).toBe('https://www.eventlinqs.com.au/go/PIECE_ID_HERE?via=facebook')
     expect(feed.link).toMatch(/utm_source=instagram/)
     for (const p of pieces) {
       expect(law37Refusal(p.slides)).toBeNull()

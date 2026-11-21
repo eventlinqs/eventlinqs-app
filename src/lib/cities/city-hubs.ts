@@ -38,12 +38,12 @@ export const CITY_HUBS: readonly CityHub[] = [
     key: 'free',
     eyebrow: 'Free',
     title: (c) => `Free in ${c}`,
-    href: (s) => `/events?city=${s}&date=free`,
+    href: (citySlug) => `/events?city=${citySlug}&date=free`,
     holds: (e) => e.is_free === true || isWalkIn(e),
   },
-  { key: 'music', eyebrow: 'Music', title: (c) => `Live music in ${c}`, href: (s) => `/events?city=${s}&category=music`, holds: inCategory('music') },
-  { key: 'family', eyebrow: 'Family', title: (c) => `Family days out in ${c}`, href: (s) => `/events?city=${s}&category=family`, holds: inCategory('family') },
-  { key: 'nightlife', eyebrow: 'Nightlife', title: (c) => `Nightlife in ${c}`, href: (s) => `/events?city=${s}&category=nightlife`, holds: inCategory('nightlife') },
+  { key: 'music', eyebrow: 'Music', title: (c) => `Live music in ${c}`, href: (citySlug) => `/events?city=${citySlug}&category=music`, holds: inCategory('music') },
+  { key: 'family', eyebrow: 'Family', title: (c) => `Family days out in ${c}`, href: (citySlug) => `/events?city=${citySlug}&category=family`, holds: inCategory('family') },
+  { key: 'nightlife', eyebrow: 'Nightlife', title: (c) => `Nightlife in ${c}`, href: (citySlug) => `/events?city=${citySlug}&category=nightlife`, holds: inCategory('nightlife') },
 ]
 
 /** The hubs with at least one event, each with its events in the order given, at most `cap`. */

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getAllCities } from '@/lib/cities/data'
 import { isRedirected, redirectFor } from '@/lib/seo/permanent-redirects'
+import { guideForEventsQuery } from '@/lib/seo/query-redirects'
 
 /*
  * ROUND 3, ITEM 7 (Lawal, 2 November 2026; C:\dev\DESIGN\CITY-FIRST-1NOV\ROUND3-LOCKED\ROUND3-DIRECTIVE-2NOV.md; the
@@ -22,9 +23,26 @@ describe('the old city routes', () => {
   it('a browse city without a guide is NOT redirected (it keeps its page)', () => {
     expect(isRedirected('/events/browse/aireys-inlet')).toBe(false)
   })
-  it("/events?city=<city> goes to the city's guide too, for the guided cities only", () => {
+  it("/events?city=<city> goes to the city's guide too, for the guided cities only, and only when nothing else /events reads is asked", () => {
+    expect(src('src/app/events/page.tsx')).toMatch(/if \(guide\) permanentRedirect\(guide\)/)
+    expect(guideForEventsQuery({ city: 'geelong' })).toBe('/city/geelong')
+    expect(guideForEventsQuery({ city: 'Geelong' })).toBe('/city/geelong')
+    expect(guideForEventsQuery({ city: 'geelong', utm_source: 'x' })).toBe('/city/geelong?utm_source=x')
+    expect(guideForEventsQuery({ city: 'aireys-inlet' })).toBeNull()
+    for (const key of ['q', 'view', 'sort', 'event_type', 'category', 'date', 'free']) expect(guideForEventsQuery({ city: 'geelong', [key]: 'x' })).toBeNull()
+    expect(guideForEventsQuery({ city: 'geelong', q: '' })).toBe('/city/geelong')
+  })
+  it('every has and missing in next.config.ts is a literal list of at most 16, which Vercel accepts (21 November 2026)', () => {
+    // Vercel refused AV's preview, quoted: 'Builder returned invalid routes: should NOT have more than 16 items' (26).
     const cfg = src('next.config.ts')
-    expect(cfg).toMatch(/source: '\/events',\s*has: \[\{ type: 'query', key: 'city', value: `\(\?<city>\$\{GUIDED_CITY_SLUGS\.join\('\|'\)\}\)` \}\],\s*destination: '\/city\/:city',\s*permanent: true/)
+    const all = [...cfg.matchAll(/\b(has|missing):\s*([^,\n]*)/g)]
+    expect(all.length).toBeGreaterThan(0)
+    for (const m of all) {
+      expect(m[2].startsWith('['), `${m[1]}: ${m[2]}`).toBe(true)
+      const list = cfg.slice(m.index! + m[0].length - m[2].length, cfg.indexOf(']', m.index!) + 1)
+      expect((list.match(/\btype:/g) ?? []).length, list).toBeLessThanOrEqual(16)
+    }
+    expect(cfg).not.toContain('EVENTS_CITY_TO_GUIDE')
   })
   it('the sitemap publishes no browse page that redirects, and our own links go straight to the guide', () => {
     expect(src('src/app/sitemap.ts')).toMatch(/if \(isRedirected\(`\/events\/browse\/\$\{c\.slug\}`\)\) continue/)

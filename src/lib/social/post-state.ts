@@ -38,3 +38,55 @@ export function postState(s: ScheduleFacts): { readonly state: PostState; readon
   }
   return { state: 'requires investigation', words: `in an unknown state '${s.state}': requires investigation` }
 }
+
+/**
+ * A PIECE'S STATE IN PLAIN WORDS (the PM's 16:40 of 21 November 2026, AV (f): "states shown plainly: planned, ready,
+ * scheduled, published (provider confirmed), blocked, failed, expired"). One mapping from the database's own fields, read
+ * wherever the admin shows a piece:
+ *   planned    drafted, not yet approved;
+ *   ready      approved, waiting for its band;
+ *   scheduled  given its moment, or submitted to the provider and its public address not yet confirmed;
+ *   published  a post whose public address the provider confirmed (or a partner kit marked sent);
+ *   blocked    held by one of our own rules, or rejected, with why;
+ *   failed     an error from the provider, the database or the run, with why (an accepted post whose id was lost too);
+ *   expired    its day passed before it could post (law 42), or its moment's day is gone while it waited.
+ * Pure.
+ */
+export type PlainState = 'planned' | 'ready' | 'scheduled' | 'published' | 'blocked' | 'failed' | 'expired'
+
+/** A held reason that is an error, not one of our rules refusing. */
+const AN_ERROR = /could not|refused|HTTP \d|error|Blotato could not|no publisher is connected|database/i
+/** Law 42's hold: a slot from an earlier day is never posted late. */
+const DAY_PASSED = /passed before it could post|a missed day is never posted late/i
+
+export function piecePlainState(p: {
+  readonly state: 'drafted' | 'rejected' | 'approved' | 'gone'
+  readonly postUrl: string | null
+  readonly schedule: readonly (ScheduleFacts & { readonly goAt: string })[]
+  readonly rejectedReason: string | null
+  /** The day its moment names (social_pieces.moment_key), when it has one. */
+  readonly momentDay: string | null
+  /** Today on Melbourne's clock, YYYY-MM-DD. */
+  readonly today: string
+}): { readonly state: PlainState; readonly why: string } {
+  const confirmed = p.schedule.find((s) => s.state === 'published' && PUBLIC_POST.test((s.publishedRef ?? '').trim()))
+  if (confirmed) return { state: 'published', why: `published, confirmed by the provider: ${confirmed.publishedRef}` }
+  if (p.postUrl && PUBLIC_POST.test(p.postUrl)) return { state: 'published', why: `published, confirmed by the provider: ${p.postUrl}` }
+  if (p.state === 'gone') return { state: 'published', why: p.postUrl === 'sent' ? 'sent to the partner' : 'gone' }
+  const submitted = p.schedule.find((s) => s.state === 'published')
+  if (submitted) return { state: 'scheduled', why: postState(submitted).words }
+  const lost = p.schedule.find((s) => s.state === 'held' && LOST_ID.test(s.heldReason ?? ''))
+  if (lost) return { state: 'failed', why: postState(lost).words }
+  const waiting = p.schedule.find((s) => s.state === 'scheduled')
+  if (waiting) return { state: 'scheduled', why: `scheduled for ${waiting.goAt}` }
+  const held = p.schedule.find((s) => s.state === 'held')
+  if (held) {
+    const why = held.heldReason ?? 'no reason recorded'
+    if (DAY_PASSED.test(why)) return { state: 'expired', why }
+    return { state: AN_ERROR.test(why) ? 'failed' : 'blocked', why }
+  }
+  if (p.state === 'rejected') return { state: 'blocked', why: `rejected: ${p.rejectedReason ?? 'no reason recorded'}` }
+  if (p.momentDay !== null && p.momentDay < p.today) return { state: 'expired', why: `its day, ${p.momentDay}, passed before it could post` }
+  if (p.state === 'approved') return { state: 'ready', why: 'approved, waiting for its band' }
+  return { state: 'planned', why: 'drafted, waiting for its approval' }
+}
