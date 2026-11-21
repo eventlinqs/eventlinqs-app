@@ -2,6 +2,8 @@ import { cache } from 'react'
 import type { Metadata } from 'next'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { WeekendGuide } from '@/components/features/weekend/weekend-guide'
+import { SiteHeader } from '@/components/layout/site-header'
+import { SiteFooter } from '@/components/layout/site-footer'
 import { emptyWeekendGuide, readWeekendGuide } from '@/lib/newsletter/edition'
 import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 import { getSpineCity } from '@/lib/images/spine'
@@ -53,6 +55,9 @@ export default async function WeekendPage() {
           { name: 'The Weekend Guide', url: `${origin}/weekend` },
         ]}
       />
+      {/* The shared chrome (the PM's 15:03 of 21 November 2026: /weekend had neither, so at 1440 a visitor had no way off
+          it). staticSafe: the page prerenders, so the header reads no session cookie (the city guide's own rule). */}
+      <SiteHeader staticSafe />
       <WeekendGuide
         datesLabel={guide.datesLabel}
         featured={guide.featured}
@@ -60,6 +65,7 @@ export default async function WeekendPage() {
         hero={hero ? { src: hero.src, alt: "Geelong's waterfront pier at dusk, its lights reflected in the bay" } : null}
         explore={explore ? { src: explore.src, alt: "Melbourne's skyline over the Yarra and Princes Bridge in morning light" } : null}
       />
+      <SiteFooter />
     </>
   )
 }
