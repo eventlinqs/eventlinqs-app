@@ -38,7 +38,7 @@ export function MarketBrowse({ grid, city, guideHref }: { grid: MarketGrid; city
     setTab(t)
     setShown(MARKET_PAGE)
   }
-  const searchCity = encodeURIComponent(city.name)
+  const citySlug = encodeURIComponent(city.slug)
 
   return (
     <section aria-labelledby="browsing-heading" className="mt-12">
@@ -71,8 +71,8 @@ export function MarketBrowse({ grid, city, guideHref }: { grid: MarketGrid; city
           )}
         </div>
         <div className="hidden shrink-0 items-center gap-2 pb-2 lg:flex">
-          <SortMenu searchCity={searchCity} />
-          <Link href={`/events?city=${searchCity}&view=map`} prefetch={false} className={TOOL}>
+          <SortMenu citySlug={citySlug} />
+          <Link href={`/events?city=${citySlug}&view=map`} prefetch={false} className={TOOL}>
             <MapIcon className="h-4 w-4" aria-hidden />
             Map
           </Link>
@@ -181,7 +181,7 @@ function Card({ card }: { card: MarketCard }) {
 }
 
 /** Sort, to the whole list of events in this city sorted three ways (the /events search's own sorts). */
-function SortMenu({ searchCity }: { searchCity: string }) {
+function SortMenu({ citySlug }: { citySlug: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -207,9 +207,9 @@ function SortMenu({ searchCity }: { searchCity: string }) {
       </button>
       {open ? (
         <ul id="market-sort" className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-ink-200 bg-white py-1 shadow-[var(--shadow-card)]">
-          <li><Link href={`/events?city=${searchCity}&sort=relevance`} prefetch={false} className={MENU_ITEM}>Best match</Link></li>
-          <li><Link href={`/events?city=${searchCity}&sort=date_asc`} prefetch={false} className={MENU_ITEM}>Soonest first</Link></li>
-          <li><Link href={`/events?city=${searchCity}&sort=price_asc`} prefetch={false} className={MENU_ITEM}>Lowest price first</Link></li>
+          <li><Link href={`/events?city=${citySlug}&sort=relevance`} prefetch={false} className={MENU_ITEM}>Best match</Link></li>
+          <li><Link href={`/events?city=${citySlug}&sort=date_asc`} prefetch={false} className={MENU_ITEM}>Soonest first</Link></li>
+          <li><Link href={`/events?city=${citySlug}&sort=price_asc`} prefetch={false} className={MENU_ITEM}>Lowest price first</Link></li>
         </ul>
       ) : null}
     </div>

@@ -22,8 +22,10 @@ import { useChosenEventsHref } from '@/lib/hooks/use-chosen-events-href'
  * site-header-client.tsx behind the flag (law 13).
  *
  * From lg: the logo; a search form, the words and the city beside them, submitting to /events with q and the city
- * (the /events search; a city NAME stays on /events, where its venues are matched, because the redirect to a city guide
- * matches the lower case slug only); Find events (the visitor's chosen city's guide, else every event), Sell tickets,
+ * (the /events search, which matches the city's NAME, any detected town included, against its venues; the redirect to a
+ * city's guide stands aside whenever q is sent, EVENTS_CITY_TO_GUIDE, because Vercel's edge matched 'Melbourne' in any
+ * case and /city/Melbourne was a 404 on 21 November 2026; /city/<any case> now answers 308 to its slug); Find events
+ * (the visitor's chosen city's guide, else every event), Sell tickets,
  * Help, Log in and Sign up, or the account menu. Below lg: the logo and the menu in the bar, and under it, scrolling
  * away with the page, one search tap target opening the search and the city beside it.
  *
