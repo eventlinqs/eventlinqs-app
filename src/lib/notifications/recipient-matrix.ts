@@ -319,6 +319,12 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     concernsOrganiserEvent: false,
     what: 'The assistant handing a conversation to a human.',
   },
+  {
+    type: 'support_contact',
+    roles: ['support'],
+    concernsOrganiserEvent: false,
+    what: 'A message a visitor sent from the contact page.',
+  },
 
   // ── The platform owner ──────────────────────────────────────────────────
   /*

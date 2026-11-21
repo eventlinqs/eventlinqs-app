@@ -95,6 +95,15 @@ const RENDERS: Record<string, Record<string, () => Rendered>> = {
         unsubscribeUrl: URL,
       }),
   },
+  'src/lib/newsletter/welcome.ts': {
+    'newsletter welcome (the weekly digest, at once)': () =>
+      buildDigestEmailHtml({
+        cityName: 'Melbourne',
+        events: [{ title: 'Jazz Night', dateLabel: 'Fri 6 Nov, 8pm', venueLabel: "Bird's Basement", priceLabel: 'Free entry', url: URL }] as never,
+        origin: 'https://www.eventlinqs.com.au',
+        unsubscribeUrl: URL,
+      }),
+  },
   'src/app/waitlist/actions.ts': {
     'waitlist confirmation': () =>
       buildWaitlistConfirmationEmail({ cityName: 'Geelong', fullName: NAMED, role: 'attendee' as never, foundingCandidate: false, unsubscribeUrl: URL, marketingOptIn: false }),

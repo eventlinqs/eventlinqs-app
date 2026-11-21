@@ -168,6 +168,15 @@ const MAGIC_LINK: AuthEmailContent = {
   disclaimer: 'If you did not ask to sign in, you can safely ignore this email.',
 }
 
+/** The one email check, asked only before payouts are set up (law 50 (b); src/lib/auth/email-check.ts). */
+const PAYOUT_EMAIL_CHECK: AuthEmailContent = {
+  title: 'Confirm your email to set up payouts',
+  heading: 'One tap before payouts',
+  lead: 'Before we pay money out, we check that this email is yours. Tap the button below, then set up payouts on EventLinqs. The link works once and expires in 24 hours.',
+  cta: 'Confirm and set up payouts',
+  disclaimer: 'If you did not ask to set up payouts on EventLinqs, you can safely ignore this email. Nothing changes until the button is pressed.',
+}
+
 export async function sendSignupConfirmation(input: {
   to: string
   confirmationUrl: string
@@ -210,11 +219,26 @@ export async function sendMagicLink(input: {
   })
 }
 
+export async function sendPayoutEmailCheck(input: {
+  to: string
+  checkUrl: string
+}): Promise<{ id: string }> {
+  return sendEmail({
+    to: input.to,
+    subject: PAYOUT_EMAIL_CHECK.title,
+    messageType: 'auth_magic_link',
+    recipientRole: 'account_holder',
+    html: authEmailHtml(PAYOUT_EMAIL_CHECK, input.checkUrl),
+    text: authEmailText(PAYOUT_EMAIL_CHECK, input.checkUrl),
+  })
+}
+
 /** Exposed so tests can assert the shell without going through a transport. */
 export const __authEmailTemplates = {
   CONFIRM_SIGNUP,
   RESET_PASSWORD,
   MAGIC_LINK,
+  PAYOUT_EMAIL_CHECK,
   authEmailHtml,
   authEmailText,
 }

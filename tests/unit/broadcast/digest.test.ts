@@ -28,6 +28,7 @@ import {
   fetchDigestEvents,
   fetchDigestRecipients,
   resolveDigestPeriod,
+  digestRangeLabel,
   WAITLIST_ROWS_REACH_THE_DIGEST,
 } from '@/lib/broadcast/digest'
 import { CONSENT_VERSION } from '@/lib/waitlist/city-waitlist'
@@ -76,7 +77,7 @@ function stubClient(
           filters[`${name}:${String(args[0])}`] = args.length > 1 ? args[1] : true
           return builder
         }) as unknown
-      for (const method of ['select', 'eq', 'gte', 'lte', 'not', 'order', 'is', 'in']) {
+      for (const method of ['select', 'eq', 'gte', 'lte', 'lt', 'not', 'order', 'is', 'in', 'or']) {
         builder[method] = chain(method)
       }
       let window: { from: number; to: number } | null = null
@@ -106,10 +107,78 @@ function stubClient(
 }
 
 describe('digest period', () => {
-  test('covers exactly the seven days from the send date', () => {
+  test("covers the city's own today and the seven days after it, never the UTC day", () => {
+    // 22:00 UTC on 4 July is 8 am on Sunday 5 July in Melbourne: the send's day is the 5th. This case read '2026-07-04'
+    // until 21 November 2026, when the practice weekend edition opened on Friday at 7 am Saturday (train AQ).
     const period = resolveDigestPeriod(new Date('2026-07-04T22:00:00Z'))
-    expect(period.start).toBe('2026-07-04')
-    expect(period.end).toBe('2026-07-11')
+    expect(period.start).toBe('2026-07-05')
+    expect(period.end).toBe('2026-07-12')
+  })
+  test("at 7 am on Saturday 21 November in Melbourne the week opens on Saturday, and the weekend ends on Sunday", () => {
+    const at7 = new Date('2026-11-20T20:00:00Z')
+    expect(resolveDigestPeriod(at7)).toEqual({ start: '2026-11-21', end: '2026-11-28' })
+    expect(resolveDigestPeriod(at7, 'weekend')).toEqual({ start: '2026-11-21', end: '2026-11-22' })
+    // Friday's edition at 7 am runs Friday to Sunday.
+    expect(resolveDigestPeriod(new Date('2026-11-26T20:00:00Z'), 'weekend')).toEqual({ start: '2026-11-27', end: '2026-11-29' })
+  })
+  test("the weekend edition's dates read as Lawal's subject names them", () => {
+    expect(digestRangeLabel({ start: '2026-11-21', end: '2026-11-22' })).toBe('21 to 22 November')
+    expect(digestRangeLabel({ start: '2026-11-27', end: '2026-11-29' })).toBe('27 to 29 November')
+    expect(digestRangeLabel({ start: '2026-11-29', end: '2026-12-01' })).toBe('29 November to 1 December')
+    expect(digestRangeLabel({ start: '2026-11-22', end: '2026-11-22' })).toBe('22 November')
+  })
+})
+
+describe("the practice weekend edition of 21 November 2026: only nights still listed, law 18's order", () => {
+  const AT7 = new Date('2026-11-20T20:00:00Z') // 7 am Saturday 21 November, Melbourne
+  const row = (over: Row) => ({
+    id: `evt-${String(over.slug)}`,
+    timezone: 'Australia/Melbourne',
+    venue_city: 'Melbourne',
+    visibility: 'public',
+    is_seed_data: false,
+    ticket_tiers: [],
+    end_date: null,
+    ...over,
+  })
+  // Production's own rows, as the preview of 07:00 read them.
+  const rows = [
+    row({ slug: 'two-door-cinema-club', title: 'Two Door Cinema Club', start_date: '2026-11-20T08:30:00Z', venue_name: 'John Cain Arena', external_ticket_url: 'https://www.axs.com/au/events/1' }),
+    row({ slug: 'amcf-2026', title: 'African Music and Cultural Festival 2026', start_date: '2026-11-20T00:00:00Z', end_date: '2026-11-22T09:00:00Z', venue_name: 'Fed Square', is_free: true, entry_mode: 'walk_in', category: { slug: 'festival' } }),
+    row({ slug: 'knitting', title: 'Knitting and crochet social group', start_date: '2026-11-20T23:00:00Z', venue_name: 'Biyal-a Armstrong Creek Library', is_free: true }),
+    row({ slug: 'book-market', title: 'The Melbourne Book Market', start_date: '2026-11-20T22:00:00Z', venue_name: 'Queen Victoria Market', is_free: true }),
+    row({ slug: 'a-day-of-it', title: 'Sunday Night at the Arena', start_date: '2026-11-22T08:00:00Z', venue_name: 'Rod Laver Arena', external_ticket_url: 'https://www.ticketmaster.com.au/e/1' }),
+    row({ slug: 'next-week', title: 'A Night Next Week', start_date: '2026-11-24T08:00:00Z', venue_name: 'The Corner Hotel', external_ticket_url: 'https://www.oztix.com.au/e/1' }),
+  ]
+  const read = async (period: { start: string; end: string }, calls: Call[] = []) =>
+    fetchDigestEvents(stubClient(() => rows, calls, { serverCeiling: 50 }), 'melbourne', period, 10, '', 'Melbourne', AT7)
+
+  test("Friday's ended night is never carried; the running festival is, dated by its end", async () => {
+    const events = await read({ start: '2026-11-21', end: '2026-11-22' })
+    expect(events.map((e) => e.slug)).not.toContain('two-door-cinema-club')
+    const amcf = events.find((e) => e.slug === 'amcf-2026')
+    expect(amcf?.dateLabel).toBe('Until Sun 22 Nov, 8pm')
+  })
+  test('a ticketed night first, the free festival, then the market, the library session last', async () => {
+    const events = await read({ start: '2026-11-21', end: '2026-11-22' })
+    expect(events.map((e) => e.slug)).toEqual(['a-day-of-it', 'amcf-2026', 'book-market', 'knitting'])
+  })
+  test("the query asks the platform's listing rule, never a UTC midnight, and stops at the period's last local day", async () => {
+    const calls: Call[] = []
+    await read({ start: '2026-11-21', end: '2026-11-22' }, calls)
+    const events = calls.find((c) => c.table === 'events')!
+    const keys = Object.keys(events.filters)
+    expect(keys.some((k) => k.startsWith('or:end_date.gte.'))).toBe(true)
+    expect(keys.some((k) => k.startsWith('gte:start_date'))).toBe(false)
+    // Before Monday 23 November begins in Melbourne (AEDT): Sunday's last night is the last one carried.
+    expect(events.filters['lt:start_date']).toBe('2026-11-22T13:00:00.000Z')
+    expect(events.filters['lte:start_date']).toBeUndefined()
+  })
+  test("THE WEEKEND's subject names its dates; THE WEEK's keeps its count", () => {
+    const built = buildDigestEmailHtml({ cityName: 'Melbourne', events: [], origin: 'https://www.eventlinqs.com.au', unsubscribeUrl: 'u', edition: 'weekend', period: { start: '2026-11-21', end: '2026-11-22' } })
+    expect(built.subject).toBe('This weekend in Melbourne (21 to 22 November)')
+    expect(built.text).toContain('This weekend in Melbourne')
+    expect(buildDigestEmailHtml({ cityName: 'Melbourne', events: [], origin: 'o', unsubscribeUrl: 'u' }).subject).toBe('This week in Melbourne: 0 events worth a look')
   })
 })
 
@@ -295,7 +364,7 @@ describe('the price line never calls a night sold elsewhere free', () => {
         ticket_tiers: [],
       },
     ])
-    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })
+    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' }, 10, '', '', new Date('2026-07-04T22:00:00Z'))
     expect(events[0].priceLabel).toBe('Tickets on Humanitix')
   })
 })
@@ -316,10 +385,7 @@ describe('content hygiene', () => {
       { ...base, slug: 'private-one', visibility: 'private', is_seed_data: false },
       { ...base, slug: 'seed-one', visibility: 'public', is_seed_data: true },
     ])
-    const events = await fetchDigestEvents(client, 'geelong', {
-      start: '2026-07-04',
-      end: '2026-07-11',
-    })
+    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' }, 10, '', '', new Date('2026-07-04T22:00:00Z'))
     expect(events.map((e) => e.slug)).toEqual(['public-real'])
   })
 
@@ -348,6 +414,8 @@ describe('content hygiene', () => {
       { start: '2026-07-04', end: '2026-07-11' },
       10,
       'https://staging.eventlinqs.com',
+      '',
+      new Date('2026-07-04T22:00:00Z'),
     )
     expect(events[0].url).toBe('https://staging.eventlinqs.com/events/harbour-jazz')
   })
@@ -379,14 +447,14 @@ describe("a venue's answer on the weekly round-up (D3 (6))", () => {
         return { data: name === 'venue_distribution_off' && args.p_channel === 'weekly_roundup' ? [NO] : [], error: null }
       },
     })
-    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })
+    const events = await fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' }, 10, '', '', new Date('2026-07-04T22:00:00Z'))
     expect(events.map((e) => e.slug)).toEqual(['said-nothing', 'no-venue'])
     expect(asked).toEqual([{ name: 'venue_distribution_off', args: { p_channel: 'weekly_roundup' } }])
   })
 
   test("a failed read of the venues' answers stops the city, never sends the venue's nights", async () => {
     const client = stubClient(() => [night('said-no', NO)], [], { rpc: () => ({ data: null, error: { code: '42501', message: 'permission denied' } }) })
-    await expect(fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' })).rejects.toThrow('permission denied')
+    await expect(fetchDigestEvents(client, 'geelong', { start: '2026-07-04', end: '2026-07-11' }, 10, '', '', new Date('2026-07-04T22:00:00Z'))).rejects.toThrow('permission denied')
   })
 })
 

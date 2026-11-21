@@ -8,6 +8,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { getFeaturedHeroBackground, eventHeroMediaInput, heroIsTypographic } from '@/lib/images/event-media'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { isLibraryPhoto, LIBRARY_PHOTO_CREDIT } from '@/lib/listings/listing-photo'
+import { archivalNote } from '@/lib/media/photo-credits'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
@@ -56,7 +57,6 @@ import { HoursList } from './hours-list'
 import { ReportListingLink } from '@/components/events/report-listing-link'
 import { listingClaimable } from '@/lib/listings/claimable'
 import { shownVenueName } from '@/lib/venues/shown-venue-name'
-import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * THE FESTIVAL GUIDE: a free walk-in event's page (WI1, locked design A).
@@ -311,14 +311,14 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                 ))}
               </div>
             )}
-            {guide.cover_credit && (
+            {/* NO PHOTO CREDIT LINE (law 17 (d) as narrowed by Lawal, 19 November 2026, 11:36: "You don't put no photo
+                credit"): the guide's cover_credit and photo_credit stay recorded with the listing, never printed. An
+                archival cover still says it is from a past one, with no name (archivalNote; the project manager's
+                29 October 2026 ruling), once: for the set when the mosaic is drawn, else for the cover. Only a licence
+                that asks for one (the venue's Creative Commons photograph, below) prints a credit. */}
+            {archivalNote(guide.cover_credit, { plural: heroMosaic.length > 0 }) && (
               <figcaption data-text-source={source} className="mt-2 px-4 text-xs font-semibold text-ink-600 sm:px-6 lg:px-0">
-                {/* One credit: for the set when the mosaic is drawn, else for the cover. */}
-                {heroMosaic.length > 0 ? (
-                  <>{creditLine(guide.cover_credit.replace(/\bfestival$/, 'festivals'), { plural: true })}</>
-                ) : (
-                  <>{creditLine(guide.cover_credit)}</>
-                )}
+                {archivalNote(guide.cover_credit, { plural: heroMosaic.length > 0 })}
               </figcaption>
             )}
             {/* Lawal's ruling of 27 October 2026, 08:33: a listing night without its
@@ -487,11 +487,6 @@ export function WalkInEventView({ event, guide, remindMeOn, now, baseUrl, hero, 
                     <h2 id="past-photos" className="type-rail-heading scroll-mt-24 font-headline text-ink-900">{FROM_PAST_EVENTS}</h2>
                   )}
                   <EventGallery images={gallery} eventTitle={event.title} layout="walk-in" />
-                  {guide.photo_credit && (
-                    <p data-text-source={source} className="text-xs text-ink-600 lg:text-[13px]">
-                      {creditLine(guide.photo_credit, { plural: true })}.
-                    </p>
-                  )}
                 </Reveal>
               )}
 

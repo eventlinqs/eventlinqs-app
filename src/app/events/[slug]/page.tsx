@@ -98,7 +98,7 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 // Car 41c: the gallery and video load only where a night has them (src/components/features/events/event-media-lazy.tsx).
 import { EventGalleryLazy as EventGallery, EventVideoLazy as EventVideo } from '@/components/features/events/event-media-lazy'
 import { parseGallery } from '@/lib/media/event-media-model'
-import { creditLine, readPhotoCredits, withCredits } from '@/lib/media/photo-credits'
+import { archivalNote, readPhotoCredits, withCredits } from '@/lib/media/photo-credits'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { captureException } from '@/lib/observability/sentry'
 import { venueSlugify } from '@/lib/venues/resolver'
@@ -776,15 +776,18 @@ export default async function EventDetailPage({ params }: Props) {
   // Event Media Standard: the gallery (below the hero, lazy) and the one optional
   // allowlisted video embed. The cover raster (media.image) is the video poster so
   // the video never competes for the LCP.
-  // An organiser's photograph carries its credit (window 6's gap 3, 30 October 2026): the register's own words, only
-  // where the image's rights are on record and current (src/lib/media/photo-credits.ts). A failed read credits nothing
-  // and is reported; it never credits an image as if it were permitted.
+  // NO PHOTO CREDIT LINE ON THE EVENT PAGE (law 17 (d) as narrowed by Lawal, 19 November 2026, 11:36: "You don't put no
+  // photo credit"): an organiser's photograph given with permission is shown with no credit; its permission and scope
+  // stay recorded in the register (event_image_rights, social_assets), never printed. The register's words are still read
+  // for one thing: an archival photograph says it is from a past one (archivalNote, the PM's 29 October 2026 ruling),
+  // with no name. Only a licence that asks for a credit (the venue's Creative Commons photograph, below) prints one.
+  // A failed read prints nothing and is reported. scripts/guards/no-photo-credit-on-pages.mjs.
   const photoCredits = await readPhotoCredits(createAdminClient(), event.id).catch((error: unknown) => {
     captureException(error, { where: 'app/events/[slug]/page:photoCredits' })
     return new Map<string, string>()
   })
   const gallery = withCredits(parseGallery(event.gallery_urls), photoCredits)
-  const coverCredit = typographicHero || !heroCover.cover_image_url ? null : creditLine(photoCredits.get(heroCover.cover_image_url))
+  const coverNote = typographicHero || !heroCover.cover_image_url ? null : archivalNote(photoCredits.get(heroCover.cover_image_url))
   const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
   const hasVideo = !!(event.video_url && videoProvider)
 
@@ -1356,9 +1359,8 @@ export default async function EventDetailPage({ params }: Props) {
         {isLibraryPhoto(heroCover.cover_image_url) && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs text-ink-600 sm:px-6 lg:px-8">{LIBRARY_PHOTO_CREDIT}</p>
         )}
-        {/* The organiser's own cover photograph, credited in the register's words (photo-credits.ts), in the same place
-            and style as the library credit above; nothing for our typographic cover or an image not on record. */}
-        {/* The venue's photograph, its credit linked to the file page and the licence (the project manager's 18:57). */}
+        {/* The venue's photograph, its credit linked to the file page and the licence (the project manager's 18:57): a
+            licence credit, the one kind law 17 (d) keeps. */}
         {heroCover.image_credit && (
           <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">
             {heroCover.image_credit_file ? (
@@ -1374,8 +1376,9 @@ export default async function EventDetailPage({ params }: Props) {
             )}
           </p>
         )}
-        {coverCredit && !isLibraryPhoto(heroCover.cover_image_url) && (
-          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{coverCredit}</p>
+        {/* An archival cover says it is from a past one, in the register's own words, with no name (archivalNote). */}
+        {coverNote && !isLibraryPhoto(heroCover.cover_image_url) && (
+          <p className="mx-auto max-w-7xl px-4 pt-2 text-xs font-semibold text-ink-600 sm:px-6 lg:px-8">{coverNote}</p>
         )}
 
         {/* Event Media: the video (allowlisted embed, click-to-play facade so the

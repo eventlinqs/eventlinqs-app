@@ -305,15 +305,21 @@ describe('a walk-in page, read as rendered', () => {
    * wherever it is drawn. Production's /events/amcf-2026 hid the cover's 'Photo: AMCF, past festival' and the gallery's
    * 'From past festivals' below 1024 px, so a phone showed past photographs with nothing saying so.
    */
-  it('says the photographs are from a past festival on a phone too: the cover credit and the gallery heading at every width', () => {
+  it('prints no photo credit: neither the cover credit nor the photo credit the guide records (law 17 (d), 19 November 2026)', () => {
+    const { container } = drawn()
+    expect(container.textContent).not.toMatch(/Photos?: /)
+    expect(container.textContent).not.toContain('AMCF, past festival')
+  })
+
+  it('says the photographs are from a past festival on a phone too: the cover note and the gallery heading at every width', () => {
     const { container } = drawn()
     const hiddenOnAPhone = (el: Element | null) => {
       for (let e = el; e; e = e.parentElement) if (/(^|\s)hidden(\s|$)/.test(e.getAttribute('class') ?? '')) return true
       return false
     }
-    const credit = [...container.querySelectorAll('figcaption')].find((f) => f.textContent?.includes('Photo: AMCF, past festival')) ?? null
-    expect(credit).not.toBeNull()
-    expect(hiddenOnAPhone(credit)).toBe(false)
+    const note = [...container.querySelectorAll('figcaption')].find((f) => f.textContent === 'From a past festival') ?? null
+    expect(note).not.toBeNull()
+    expect(hiddenOnAPhone(note)).toBe(false)
     const heading = [...container.querySelectorAll('h2')].find((h) => h.textContent === 'From past festivals') ?? null
     expect(heading).not.toBeNull()
     expect(hiddenOnAPhone(heading)).toBe(false)
@@ -423,14 +429,15 @@ describe('a walk-in event with four or more of its own photos opens with its pho
     expect(tiles.map((a) => a.getAttribute('href'))).toEqual(['#past-photos', '#past-photos', '#past-photos', '#past-photos'])
     expect(tiles.map((a) => a.querySelector('img')?.getAttribute('alt'))).toEqual(['Dancers', 'Food', 'Drums', 'Fashion'])
     expect(container.querySelector('#past-photos')).not.toBeNull()
-    expect(container.textContent).toContain('Photos: AMCF, past festivals')
-    // One credit for the set, never the cover's singular credit beside it (the CONTROLLER's 10:56: the two ran together).
-    expect(container.textContent).not.toContain('Photo: AMCF, past festival')
+    // One note for the set, never the cover's singular note beside it (the CONTROLLER's 10:56: the two ran together).
+    const notes = [...container.querySelectorAll('figcaption')].map((f) => f.textContent)
+    expect(notes).toContain('From past festivals')
+    expect(notes).not.toContain('From a past festival')
   })
 
   it('keeps today\'s hero with fewer than four of its own photos', () => {
     const { container } = draw(four.slice(0, 2))
     expect(container.querySelector('[data-hero-mosaic]')).toBeNull()
-    expect(container.textContent).toContain('Photo: AMCF, past festival')
+    expect([...container.querySelectorAll('figcaption')].map((f) => f.textContent)).toContain('From a past festival')
   })
 })

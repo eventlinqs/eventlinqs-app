@@ -148,16 +148,20 @@ export const MIN_LOGO_ASPECT = 0.25
 
 /**
  * Accepted upload formats by their real (magic-byte) sharp format id. SVG and any
- * non-raster / active content is rejected (XSS). HEIC/HEIF (iPhone) is accepted
- * then converted to JPEG on ingest. GIF/TIFF/etc are not photographic event media
- * and are rejected.
+ * non-raster / active content is rejected (XSS). 'heif' stays because sharp 0.35
+ * reports AVIF as heif; an iPhone HEIC (HEVC inside HEIF) cannot be decoded here and
+ * is refused in words before any decode (src/lib/media/heic.ts, 21 November 2026).
+ * GIF/TIFF/etc are not photographic event media and are rejected.
  */
 export const ACCEPTED_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'avif', 'heif'] as const
 export type AcceptedImageFormat = (typeof ACCEPTED_IMAGE_FORMATS)[number]
 
-/** The browser `accept` attribute mirror of ACCEPTED_IMAGE_FORMATS. */
-export const IMAGE_ACCEPT_ATTR =
-  'image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif'
+/**
+ * The browser `accept` attribute. HEIC is NOT listed (WINDOW 5C, 21 November 2026): the platform cannot decode it, iOS
+ * converts a HEIC to JPEG on upload, and macOS Safari does so when the list leaves HEIC out, as Humanitix's and
+ * Eventbrite's lists do (src/lib/media/heic.ts).
+ */
+export const IMAGE_ACCEPT_ATTR = 'image/jpeg,image/png,image/webp,image/avif'
 
 /** Allowlisted video embed providers. EventLinqs never self-hosts the file. */
 export const VIDEO_PROVIDERS = ['youtube', 'vimeo', 'instagram', 'tiktok'] as const

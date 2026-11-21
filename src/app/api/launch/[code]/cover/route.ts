@@ -11,6 +11,7 @@ import { attachDraftCover, isKitCode, readDraftByToken } from '@/lib/launch/draf
  import { sniffImage } from '@/lib/launch/sniff-image'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { IMAGE_DOWNSCALE_LONG_EDGE, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS } from '@/lib/media/limits'
+import { HEIC_REFUSAL, isUndecodableHeif } from '@/lib/media/heic'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,7 +43,7 @@ export const dynamic = 'force-dynamic'
  * decode.
  */
 
-const REFUSED = 'That file is not a photo we can use. Upload a JPEG, PNG, WebP, AVIF or HEIC image.'
+const REFUSED = 'That file is not a photo we can use. Upload a JPEG, PNG, WebP or AVIF image.'
 
 export async function POST(
   request: NextRequest,
@@ -124,6 +125,10 @@ export async function POST(
   } catch (error) {
     captureException(error, { where: 'app/api/launch/[code]/cover/route:125' })
     return NextResponse.json({ ok: false, error: REFUSED }, { status: 415 })
+  }
+  // An iPhone HEIC: its header reads, its pixels do not (src/lib/media/heic.ts). Said in words, never the generic refusal.
+  if (isUndecodableHeif(meta.format, meta.compression)) {
+    return NextResponse.json({ ok: false, error: HEIC_REFUSAL }, { status: 415 })
   }
   const width = meta.width ?? 0
   const height = meta.height ?? 0

@@ -5,21 +5,16 @@
  *
  * Receives `initialSubject` pre-computed by the server from ?topic= and ?interest= params.
  *
- * ON SUBMIT IT OPENS A `mailto:` to {contactAddress('hello')} with the subject and
- * body pre-filled, then shows the inline success state. It does NOT post to an
- * API and it does NOT console.log; the header said "console.logs" until
- * 15 August 2026 and that was simply false, which is worse than no comment.
+ * ON SUBMIT IT POSTS THE MESSAGE TO /api/contact, which delivers it to the support inbox, and says "Message received"
+ * ONLY when that answer is ok. Any other answer says plainly that the message was not sent and gives the address.
  *
- * WHY MAILTO IS THE SHIPPED ANSWER, and not a stub. The message leaves the
- * browser through the sender's own mail client, so it needs no inbox, no
- * deliverability reputation and no spam handling on our side, and it cannot
- * silently drop a message the way an unmonitored form endpoint does. The
- * trade-off is real and known: a reader with no mail client configured gets
- * nothing, which is why the page also renders the address in full beside the
- * form.
- *
- * TODO(lawal 2026-10-01): revisit once a monitored inbox and Resend inbound
- * routing exist. Until then this is the deliberate choice, not an unfinished one.
+ * WHY IT CHANGED (WINDOW 5C, 21 November 2026). Until today it opened a mailto: link and, half a second later, showed
+ * "Message received. Thanks." whatever happened. With no mail app set up (most phones' browsers, many work computers)
+ * nothing opened, so a visitor was told their message had arrived when nothing had been sent. The note here said to
+ * revisit mailto "once a monitored inbox ... exist[s]" (its note of 1 October 2026); the CRM has read the hello@ inbox every
+ * 15 minutes since 19 November 2026, so that condition is met. Found by the production journey
+ * tests/e2e/production-journeys/d3-forms.journey.ts; held by tests/component/contact-form-says-only-what-happened.test.tsx
+ * and tests/unit/contact/contact-route.test.ts.
  */
 
 import { useState } from 'react'
@@ -27,6 +22,7 @@ import Link from 'next/link'
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { reportClientError } from '@/lib/observability/client-error-report'
 import { SHOWN_LABELS, SOCIAL_HREF } from '@/lib/brand/social-profiles'
 
 function TwitterIcon() {
@@ -64,20 +60,41 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
   const [message, setMessage] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+  const [website, setWebsite] = useState('')
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitting(true)
-    const body = `${message}\n\n---\nFrom: ${name}\nReply-to: ${email}`
-    const mailto = `mailto:${contactAddress('hello')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    if (typeof window !== 'undefined') {
-      window.location.href = mailto
+    if (submitting) return
+    setFailed(null)
+    if (!name.trim() || !email.trim() || !subject.trim() || message.trim().length < 2) {
+      setFailed('Please fill in your name, email, subject and message.')
+      return
     }
-    setTimeout(() => {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message, website }),
+      })
+      if (res.ok) {
+        setSubmitted(true)
+      } else if (res.status === 400) {
+        setFailed('Please check your email address and try again.')
+      } else if (res.status === 429) {
+        setFailed(`Too many messages from this connection just now. Please try again in a few minutes, or email us at ${contactAddress('hello')}.`)
+      } else {
+        setFailed(`Your message was not sent. Please try again, or email us at ${contactAddress('hello')}.`)
+      }
+    } catch (error) {
+      reportClientError(error, { where: 'components/features/contact/ContactForm:send' })
+      setFailed(`Your message was not sent. Please check your connection and try again, or email us at ${contactAddress('hello')}.`)
+    } finally {
       setSubmitting(false)
-      setSubmitted(true)
-    }, 500)
+    }
   }
+
 
   return (
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
@@ -159,6 +176,24 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
               onChange={(e) => setMessage((e.target as HTMLTextAreaElement).value)}
             />
 
+            {/* A field a person never sees; a script that fills every field is quietly dropped by the route. */}
+            <div aria-hidden="true" className="hidden">
+              <label htmlFor="contact-website">Website</label>
+              <input
+                id="contact-website"
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+            {failed ? (
+              <p role="alert" className="text-sm text-[var(--color-error,#b91c1c)]">
+                {failed}
+              </p>
+            ) : null}
             <Button
               type="submit"
               variant="primary"

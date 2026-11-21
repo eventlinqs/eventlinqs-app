@@ -47,15 +47,17 @@ beforeEach(() => {
 })
 
 describe('every guide at once', () => {
-  it('invalidates the home, /events and the sitemap, and every city, suburb and state page by route pattern', () => {
+  it('invalidates the home, /events, the weekend guide and the sitemap, and every city, suburb and state page by route pattern', () => {
     const out = revalidateEveryGuideFromRouteHandler()
     expect(revalidatePath).toHaveBeenCalledWith('/', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/events', undefined)
+    // The Weekend Guide lists Victoria's nights (law 46 (b)), so every guide's refresh refreshes it (law 16).
+    expect(revalidatePath).toHaveBeenCalledWith('/weekend', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/city/[slug]', 'page')
     expect(revalidatePath).toHaveBeenCalledWith('/city/[slug]/[suburb]', 'page')
     expect(revalidatePath).toHaveBeenCalledWith('/state/[state]', 'page')
-    expect(out).toEqual(['/', '/events', '/sitemap.xml', '/city/[slug]', '/city/[slug]/[suburb]', '/state/[state]'])
+    expect(out).toEqual(['/', '/events', '/weekend', '/sitemap.xml', '/city/[slug]', '/city/[slug]/[suburb]', '/state/[state]'])
   })
 
   it('expires every data cache under the guides at once, never stale-while-revalidate', () => {

@@ -2061,6 +2061,50 @@
       "source": "Wikimedia Commons",
       "picked_by": "the CONTROLLER, 3 November 2026 07:12 (Bendigo A, replacing the tram)",
       "downloaded_on": "2026-11-03"
+    },
+    "illustrative-family": {
+      "file": "/images/library/illustrative-family.jpg",
+      "photographer": "Rahul Pandit",
+      "photographer_url": "https://www.pexels.com/@rahulp9800",
+      "page": "https://www.pexels.com/photo/assorted-color-crayons-2078147/",
+      "pexels_id": 2078147,
+      "alt": "Close-up of colorful crayons arranged on a bright yellow background, perfect for creative and educational themes.",
+      "query": "colourful crayons children drawing table",
+      "looked_at": "2026-11-21: crayons in a row on yellow, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-comedy": {
+      "file": "/images/library/illustrative-comedy.jpg",
+      "photographer": "Amit Batra",
+      "photographer_url": "https://www.pexels.com/@amit-batra-3062797",
+      "page": "https://www.pexels.com/photo/a-microphone-and-lights-in-the-background-4658541/",
+      "pexels_id": 4658541,
+      "alt": "A dramatic black and white photo of a microphone onstage with bright concert lights.",
+      "query": "microphone stand stage spotlight",
+      "looked_at": "2026-11-21: a microphone under stage lights, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-education": {
+      "file": "/images/library/illustrative-education.jpg",
+      "photographer": "Erik Mclean",
+      "photographer_url": "https://www.pexels.com/@introspectivedsgn",
+      "page": "https://www.pexels.com/photo/books-on-brown-wooden-shelves-8045884/",
+      "pexels_id": 8045884,
+      "alt": "Colorful books neatly arranged on modern shelves in a bright library.",
+      "query": "library bookshelves",
+      "looked_at": "2026-11-21: library shelves of books, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
+    },
+    "illustrative-sports": {
+      "file": "/images/library/illustrative-sports.jpg",
+      "photographer": "Toni Cuenca",
+      "photographer_url": "https://www.pexels.com/@ifreestock",
+      "page": "https://www.pexels.com/photo/two-football-stadium-lights-776805/",
+      "pexels_id": 776805,
+      "alt": "Bright stadium spotlights under a clear blue sky by empty seats, symbolizing sports events.",
+      "query": "empty stadium lights",
+      "looked_at": "2026-11-21: stadium floodlights over empty seats, no person (law 46 (f): illustrative, no recognisable person its subject)",
+      "downloaded_on": "2026-11-21"
     }
   }
 }

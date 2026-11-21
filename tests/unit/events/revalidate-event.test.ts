@@ -58,6 +58,11 @@ describe('every surface an event appears on', () => {
     expect(paths).toContain('/city/melbourne')
   })
 
+  it("a Victorian night refreshes the Weekend Guide (law 46 (b), law 16); a night in another state does not", () => {
+    expect(revalidateEventSurfaces({ slug: 'e', venue_city: 'Geelong' })).toContain('/weekend')
+    expect(revalidateEventSurfaces({ slug: 'e', venue_city: 'Sydney' })).not.toContain('/weekend')
+  })
+
   it('invalidates /categories/<real slug>, which is a real page again', () => {
     // THIS ASSERTION IS THE REVERSE OF WHAT IT WAS, AND THE REASON IS RECORDED
     // RATHER THAN THE ASSERTION SIMPLY BEING FLIPPED.

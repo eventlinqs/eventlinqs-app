@@ -95,6 +95,8 @@ export function ConnectOnboardingCard({
   const [selectedCountry, setSelectedCountry] = useState<string>(country ?? 'AU')
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // The one email check before payouts (law 50 (b)): an instruction, never shown as an error.
+  const [checkMessage, setCheckMessage] = useState<string | null>(null)
 
   const sortedCountries = useMemo(() => {
     return [...allowedCountries].sort((a, b) => {
@@ -141,13 +143,18 @@ export function ConnectOnboardingCard({
   async function startOnboarding() {
     setSubmitting(true)
     setErrorMessage(null)
+    setCheckMessage(null)
     try {
       const res = await fetch('/api/stripe/connect/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ organisationId, country: selectedCountry }),
       })
-      const json = (await res.json()) as { url?: string; error?: string }
+      const json = (await res.json()) as { url?: string; error?: string; emailCheck?: 'sent' | 'not_sent' }
+      if (json.emailCheck === 'sent') {
+        setCheckMessage(json.error ?? 'We have emailed you a link. Press it, then set up payouts.')
+        return
+      }
       if (!res.ok || !json.url) {
         setErrorMessage(json.error ?? 'Could not start onboarding. Try again.')
         return
@@ -215,6 +222,15 @@ export function ConnectOnboardingCard({
             payoutsEnabled={payoutsEnabled}
             onRefresh={() => router.refresh()}
           />
+        )}
+
+        {checkMessage && (
+          <div
+            role="status"
+            className="mt-4 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2 text-sm text-ink-900"
+          >
+            <p>{checkMessage}</p>
+          </div>
         )}
 
         {errorMessage && (

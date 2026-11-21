@@ -15,6 +15,7 @@ import {
   RECOMMENDED_COVER_WIDTH,
   type AcceptedImageFormat,
 } from './limits'
+import { HEIC_REFUSAL, isUndecodableHeif } from './heic'
 
 // Server image pipeline. The single place every organiser image is validated and
 // normalised before it touches storage. SPEC 1.5:
@@ -24,7 +25,8 @@ import {
 //   - DOWNSCALE oversize photos to IMAGE_DOWNSCALE_LONG_EDGE, never reject them;
 //     refuse only a decompression bomb (MAX_IMAGE_PIXELS). Ordinary phone and
 //     camera output is accepted and resized, never turned away.
-//   - HEIC/HEIF (iPhone) converted to JPEG on ingest
+//   - an iPhone HEIC (HEVC inside HEIF) is refused in words before any decode: the installed sharp cannot decode HEVC
+//     (src/lib/media/heic.ts); AVIF (AV1 inside HEIF) is decoded and kept
 //   - strip EXIF + all metadata (privacy: removes GPS/device; also shrinks files)
 //   - generate a blur placeholder (blurDataURL) per image
 // Server re-encode to AVIF/WebP for DELIVERY is delegated to /_next/image (the
@@ -48,7 +50,7 @@ export type ImageProcessResult =
   | { ok: false; error: string }
 
 const REJECT_NOT_IMAGE =
-  'That file is not a supported image. Upload a photo in JPEG, PNG, WebP, AVIF, or HEIC.'
+  'That file is not a supported image. Upload a photo in JPEG, PNG, WebP or AVIF.'
 
 function isAccepted(format: string | undefined): format is AcceptedImageFormat {
   return !!format && (ACCEPTED_IMAGE_FORMATS as readonly string[]).includes(format)
@@ -124,6 +126,11 @@ export async function processEventImage(
   if (format === 'svg' || !isAccepted(format)) {
     return { ok: false, error: REJECT_NOT_IMAGE }
   }
+  // An iPhone HEIC: sharp reads its header and cannot decode its pixels (src/lib/media/heic.ts). Said in words, here,
+  // before the encode below would throw (WINDOW 5C, 21 November 2026).
+  if (isUndecodableHeif(format, meta.compression)) {
+    return { ok: false, error: HEIC_REFUSAL }
+  }
 
   const width = meta.width ?? 0
   const height = meta.height ?? 0
@@ -198,12 +205,19 @@ export async function processEventImage(
   // sharp 0.35 made dead code. It is NOT carried across: keeping it would
   // re-break the transcode defect that decideOutputEncoding exists to fix.
   let out: { data: Buffer; info: OutputInfo }
-  if (encoding.kind === 'webp') {
-    out = await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
-  } else if (encoding.kind === 'avif') {
-    out = await pipeline.avif({ quality: 60 }).toBuffer({ resolveWithObject: true })
-  } else {
-    out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer({ resolveWithObject: true })
+  // A decode that fails here (a file whose header reads well and whose pixels do not) is answered in words, never thrown
+  // past the organiser as an unhandled error (WINDOW 5C, 21 November 2026: the HEIC case did exactly that).
+  try {
+    if (encoding.kind === 'webp') {
+      out = await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
+    } else if (encoding.kind === 'avif') {
+      out = await pipeline.avif({ quality: 60 }).toBuffer({ resolveWithObject: true })
+    } else {
+      out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer({ resolveWithObject: true })
+    }
+  } catch (error) {
+    captureException(error, { where: 'lib/media/image-pipeline:encode' })
+    return { ok: false, error: REJECT_NOT_IMAGE }
   }
   const { contentType, ext } = encoding
 

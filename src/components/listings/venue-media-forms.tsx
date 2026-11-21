@@ -3,6 +3,7 @@
 import { addVenuePhotoAction, challengeVenuePhotoAction, replaceVenuePhotoAction, withdrawVenuePhotoAction } from '@/app/actions/venue-media'
 import { createSectionAnswers, SubmitButton } from '@/components/ui/section-answers'
 import { VENUE_PHOTO_YES_WORDS } from '@/lib/venues/venue-photo-words'
+import { IMAGE_ACCEPT_ATTR } from '@/lib/media/limits'
 
 /**
  * A claimed venue's own photograph forms on /dashboard/organisation/media, each showing the database's answer in its
@@ -65,8 +66,8 @@ export function AddVenuePhotoForm({ venues }: { venues: { id: string; name: stri
         </label>
       )}
       <label className="mt-4 block text-sm font-medium text-ink-900">
-        A photograph of the venue (JPEG, PNG, WebP, AVIF or HEIC, under 10MB)
-        <input type="file" name="file" accept="image/*" required className={file} />
+        A photograph of the venue (JPEG, PNG, WebP or AVIF, under 10MB)
+        <input type="file" name="file" accept={IMAGE_ACCEPT_ATTR} required className={file} />
       </label>
       <label className="mt-4 block text-sm font-medium text-ink-900">
         Credit to show (optional)
@@ -92,7 +93,7 @@ export function ReplaceVenuePhotoForm({ venueId, imageId }: { venueId: string; i
       <input type="hidden" name="imageId" value={imageId} />
       <label className="block text-sm font-medium text-ink-900">
         Replace with
-        <input type="file" name="file" accept="image/*" required className={file} />
+        <input type="file" name="file" accept={IMAGE_ACCEPT_ATTR} required className={file} />
       </label>
       <YesBoxes />
       {line}

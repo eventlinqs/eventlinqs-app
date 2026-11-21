@@ -13,6 +13,7 @@ import {
   RECOMMENDED_LOGO_LONG_EDGE,
   type AcceptedImageFormat,
 } from './limits'
+import { HEIC_REFUSAL, isUndecodableHeif } from './heic'
 
 /**
  * THE ORGANISER LOGO PIPELINE.
@@ -161,6 +162,10 @@ export async function processOrganisationLogo(
   const format = meta.format
   if (format === 'svg' || !isAccepted(format)) {
     return { ok: false, error: REJECT_NOT_IMAGE }
+  }
+  // An iPhone HEIC: its header reads, its pixels do not (src/lib/media/heic.ts). Said in words before the encode throws.
+  if (isUndecodableHeif(format, meta.compression)) {
+    return { ok: false, error: HEIC_REFUSAL }
   }
 
   const width = meta.width ?? 0

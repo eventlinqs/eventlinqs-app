@@ -74,6 +74,11 @@ export const PROPER_NOUNS = [
     what: 'national peak body for multicultural and multifaith LGBTIQ communities, AGMC, tenant of the Victorian Pride Centre in St Kilda',
     source: 'https://pridecentre.org.au/tenants/australian-glbtiq-multicultural-council/',
   },
+  {
+    name: 'African Music and Cultural Festival',
+    what: 'AMCF, the Melbourne festival at Federation Square, 20 to 22 November 2026; its own site names it so (read 21 November 2026)',
+    source: 'https://amcf.org.au',
+  },
 ]
 
 /**

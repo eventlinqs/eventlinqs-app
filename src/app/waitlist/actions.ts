@@ -9,7 +9,8 @@ import { isFlagEnabled } from '@/lib/flags'
 import { sendEmail } from '@/lib/email/send'
 import { getRequestOrigin } from '@/lib/site-origin'
 import { buildWaitlistConfirmationEmail } from '@/lib/waitlist/confirmation-email'
-import { resolveConfirmSecret, sealConfirmRequest } from '@/lib/newsletter/confirm-token'
+import { headers } from 'next/headers'
+import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import {
   CONSENT_VERSION,
   WAITLIST_DIGEST_CONSENT_VERSION,
@@ -29,8 +30,8 @@ export type JoinWaitlistResult =
       cityName: string
       foundingCandidate: boolean
       role: WaitlistRole
-      /** Whether the email carrying the Confirm link was accepted by the mail provider (the alerts start on Confirm). */
-      confirmationEmailed: boolean
+      /** Whether the city's alerts are on: the digest consent was written at the click (law 50 (a)). */
+      alertsOn: boolean
     }
   | { ok: false; error: string }
 
@@ -122,31 +123,25 @@ export async function joinCityWaitlist(input: {
   // the one-click unsubscribe link). Best-effort: a mail failure never voids
   // the join; the UI reports the state honestly either way.
   //
-  // DOUBLE OPT IN (WINDOW 5A, 12 November 2026, the waitlist car of Release 2): the join records the waitlist row and
-  // nothing more; the alerts start only when the owner of the address presses Confirm on the page its sealed link opens
-  // (src/lib/newsletter/confirm.ts records the waitlist's own wording then). The digest no longer reads a waitlist row
-  // by itself (src/lib/broadcast/digest.ts, WAITLIST_ROWS_REACH_THE_DIGEST).
-  let confirmationEmailed = false
-  let confirmLinkMade = false
+  // ONE STEP (law 50 (a), Lawal, 21 November 2026, 10:06: "If someone ticks the box for anything, that is the
+  // record"): the join writes the city's digest consent at once, through the one writer, with the waitlist's own wording
+  // and version (the wording the form showed), the time and the request's IP (ACMA: "who gave the consent, when and
+  // how"). The email that follows says the person is on the list and carries no Confirm button; no confirm email, ever.
+  // (Before 21 November the join wrote the row only and the alerts waited for a Confirm press.)
+  const forwarded = (await headers()).get('x-forwarded-for')
+  const recorded = await recordPlatformDigestConsent(admin, {
+    email,
+    citySlug,
+    source: "waitlist-page, joined by the form's click (law 50)",
+    at: new Date().toISOString(),
+    consentText: joinConsentText(city.name),
+    consentVersion: WAITLIST_DIGEST_CONSENT_VERSION,
+    reference: forwarded ? forwarded.split(',')[0].trim() : null,
+  })
+  if (!recorded) console.error('[waitlist] the join is recorded but its digest consent was not written')
+  const alertsOn = recorded
   try {
     const origin = await getRequestOrigin()
-    const secret = resolveConfirmSecret()
-    const confirmUrl = secret
-      ? `${origin}/subscribe/confirm/${sealConfirmRequest(
-          {
-            email,
-            citySlug,
-            cityName: city.name,
-            consentVersion: WAITLIST_DIGEST_CONSENT_VERSION,
-            source: 'waitlist-page',
-            requestedAt: Date.now(),
-            kind: 'waitlist',
-          },
-          secret,
-        )}`
-      : null
-    confirmLinkMade = confirmUrl !== null
-    if (!confirmUrl) console.error('[waitlist] no confirmation key: the join email carries no Confirm link')
     const message = buildWaitlistConfirmationEmail({
       cityName: city.name,
       fullName,
@@ -154,7 +149,7 @@ export async function joinCityWaitlist(input: {
       foundingCandidate,
       marketingOptIn,
       unsubscribeUrl: `${origin}/waitlist/unsubscribe/${row.unsubscribe_token}`,
-      confirmUrl,
+      confirmUrl: null,
     })
     const { id } = await sendEmail({
       to: email,
@@ -162,13 +157,12 @@ export async function joinCityWaitlist(input: {
       messageType: 'waitlist_place_available',
       recipientRole: 'prospect',
     })
-    confirmationEmailed = confirmLinkMade
-    console.log(`[waitlist] confirmation sent to ${email} (resend id ${id})`)
+    console.log(`[waitlist] on the list email sent (resend id ${id})`)
   } catch (err) {
     console.error('[waitlist] confirmation email failed (join still recorded):', err)
   }
 
-  return { ok: true, cityName: city.name, foundingCandidate, role, confirmationEmailed }
+  return { ok: true, cityName: city.name, foundingCandidate, role, alertsOn }
 }
 
 /**

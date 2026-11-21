@@ -13,8 +13,11 @@ import {
   fetchDigestRecipients,
   editionDigestCities,
   resolveDigestPeriod,
+  type DigestEdition,
 } from '@/lib/broadcast/digest'
 import { DIGEST_MAX_RECIPIENTS_PER_RUN, planDigestRun } from '@/lib/broadcast/digest-run'
+import { buildWhatsOn } from '@/lib/newsletter/whats-on'
+import { readWhatsOnEdition } from '@/lib/newsletter/edition'
 import { filterPermittedRecipients } from '@/lib/consent/resolver'
 import { LOCAL_DIGEST_PURPOSE } from '@/lib/consent/purposes'
 
@@ -73,7 +76,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient()
   const origin = getSiteUrl()
   const now = new Date()
-  const freshPeriod = resolveDigestPeriod(now)
+  // THE WEEK or THE WEEKEND (law 45). The weekend is rehearsed only, never sent to subscribers from here: the send
+  // record keys one row per city per week, so a Friday edition would read Wednesday's row as already sent. Its own
+  // record comes with the newsletter engine (NL-1).
+  const edition: DigestEdition = request.nextUrl.searchParams.get('edition') === 'weekend' ? 'weekend' : 'week'
+  if (edition === 'weekend' && !request.nextUrl.searchParams.get('preview_to') && !request.nextUrl.searchParams.get('test_to')) {
+    return NextResponse.json(
+      { ok: false, error: 'edition=weekend is rehearsed with preview_to or test_to only; its send to subscribers needs its own send record' },
+      { status: 400 },
+    )
+  }
+  const freshPeriod = resolveDigestPeriod(now, edition)
+  // NL-1 (law 46): design=whats-on rehearses Lawal's design A; a send to subscribers keeps the built digest until the
+  // footer's pages answer on production (law 5), stage 2 of the newsletter brief.
+  const design = request.nextUrl.searchParams.get('design') === 'whats-on' && (request.nextUrl.searchParams.get('preview_to') || request.nextUrl.searchParams.get('test_to')) ? 'whats-on' : 'built'
 
   const onlyCity = request.nextUrl.searchParams.get('city')
   const dryRun = request.nextUrl.searchParams.get('dry_run') === '1'
@@ -147,7 +163,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         fetchDigestRecipients(admin, citySlug),
         // The origin is what turns each event row into a tracked short link, so
         // the clicks this send produces reach the organiser's reach panel.
-        fetchDigestEvents(admin, citySlug, period, 10, origin, city.name),
+        fetchDigestEvents(admin, citySlug, period, 10, origin, city.name, now),
       ])
     } catch (error) {
       /*
@@ -218,14 +234,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Render only. Nothing is sent and nothing is written, so this is safe
       // to run against a live audience at any time.
       const own = recipients.find((r) => r.email === previewTo.toLowerCase())
-      const built = buildDigestEmailHtml({
-        cityName: city.name,
-        events,
-        origin,
-        unsubscribeUrl: own
-          ? `${origin}/unsubscribe/digest/${own.unsubscribeToken}`
-          : `${origin}/account/notifications`,
-      })
+      const unsubscribeUrl = own ? `${origin}/unsubscribe/digest/${own.unsubscribeToken}` : `${origin}/account/notifications`
+      // NL-1: design=whats-on draws Lawal's design A from the edition's own reads (src/lib/newsletter); its slots that
+      // failed the copy gate are said in leftOut.
+      const built =
+        design === 'whats-on'
+          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl })).edition)
+          : { ...buildDigestEmailHtml({ cityName: city.name, events, origin, edition, period, unsubscribeUrl }), leftOut: [] as string[] }
       results.push({
         city: citySlug,
         preview: {
@@ -234,6 +249,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           subject: built.subject,
           html: built.html,
           text: built.text,
+          leftOut: built.leftOut,
         },
       })
       continue
@@ -244,14 +260,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // the address when it has a consent row, no audit row written.
       const own = recipients.find((r) => r.email === testTo.toLowerCase())
       const token = own?.unsubscribeToken
-      const { subject, html, text } = buildDigestEmailHtml({
-        cityName: city.name,
-        events,
-        origin,
-        unsubscribeUrl: token
-          ? `${origin}/unsubscribe/digest/${token}`
-          : `${origin}/account/notifications`,
-      })
+      const unsubscribeUrl = token ? `${origin}/unsubscribe/digest/${token}` : `${origin}/account/notifications`
+      const { subject, html, text } =
+        design === 'whats-on'
+          ? buildWhatsOn((await readWhatsOnEdition(admin, { citySlug, cityName: city.name, edition, now, origin, unsubscribeUrl })).edition)
+          : buildDigestEmailHtml({ cityName: city.name, events, origin, edition, period, unsubscribeUrl })
       await sendEmail({
         to: testTo,
         subject,
@@ -316,6 +329,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         cityName: city.name,
         events,
         origin,
+        edition,
+        period,
         unsubscribeUrl: `${origin}/unsubscribe/digest/${recipient.unsubscribeToken}`,
       })
       try {

@@ -353,6 +353,39 @@ const DRILLS = [
    * no-filler-in-event-collections (Lawal's 17:44 of 31 October 2026: no open-slot cards in any public collection,
    * ever): the regression is the invitation card fill coming back into a home rail.
    */
+  /*
+   * forms-say-only-what-happened (WINDOW 5C, 21 November 2026): the contact page opened a mailto: link and said
+   * 'Message received' whatever happened. The regression is the form handing the visitor to a mail app again.
+   */
+  {
+    name: 'the contact form hands the visitor to a mail app again',
+    guard: `${GUARDS}/forms-say-only-what-happened.mjs`,
+    file: 'src/components/features/contact/ContactForm.tsx',
+    find: "      const res = await fetch('/api/contact', {",
+    replace: "      window.location.href = `mailto:${contactAddress('hello')}`\n      const res = await fetch('/api/contact', {",
+    expect: 'hands the visitor to a mail app',
+  },
+  /*
+   * no-photo-credit-on-pages (WINDOW 5C, 21 November 2026; law 17 (d) as narrowed 19 November 2026): the event page,
+   * the gallery and the guide cards printed the register's photo credit. The regressions are a card handing the
+   * night's recorded credit on again, and the gallery printing it through creditLine again.
+   */
+  {
+    name: "a guide card prints the night's recorded photo credit again",
+    guard: `${GUARDS}/no-photo-credit-on-pages.mjs`,
+    file: 'src/components/features/city-guide/city-guide.tsx',
+    find: "credit: archivalNote(r.thumbCredit) }",
+    replace: "credit: r.thumbCredit ?? null }",
+    expect: 'prints a recorded organiser photo credit',
+  },
+  {
+    name: 'the event gallery prints the photo credit through creditLine again',
+    guard: `${GUARDS}/no-photo-credit-on-pages.mjs`,
+    file: 'src/components/features/events/event-gallery.tsx',
+    find: "{archivalNote(img.credit)}</p>}",
+    replace: "{creditLine(img.credit)}</p>}",
+    expect: 'prints a photo credit through creditLine',
+  },
   {
     name: 'a home rail draws the invitation card fill again',
     guard: `${GUARDS}/no-filler-in-event-collections.mjs`,

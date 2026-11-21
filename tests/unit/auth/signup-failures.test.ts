@@ -34,8 +34,11 @@ import { NextResponse } from 'next/server'
 
 const generateLink = vi.fn()
 const deleteUser = vi.fn()
+const updateUserById = vi.fn()
 const createAdminClient = vi.fn()
 const sendSignupConfirmation = vi.fn()
+const signInWithPassword = vi.fn()
+const profileUpdates: unknown[] = []
 const applyRateLimit = vi.fn()
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -44,6 +47,14 @@ vi.mock('@/lib/supabase/admin', () => ({
 
 vi.mock('@/lib/email/auth-emails', () => ({
   sendSignupConfirmation: (...a: unknown[]) => sendSignupConfirmation(...a),
+}))
+
+// The session client the route signs the new account in with (law 50 (b)).
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({
+    auth: { signInWithPassword: (...a: unknown[]) => signInWithPassword(...a) },
+    from: () => ({ update: (v: unknown) => ({ eq: async () => { profileUpdates.push(v); return {} } }) }),
+  }),
 }))
 
 vi.mock('@/lib/rate-limit/middleware', () => ({
@@ -81,6 +92,8 @@ const WEAK_PASSWORD = {
 
 type Body = {
   ok: boolean
+  signedIn?: boolean
+  next?: string
   failure?: string
   error?: string
   field?: string | null
@@ -91,7 +104,7 @@ type Body = {
 const shown: string[] = []
 
 async function post(
-  overrides: Partial<{ fullName: string; email: string; password: string; role: string }> = {},
+  overrides: Partial<{ fullName: string; email: string; password: string; role: string; website: string }> = {},
 ): Promise<{ status: number; body: Body }> {
   const request = new Request('http://localhost:3000/api/auth/signup', {
     method: 'POST',
@@ -119,7 +132,7 @@ async function post(
 beforeEach(() => {
   applyRateLimit.mockResolvedValue(null)
   createAdminClient.mockReturnValue({
-    auth: { admin: { generateLink, deleteUser } },
+    auth: { admin: { generateLink, deleteUser, updateUserById } },
     from: () => ({
       select: () => ({ eq: () => ({ single: async () => ({ data: null }) }) }),
       update: () => ({ eq: async () => ({}) }),
@@ -131,6 +144,9 @@ beforeEach(() => {
   })
   sendSignupConfirmation.mockResolvedValue({ id: 'msg_1' })
   deleteUser.mockResolvedValue({})
+  updateUserById.mockResolvedValue({ data: { user: { id: 'user_1' } }, error: null })
+  signInWithPassword.mockResolvedValue({ data: {}, error: null })
+  profileUpdates.length = 0
 })
 
 afterEach(() => vi.clearAllMocks())
@@ -245,28 +261,28 @@ describe('the rate limiter fired', () => {
   })
 })
 
-describe('the verification email could not be sent', () => {
-  test('it is named as our transport, not as a problem with the account', async () => {
-    sendSignupConfirmation.mockRejectedValueOnce(new Error('Resend 401 unauthorised'))
+describe('the new account could not be confirmed (law 50 (b))', () => {
+  test('it is named as our outage, not as a problem with the details', async () => {
+    updateUserById.mockResolvedValueOnce({ data: null, error: { status: 500, code: 'unexpected_failure', message: 'GoTrue 500' } })
     const { status, body } = await post()
 
-    expect(status).toBe(502)
-    expect(body.failure).toBe('mail_transport_failed')
-    expect(body.error).toContain('problem on our side')
+    expect(status).toBe(503)
+    expect(body.failure).toBe('service_unavailable')
+    expect(body.error).toContain('not with your details')
     expect(body.error).not.toBe(GENERIC)
   })
 
-  test('the half-created account is rolled back so the retry can succeed', async () => {
-    sendSignupConfirmation.mockRejectedValueOnce(new Error('Resend down'))
+  test('the half-made account is removed so the retry can succeed', async () => {
+    updateUserById.mockRejectedValueOnce(new TypeError('fetch failed'))
     await post()
     expect(deleteUser).toHaveBeenCalledWith('user_1')
   })
 
-  test("the transport's own error string never reaches the browser", async () => {
-    sendSignupConfirmation.mockRejectedValueOnce(new Error('Resend 401 unauthorised'))
+  test("the provider's own error string never reaches the browser", async () => {
+    updateUserById.mockResolvedValueOnce({ data: null, error: { status: 500, code: 'x', message: 'GoTrue internal detail 777' } })
     const { body } = await post()
-    expect(body.error).not.toContain('Resend')
-    expect(body.error).not.toContain('401')
+    expect(body.error).not.toContain('GoTrue')
+    expect(body.error).not.toContain('777')
   })
 })
 
@@ -375,9 +391,9 @@ describe('anything else GoTrue declines', () => {
     expect(body.error).not.toContain('12345')
   })
 
-  test('a minted link with no token is our failure, and the account is removed', async () => {
+  test('a minted link with no user is our failure, and nothing is confirmed', async () => {
     generateLink.mockResolvedValueOnce({
-      data: { user: { id: 'user_2' }, properties: {} },
+      data: { user: null, properties: {} },
       error: null,
     })
     const { status, body } = await post()
@@ -385,18 +401,54 @@ describe('anything else GoTrue declines', () => {
     expect(status).toBe(503)
     expect(body.failure).toBe('service_unavailable')
     expect(body.error).not.toBe(GENERIC)
-    expect(deleteUser).toHaveBeenCalledWith('user_2')
+    expect(updateUserById).not.toHaveBeenCalled()
   })
 })
 
-describe('the happy path still works', () => {
-  test('a fresh address is created and the confirmation is sent', async () => {
+describe('one step: the press makes the account and signs the person in (law 50 (b), Lawal, 21 November 2026)', () => {
+  test('a fresh address is created, confirmed with the password typed, marked pending for payouts, and signed in', async () => {
     const { status, body } = await post()
 
     expect(status).toBe(200)
-    expect(body.ok).toBe(true)
-    expect(sendSignupConfirmation).toHaveBeenCalledTimes(1)
+    expect(body).toMatchObject({ ok: true, signedIn: true, next: '/dashboard' })
+    expect(updateUserById).toHaveBeenCalledWith('user_1', {
+      password: 'ValidPassword123',
+      email_confirm: true,
+      app_metadata: { email_check: 'pending' },
+    })
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'organiser@example.com', password: 'ValidPassword123' })
+    expect(profileUpdates).toEqual([{ role: 'organiser' }])
     expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  test('no confirmation email is sent, ever', async () => {
+    await post()
+    expect(sendSignupConfirmation).not.toHaveBeenCalled()
+  })
+
+  test('a failed sign in keeps the account and says so, so the form sends the person to sign in', async () => {
+    signInWithPassword.mockResolvedValueOnce({ data: {}, error: { status: 500, code: 'unexpected_failure', message: 'x' } })
+    const { status, body } = await post()
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ ok: true, signedIn: false })
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  test('an attendee is signed in and never made an organiser', async () => {
+    const { body } = await post({ role: 'attendee' })
+    expect(body.signedIn).toBe(true)
+    expect(profileUpdates).toEqual([])
+  })
+})
+
+describe('abuse is stopped without a step (law 50 (d))', () => {
+  test('a filled honeypot is answered as a person would be, and nothing is created', async () => {
+    const { status, body } = await post({ website: 'https://spam.example' })
+    expect(status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(generateLink).not.toHaveBeenCalled()
+    expect(updateUserById).not.toHaveBeenCalled()
+    expect(signInWithPassword).not.toHaveBeenCalled()
   })
 })
 

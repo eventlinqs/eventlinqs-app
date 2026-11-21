@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { GalleryImage } from '@/components/media/GalleryImage'
 import type { GalleryImage as GalleryItem } from '@/lib/media/event-media-model'
-import { creditLine } from '@/lib/media/photo-credits'
+import { archivalNote } from '@/lib/media/photo-credits'
 
 // Event gallery, rendered BELOW the hero on the event detail page. Each tile is a
 // real <button> that opens a lightbox - satisfying the affordance law (no
@@ -56,9 +56,9 @@ export function EventGallery({ images, eventTitle, layout = 'default' }: Props) 
                 className="transition-transform duration-200 group-hover:scale-[1.03]"
               />
             </button>
-            {/* The register's credit, only where the image's rights are on record (src/lib/media/photo-credits.ts),
-                in the walk-in page's credit style. */}
-            {creditLine(img.credit) && <p className="mt-1 text-xs font-semibold text-ink-600">{creditLine(img.credit)}</p>}
+            {/* No photo credit (law 17 (d), 19 November 2026); an archival photograph says it is from a past one, in
+                the register's own words with no name (archivalNote, the PM's 29 October 2026 ruling). */}
+            {archivalNote(img.credit) && <p className="mt-1 text-xs font-semibold text-ink-600">{archivalNote(img.credit)}</p>}
           </li>
         ))}
       </ul>
@@ -177,7 +177,7 @@ function Lightbox({
           className="mx-auto max-h-[85vh] w-auto rounded-lg object-contain"
         />
         {image.alt && <p className="mt-2 text-center text-sm text-white/80">{image.alt}</p>}
-        {creditLine(image.credit) && <p className="mt-1 text-center text-xs font-semibold text-white/70">{creditLine(image.credit)}</p>}
+        {archivalNote(image.credit) && <p className="mt-1 text-center text-xs font-semibold text-white/70">{archivalNote(image.credit)}</p>}
       </div>
     </div>,
     document.body,

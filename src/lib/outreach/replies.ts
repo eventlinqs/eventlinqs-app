@@ -58,6 +58,10 @@ const ANSWERS: { key: string; outcome: 'question' | 'later'; pattern: RegExp }[]
   { key: 'reply_not_now', outcome: 'later', pattern: /\b(not (right )?now|maybe later|another time|too busy|after (the )?(season|christmas|summer|new year))\b/i },
 ]
 
+/** An acknowledgement's opening and its one message: received or passed on (no auto header needed). */
+const ACK_OPEN = /^\s*(thank you|thanks) for (contacting|your (e-?mail|message|enquiry|inquiry|interest)|getting in touch|reaching out)\b/i
+const ACK_BODY = /\b(has been (forwarded|passed on|received|sent on)|we have received your|we('ll| will) (respond|get back|be in touch|reply)|this is an automated|do not reply to this (e-?mail|message)|one of our team will)\b/i
+
 export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text' | 'headers' | 'hasAttachments'>): ReplyKind {
   const auto = (m.headers['auto-submitted'] ?? '').toLowerCase()
   const isDaemon = /^(mailer-daemon|postmaster)@/i.test(m.fromAddress)
@@ -79,6 +83,13 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   if (/^\s*(yes|yep|yeah|yes please|sure|sounds (good|great)|happy (to|for you)|go ahead|that works|absolutely|of course|love to)\b/im.test(text) && !/\b(not|no|don'?t)\b/i.test(text.split('\n')[0] ?? '')) hits.push({ outcome: 'yes', key: 'thank_you' })
   for (const a of ANSWERS) if (a.pattern.test(text)) hits.push({ outcome: a.outcome, key: a.key })
   if (/\b(talk to|speak (to|with)|contact|email|reach out to)\s+[A-Z][a-z]+\b/.test(text) || /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/.test(text)) hits.push({ outcome: 'referred', key: null })
+
+  // AN ACKNOWLEDGEMENT WITH NO AUTO HEADER (Bendigo Symphony Orchestra's of 21 November 2026, 7.01 am: 'Thank you for
+  // contacting the Bendigo Symphony Orchestra. Your message has been forwarded to our Committee.', read then as a person's
+  // 'unclear' and put to Lawal): a short message that only thanks for the contact and says it was received or passed on
+  // is an automatic reply, closed by the engine. Only when nothing in it is a person's answer (no stop, no yes or no, no
+  // question, no referral), and never past eighty words.
+  if (hits.length === 0 && words <= 80 && ACK_OPEN.test(text) && ACK_BODY.test(text) && !text.includes('?')) return { kind: 'auto_reply' }
 
   // A stop or a take down wins over anything else in the same reply: honouring a stop is never the wrong reading.
   const stop = hits.find((h) => h.outcome === 'stop') ?? hits.find((h) => h.outcome === 'take_down')

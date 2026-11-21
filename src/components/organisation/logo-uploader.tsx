@@ -167,8 +167,8 @@ export function LogoUploader({
 
           <ul className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-600">
             <li>
-              PNG with a transparent background is best. JPEG, WebP, AVIF and iPhone HEIC also
-              work. Vector files such as SVG are not accepted.
+              PNG with a transparent background is best. JPEG, WebP and AVIF also work. Vector
+              files such as SVG, and iPhone HEIC files, are not accepted: save a HEIC as a JPEG first.
             </li>
             <li>
               At least {MIN_LOGO_LONG_EDGE} pixels on the longest side, because it goes onto an A4

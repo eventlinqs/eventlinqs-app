@@ -95,7 +95,7 @@ export const RESERVED_CODES: readonly string[] = [
   'm',
   'legal', 'login', 'marketing', 'offline', 'orders', 'organisers', 'out', 'photos', 'press', 'pricing', 'queue', 'remind', 's',
   'scan', 'signup', 'squad', 'start', 'subscribe', 'submit-event', 't', 'this-weekend', 'tickets', 'unsubscribe', 'venues',
-  'verify-email-sent', 'waitlist',
+  'verify-email-sent', 'waitlist', 'weekend',
   // Held back on purpose: the permanent redirects from the community rename,
   // and the obvious next routes. Cheap to reserve, expensive to reclaim.
   'blog', 'cart', 'culture', 'cultures', 'logout', 'music', 'reset', 'robots',

@@ -30,4 +30,10 @@ describe("an organiser page leads with the organiser's own photo", () => {
     expect(page).toMatch(/\bORGANISER_HERO_PHOTOS\b/)
     expect(page).not.toMatch(/coverImage=\{null\}/)
   })
+
+  it('prints no photo credit under the photo, only that it is from a past one (law 17 (d), 19 November 2026)', () => {
+    const page = readFileSync(resolve(process.cwd(), 'src/app/organisers/[handle]/page.tsx'), 'utf8')
+    expect(page).not.toMatch(/\{\s*heroPhoto\??\.credit\s*\}/)
+    expect(page).toMatch(/archivalNote\(heroPhoto\.credit\)/)
+  })
 })
