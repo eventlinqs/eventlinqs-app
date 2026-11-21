@@ -72,9 +72,6 @@ type History = {
   readonly byRun: Map<string, { feedDays: string[]; storyDays: string[]; had: string[] }>
   readonly usedPhotos: Set<string>
   readonly recentLines: Set<string>
-  readonly feedToday: number
-  readonly feedLastSeven: number
-  readonly storiesToday: number
 }
 
 /**
@@ -108,9 +105,6 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
   const byRun = new Map<string, { feedDays: string[]; storyDays: string[]; had: string[] }>()
   const usedPhotos = new Set<string>()
   const recentLines = new Set<string>()
-  let feedToday = 0
-  let feedLastSeven = 0
-  let storiesToday = 0
   for (const p of (data ?? []) as Record<string, unknown>[]) {
     if (redrawing.has(p.id as string)) continue
     const parts = parseMomentKey(p.moment_key as string)
@@ -139,13 +133,8 @@ async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = n
       const first = (newest.versions?.instagram?.caption ?? '').split('\n\n')[0]?.trim()
       if (first) recentLines.add(first)
     }
-    if (parts.day === today) {
-      if (parts.format === 'feed') feedToday += 1
-      else storiesToday += 1
-    }
-    if (parts.format === 'feed' && age >= 0 && age < 7) feedLastSeven += 1
   }
-  return { byRun, usedPhotos, recentLines, feedToday, feedLastSeven, storiesToday }
+  return { byRun, usedPhotos, recentLines }
 }
 
 /** Every photograph the register permits for social now, per night (social_usable_images_all, the one rule). */
@@ -267,11 +256,11 @@ export async function planLifecyclePieces(
     /** Pieces the sweep draws again: read as if not yet drawn, so each moment is planned again with its own photograph. */
     readonly redrawing?: ReadonlySet<string>
     /**
-     * AN OWNER'S WORD FOR ONE NIGHT (the admin's Post now, store.ts postNightNow; Lawal, 22 November 2026, 00:32: "her
-     * post goes to Facebook and Instagram now ... I don't care about the time ... the schedule"): only that night's feed
-     * moment for today is drawn, outside the account's daily feed count, and judged at this minute rather than at a
-     * posting band. The hours and the day's count are what the owner waives, recorded by the action; every other check
-     * (a permitted photograph not used before, the night not ended, the publish gate at approval and at scheduling) stands.
+     * THE OWNER'S WORD FOR ONE NIGHT, CARRIED BY THE ENGINE (store.ts postNightNow, the social run's ?post=now; Lawal, 22
+     * November 2026, 00:32: "her post goes to Facebook and Instagram now ... I don't care about the time ... the
+     * schedule"): only that night's feed moment for today is drawn, judged at this minute rather than at a posting band.
+     * The posting hours are what his word waives; every other check (a permitted photograph not used before, the night
+     * not ended, the publish gate at approval and at scheduling) stands.
      */
     readonly ownerAsked?: { readonly eventId: string }
   },
@@ -320,8 +309,7 @@ export async function planLifecyclePieces(
     const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now })
     return 'why' in band ? band.why : null
   }
-  const account = input.ownerAsked ? { feedToday: 0, feedLastSeven: 0, storiesToday: 0 } : { feedToday: history.feedToday, feedLastSeven: history.feedLastSeven, storiesToday: history.storiesToday }
-  const choice = chooseToday(candidates, account, drawable)
+  const choice = chooseToday(candidates, drawable)
   for (const p of choice.passedOver) {
     const title = byId.get(nightForDay(p.candidate.run, dayIn(input.now, p.candidate.run.zone)).eventId)?.title ?? p.candidate.run.key
     notes.push(`${title} ${p.candidate.moment.kind} ${p.candidate.moment.format}: passed over, ${p.why}`)

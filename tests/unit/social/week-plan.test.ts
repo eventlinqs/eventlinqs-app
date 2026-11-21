@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayStart, planMoments, STARTING_CALENDAR, type CadenceRule, type SchedulePiece } from '@/lib/social/cadence'
+import { addedSlot, dayStart, planMoments, STARTING_CALENDAR, type CadenceRule, type SchedulePiece } from '@/lib/social/cadence'
 
 /*
  * THE WEEK'S PLAN FITS THE WEEK (the PM's 09:10 of 16 November 2026: Lawal's switch-on moves to the evening, and the
@@ -44,9 +44,12 @@ const OUT14: SchedulePiece[] = [
 ]
 
 describe("the week's plan", () => {
-  it("out-14's week from the evening switch-on: twelve of fourteen placed, each before its earliest night ends", () => {
+  it("out-14's week from the evening switch-on: all fourteen placed, each before its earliest night ends", () => {
+    // Twelve took a band, as before; the two the bands could not fit before their nights take an added slot (Lawal,
+    // 22 November 2026, 01:31: the plan "adds slots when the day needs more, never drops an event's due moment").
     const plan = planMoments(OUT14, RULES, NONE, RUN)
-    expect(plan.moments.size).toBe(12)
+    expect(plan.moments.size).toBe(14)
+    expect(plan.late).toEqual([])
     for (const p of OUT14) {
       const at = plan.moments.get(p.id)
       if (at) expect(at.getTime()).toBeLessThanOrEqual((p.deadline as Date).getTime())
@@ -58,21 +61,44 @@ describe("the week's plan", () => {
     expect(plan.moments.get('9')).toEqual(mel('2026-11-21T21:00'))
   })
 
-  it('the two Melbourne spotlights with a Monday night are never placed late: returned with the next free band', () => {
+  it('the two Melbourne spotlights with a Monday night take added slots before their night, never late, never together', () => {
     const plan = planMoments(OUT14, RULES, NONE, RUN)
-    expect(plan.late.map((l) => l.id).sort()).toEqual(['14', '5'])
-    for (const l of plan.late) {
-      expect(l.firstFree).toEqual(mel('2026-11-17T09:00'))
-      expect(l.deadline).toEqual(mel('2026-11-17T00:00'))
+    const a = plan.moments.get('14') as Date
+    const b = plan.moments.get('5') as Date
+    for (const at of [a, b]) {
+      expect(at.getTime()).toBeGreaterThanOrEqual(RUN.getTime())
+      expect(at.getTime()).toBeLessThanOrEqual(mel('2026-11-17T00:00').getTime())
     }
+    expect(Math.abs(a.getTime() - b.getTime())).toBeGreaterThanOrEqual(15 * 60_000)
   })
 
-  it('no two feed moments inside the 12 hour floor, and no two stories inside 2 hours', () => {
+  it('a piece is late only when its own window holds no minute at all', () => {
+    const gone = { id: 'g', format: 'feed' as const, approvedAt: APPROVED, deadline: mel('2026-11-16T19:00') }
+    const plan = planMoments([gone], RULES, NONE, RUN)
+    expect(plan.late.map((l) => l.id)).toEqual(['g'])
+    expect(addedSlot([], RUN, mel('2026-11-16T19:00'), null)).toBeNull()
+  })
+
+  it('an added slot never shares a minute: a full window narrows the spacing before it ever drops a piece', () => {
+    const from = mel('2026-11-17T10:00')
+    const deadline = mel('2026-11-17T10:30')
+    const busy: number[] = []
+    for (let i = 0; i < 31; i += 1) {
+      const at = addedSlot(busy, from, deadline, null)
+      expect(at).not.toBeNull()
+      busy.push((at as Date).getTime())
+    }
+    expect(new Set(busy).size).toBe(31)
+    expect(addedSlot(busy, from, deadline, null)).toBeNull()
+  })
+
+  it('the bands keep the 12 hour floor; only an added slot, made because the day needs it, comes closer', () => {
     const plan = planMoments(OUT14, RULES, NONE, RUN)
-    const byFormat = (format: 'feed' | 'story') =>
-      OUT14.filter((p) => p.format === format && plan.moments.has(p.id)).map((p) => (plan.moments.get(p.id) as Date).getTime()).sort((a, b) => a - b)
-    const feed = byFormat('feed')
-    for (let i = 1; i < feed.length; i += 1) expect(feed[i] - feed[i - 1]).toBeGreaterThanOrEqual(12 * 3_600_000)
+    const added = new Set(['14', '5'])
+    const banded = OUT14.filter((p) => p.format === 'feed' && !added.has(p.id)).map((p) => (plan.moments.get(p.id) as Date).getTime()).sort((a, b) => a - b)
+    for (let i = 1; i < banded.length; i += 1) expect(banded[i] - banded[i - 1]).toBeGreaterThanOrEqual(12 * 3_600_000)
+    const all = OUT14.filter((p) => p.format === 'feed').map((p) => (plan.moments.get(p.id) as Date).getTime()).sort((a, b) => a - b)
+    for (let i = 1; i < all.length; i += 1) expect(all[i] - all[i - 1]).toBeGreaterThanOrEqual(60_000)
   })
 
   it('a schedule still waiting from an earlier approval is taken: a piece approved an hour later goes a full gap after it', () => {

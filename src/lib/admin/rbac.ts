@@ -34,9 +34,6 @@ export type AdminCapability =
   // Item 21: switch faster payouts on or off for one proven organiser. Lawal's, so super_admin alone (its set takes
   // every capability; no other role lists it).
   | 'admin.payouts.faster'
-  // Post one night now on Instagram and Facebook, outside the posting hours and the day's feed count (Lawal, 22 November
-  // 2026, 00:32; store.ts postNightNow). The owner's word, so super_admin alone (no other role lists it).
-  | 'admin.social.post_now'
   // Venue Revenue Sharing Program: enrol/un-enrol, rate, venue payouts
   | 'admin.venues.manage'
   // Broadcast Layer stage switches (feature_flags table)
@@ -59,7 +56,6 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.disputes.manage',
   'admin.payouts.disburse',
   'admin.payouts.faster',
-  'admin.social.post_now',
   'admin.venues.manage',
   'admin.flags.manage',
   'admin.network.manage',
@@ -79,7 +75,6 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.disputes.manage': 'Manage disputes',
   'admin.payouts.disburse': 'Disburse payouts',
   'admin.payouts.faster': 'Switch faster payouts for a proven organiser',
-  'admin.social.post_now': 'Post a night now on Instagram and Facebook',
   'admin.venues.manage': 'Manage venue revenue sharing',
   'admin.flags.manage': 'Switch platform feature stages',
   'admin.network.manage': 'View demand signal and issue founding invites',

@@ -213,10 +213,11 @@ describe("an owner's Post now and a photograph that can no longer post (Colours 
     expect(herPieces(pieces)).toEqual([])
   })
 
-  it("the owner's word draws that night's feed post alone, outside the day's one feed place; without it, the place is spent", async () => {
+  it("another night's feed post today never takes her day's post (no daily count); the owner's word draws hers alone", async () => {
     const rows = { history: [yesterdaysStory, todaysOtherFeed], assets: [photo, otherPhoto] }
     const usual = await plan(rows)
-    expect(usual.pieces.filter((p) => p.format === 'feed')).toEqual([])
+    // Her one photograph goes once (law 37 (l), never twice): it carries her day's feed post.
+    expect(herPieces(usual.pieces).map((p) => p.format)).toEqual(['feed'])
     const asked = await plan(rows, { eventId: 'e-sun' })
     expect(asked.pieces).toHaveLength(1)
     expect(asked.pieces[0]).toMatchObject({ format: 'feed', eventIds: ['e-sun'] })

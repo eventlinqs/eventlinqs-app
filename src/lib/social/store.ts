@@ -2553,17 +2553,18 @@ export type PostedNow = {
 }
 
 /**
- * POST THIS NIGHT NOW, ON THE OWNER'S WORD (Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram now
- * ... I don't care about the time ... the schedule"; the PM's 00:33 and 00:56). On 22 November the engine could not post
- * Asia Oasis's Colours of Asia on its last night: the day's one feed place was AMCF's, and the posting hours start at
- * 06:40. The owner's press in the admin is now the software's own path for that word, each step the engine's own:
+ * POST THIS NIGHT NOW, ON THE OWNER'S WORD, FROM THE ENGINE'S SIDE (Lawal, 22 November 2026, 00:32: "her post goes to
+ * Facebook and Instagram now ... I don't care about the time ... the schedule"; his 01:23: posting is done by the engine
+ * from our side through Blotato, never through Lawal in the admin; the PM's 00:33 and 00:56). On 22 November the engine
+ * could not post Asia Oasis's Colours of Asia on its last night before its posting hours. The social run's ?post=now
+ * (started by .github/workflows/social-post-now.yml) is now the software's own path for that word, each step the engine's:
  *   1. the planner draws the night's feed moment for today on its best permitted photograph not used before
- *      (planCampaignWeek with ownerAsked: outside the day's feed count, judged at this minute);
- *   2. the checked approval, the publish gate at approval (approvePieceChecked), in the presser's name;
+ *      (planCampaignWeek with ownerAsked, judged at this minute);
+ *   2. the checked approval, the publish gate at approval (approvePieceChecked), in the standing approval's name;
  *   3. a slot at this minute on Instagram and Facebook (scheduleApprovedPieces with goNow), with the publish gate and each
  *      network's fit at scheduling, and never once its night has started unless its words say it is on now;
  *   4. the publisher (publishDuePieces: Blotato, the switch, never a blind resend), then the provider's read back.
- * Waived, and only these: the posting hours and the account's daily feed count. How the leaders do it (read 22 November
+ * Waived, and only this: the posting hours, for the night the word names. How the leaders do it (read 22 November
  * 2026): Meta Business Suite publishes a scheduled post at once by 'Publish now'
  * (https://www.facebook.com/business/help/816464273497113), and Buffer keeps a 'Share Now' button beside every queued post
  * (https://support.buffer.com/article/656-saving-and-scheduling-draft-posts).

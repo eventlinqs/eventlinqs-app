@@ -65,13 +65,14 @@ describe('the publish gate is on every route', () => {
     const makers = src.filter(({ f, t }) => /make(Blotato|Meta)Publisher\(/.test(t) && !/src\/lib\/social\/(blotato|meta)-publisher\.ts$/.test(f)).map(({ f }) => f)
     expect(makers).toEqual(['src/lib/social/meta-wiring.ts'])
     const runners = src.filter(({ t }) => /socialPublisherFromEnv\(/.test(t)).map(({ f }) => f).filter((f) => f !== 'src/lib/social/meta-wiring.ts')
-    // The hourly run, and the owner's Post now (22 November 2026), which hands the publisher to postNightNow alone.
-    expect(runners.sort()).toEqual(['src/app/admin/(authed)/social/actions.ts', 'src/app/api/cron/social-publish/route.ts'])
+    expect(runners).toEqual(['src/app/api/cron/social-publish/route.ts'])
     const route = read('src/app/api/cron/social-publish/route.ts')
     expect(route).toMatch(/publishDuePieces\(/)
-    const action = read('src/app/admin/(authed)/social/actions.ts')
-    expect(action.match(/socialPublisherFromEnv\(/g)).toHaveLength(1)
-    expect(action).toMatch(/postNightNow\(db, \{[^}]*publisher: socialPublisherFromEnv\(db, now\)/)
+    // The post now for one night (22 November 2026) is the run's own mode, never an admin press (Lawal's 01:23): it hands
+    // the one publisher to postNightNow, which runs it only through publishDuePieces.
+    const postNow = route.slice(route.indexOf("searchParams.get('post') === 'now'"), route.indexOf('\n  }\n', route.indexOf("searchParams.get('post') === 'now'")))
+    expect(postNow).toMatch(/postNightNow\(db, \{[^}]*publisher: socialPublisherFromEnv\(db, now\)/)
+    expect(route.indexOf("searchParams.get('post') === 'now'")).toBeGreaterThan(route.indexOf('requireCronAuth(request)'))
     const store = read('src/lib/social/store.ts')
     expect(store.slice(store.indexOf('export async function postNightNow('))).toMatch(/await publishDuePieces\(db, input\.now, \{ siteOrigin: input\.siteOrigin, publisher: input\.publisher/)
   })

@@ -320,6 +320,15 @@ export function planMoments(
       break
     }
     if (p.deadline && at.getTime() > p.deadline.getTime()) {
+      // THE DAY ADDS A SLOT (Lawal, 22 November 2026, 01:31: the plan "adds slots when the day needs more, never drops an
+      // event's due moment for room"): every band before its deadline is taken, so it takes the first free minute inside
+      // its own window (addedSlot); it is late only when its window has no minute left at all.
+      const added = addedSlot(busy[p.format], new Date(Math.max(now.getTime(), p.approvedAt.getTime(), p.notBefore?.getTime() ?? 0)), p.deadline, p.days ?? null, zone)
+      if (added) {
+        moments.set(p.id, added)
+        busy[p.format].push(added.getTime())
+        continue
+      }
       late.push({ id: p.id, firstFree: at, deadline: p.deadline })
       continue
     }
@@ -327,6 +336,26 @@ export function planMoments(
     busy[p.format].push(at.getTime())
   }
   return { moments, late }
+}
+
+/** The spacings an added slot keeps from every post of its format, widest first, in minutes: none ever share a minute. */
+export const ADDED_SLOT_SPACINGS_MINUTES: readonly number[] = [15, 5, 1]
+
+/**
+ * AN ADDED SLOT (Lawal, 22 November 2026, 01:31): the first whole minute from `from` to `deadline` that keeps the widest
+ * spacing it can from every post of its format already placed, on its own weekdays where it has them; null only when the
+ * window holds no free minute at all. Pure.
+ */
+export function addedSlot(busy: readonly number[], from: Date, deadline: Date, days: readonly number[] | null, zone: string = SOCIAL_ZONE): Date | null {
+  const first = Math.ceil(from.getTime() / 60_000) * 60_000
+  for (const spacing of ADDED_SLOT_SPACINGS_MINUTES) {
+    const gap = spacing * 60_000
+    for (let t = first; t <= deadline.getTime(); t += 60_000) {
+      if (days && days.length > 0 && !days.includes(weekdayOf(new Date(t), zone))) continue
+      if (!busy.some((b) => Math.abs(b - t) < gap)) return new Date(t)
+    }
+  }
+  return null
 }
 
 /**

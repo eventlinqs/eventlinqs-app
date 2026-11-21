@@ -12,7 +12,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { deleteRefusalSentence, judgeDeleteEligibility, readMoneyRecordCounts } from '@/lib/events/delete-eligibility'
 import { eventActionForm, eventDeleteForm, eventFeatureForm } from '../actions'
 import { updateOverridePricingAction } from '../../pricing/actions'
-import { postNightNowAction } from '../../social/actions'
 import { PageHeader, SECONDARY, StatusChip, type ChipTone } from '@/components/admin/ui/admin-kit'
 import { dayDate, dayTime } from '@/lib/dates/admin-dates'
 
@@ -189,17 +188,6 @@ export default async function AdminEventDetailPage({
                 ))}
               </div>
             )}
-            {/* Post this night now (store.ts postNightNow): the owner's alone, on a published night; the engine draws the
-                post on the night's own permitted photograph and publishes it through the publisher, every check standing
-                but the posting hours and the day's feed count. The answer is shown on /admin/social. */}
-            {can(session, 'admin.social.post_now') && event.status === 'published' ? (
-              <form action={postNightNowAction} className="mb-4 border-b border-[var(--admin-line)] pb-4">
-                <input type="hidden" name="event" value={event.id} />
-                <button type="submit" data-press="post-night-now" className={QUIET}>
-                  Post this night now on Instagram and Facebook
-                </button>
-              </form>
-            ) : null}
             {/* Feature only on a live event (the PM's 05:37 fix 4): an archived event offers Restore and Delete alone. */}
             {featureAllowed(event.status) ? (
             <form action={eventFeatureForm} className="mt-4 border-t border-[var(--admin-line)] pt-4">

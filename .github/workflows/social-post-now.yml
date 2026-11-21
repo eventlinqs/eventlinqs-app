@@ -1,0 +1,43 @@
+# POST ONE NIGHT NOW, FROM OUR SIDE (Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram now ... I
+# don't care about the time ... the schedule"; his 01:23: posting is done by the engine from our side through Blotato, never
+# through Lawal in the admin). Started by hand, for one night named by its id. It calls production's own social run with
+# ?post=now and the secret only this repository's Actions hold; the run draws that night's feed post on its permitted
+# photograph, approves it checked, gives it a slot at this minute (the posting hours waived for that night by the owner's
+# word, and nothing else), publishes it through the publisher and reads it back (src/lib/social/store.ts postNightNow).
+# No cron is added or quickened. The answer names the piece and each network's answer, never a person's address.
+name: social post now
+
+on:
+  workflow_dispatch:
+    inputs:
+      event:
+        description: the night's event id (a uuid), the night the owner's word names
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-post-now
+  cancel-in-progress: false
+
+jobs:
+  post:
+    name: one night, posted now through the engine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's social run to post the night now
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          EVENT: ${{ inputs.event }}
+        run: |
+          set -euo pipefail
+          [[ "$EVENT" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "REFUSED: event $EVENT is not an id"; exit 2; }
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "https://www.eventlinqs.com.au/api/cron/social-publish?post=now&event=${EVENT}" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]
+          grep -q '"posted":true' answer.json
