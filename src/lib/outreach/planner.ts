@@ -43,7 +43,7 @@ export function addressRank(address: string, personName: string | null): number 
   return 3
 }
 
-export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[] }
+export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[]; error?: string }
 
 const SPACING_MINUTES = 10
 const DAY_MS = 86_400_000
@@ -151,6 +151,9 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
   for (const t of firstKeys.data ?? []) if (isLifecycleKey(t.key as string)) lifecyclePlays.set(t.id as string, t.key as LifecycleKey)
 
   for (const play of plays.data ?? []) {
+    // ONE PLAY IN ITS OWN GUARD (Lawal's 15:14 of 22 November 2026; the PM's 15:15, F2): a play whose reads or drafts
+    // throw is reported with its id and the reason, and every other play still drafts.
+    try {
     const capAnswer = await db.rpc('outreach_play_cap_today', { p_play: play.id })
     const cap = capAnswer.data ?? 0
     const lifecycle = play.step1_template_id !== null ? (lifecyclePlays.get(play.step1_template_id) ?? null) : null
@@ -305,6 +308,11 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       }
     }
     reports.push(report)
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      console.error(`[outreach/planner] play ${play.id} (${play.name}) not planned:`, error)
+      reports.push({ playId: play.id, name: play.name, cap: 0, usedToday: 0, queued: 0, held: [], refused: [], error })
+    }
   }
   return reports
 }
