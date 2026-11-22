@@ -248,14 +248,20 @@ export async function queueApprovedHeldLetters(
     }
     reasons.push(...voiceProblems(voice, policy))
     const template = t.outreach_templates ? `${t.outreach_templates.key} v${t.outreach_templates.version}` : ''
-    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked, address').eq('id', t.contact_id).maybeSingle()
+    const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked, address, engine_check_note, engine_checked_on').eq('id', t.contact_id).maybeSingle()
     const own = ownApprovalClear({ subject: t.subject ?? '', body: t.body, to: contact.data?.address ?? null }, policy.version, deps.letterApprovals ?? letterApprovals())
     const clear = own ?? standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
     if (!clear.cleared) reasons.push(clear.reason)
     if (contact.error || !contact.data) reasons.push('its contact could not be read')
     else if (!contact.data.basis) reasons.push('no basis for writing is recorded for its contact')
     else if (contact.data.basis === 'conspicuous_publication' && !contact.data.no_marketing_statement_checked) {
-      reasons.push("the check that their page says nothing against messages is a person's, and it is not recorded")
+      // The engine's own page check clears it (./engine-recheck.ts, the 23:45 turn), never a person (the PM's 15:48, F5 (c)).
+      const note = contact.data.engine_check_note
+      reasons.push(
+        note
+          ? `the engine's page check has not cleared its address yet (${contact.data.engine_checked_on}: ${note}); it is read again in the next pool turn`
+          : "the engine's page check has not read its address yet; it is read in the next pool turn",
+      )
     }
     if (reasons.length > 0) {
       report.waiting.push({ id: t.id, reasons })

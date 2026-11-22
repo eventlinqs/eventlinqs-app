@@ -160,7 +160,9 @@ describe('the self queue', () => {
     expect(r.queued).toEqual([])
     expect(r.waiting.map((w) => w.id).sort()).toEqual(['bad-words', 'geelong', 'no-basis', 'unchecked', 'v2'])
     expect(calls.some((c) => c.op === 'update')).toBe(false)
-    expect(r.waiting.find((w) => w.id === 'unchecked')?.reasons.join(' ')).toContain('is not recorded')
+    // The engine's own page check clears an address, never a person's (the PM's 15:48 of 22 November 2026, F5 (c)).
+    expect(r.waiting.find((w) => w.id === 'unchecked')?.reasons.join(' ')).toContain("the engine's page check has not read its address yet")
+    expect(r.waiting.find((w) => w.id === 'unchecked')?.reasons.join(' ')).not.toContain("a person's")
   })
 
   test('with the sender in test or hold mode nothing queues itself, so test mode never fails a letter', async () => {
