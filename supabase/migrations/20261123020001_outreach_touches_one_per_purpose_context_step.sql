@@ -20,7 +20,8 @@
 --   step            1, 2 or 3 of a cadence; a partner message or a reply has no step and is never a duplicate here
 --                   (its own keys hold it: one message 8 per night report, one stop confirmation).
 -- So the same letter about the same event is refused at its second draft, and a letter of another purpose, or about
--- another event, is a different message. WHETHER the organiser may be written to at all, and when, is not this index's
+-- another event, is a different message. A follow up's step before it, and the first letter it counts its days from,
+-- are read within its own contact, category and context (the last part of this file, outreach_touch_is_lawful). WHETHER the organiser may be written to at all, and when, is not this index's
 -- question: every workflow reads ONE contact policy before drafting and again at send (src/lib/outreach/contact-policy.ts:
 -- suppression, opt out and bounce; a reply; a claimed or partner organiser's own flow; at most one unsolicited first touch
 -- inside its gap), so a new kind of message is never a way round it.
@@ -72,3 +73,102 @@ comment on index public.outreach_touches_one_per_step is
 
 comment on index public.outreach_touches_one_per_step_without_context is
   'A message no workflow gave a context keeps the rule of 28 October: one non void message per contact and step. It holds main''s code, which writes no context, while this migration runs ahead of the contact policy''s code.';
+
+-- ---------------------------------------------------------------------------
+-- A FOLLOW UP READS THE FIRST LETTER OF ITS OWN SEQUENCE (the PM's 03:15 of 23 November 2026).
+-- ---------------------------------------------------------------------------
+-- outreach_touch_is_lawful found a follow up's earlier letters by contact and step alone: the step before it
+-- ("where contact_id = new.contact_id and step = new.step - 1 and state <> 'void' and id <> new.id", which must exist,
+-- and be sent before the follow up is sent), and the sent step 1 it counts its days from ("where contact_id =
+-- new.contact_id and step = 1 and state = 'sent'"). Under the index of 28 October a contact held one of each, so the
+-- answer was exact. Under the key above a contact may hold a step 1 PERM letter about one night and a step 1 ACQ letter
+-- about another, and SELECT INTO takes whichever row the plan returns first: an ACQ day 4 follow up could be counted from
+-- a PERM letter sent weeks before (allowed on day 1), or a PERM reminder from an ACQ letter sent yesterday (refused).
+-- So both lookups read only the rows of the same contact, CATEGORY and CONTEXT, which the key makes one row each.
+--
+-- The follow up's own category is read here as trg_outreach_touch_takes_its_class will write it, because that trigger
+-- runs after this one (triggers fire in name order): the stored category on an update; from its template on an insert
+-- (comms_subtype_of_template_key); a category written by hand; else its thread's latest classed category, else ACQ.
+-- Every other check, and every refusal's words, stay exactly as they are. The function is changed IN PLACE from the
+-- text in force (law 14 (z)): each exact line is counted once before it is replaced, and the post-conditions read the
+-- function back. Production held no non void follow up at all when this was written (read only, 23 November 2026:
+-- C:\dev\EVIDENCE\EL-23NOV\contact-policy\follow-ups-against-existing-rows.sql), so no row changes its answer.
+--
+-- Reversal: the same in place replacement, each new line back to the old one named in v_old_* below.
+
+do $migrate$
+declare
+  v_def text;
+  v_old_decl constant text := 'v_at timestamptz;';
+  v_new_decl constant text := 'v_at timestamptz;
+  v_cat text;';
+  v_old_open constant text := 'if new.step > 1 then';
+  v_new_open constant text := 'if new.step > 1 then
+      -- The follow up''s category as trg_outreach_touch_takes_its_class writes it (20261123020001).
+      v_cat := case
+        when tg_op = ''UPDATE'' and new.comms_category is not null then new.comms_category
+        when new.template_id is not null then split_part(public.comms_subtype_of_template_key(tp.key), ''-'', 1)
+        when new.comms_source = ''manual'' and new.comms_category is not null then new.comms_category
+        else coalesce((select o.comms_category from public.outreach_touches o
+                        where o.contact_id = new.contact_id and o.id <> new.id and o.state <> ''void'' and o.comms_source in (''template'', ''manual'')
+                        order by coalesce(o.sent_at, o.drafted_at) desc nulls last limit 1), ''ACQ'')
+      end;';
+  v_old_prev constant text := 'where contact_id = new.contact_id and step = new.step - 1 and state <> ''void'' and id <> new.id;';
+  v_new_prev constant text := 'where contact_id = new.contact_id and step = new.step - 1 and state <> ''void'' and id <> new.id
+         and coalesce(comms_category, '''') = coalesce(v_cat, '''') and coalesce(context_key, '''') = coalesce(new.context_key, '''');';
+  v_old_first constant text := 'select sent_at into v_first from public.outreach_touches where contact_id = new.contact_id and step = 1 and state = ''sent'';';
+  v_new_first constant text := 'select sent_at into v_first from public.outreach_touches where contact_id = new.contact_id and step = 1 and state = ''sent''
+         and coalesce(comms_category, '''') = coalesce(v_cat, '''') and coalesce(context_key, '''') = coalesce(new.context_key, '''');';
+  v_count int;
+begin
+  v_def := pg_get_functiondef('public.outreach_touch_is_lawful()'::regprocedure);
+  if position('v_cat text;' in v_def) > 0 then
+    -- Already in force: a second run changes nothing.
+    return;
+  end if;
+  v_count := (length(v_def) - length(replace(v_def, v_old_decl, ''))) / length(v_old_decl);
+  if v_count <> 1 then raise exception 'the lawful-touch trigger in force declares v_at % times, not once; nothing changed', v_count; end if;
+  v_count := (length(v_def) - length(replace(v_def, v_old_open, ''))) / length(v_old_open);
+  if v_count <> 1 then raise exception 'the lawful-touch trigger in force opens its follow up check % times, not once; nothing changed', v_count; end if;
+  v_count := (length(v_def) - length(replace(v_def, v_old_prev, ''))) / length(v_old_prev);
+  if v_count <> 1 then raise exception 'the lawful-touch trigger in force reads the step before % times, not once; nothing changed', v_count; end if;
+  v_count := (length(v_def) - length(replace(v_def, v_old_first, ''))) / length(v_old_first);
+  if v_count <> 1 then raise exception 'the lawful-touch trigger in force reads the first letter % times, not once; nothing changed', v_count; end if;
+  v_def := replace(v_def, v_old_decl, v_new_decl);
+  v_def := replace(v_def, v_old_open, v_new_open);
+  v_def := replace(v_def, v_old_prev, v_new_prev);
+  v_def := replace(v_def, v_old_first, v_new_first);
+  execute v_def;
+end
+$migrate$;
+
+-- ---------------------------------------------------------------------------
+-- POST-CONDITIONS
+-- ---------------------------------------------------------------------------
+do $post$
+declare
+  v_def text := pg_get_functiondef('public.outreach_touch_is_lawful()'::regprocedure);
+  v_needs text[] := array[
+    'v_cat text;',
+    'when new.template_id is not null then split_part(public.comms_subtype_of_template_key(tp.key), ''-'', 1)',
+    'and id <> new.id
+         and coalesce(comms_category, '''') = coalesce(v_cat, '''') and coalesce(context_key, '''') = coalesce(new.context_key, '''');',
+    'and step = 1 and state = ''sent''
+         and coalesce(comms_category, '''') = coalesce(v_cat, '''') and coalesce(context_key, '''') = coalesce(new.context_key, '''');',
+    'refused: step % comes after step %.',
+    'refused: step % is sent only after step % is sent.',
+    'refused: step % is due from day %, this is day %.',
+    'refused: this organiser is already being contacted through %.',
+    'refused: the play has sent its % for today.',
+    'new.purpose = ''reply'' and new.state = ''sent'' and new.provider = ''by_hand''',
+    'lower(split_part(tc.address, ''@'', 2)) = lower(snd.test_domain)'
+  ];
+  v_need text;
+begin
+  foreach v_need in array v_needs loop
+    if position(v_need in v_def) = 0 then
+      raise exception 'post-condition: the trigger in force lacks: %', v_need;
+    end if;
+  end loop;
+end
+$post$;
