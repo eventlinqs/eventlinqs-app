@@ -70,7 +70,6 @@ describe('the first letter', () => {
     expect(rendered.content).toBe(
       [
         "Hi Her Majesty's Theatre Ballarat team,",
-        "I hope you're well.",
         'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page.',
         "We'd love to help more people discover Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
         "Send us one image of your next show you're happy for us to use, and we'll add it for you. Your tickets stay exactly where they are.",

@@ -8,8 +8,8 @@
  * from window 3's research of 28 October; this module only writes them in Lawal's format and judges each by every rule
  * of the messages file (renderTemplate, src/lib/outreach/rules.ts). One email template and its DM twin:
  *
- *   email  "Hi [venue] team," / "I hope you're all well." and the true line / the ask, its one question / Lawal's
- *          closing, signature and unsubscribe line
+ *   email  "Hi [venue] team," / the true line / the ask, its one question / Lawal's closing, signature and
+ *          unsubscribe line (no stock pleasantry: Lawal, 20:45 of 22 November 2026, adopting COMMS-STANDARD-REVIEW-22NOV.md)
  *   DM     "Hi [venue] team," the true line and the ask, ending with Lawal's DM sign-off; Lawal sends a DM by hand
  *
  * Every draft is HELD, whatever the rules say, because its play is a draft: nothing is sent until Lawal approves the
@@ -58,7 +58,7 @@ export const VENUE_ASK_EMAIL: TemplateRow & { key: string } = {
   purpose: 'cadence',
   step: 1,
   subject: '[subject]',
-  body: `Hi [venue] team,\nI hope you're all well. [true line]\n[ask]\n${VENUE_PHOTO_ASK}\nKind regards,\n[signature]\n\n[unsubscribe]`,
+  body: `Hi [venue] team,\n[true line]\n[ask]\n${VENUE_PHOTO_ASK}\nKind regards,\n[signature]\n\n[unsubscribe]`,
 }
 
 export const VENUE_ASK_DM: TemplateRow & { key: string } = {

@@ -75,12 +75,14 @@ describe('counted figures only, a zero left out, nothing sent when nothing was c
 })
 
 describe("Lawal's service form, passing every one of the gateway's checks", () => {
-  test('without the offer: greeting, warm line, the figures, his signature and the opt out', () => {
+  // No stock pleasantry (the communication standard, Lawal's 20:45 of 22 November 2026): straight into what was counted.
+  test('without the offer: greeting, straight into the figures, his signature and the opt out', () => {
     const msg = sellThroughMessage(KYIVSKA, FROM, SIGNATURE)
     expect(msg).not.toBeNull()
     const lines = (msg?.body ?? '').split('\n')
     expect(lines[0]).toBe('Hi Iryna,')
-    expect(lines[2]).toBe("I hope you're well, and that Kyivska Perepichka: Ukrainian Theatre in Melbourne at The Wheeler Centre was a great night.")
+    expect(lines[2]).toBe('Here is what EventLinqs counted for Kyivska Perepichka: Ukrainian Theatre in Melbourne at The Wheeler Centre, from its page on our site:')
+    expect(msg?.body).not.toMatch(/I hope/)
     expect(msg?.category).toBe('service')
     expect(msg?.subject).toBe('How Kyivska Perepichka: Ukrainian Theatre in Melbourne did on EventLinqs')
     expect(msg?.body).toContain('Kind regards,\nLawal Adams\nFounder, EventLinqs\n')

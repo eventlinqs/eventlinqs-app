@@ -77,12 +77,18 @@ describe('segment_a_first version 2 is today-v2, word for word', () => {
     expect(LETTERS).toHaveLength(14)
   })
 
-  it.each(LETTERS.map((r) => [r.file, r] as const))('%s is drawn from version 2 exactly as approved', (_file, r) => {
+  // VERSION 3, THE COMMUNICATION STANDARD (Lawal, 20:45 of 22 November 2026, adopting COMMS-STANDARD-REVIEW-22NOV.md:
+  // "change everything, even the greetings"; the PM's 20:47, item 1): each approved letter word for word with only its
+  // stock pleasantry taken out. The fixture stays the record of what he approved on 18 November.
+  const STOCK = "I hope you're well.\n\n"
+  it.each(LETTERS.map((r) => [r.file, r] as const))('%s is drawn from version 3: the approved letter with only the pleasantry taken out', (_file, r) => {
     const rendered = renderTemplate(SEGMENT_A_FIRST, segmentAFields(factsOf(r)), UNSUB)
     expect(rendered.subject).toBe(r.subject)
     const swap = KIND_READ_BY_THE_ONE_READER[r.file]
     if (swap) expect(r.body.split(swap[0])).toHaveLength(2)
-    expect(rendered.body).toBe(swap ? r.body.replace(swap[0], swap[1]) : r.body)
+    const approved = swap ? r.body.replace(swap[0], swap[1]) : r.body
+    expect(approved.split(STOCK)).toHaveLength(2)
+    expect(rendered.body).toBe(approved.replace(STOCK, ''))
     expect(wordsProblems(rendered.body, readVoicePolicy())).toEqual([])
   })
 

@@ -23,8 +23,9 @@ export const TWENTY_DAY4: FollowUpLetter = {
   step: 2,
   subject: 'Re: [thread subject]',
   body: [
+    // "Hi <name>," then straight into the purpose: no stock pleasantry (Lawal, 20:45 of 22 November 2026; the PM's 20:47).
     'Hi [greeting],',
-    "I hope you're well. [night line]",
+    '[night line]',
     "You can add your own photos to it here, and choose where they're used: [photo link]",
     'If you could change one thing about selling tickets for your events, what would it be?',
     "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
@@ -51,7 +52,7 @@ export const TWENTY_DAY10: FollowUpLetter = {
   subject: 'Re: [thread subject]',
   body: [
     'Hi [greeting],',
-    "I hope you're well. Here's a link to [event] on [event day] that records how many people it brings, to share wherever you like: [tracked link]",
+    "Here's a link to [event] on [event day] that records how many people it brings, to share wherever you like: [tracked link]",
     'If you could change one thing about selling tickets for your events, what would it be?',
     "Even a one-line reply would help me build the right thing, and I'll write back to tell you what I did with it.",
     'Kind regards,',

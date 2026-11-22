@@ -10,9 +10,10 @@ import { firstName } from './organiser-live-notice-words'
  * Pure: when a report is due, the lines its figures make, and the message. The gateway's checks
  * (src/lib/outreach/voice-gate.ts, ported line for line from gateway.py) judge the message before any send. A service
  * message about the organiser's own listing, as the live notice is (the voice file's first-message form is the outreach
- * letter, whose subject must be "<their event>, could I ask your advice?"): "Hi <first name>," alone; "I hope you're
- * well, and that <event> was a great night." (C:\dev\START-16OCT\VOICE-EVENTLINQS.md, its third example); "Kind
- * regards," and his reply signature, which carries no ABN block outside a first message; then the opt out with its
+ * letter, whose subject must be "<their event>, could I ask your advice?"): "Hi <first name>," alone, then straight
+ * into what was counted for their event, with no stock pleasantry (Lawal, 20:45 of 22 November 2026, adopting
+ * C:\dev\START-16OCT\COMMS-STANDARD-REVIEW-22NOV.md: "change everything, even the greetings"); "Kind regards," and his
+ * reply signature, which carries no ABN block outside a first message; then the opt out with its
  * unsubscribe link, which the communication law (7) asks of every message and the Spam Act of a commercial one.
  *
  * WHAT IS COUNTED, and nothing else is said (K14: a press out is never a sale):
@@ -105,9 +106,7 @@ export function sellThroughMessage(facts: ReportFacts, from: string, signature: 
   const body = [
     `Hi ${first},`,
     '',
-    `I hope you're well, and that ${facts.title} at ${facts.venue} was a great night.`,
-    '',
-    'Here is what EventLinqs counted for it, from its page on our site:',
+    `Here is what EventLinqs counted for ${facts.title} at ${facts.venue}, from its page on our site:`,
     ...lines,
     '',
     'We count a visitor once a day. We can see the presses on to your booking page, but not what was bought there.',

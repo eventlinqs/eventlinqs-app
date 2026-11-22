@@ -10,6 +10,17 @@
       "policy_version": "3b9210ea627603c6",
       "subject": "Complimentary EventLinqs listing for [organiser]",
       "body": "Hi [organiser] team,\n\nI hope you're well.\n\nI came across [organiser] and thought your [what they run, or events] would be a great addition to our [city] events guide.\n\nYou can see the guide here: eventlinqs.com.au/city/[city]\n\nWe'd be happy to prepare a complimentary listing for your next event, with a direct link to your existing booking page. Your ticketing arrangements stay exactly as they are, and we'll handle the setup.\n\nWould you be happy for us to prepare a listing and send it to you for review?\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]"
+    },
+    {
+      "key": "acq_first",
+      "version": 2,
+      "on": true,
+      "words": "follow this A to Z ... change everything, even the greetings",
+      "quoted_at": "2026-11-22T20:45:00+11:00",
+      "policy_version": "3b9210ea627603c6",
+      "subject": "Complimentary EventLinqs listing for [organiser]",
+      "body": "Hi [organiser] team,\n\nI came across [organiser] and thought your [what they run, or events] would be a great addition to our [city] events guide.\n\nYou can see the guide here: eventlinqs.com.au/city/[city]\n\nWe'd be happy to prepare a complimentary listing for your next event, with a direct link to your existing booking page. Your ticketing arrangements stay exactly as they are, and we'll handle the setup.\n\nWould you be happy for us to prepare a listing and send it to you for review?\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
+      "basis": "Lawal adopted C:/dev/START-16OCT/COMMS-STANDARD-REVIEW-22NOV.md at 20:45 of 22 November 2026 (the PM's 20:47 order, items 1 and 8: no stock pleasantries anywhere; no founder approval for routine wording again). acq_first v1 word for word with only \"I hope you're well.\" taken out."
     }
   ]
 }
