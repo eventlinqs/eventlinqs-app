@@ -31,6 +31,7 @@ import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 import { firstLetterBlocked, organisationDomain, type LetterRecord } from './one-first-letter'
 import { mailboxFor } from './addresses'
 import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
+import { eventSlugOf, letterExpiry } from './event-validity'
 
 type Admin = SupabaseClient<Database>
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -200,7 +201,17 @@ async function readFirstLetterRecord(db: Admin, t: Queued): Promise<LetterRecord
  */
 async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string | null> {
   const key = t.outreach_templates?.key ?? ''
-  if (!key.startsWith('segment_a_') && !isLifecycleKey(key)) return null
+  if (!key.startsWith('segment_a_') && !isLifecycleKey(key)) {
+    // EVERY OTHER LETTER THAT NAMES AN EVENT (event-validity.ts; Lawal's 19:13 of 22 November 2026, section 11): read
+    // again now, and never sent once the event is no longer published or its day has come (its report, message 8, only
+    // inside its own window).
+    const named = eventSlugOf(t.body ?? '')
+    if (!named) return null
+    const ev = await db.from('events').select('start_date, end_date, status, timezone').eq('slug', named).maybeSingle()
+    if (ev.error) return `the event it names could not be read again: ${ev.error.message}`
+    const row = ev.data as { start_date: string; end_date: string | null; status: string | null; timezone: string | null } | null
+    return letterExpiry(key, row ? { startDate: row.start_date, endDate: row.end_date, status: row.status, timezone: row.timezone } : null, now)
+  }
   const slug = t.body.match(/\/events\/([a-z0-9-]+)/)?.[1]
   if (!slug) return 'it names no night of theirs to check the timing against'
   const ev = await db.from('events').select('start_date, timezone').eq('slug', slug).maybeSingle()
@@ -409,4 +420,40 @@ export async function runOutreachSender(
     else report.sent.push(t.id)
   }
   return report
+}
+
+/**
+ * THE EXPIRY SWEEP (Lawal's 19:13 of 22 November 2026, section 11; the trace of 19:2x found none): every held or queued
+ * letter that names an event is read against it now, and one the event no longer makes true (event-validity.ts) is
+ * voided with its reason, so an expired opportunity leaves the automation. The organiser contact is never touched: the
+ * relationship stays for their next event. Bounded per run; a failed read is said and voids nothing.
+ */
+export async function expireLapsedLetters(db: Admin, now: Date): Promise<{ readonly voided: readonly string[]; readonly unread: readonly string[] }> {
+  const voided: string[] = []
+  const unread: string[] = []
+  const { data, error } = await db
+    .from('outreach_touches')
+    .select('id, state, body, outreach_templates(key)')
+    .in('state', ['held', 'queued'])
+    .like('body', '%/events/%')
+    .order('created_at')
+    .limit(300)
+  if (error) return { voided, unread: [`the letters could not be read: ${error.message}`] }
+  const letters = (data ?? []) as unknown as { id: string; state: string; body: string; outreach_templates: { key: string } | null }[]
+  const slugs = [...new Set(letters.map((l) => eventSlugOf(l.body)).filter((s): s is string => s !== null))]
+  if (slugs.length === 0) return { voided, unread }
+  const events = await db.from('events').select('slug, start_date, end_date, status, timezone').in('slug', slugs)
+  if (events.error) return { voided, unread: [`the events they name could not be read: ${events.error.message}`] }
+  const bySlug = new Map(((events.data ?? []) as { slug: string; start_date: string; end_date: string | null; status: string | null; timezone: string | null }[]).map((e) => [e.slug, e]))
+  for (const l of letters) {
+    const slug = eventSlugOf(l.body)
+    if (!slug) continue
+    const e = bySlug.get(slug)
+    const why = letterExpiry(l.outreach_templates?.key ?? '', e ? { startDate: e.start_date, endDate: e.end_date, status: e.status, timezone: e.timezone } : null, now)
+    if (!why) continue
+    const { error: uerr } = await db.from('outreach_touches').update({ state: 'void', void_reason: why.slice(0, 480) }).eq('id', l.id).eq('state', l.state as 'held' | 'queued')
+    if (uerr) unread.push(`${l.id}: ${uerr.message}`)
+    else voided.push(`${l.id}: ${why}`)
+  }
+  return { voided, unread }
 }

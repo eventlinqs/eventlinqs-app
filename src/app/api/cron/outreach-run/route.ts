@@ -6,7 +6,7 @@ import { graphConfigFromEnv, graphReadInbox } from '@/lib/outreach/graph'
 import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox } from '@/lib/outreach/replies'
 import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
-import { runOutreachSender } from '@/lib/outreach/sender'
+import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { isolated, isStepFault } from '@/lib/ops/isolated'
@@ -123,6 +123,14 @@ export async function GET(request: NextRequest) {
     // under Lawal's standing approval of its template, with its words passing and its page check recorded by a person,
     // queues itself into the next business window in its city (src/lib/outreach/self-queue.ts). A fault here is said in
     // the answer and never stops the sender below.
+    // THE EXPIRY SWEEP FIRST (Lawal's 19:13 of 22 November 2026, section 11; sender.ts expireLapsedLetters): a held or
+    // queued letter the event it names no longer makes true is voided with its reason before anything queues or sends; the
+    // contact stays. Its own guard: a fault is contained and named in the answer's faults.
+    const lapsed = await isolated(RUN, 'the expiry sweep of held and queued letters', () => expireLapsedLetters(db, now))
+    if (!isStepFault(lapsed)) {
+      for (const v of lapsed.voided) console.log(`[cron/outreach-run] expired: ${v}`)
+      for (const u of lapsed.unread) console.log(`[cron/outreach-run] expiry not read: ${u}`)
+    }
     let selfQueued: unknown
     try {
       const q = await queueApprovedHeldLetters(db, { now })
@@ -226,7 +234,7 @@ export async function GET(request: NextRequest) {
     // THE TIMETABLE'S OUTREACH PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
     // the phase this quarter hour holds, the letters this run sent as its units.
     // Every step this run contained, by name: a mailbox's read, the plays, the DMs, the partners (F1), the engine's re-read (F5).
-    const faults = [...(typeof inbox === 'object' && inbox !== null ? Object.values(inbox) : []), judged, plays, dms, partners, recheck].filter(isStepFault)
+    const faults = [...(typeof inbox === 'object' && inbox !== null ? Object.values(inbox) : []), judged, plays, dms, partners, recheck, lapsed].filter(isStepFault)
     const outreachPhase = outreachPhaseAt(melbourneMinutes(now))
     if (outreachPhase) {
       const report = sent as { sent?: readonly unknown[]; failed?: readonly unknown[]; refused?: readonly unknown[]; note?: string }

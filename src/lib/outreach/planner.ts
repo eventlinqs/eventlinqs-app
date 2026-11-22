@@ -14,6 +14,7 @@
  * The database judges every draft again and refuses what it must; a refusal is reported in its words and the planner
  * moves on. Nothing here sends.
  */
+import { afterYourNightRefusal } from './after-your-night'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
@@ -646,16 +647,8 @@ export function featuredFields(k: { title: string; cityName: string | null; went
  * Its figures are window 5's organiser_night_reports, read as they were counted; a field the report does not hold stays
  * empty, so the message is held for Lawal rather than saying a number nobody counted.
  */
-export const AFTER_YOUR_NIGHT_DUE_DAYS = 2
-export const AFTER_YOUR_NIGHT_STALE_DAYS = 7
-
-/** Why message 8 is not due for a night that ended at endedAt, or null when it is. */
-export function afterYourNightRefusal(endedAt: Date, now: Date): string | null {
-  const days = (now.getTime() - endedAt.getTime()) / 86_400_000
-  if (days < AFTER_YOUR_NIGHT_DUE_DAYS) return 'the night ended under two days ago'
-  if (days >= AFTER_YOUR_NIGHT_STALE_DAYS) return `the night ended ${Math.floor(days)} days ago, too late to report`
-  return null
-}
+// Message 8's own window lives in after-your-night.ts, read by the planner here and by the sender at send time.
+export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
 
 const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
 
