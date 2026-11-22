@@ -31,6 +31,7 @@
  *
  * PURE at its core (contactDecision); readContactPolicy is its one reader, and a read that fails is never a guess.
  */
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
@@ -217,6 +218,9 @@ export async function readContactHistory(db: Admin, contactId: string, excludeTo
   const me = await db.from('organiser_contacts').select('id, organiser_id').eq('id', contactId).maybeSingle()
   if (me.error || !me.data) return { state: 'unread', why: `the contact could not be read${me.error ? `: ${me.error.message}` : ''}` }
   const organiserId = me.data.organiser_id as string
+  // The platform's own listings organisation and every test organiser are never written to (src/lib/growth/platform-organiser.ts,
+  // the one reader of them; the guard growth-reads-skip-the-platform): nothing is decided for them.
+  if ((await readPlatformOrganiserIds(db)).has(organiserId)) return { state: 'unread', why: "the platform's own listings organisation, or a test organiser" }
   const theirs = await db.from('organiser_contacts').select('id, address, basis').eq('organiser_id', organiserId).limit(HISTORY_CEILING)
   if (theirs.error) return { state: 'unread', why: `their contacts could not be read: ${theirs.error.message}` }
   const contacts = (theirs.data ?? []).map((x) => ({ id: x.id as string, address: String(x.address ?? ''), basis: (x.basis as string | null) ?? null }))
