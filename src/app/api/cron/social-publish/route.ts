@@ -19,8 +19,11 @@ import { planAsOf } from '@/lib/social/plan-for'
 
 export const dynamic = 'force-dynamic'
 
-/** The Melbourne hours whose run gives the standing policy's approvals (06:40 first, then every three hours). */
-const POLICY_HOURS: ReadonlySet<number> = new Set([6, 9, 12, 15, 18])
+/** The Melbourne hours whose run gives the standing policy's approvals: 05:40 first, so the timetable's schedule phase
+ * has the day's posts approved and scheduled before 06:00 (law 35; the PM's 18:46 of 22 November 2026, fix 2: the 05:40
+ * phase failed on 21 and 22 November reading nothing scheduled while the eligible posts waited for 06:40), then 06:40
+ * for the live phase, then every three hours. */
+const POLICY_HOURS: ReadonlySet<number> = new Set([5, 6, 9, 12, 15, 18])
 
 /** The hour on Melbourne's clock, where the guide's cities keep their days. */
 function melbourneHour(now: Date): number {
@@ -169,8 +172,8 @@ export async function GET(request: NextRequest) {
     }
     /* THE STANDING PUBLISHING POLICY (law 31, Lawal's 12:03 of 19 November 2026): while the switch is on, every drafted
        piece of the week in an approved family is given the checked approval in the founder's name (store.ts
-       approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Five runs a day, 06:40
-       first so the day is prepared before 07:00, because each check reads the night's booking link. A failure is said
+       approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Six runs a day, 05:40
+       first so the day is prepared before 06:00 (law 35), because each check reads the night's booking link. A failure is said
        and never stops the publishing below.
        IT FAILS CLOSED (the PM's 10:47 of 20 November 2026, item 1; src/lib/social/policy-guard.ts): the dry run first,
        every piece logged eligible or not; the policy approves only what it read eligible; and any approval outside it,
