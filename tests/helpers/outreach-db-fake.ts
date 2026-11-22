@@ -49,6 +49,7 @@ export function fakeOutreachDb(tables: Tables, rpcs: Record<string, (args: unkno
   const builder = (table: string, op: 'select' | 'update' | 'insert', payload?: unknown, columns = '*') => {
     const filters: Filter[] = []
     let limit: number | null = null
+    let offset = 0
     let orderBy: { col: string; asc: boolean }[] = []
     let returning = op === 'select'
     const b: Record<string, unknown> = {}
@@ -72,6 +73,8 @@ export function fakeOutreachDb(tables: Tables, rpcs: Record<string, (args: unkno
     }
     b.order = (col: string, o?: { ascending?: boolean }) => ((orderBy = [...orderBy, { col, asc: o?.ascending !== false }]), b)
     b.limit = (n: number) => ((limit = n), b)
+    // A page of rows, as PostgREST's range: the platform reader pages its reads (src/lib/growth/platform-organiser.ts).
+    b.range = (from: number, to: number) => ((offset = from), (limit = to - from + 1), b)
 
     const run = (): { data: unknown; error: { message: string; code?: string } | null } => {
       const rows = tables[table] ?? (tables[table] = [])
@@ -106,6 +109,7 @@ export function fakeOutreachDb(tables: Tables, rpcs: Record<string, (args: unkno
       }
       let out = [...matched]
       for (const o of [...orderBy].reverse()) out.sort((x, y) => (String(x[o.col] ?? '') < String(y[o.col] ?? '') ? -1 : String(x[o.col] ?? '') > String(y[o.col] ?? '') ? 1 : 0) * (o.asc ? 1 : -1))
+      if (offset > 0) out = out.slice(offset)
       if (limit !== null) out = out.slice(0, limit)
       // The one embedded read the sender and the drafter make: a touch's template key.
       if (columns.includes('outreach_templates(key)')) {

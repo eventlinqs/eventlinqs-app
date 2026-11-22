@@ -32,14 +32,17 @@ function fakeDb() {
     if (call.table === 'organiser_venues') return { data: [], error: null }
     // The contact policy's reads (src/lib/outreach/contact-policy.ts): an organiser with no account, nothing heard back,
     // no address suppressed, nothing bounced.
-    if (call.table === 'organisers') return { data: { organisation_id: null }, error: null }
+    // The platform reader (src/lib/growth/platform-organiser.ts): no listings organisation, no test organiser here.
+    if (call.table === 'organisations') return { data: [], error: null }
+    // The policy reads one organiser by id; the platform reader pages the test organisers, of which there are none here.
+    if (call.table === 'organisers') return call.filters.some(([k]) => k === 'eq:id') ? { data: { organisation_id: null }, error: null } : { data: [], error: null }
     if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: 'q-1' }, error: null }
     return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
   }
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'order', 'limit']) b[m] = () => b
+    for (const m of ['select', 'order', 'limit', 'range']) b[m] = () => b
     for (const m of ['eq', 'lte', 'neq', 'gte', 'ilike', 'is']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
     b.not = (col: string, _op: string, val: unknown) => (call.filters.push([`not:${col}`, val]), b)
     b.in = (col: string, val: unknown) => (call.filters.push([`in:${col}`, val]), b)

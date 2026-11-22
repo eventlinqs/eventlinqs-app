@@ -143,7 +143,7 @@ function fakeDb(answer: (call: Call, shape: 'many' | 'one') => { data: unknown; 
   const calls: Call[] = []
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'order', 'limit']) b[m] = () => b
+    for (const m of ['select', 'order', 'limit', 'range']) b[m] = () => b
     for (const m of ['eq', 'lte', 'neq', 'in', 'gte', 'ilike', 'is']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
     b.not = (col: string, _op: string, val: unknown) => (call.filters.push([`not:${col}`, val]), b)
     b.single = async () => answer(call, 'one')
@@ -173,7 +173,7 @@ const QUEUED = [
 ]
 
 function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[] } = {}) {
-  return fakeDb((call) => {
+  return fakeDb((call, shape) => {
     if (call.table === 'outreach_sender') return { data: { mode, from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: opts.queued ?? QUEUED, error: null }
@@ -182,7 +182,8 @@ function standardDb(mode: string, opts: { refuse?: string[]; address?: string; q
     if (call.table === 'organiser_venues') return { data: [], error: null }
     // The contact policy's reads (src/lib/outreach/contact-policy.ts): an organiser with no account, nothing heard back,
     // no address suppressed, nothing bounced.
-    if (call.table === 'organisers') return { data: { organisation_id: null }, error: null }
+    if (call.table === 'organisations') return { data: [], error: null }
+    if (call.table === 'organisers') return shape === 'many' ? { data: [], error: null } : { data: { organisation_id: null }, error: null }
     if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') {
       const id = call.filters.find(([k]) => k === 'eq:id')?.[1] as string

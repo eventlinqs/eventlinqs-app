@@ -36,11 +36,11 @@ const cold = (over: Partial<PolicyCandidate> = {}): PolicyCandidate => ({ contac
 const sent = (contactId: string, at: string, category = 'PERM', purpose = 'cadence', step: number | null = 1) => ({ id: `t-${at}`, contactId, purpose, step, category, state: 'sent', sentAt: at, scheduledFor: at })
 
 describe('the gap is one named value, its source said', () => {
-  it('30 days, marked UNSOURCED with the precedent it follows, and typed nowhere else in a workflow', () => {
+  it('30 days as ruled at 03:47, with its sources, and typed nowhere else in a workflow', () => {
     expect(CONTACT_GAP_DAYS).toBe(30)
-    expect(CONTACT_GAP_SOURCE).toMatch(/^UNSOURCED: /)
+    expect(CONTACT_GAP_SOURCE).toMatch(/^Ruled by the PM, 03:47 of 23 November 2026: 30 days/)
     const src = readFileSync('src/lib/outreach/contact-policy.ts', 'utf8')
-    expect(src).toMatch(/UNSOURCED: neither the communication standard/)
+    expect(src).toContain('RULED by the PM at 03:47 of')
     for (const f of ['drafts.ts', 'sender.ts', 'planner.ts', 'lifecycle-play.ts', 'segment-a-play.ts', 'follow-ups.ts', 'twenty-drafts.ts', 'replies.ts']) {
       expect(readFileSync(`src/lib/outreach/${f}`, 'utf8')).not.toMatch(/CONTACT_GAP_DAYS|30 \* (86_400_000|DAY)/)
     }
