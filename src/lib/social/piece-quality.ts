@@ -41,6 +41,8 @@ export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' |
   /** The row's own price and place, for the fact match (the 05:15 standard, check 3) and the free wording (check 4). */
   readonly isFree?: boolean | null
   readonly venueAddress?: string | null
+  /** Other names its venue is published under (venues.aliases): 'Federation Square' for 'Fed Square'. */
+  readonly venueAliases?: readonly string[]
 }
 
 /** A first day's words, in every bank and hook that says one (lifecycle.ts FIRST_LINES, FIRST_DAY_ON_NOW, hookFor). */
@@ -102,7 +104,10 @@ function standardFaults(input: QualityInput, ids: ReadonlySet<string>): string[]
       if (!midnight && !TIME_IN_LINE.test(dated)) out.push(`[standard] ${n.title}: its date line states no time ('${dated || 'no date line'}').`)
       // 3. FACT MATCH: the hours and the place are the row's own, read now.
       if (!midnight && TIME_IN_LINE.test(dated) && !dated.toLowerCase().includes(clock(n.startDate))) out.push(`[standard] ${n.title}: its date line does not carry its start, ${clock(n.startDate)}, as its row reads now.`)
-      if (n.venueName && placed && !placed.toLowerCase().includes(n.venueName.trim().toLowerCase().slice(0, 12))) out.push(`[standard] ${n.title}: its place line does not name its venue, ${n.venueName}.`)
+      // The venue's own name or any alias its row records (the PM's 18:46 of 22 November 2026: Fed Square and Federation
+      // Square are one venue); a place line naming neither is still refused.
+      const names = [n.venueName ?? '', ...(n.venueAliases ?? [])].map((x) => x.trim().toLowerCase().slice(0, 12)).filter((x) => x !== '')
+      if (n.venueName && placed && !names.some((x) => placed.toLowerCase().includes(x))) out.push(`[standard] ${n.title}: its place line does not name its venue, ${n.venueName}.`)
       // 4. FREE WORDING: a free night never says 'ticket'.
       if (n.isFree === true && /ticket/i.test(caption)) out.push(`[standard] ${n.title}: a free night's caption says 'ticket'.`)
       // 5. FIRST LINE: never only a stage word or a stock phrase; it names something of the night's own words.

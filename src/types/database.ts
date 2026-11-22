@@ -12792,6 +12792,7 @@ export type Database = {
           abs_ucl_code: string | null
           abs_ucl_name: string | null
           address: string | null
+          aliases: string[]
           capacity: number | null
           city: string | null
           city_slug: string | null
@@ -12837,6 +12838,7 @@ export type Database = {
           abs_ucl_code?: string | null
           abs_ucl_name?: string | null
           address?: string | null
+          aliases?: string[]
           capacity?: number | null
           city?: string | null
           city_slug?: string | null
@@ -12882,6 +12884,7 @@ export type Database = {
           abs_ucl_code?: string | null
           abs_ucl_name?: string | null
           address?: string | null
+          aliases?: string[]
           capacity?: number | null
           city?: string | null
           city_slug?: string | null

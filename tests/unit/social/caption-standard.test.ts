@@ -102,6 +102,27 @@ describe("the publish gate's five checks, on the exact caption", () => {
     expect(judge(GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne')).join(' ')).toMatch(/does not name its venue/)
   })
 
+  // THE VENUE'S RECORDED ALIASES (the PM's 18:46 of 22 November 2026): the 18:40 scheduled run held AMCF's final day story
+  // because its place line said 'Federation Square' and the row reads 'Fed Square'. One venue, two names.
+  it("3. the venue's recorded alias names it; without the alias the 18:40 hold reproduces; a wrong venue is still refused", () => {
+    const judgeAt = (caption: string, night: QualityNight) =>
+      pieceQuality({ slides, caption, captions: [caption], momentKind: 'final_day', madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', night]]), now: new Date('2026-11-21T19:30:00Z') }).filter((r) =>
+        r.startsWith('[standard]'),
+      )
+    const row = amcf({ venueName: 'Fed Square', venueAliases: ['Federation Square'] })
+    expect(judgeAt(GOOD, row)).toEqual([])
+    expect(judgeAt(GOOD.replace('Federation Square, Melbourne', 'Fed Square, Melbourne'), row)).toEqual([])
+    expect(judgeAt(GOOD, amcf({ venueName: 'Fed Square' })).join(' ')).toContain('its place line does not name its venue, Fed Square.')
+    expect(judgeAt(GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne'), row).join(' ')).toContain('its place line does not name its venue, Fed Square.')
+  })
+
+  it('the gate reads each night with its venue row\'s aliases', async () => {
+    const { readFileSync } = await import('node:fs')
+    const store = readFileSync('src/lib/social/store.ts', 'utf8')
+    expect(store).toContain("venue_row:venues(name, aliases)'")
+    expect(store).toMatch(/venueAliases: \(\(e\.venue_row as \{ aliases\?: string\[\] \| null \} \| null\)\?\.aliases \?\? \[\]\)/)
+  })
+
   it('a piece that is not a lifecycle moment is not judged by these checks', () => {
     expect(pieceQuality({ slides, caption: HELD, momentKind: null, madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', amcf()]]), now: new Date('2026-11-21T19:30:00Z') }).filter((r) => r.startsWith('[standard]'))).toEqual([])
   })

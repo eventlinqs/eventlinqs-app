@@ -568,7 +568,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
+  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name, aliases)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -736,6 +736,8 @@ function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null =
     title: String(e.title),
     summary: (e.summary as string | null) ?? null,
     venueName: (e.venue_name as string | null) ?? null,
+    // The venue row's recorded aliases (migration 20261122181501): the place check accepts any of the venue's names.
+    venueAliases: ((e.venue_row as { aliases?: string[] | null } | null)?.aliases ?? []).filter((a) => typeof a === 'string' && a.trim() !== ''),
     host: (e.venue_name as string | null) ?? null,
     categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
     startDate: String(e.start_date),
