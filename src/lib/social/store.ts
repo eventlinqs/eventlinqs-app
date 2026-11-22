@@ -727,6 +727,12 @@ async function seasonBeganOf(db: Db, rows: readonly Record<string, unknown>[]): 
   return out
 }
 
+/** A venue row's own name and its recorded aliases, the names a place line may give it; none without a row. */
+export function venueNamesOf(row: { name?: string | null; aliases?: readonly string[] | null } | null): string[] {
+  if (!row) return []
+  return [row.name ?? '', ...(row.aliases ?? [])].filter((a): a is string => typeof a === 'string' && a.trim() !== '')
+}
+
 function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null = null): QualityNight {
   return {
     seasonBegan,
@@ -736,8 +742,11 @@ function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null =
     title: String(e.title),
     summary: (e.summary as string | null) ?? null,
     venueName: (e.venue_name as string | null) ?? null,
-    // The venue row's recorded aliases (migration 20261122181501): the place check accepts any of the venue's names.
-    venueAliases: ((e.venue_row as { aliases?: string[] | null } | null)?.aliases ?? []).filter((a) => typeof a === 'string' && a.trim() !== ''),
+    // The venue row's own name and its recorded aliases (migration 20261122181501): the place check accepts any of the
+    // venue's names. The row's own name is the one the engine's caption writers print (campaign.ts placeOf), so the
+    // engine's place line and the check agree by construction: AMCF's listing reads 'Fed Square', its venue row
+    // 'Federation Square'.
+    venueAliases: venueNamesOf(e.venue_row as { name?: string | null; aliases?: string[] | null } | null),
     host: (e.venue_name as string | null) ?? null,
     categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
     startDate: String(e.start_date),
