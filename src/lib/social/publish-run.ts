@@ -199,7 +199,8 @@ export async function socialWatchdog(
   try {
     const since = new Date(input.now.getTime() - 24 * 3_600_000).toISOString()
     const runs = await db.from('social_publish_runs').select('started_at, ended_at, result').eq('route', '/api/cron/social-publish').gte('started_at', since).limit(500)
-    const posts = await db.from('social_piece_postings').select('piece_id, platform').gte('posted_at', since).limit(1000)
+    // Public posts only (kit-sent.ts): a partner kit Lawal marked sent (post_url 'sent') is not a post on a network.
+    const posts = await db.from('social_piece_postings').select('piece_id, platform').neq('post_url', 'sent').gte('posted_at', since).limit(1000)
     if (runs.error || posts.error) throw new Error((runs.error ?? posts.error)!.message)
     const reasons = reversalReasons((runs.data ?? []) as never, (posts.data ?? []) as never)
     if (reasons.length > 0) {

@@ -60,6 +60,7 @@ function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue:
         order: () => q,
         limit: () => q,
         gte: () => q,
+        neq: () => q,
         is: () => q,
         maybeSingle: async () => ({ data: answer[table] ?? null, error: null }),
         then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: lists[table] ?? [], error: null }).then(ok),
