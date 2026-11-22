@@ -98,3 +98,16 @@ export function knownVenueIndex(rows: readonly { readonly venueId: string; reado
   for (const k of shared) out.delete(k)
   return out
 }
+
+/**
+ * Whether a place as a slide or card prints it names one of the venue's own names (the listing's, the row's, an alias),
+ * normalised, as a whole run of words either way ('Arts Centre' on a card for 'Arts Centre Melbourne'). Pure.
+ */
+export function namesOwnVenue(place: string, names: readonly (string | null | undefined)[]): boolean {
+  const p = normaliseVenueName(place)
+  if (p === '') return false
+  return names.some((n) => {
+    const v = normaliseVenueName(n ?? '')
+    return v !== '' && (containsRun(p, v) || containsRun(v, p))
+  })
+}

@@ -1099,7 +1099,17 @@ export async function pieceDependencies(
   issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
 
   /* K10: the creative checks, each platform's words and each slide's place as its night holds it. */
-  issues.push(...creativeRefusals(rev, new Map([...byId.values()].map((e) => [e.id as string, { venueName: (e.venue_name as string | null) ?? null, title: String(e.title) }]))))
+  issues.push(
+    ...creativeRefusals(
+      rev,
+      new Map(
+        [...byId.values()].map((e) => [
+          e.id as string,
+          { venueName: (e.venue_name as string | null) ?? null, title: String(e.title), venueNames: venueNamesOf(e.venue_row as { name?: string | null } | null, e.venue_id ? (aliases.get(e.venue_id as string) ?? []) : []) },
+        ]),
+      ),
+    ),
+  )
 
   /* The piece's own page answers on this deployment and lists every night it advertises. */
   const path = new URL(String(piece.link)).pathname

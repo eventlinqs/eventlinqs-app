@@ -89,6 +89,8 @@ export const AHEAD_LEAD_MINUTES = 120
 export const DAY_LEFT_MINUTES = 120
 export const LONG_SESSION_MINUTES = 240
 export const HIGHLIGHT_DAYS = 7
+/** An end not on record, derived for the window only and labelled so (UNSOURCED; the discovery record replaces it). */
+export const DERIVED_SESSION_MINUTES = 180
 
 const MIN = 60_000
 const iso = (ms: number) => new Date(ms).toISOString()
@@ -160,8 +162,12 @@ export function timingOf(input: TimingInput, now: Date): Timing {
     expires = latest
     basis = `post event highlight with approved content: within ${HIGHLIGHT_DAYS} days of its end (initial hypothesis, UNSOURCED)`
   } else if ((input.moment && DAY_OF.has(input.moment)) || input.objective === 'live_coverage') {
-    if (!first.endDate) return { kind: 'held', reason: `${first.title}: its end is not on record; a post on its own day needs it to know when the day closes. Add its end time.` }
-    const s = sessionOfDay({ startDate: first.startDate as string, endDate: first.endDate }, zone, day)
+    // A missing end is never a hold (the PM's 19:33 of 22 November 2026, amending 19:13 item 1: the record holds it from
+    // discovery): until the discovery record completes it, a short DERIVED_SESSION is assumed and said in the basis, the
+    // conservative side (a shorter day closes the window sooner, never later).
+    const derived = !first.endDate
+    const endIso = first.endDate ?? iso(start + DERIVED_SESSION_MINUTES * MIN)
+    const s = sessionOfDay({ startDate: first.startDate as string, endDate: endIso }, zone, day)
     const sStart = Date.parse(s.start)
     const sEnd = Date.parse(s.end)
     if (input.objective === 'live_coverage') {
@@ -174,6 +180,7 @@ export function timingOf(input: TimingInput, now: Date): Timing {
       latest = sStart - AHEAD_LEAD_MINUTES * MIN
       basis = `a short session: promoted until ${AHEAD_LEAD_MINUTES / 60} hours before its doors (initial hypothesis, UNSOURCED)`
     }
+    if (derived) basis = `${basis}; its end DERIVED as ${DERIVED_SESSION_MINUTES / 60} hours after its start, none on record`
     expires = sEnd
   } else {
     latest = Math.min(dayEnd, start - AHEAD_LEAD_MINUTES * MIN)

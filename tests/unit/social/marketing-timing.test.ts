@@ -160,12 +160,18 @@ describe('cancelled, postponed, sold out; missing facts; live coverage', () => {
     expect(t).toMatchObject({ kind: 'expired', reason: /sold out/ })
   })
 
-  it('a missing start holds that piece with the correction it needs; a day-of post with no end holds too; never guessed', () => {
+  it('a missing start holds that piece with the correction it needs (never guessed); a missing end is derived, labelled, never a hold (the PM, 19:33)', () => {
     expect(timingOf({ moment: 'build', nights: [{ title: 'Mystery Night', startDate: null, endDate: null, timezone: MEL }], preferredAt: null }, at('2026-11-23T22:00:00Z'))).toMatchObject({ kind: 'held', reason: /start is not on record/ })
-    expect(timingOf({ moment: 'running', day: '2026-11-28', nights: [{ title: 'Open Studio', startDate: '2026-11-27T23:00:00Z', endDate: null, timezone: MEL }], preferredAt: null }, at('2026-11-27T23:00:00Z'))).toMatchObject({
-      kind: 'held',
-      reason: /end is not on record/,
-    })
+    const t = timingOf({ moment: 'running', day: '2026-11-28', nights: [{ title: 'Open Studio', startDate: '2026-11-27T23:00:00Z', endDate: null, timezone: MEL }], preferredAt: null }, at('2026-11-27T23:00:00Z'))
+    expect(t).toMatchObject({ kind: 'window', basis: /its end DERIVED as 3 hours after its start, none on record/ })
+  })
+
+  it("a timezone other than Melbourne: the window is set on the event's own clock (Perth)", () => {
+    // A market in Perth, 9am to 2pm on Saturday 28 November 2026, Australia/Perth (UTC+8): it closes at 06:00Z.
+    const perth: TimingNight = { title: 'Fremantle Market', startDate: '2026-11-28T01:00:00Z', endDate: '2026-11-28T06:00:00Z', timezone: 'Australia/Perth', status: 'published', isFree: true }
+    const t = timingOf({ moment: 'running', day: '2026-11-28', nights: [perth], preferredAt: at('2026-11-28T02:00:00Z') }, at('2026-11-28T02:00:00Z'))
+    expect(t).toMatchObject({ kind: 'window', latestAt: '2026-11-28T04:00:00.000Z' })
+  })
   })
 
   it('live coverage only with approved content: without it, not planned; with it, while the session is open', () => {

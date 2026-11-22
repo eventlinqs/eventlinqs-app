@@ -12,6 +12,7 @@ import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
+import { runSocialPlanEngine } from '@/lib/social/plan-engine'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
@@ -225,7 +226,24 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error('[cron/social-publish] the expiry sweep could not run:', error instanceof Error ? error.message : error)
     }
-    const scheduled = await scheduleApprovedPieces(db, now)
+    // THE SOCIAL SUB ENGINE (plan-engine.ts; Lawal's 19:39 of 22 November 2026): the event changes outbox from its own
+    // position, and the events it has not planned yet, each decided and planned by its own criteria. Its own guard.
+    try {
+      const plans = await runSocialPlanEngine(db, now)
+      console.log(`[cron/social-publish] social plans: ${plans.planned} written, outbox position ${plans.position}${plans.faults.length ? `; ${plans.faults.join(' | ')}` : ''}`)
+    } catch (error) {
+      console.error('[cron/social-publish] the social plan engine could not run:', error instanceof Error ? error.message : error)
+    }
+    // A SCHEDULING FAULT NEVER STOPS PUBLISHING (the inventory of 19:3x, rule 49: a throw here ended the whole run with
+    // nothing published; Lawal's 15:13: no single failure disables an entire business operation). It is said and held.
+    let scheduled: Awaited<ReturnType<typeof scheduleApprovedPieces>>
+    try {
+      scheduled = await scheduleApprovedPieces(db, now)
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error)
+      console.error('[cron/social-publish] scheduling could not run; publishing goes on:', why)
+      scheduled = { scheduled: [], held: [`scheduling could not run: ${why}`], floor: [] }
+    }
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
     for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
     // A SAFE CORRECTION IS RECORDED (Lawal's correction, 19:04 of 22 November 2026, section 1): each place line given its
