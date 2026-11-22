@@ -6,8 +6,16 @@
  * Spam Act 2003 Schedule 2 clause 4 and ACMA's June 2024 expectation, as migration 20261028201001 records them: a
  * conspicuously published business address is a basis only when (1) it is conspicuously published, (2) the publication
  * carries no statement that they do not want messages, and (3) the message relates to their role. So an address is
- * taken only when it appears ON one of the organiser's own pages (written out or as a mailto link), at their own domain,
- * in the role an invitation to list relates to, on a page with no statement against messages. The statement check is a
+ * taken only when it appears ON one of the organiser's own pages (written out or as a mailto link), published there by
+ * the organiser for contact, in the role an invitation to list relates to, on a page with no statement against messages.
+ *
+ * THE DOMAIN RULE WIDENED (the PM's 10:30 of 22 November 2026, item (c); Lawal's outreach engine rebuild of 10:31,
+ * section 1: "Remove the requirement that organiser email addresses must match their business domain ... Gmail and
+ * other personal-domain addresses publicly used for organiser business"): the night before, 8 of the pool's 12 reads
+ * found 'no address at its own domain on its own pages'. An address the organiser's own site publishes counts at its own
+ * domain OR at a free mail provider (FREE_MAIL), on the same three tests, with its page and the words quoted. An address
+ * at ANOTHER organisation's domain printed on their site (a ticket seller's support desk, a venue's office) is refused
+ * with that reason: it is not theirs. Never an address read on a third party's page. The statement check is a
  * filter here; the check the law relies on is Lawal's own, recorded on the page itself before any message leaves held
  * (migration 20261031053501, src/lib/outreach/crm.ts confirmPageChecked). Pure.
  */
@@ -20,6 +28,29 @@ export const AGAINST: readonly RegExp[] = [
   /\bno\s+(sales|marketing|cold)\s+(calls?|e-?mails?|enquiries|inquiries|pitches)\b/i,
   /\b(we\s+do\s+not|we\s+don'?t)\s+(accept|want|welcome)\s+(solicitations|marketing|sales)\b/i,
 ]
+
+/** Free mail providers whose addresses a small organiser publishes as its own (Lawal's 10:31, section 1). */
+export const FREE_MAIL: ReadonlySet<string> = new Set([
+  'gmail.com', 'googlemail.com', 'outlook.com', 'outlook.com.au', 'hotmail.com', 'hotmail.com.au', 'live.com', 'live.com.au',
+  'msn.com', 'yahoo.com', 'yahoo.com.au', 'ymail.com', 'icloud.com', 'me.com', 'mac.com', 'bigpond.com', 'bigpond.net.au',
+  'bigpond.com.au', 'optusnet.com.au', 'iinet.net.au', 'internode.on.net', 'tpg.com.au', 'protonmail.com', 'proton.me',
+  'aol.com', 'fastmail.com', 'zoho.com',
+])
+
+/** Whose domain an address is at, judged against the organiser's own site: its own, a free mail provider's, or another's. Pure. */
+export function addressKind(address: string, site: string): 'own domain' | 'free mail' | 'another domain' {
+  const d = (address.split('@')[1] ?? '').toLowerCase()
+  if (d === site || d.endsWith(`.${site}`)) return 'own domain'
+  if (FREE_MAIL.has(d)) return 'free mail'
+  return 'another domain'
+}
+
+/** The words around an address on its page, quoted as the basis records them; a mailto link only says so. Pure. */
+export function quoteFor(pageWords: string, address: string): string {
+  const at = pageWords.toLowerCase().indexOf(address.toLowerCase())
+  if (at < 0) return `a mailto link to ${address}`
+  return pageWords.slice(Math.max(0, at - 100), Math.min(pageWords.length, at + address.length + 40)).trim()
+}
 
 /** The organiser's own pages read, after its home page. */
 export const BASIS_PATHS = ['', '/contact', '/contact-us', '/about', '/about-us'] as const
@@ -81,13 +112,14 @@ export function roleRefusal(address: string, organiserName: string, textBefore =
   return null
 }
 
-export type BasisFind = { address: string; pageUrl: string }
+export type BasisFind = { address: string; pageUrl: string; kind: 'own domain' | 'free mail'; quote: string }
 export type BasisRefusal = { address: string; pageUrl: string; why: string }
 
 /**
  * The addresses one organiser's own pages publish that may be recorded with a basis, and those refused with their
- * reason: at its own domain, in its events role, on a page with no statement against messages. `known` are the
- * addresses the CRM already holds for it (never recorded twice). Pure.
+ * reason: at its own domain or a free mail provider, in its events role, on a page with no statement against messages,
+ * each with the words that publish it. `known` are the addresses the CRM already holds for it (never recorded twice).
+ * Pure.
  */
 export function basisFinds(
   organiser: { name: string; website: string },
@@ -104,9 +136,12 @@ export function basisFinds(
     const against = AGAINST.find((re) => re.test(pageWords))
     for (const a of addressesOn(page.html)) {
       if (seen.has(a)) continue
-      const d = a.split('@')[1] ?? ''
-      if (!(d === site || d.endsWith(`.${site}`))) continue
+      const kind = addressKind(a, site)
       seen.add(a)
+      if (kind === 'another domain') {
+        refused.push({ address: a, pageUrl: page.url, why: `another organisation's domain (${a.split('@')[1] ?? ''}), not theirs` })
+        continue
+      }
       if (against) {
         refused.push({ address: a, pageUrl: page.url, why: `a statement against messages on the page (${(pageWords.match(against) ?? [''])[0]})` })
         continue
@@ -114,7 +149,7 @@ export function basisFinds(
       const at = pageWords.toLowerCase().indexOf(a)
       const why = roleRefusal(a, organiser.name, at >= 0 ? pageWords.slice(0, at) : '')
       if (why) refused.push({ address: a, pageUrl: page.url, why: `not their role (${why})` })
-      else finds.push({ address: a, pageUrl: page.url })
+      else finds.push({ address: a, pageUrl: page.url, kind, quote: quoteFor(pageWords, a) })
     }
   }
   return { finds, refused }

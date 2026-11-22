@@ -40,9 +40,17 @@ const fakeDb = (opts: { contact?: { id: string } | null; saveError?: string; tic
   return { db: { from } as never, calls }
 }
 const PAGE = '<footer>Email events@bp-proof-nights.com.au for bookings</footer>'
-const R = { organiserId: 'o1', address: 'events@bp-proof-nights.com.au', pageUrl: 'https://bp-proof-nights.com.au/', pageHtml: PAGE, inGuideCity: true }
+const R = { organiserId: 'o1', address: 'events@bp-proof-nights.com.au', pageUrl: 'https://bp-proof-nights.com.au/', pageHtml: PAGE, inGuideCity: true, kind: 'own domain' as const, quote: 'Email events@bp-proof-nights.com.au for bookings' }
 
 describe('the engine check', () => {
+  it("a free mail address its own site publishes is checked the same, its kind and its words on the record (Lawal's 10:31, section 1)", async () => {
+    const { db, calls } = fakeDb()
+    const free = { ...R, address: 'bpproofnights@gmail.com', kind: 'free mail' as const, quote: 'Bookings: bpproofnights@gmail.com' }
+    expect(await engineCheck(db, free)).toBe('checked')
+    const verdict = (calls.find((c) => c.table === 'organiser_page_checks' && c.op === 'insert')?.payload as { verdict: Record<string, unknown> }).verdict
+    expect(verdict).toMatchObject({ address_on_own_site: true, address_kind: 'free mail', quote: 'Bookings: bpproofnights@gmail.com' })
+  })
+
   it('saves the page as read with its sha256, the three verdicts, by the engine, and only then ticks the contact', async () => {
     const { db, calls } = fakeDb()
     expect(await engineCheck(db, R)).toBe('checked')
@@ -53,7 +61,13 @@ describe('the engine check', () => {
       page_html: PAGE,
       page_sha256: createHash('sha256').update(PAGE, 'utf8').digest('hex'),
       checked_by: 'engine',
-      verdict: { address_on_own_site: true, no_statement_against_messages: true, runs_events_in_its_city: true },
+      verdict: {
+        address_on_own_site: true,
+        no_statement_against_messages: true,
+        runs_events_in_its_city: true,
+        address_kind: 'own domain',
+        quote: 'Email events@bp-proof-nights.com.au for bookings',
+      },
     })
     const tick = calls.find((c) => c.table === 'organiser_contacts' && c.op === 'update')
     expect(tick?.payload).toEqual({ no_marketing_statement_checked: true, page_checked_by: 'engine' })

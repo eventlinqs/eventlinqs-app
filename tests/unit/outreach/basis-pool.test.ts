@@ -20,10 +20,24 @@ describe('the basis reading, pure', () => {
     )
   })
 
-  it('takes only its own domain, never an address it already holds', () => {
-    const pages = [{ url: `${SITE}/contact`, html: '<p>Bookings: events@bp-proof-nights.com.au or agent@other-agency.com.au</p>' }]
-    expect(basisFinds(org, pages, []).finds).toEqual([{ address: 'events@bp-proof-nights.com.au', pageUrl: `${SITE}/contact` }])
-    expect(basisFinds(org, pages, ['events@bp-proof-nights.com.au']).finds).toEqual([])
+  it('takes its own domain and a free mail address its own page publishes, never another organisation\'s, never one it holds', () => {
+    // Lawal's outreach engine rebuild of 22 November 2026, section 1: the business domain match is removed; the night before,
+    // 8 of 12 reads found 'no address at its own domain on its own pages'.
+    const pages = [{ url: `${SITE}/contact`, html: '<p>Bookings: events@bp-proof-nights.com.au or bpproofnights@gmail.com, tickets via agent@other-agency.com.au</p>' }]
+    const got = basisFinds(org, pages, [])
+    expect(got.finds.map((f) => [f.address, f.kind])).toEqual([
+      ['events@bp-proof-nights.com.au', 'own domain'],
+      ['bpproofnights@gmail.com', 'free mail'],
+    ])
+    expect(got.finds[1].quote).toContain('bpproofnights@gmail.com')
+    expect(got.finds[1].quote).toContain('Bookings:')
+    expect(got.refused).toEqual([{ address: 'agent@other-agency.com.au', pageUrl: `${SITE}/contact`, why: "another organisation's domain (other-agency.com.au), not theirs" }])
+    expect(basisFinds(org, pages, ['events@bp-proof-nights.com.au', 'bpproofnights@gmail.com']).finds).toEqual([])
+  })
+
+  it('a free mail address still passes the role rule and the statement rule', () => {
+    expect(basisFinds(org, [{ url: `${SITE}/careers`, html: '<p>Apply: jobs@gmail.com</p>' }], []).refused[0].why).toMatch(/not their role/)
+    expect(basisFinds(org, [{ url: `${SITE}/contact`, html: '<p>bpproofnights@gmail.com. No unsolicited marketing please.</p>' }], []).finds).toEqual([])
   })
 
   it('refuses a page with a statement against messages, saying so', () => {

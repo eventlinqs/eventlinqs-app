@@ -8,12 +8,44 @@
  * EventLinqs venue page it was found on. The same three roads, in this order, each a row the platform holds:
  *   1. a venue linked to them (organiser_venues), as before;
  *   2. the EventLinqs page they were found on (organisers.found_on): an event's own city, or a venue's;
- *   3. a published night under their own account (events.organisation_id) that has not ended, the soonest first.
- * Never a guess from a name or an address: no row, no city, and a letter that needs one stays held.
+ *   3. a published night under their own account (events.organisation_id) that has not ended, the soonest first;
+ *   4. an upcoming EventLinqs listing whose SHOWN organiser is theirs (listingHost: the host it names, else its venue,
+ *      matched on the CRM's name key), the listing's own city, the soonest first;
+ *   5. the city their own pages print (organisers.city_slug), read by the basis pool from their own address or 'based
+ *      in' line and recorded with its page, its quote and its day (./own-city.ts).
+ * Roads 4 and 5 are the PM's 10:30 of 22 November 2026, item (a): that morning 150 of the 229 real organisers had no city
+ * and the acquisition pool for Monday read 0. Never a guess from a name or an address alone: no row, no city, and a
+ * letter that needs one stays held.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { listingHost } from '@/lib/listings/shown-organiser'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+
+/** The CRM's name key, as organisers.name_key is generated (lower, trimmed, single spaces). Pure. */
+export function nameKeyOf(name: string | null | undefined): string {
+  return (name ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Each organiser's city from the upcoming listings whose shown organiser is theirs, the soonest first (road 4). Pure. */
+export function citiesFromListings(
+  organisers: readonly { readonly id: string; readonly name: string | null }[],
+  listings: readonly { readonly venue_name: string | null; readonly metadata: unknown; readonly city_primary: string | null; readonly start_date: string }[],
+): Map<string, string> {
+  const byKey = new Map<string, string[]>()
+  for (const o of organisers) {
+    const k = nameKeyOf(o.name)
+    if (!k) continue
+    byKey.set(k, [...(byKey.get(k) ?? []), o.id])
+  }
+  const out = new Map<string, string>()
+  for (const l of [...listings].sort((a, b) => Date.parse(a.start_date) - Date.parse(b.start_date))) {
+    if (!l.city_primary) continue
+    for (const id of byKey.get(nameKeyOf(listingHost(l))) ?? []) if (!out.has(id)) out.set(id, l.city_primary)
+  }
+  return out
+}
 
 type Admin = SupabaseClient<Database>
 
@@ -95,5 +127,32 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
       if (n?.city_primary) out.set(o.id, n.city_primary)
     }
   }
+
+  // 4 and 5 read the organisers' own names and the city their pages print, in one read.
+  const rest = organisers.filter((o) => !out.has(o.id)).map((o) => o.id)
+  if (rest.length === 0) return out
+  const own = await db.from('organisers').select('id, name, city_slug').in('id', rest)
+  if (own.error) throw new Error(`their names and own pages' cities could not be read: ${own.error.message}`)
+  const named = (own.data ?? []).map((o) => ({ id: o.id, name: o.name as string | null, city: (o.city_slug as string | null) ?? null }))
+
+  // 4. An upcoming EventLinqs listing whose shown organiser is theirs.
+  const listings = await readEveryRow('the upcoming listings for road 4', (from, to) =>
+    db
+      .from('events')
+      .select('venue_name, metadata, city_primary, start_date')
+      .eq('listing_source', 'eventlinqs')
+      .eq('status', 'published')
+      .or(listingWindowOrPredicate(now))
+      .not('city_primary', 'is', null)
+      .order('start_date')
+      .order('id')
+      .range(from, to),
+  )
+  for (const [id, city] of citiesFromListings(named, listings as { venue_name: string | null; metadata: unknown; city_primary: string | null; start_date: string }[])) {
+    if (!out.has(id)) out.set(id, city)
+  }
+
+  // 5. The city their own pages print, as the basis pool recorded it.
+  for (const o of named) if (!out.has(o.id) && o.city) out.set(o.id, o.city)
   return out
 }

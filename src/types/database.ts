@@ -7374,6 +7374,10 @@ export type Database = {
       organisers: {
         Row: {
           acquisition_state: string
+          city_quote: string | null
+          city_seen_on: string | null
+          city_slug: string | null
+          city_source_url: string | null
           collab_preference: string
           created_at: string
           created_by: string
@@ -7393,6 +7397,10 @@ export type Database = {
         }
         Insert: {
           acquisition_state?: string
+          city_quote?: string | null
+          city_seen_on?: string | null
+          city_slug?: string | null
+          city_source_url?: string | null
           collab_preference?: string
           created_at?: string
           created_by: string
@@ -7412,6 +7420,10 @@ export type Database = {
         }
         Update: {
           acquisition_state?: string
+          city_quote?: string | null
+          city_seen_on?: string | null
+          city_slug?: string | null
+          city_source_url?: string | null
           collab_preference?: string
           created_at?: string
           created_by?: string
