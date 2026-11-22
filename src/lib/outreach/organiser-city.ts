@@ -22,6 +22,7 @@ import type { Database } from '@/types/database'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { listingHost } from '@/lib/listings/shown-organiser'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 /** The CRM's name key, as organisers.name_key is generated (lower, trimmed, single spaces). Pure. */
 export function nameKeyOf(name: string | null | undefined): string {
@@ -129,7 +130,11 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
   }
 
   // 4 and 5 read the organisers' own names and the city their pages print, in one read.
-  const rest = organisers.filter((o) => !out.has(o.id)).map((o) => o.id)
+  const unplaced = organisers.filter((o) => !out.has(o.id)).map((o) => o.id)
+  if (unplaced.length === 0) return out
+  // Never the platform's own listings organisation, never a test organiser (the one rule, src/lib/growth/platform-organiser.ts).
+  const platform = await readPlatformOrganiserIds(db)
+  const rest = unplaced.filter((id) => !platform.has(id))
   if (rest.length === 0) return out
   const own = await db.from('organisers').select('id, name, city_slug').in('id', rest)
   if (own.error) throw new Error(`their names and own pages' cities could not be read: ${own.error.message}`)

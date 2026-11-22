@@ -124,7 +124,7 @@ describe("roads 4 and 5 of an organiser's city", () => {
       const chain: Record<string, unknown> = {
         select: () => chain,
         in: (col: string, values: unknown[]) => ((rows = rows.filter((r) => values.includes(r[col]))), chain),
-        eq: () => chain,
+        eq: (col: string, value: unknown) => ((rows = rows.filter((r) => r[col] === value)), chain),
         is: () => chain,
         not: () => chain,
         or: () => chain,
