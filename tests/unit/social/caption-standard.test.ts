@@ -1,3 +1,4 @@
+import { knownVenueIndex } from '@/lib/social/venue-identity'
 import { describe, expect, it } from 'vitest'
 import { captionFor, dayWordOf, hookFor, experiencesOf, practicalLine, whereOf } from '@/lib/social/lifecycle'
 import { pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
@@ -99,41 +100,12 @@ describe("the publish gate's five checks, on the exact caption", () => {
 
   it('3. a fact that is not the row is refused: the wrong start, the wrong venue', () => {
     expect(judge(GOOD.replace('10am to 10pm', '11am to 10pm')).join(' ')).toMatch(/does not carry its start, 10am/)
-    expect(judge(GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne')).join(' ')).toMatch(/does not name its venue/)
-  })
-
-  // THE VENUE'S RECORDED NAMES (the PM's 18:46 of 22 November 2026): the 18:40 scheduled run held AMCF's final day story
-  // because its place line said 'Federation Square' and the listing's venue_name reads 'Fed Square'. Its venue row is
-  // named 'Federation Square', the name the engine's own caption writer prints. One venue, two names.
-  it("3. the venue's recorded alias names it; without the alias the 18:40 hold reproduces; a wrong venue is still refused", () => {
-    const judgeAt = (caption: string, night: QualityNight) =>
-      pieceQuality({ slides, caption, captions: [caption], momentKind: 'final_day', madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', night]]), now: new Date('2026-11-21T19:30:00Z') }).filter((r) =>
-        r.startsWith('[standard]'),
-      )
-    const row = amcf({ venueName: 'Fed Square', venueAliases: ['Federation Square'] })
-    expect(judgeAt(GOOD, row)).toEqual([])
-    expect(judgeAt(GOOD.replace('Federation Square, Melbourne', 'Fed Square, Melbourne'), row)).toEqual([])
-    expect(judgeAt(GOOD, amcf({ venueName: 'Fed Square' })).join(' ')).toContain('its place line does not name its venue, Fed Square.')
-    expect(judgeAt(GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne'), row).join(' ')).toContain('its place line does not name its venue, Fed Square.')
-  })
-
-  it("the gate reads each night with its venue row's own name and aliases, so the engine's place line always passes", async () => {
-    const { readFileSync } = await import('node:fs')
-    const { venueNamesOf } = await import('@/lib/social/store')
-    const store = readFileSync('src/lib/social/store.ts', 'utf8')
-    expect(store).toContain("venue_row:venues(name, aliases)'")
-    expect(store).toContain('venueAliases: venueNamesOf(e.venue_row as')
-    // AMCF's venue row as production holds it, after the migration: named 'Federation Square', also 'Fed Square'.
-    expect(venueNamesOf({ name: 'Federation Square', aliases: ['Fed Square'] })).toEqual(['Federation Square', 'Fed Square'])
-    expect(venueNamesOf({ name: 'Federation Square', aliases: [] })).toEqual(['Federation Square'])
-    expect(venueNamesOf(null)).toEqual([])
-    // The engine's writer prints the row's own name (campaign.ts placeOf); the check, given the row's names, passes it.
-    const { placeOf } = await import('@/lib/social/campaign')
-    const printed = placeOf({ venueName: 'Fed Square', placeName: 'Federation Square' })
-    expect(printed).toBe('Federation Square')
-    const night = amcf({ venueName: 'Fed Square', venueAliases: venueNamesOf({ name: 'Federation Square', aliases: [] }) })
-    const caption = GOOD.replace('Federation Square, Melbourne', `${printed}, Melbourne`)
-    expect(pieceQuality({ slides, caption, captions: [caption], momentKind: 'final_day', madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', night]]), now: new Date('2026-11-21T19:30:00Z') }).filter((r) => r.startsWith('[standard]'))).toEqual([])
+    // A different venue we hold is a material discrepancy (venue-identity.ts): Birrarung Marr is not Federation Square.
+    const known = knownVenueIndex([{ venueId: 'v-birrarung', name: 'Birrarung Marr' }])
+    const wrong = GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne')
+    expect(pieceQuality({ slides, caption: wrong, captions: [wrong], momentKind: 'final_day', madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', amcf()]]), now: new Date('2026-11-21T19:30:00Z'), knownVenues: known }).join(' ')).toMatch(
+      /its place line names Birrarung Marr, a different venue from its own, Federation Square\./,
+    )
   })
 
   it('a piece that is not a lifecycle moment is not judged by these checks', () => {

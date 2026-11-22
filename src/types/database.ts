@@ -10762,6 +10762,9 @@ export type Database = {
           provider_ref: string | null
           recorded_at: string
           recorded_by: string
+          latest_at: string | null
+          minutes_before_start: number | null
+          objective: string | null
         }
         Insert: {
           approval_id: string
@@ -10773,6 +10776,9 @@ export type Database = {
           provider_ref?: string | null
           recorded_at?: string
           recorded_by: string
+          latest_at?: string | null
+          minutes_before_start?: number | null
+          objective?: string | null
         }
         Update: {
           approval_id?: string
@@ -10784,6 +10790,9 @@ export type Database = {
           provider_ref?: string | null
           recorded_at?: string
           recorded_by?: string
+          latest_at?: string | null
+          minutes_before_start?: number | null
+          objective?: string | null
         }
         Relationships: [
           {
@@ -10871,6 +10880,11 @@ export type Database = {
           published_ref: string | null
           state: string
           submission_ref: string | null
+          expires_at: string | null
+          latest_at: string | null
+          objective: string | null
+          recovery: string | null
+          timing_basis: string | null
         }
         Insert: {
           approval_id: string
@@ -10884,6 +10898,11 @@ export type Database = {
           published_ref?: string | null
           state?: string
           submission_ref?: string | null
+          expires_at?: string | null
+          latest_at?: string | null
+          objective?: string | null
+          recovery?: string | null
+          timing_basis?: string | null
         }
         Update: {
           approval_id?: string
@@ -10897,6 +10916,11 @@ export type Database = {
           published_ref?: string | null
           state?: string
           submission_ref?: string | null
+          expires_at?: string | null
+          latest_at?: string | null
+          objective?: string | null
+          recovery?: string | null
+          timing_basis?: string | null
         }
         Relationships: [
           {
@@ -12284,6 +12308,38 @@ export type Database = {
           },
         ]
       }
+      venue_aliases: {
+        Row: {
+          alias: string
+          id: string
+          recorded_at: string
+          source: string
+          venue_id: string
+        }
+        Insert: {
+          alias: string
+          id?: string
+          recorded_at?: string
+          source: string
+          venue_id: string
+        }
+        Update: {
+          alias?: string
+          id?: string
+          recorded_at?: string
+          source?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_aliases_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_distribution_preferences: {
         Row: {
           our_posts: boolean
@@ -12792,7 +12848,6 @@ export type Database = {
           abs_ucl_code: string | null
           abs_ucl_name: string | null
           address: string | null
-          aliases: string[]
           capacity: number | null
           city: string | null
           city_slug: string | null
@@ -12838,7 +12893,6 @@ export type Database = {
           abs_ucl_code?: string | null
           abs_ucl_name?: string | null
           address?: string | null
-          aliases?: string[]
           capacity?: number | null
           city?: string | null
           city_slug?: string | null
@@ -12884,7 +12938,6 @@ export type Database = {
           abs_ucl_code?: string | null
           abs_ucl_name?: string | null
           address?: string | null
-          aliases?: string[]
           capacity?: number | null
           city?: string | null
           city_slug?: string | null

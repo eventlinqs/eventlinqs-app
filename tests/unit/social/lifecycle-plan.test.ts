@@ -17,7 +17,8 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   slug: 'harbour-lights-festival',
   title: 'Harbour Lights Festival',
   startDate: '2026-11-28T00:00:00Z',
-  endDate: '2026-11-28T11:00:00Z',
+  // To midnight: its first day feed's band (9pm) leaves it three hours, inside its window (timing.ts).
+  endDate: '2026-11-28T13:00:00Z',
   timezone: 'Australia/Melbourne',
   citySlug: 'geelong',
   cityName: 'Geelong',
@@ -104,6 +105,16 @@ describe('the lifecycle planner, end to end on a fixture', () => {
       expect(law37Refusal(p.slides)).toBeNull()
       expect(creativeRefusals({ slides: p.slides, versions: p.versions } as never, new Map()).filter((r) => /utm_source/.test(r))).toEqual([])
     }
+  })
+
+  // THE TIMING ENGINE AT PLANNING (Lawal's 19:13 of 22 November 2026; timing.ts): the same festival closing at 10pm. Its
+  // first day feed's band is 9pm, one hour before it closes: passed over as EXPIRED, never drawn; the story, whose band
+  // is inside its window, is still drawn.
+  it('a first day feed whose band leaves under two hours of a long day is never drawn; the story inside its window is', async () => {
+    const db = fakeDb({ assets: [asset('a1', 'https://x/lead.jpg', 1), asset('a2', 'https://x/second.jpg', 2)] })
+    const out = await planLifecyclePieces(db, { now: NOW, nights: [night({ endDate: '2026-11-28T11:00:00Z' })], origin: 'https://www.eventlinqs.com.au' })
+    expect(out.pieces.map((p) => p.format)).toEqual(['story'])
+    expect(out.notes.join(' ')).toMatch(/Harbour Lights Festival first_day feed: passed over, EXPIRED: its latest acceptable time, 2026-11-28T09:00:00\.000Z/)
   })
 
   it('never posts a photograph already used, and plans nothing when no looked-at photograph is left', async () => {

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { HOURLY_FLAG, isHourRun, LEASE_SECONDS, overdueNow, PIECE_OVERDUE_MINUTES, publishRunRow, reversalReasons, RUN_MISSING_MINUTES, socialWatchdog } from '@/lib/social/publish-run'
+import { HOURLY_FLAG, isHourRun, LEASE_SECONDS, LEGACY_WINDOW_MINUTES, overdueNow, PIECE_OVERDUE_MINUTES, publishRunRow, reversalReasons, RUN_MISSING_MINUTES, socialWatchdog } from '@/lib/social/publish-run'
 
 /*
  * THE PUBLISHING RUN, ACCOUNTED FOR AND WATCHED (Lawal's hardening order of 22 November 2026, sections 2 E and 4; tests 6,
@@ -39,9 +39,13 @@ describe('what is overdue (the watchdog judges)', () => {
 })
 
 /** A database that answers the watchdog's reads (and the reversal's two lists) and keeps what it writes. */
-function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue: string | null; runs?: unknown[]; postings?: unknown[] }) {
+function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue: string | null; latestAt?: string | null; runs?: unknown[]; postings?: unknown[] }) {
   const writes: Record<string, unknown>[] = []
-  const lists: Record<string, unknown[]> = { social_publish_runs: state.runs ?? [], social_piece_postings: state.postings ?? [] }
+  const lists: Record<string, unknown[]> = {
+    social_publish_runs: state.runs ?? [],
+    social_piece_postings: state.postings ?? [],
+    social_piece_schedules: state.oldestDue ? [{ go_at: state.oldestDue, latest_at: state.latestAt ?? null }] : [],
+  }
   const answer: Record<string, unknown> = {
     social_publish_runs: state.lastRunAt ? { started_at: state.lastRunAt } : null,
     feature_flags: { enabled: state.switchOn },
@@ -56,6 +60,7 @@ function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue:
         order: () => q,
         limit: () => q,
         gte: () => q,
+        is: () => q,
         maybeSingle: async () => ({ data: answer[table] ?? null, error: null }),
         then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: lists[table] ?? [], error: null }).then(ok),
         insert: async (row: Record<string, unknown>) => (writes.push({ table, ...row }), { error: null }),
@@ -191,5 +196,35 @@ describe("the reversal, checked by the watchdog itself (the PM's 17:20)", () => 
     expect(main.indexOf("db.from('feature_flags').select('enabled').eq('flag', HOURLY_FLAG)")).toBeGreaterThan(-1)
     expect(main.indexOf('if (!hourRun) {')).toBeLessThan(main.indexOf('await scheduleApprovedPieces(db, now)'))
     expect(main).toMatch(/result: `skipped: \$\{HOURLY_FLAG\} is on \(the watchdog's reversal\)/)
+  })
+})
+
+describe("the watchdog never revives expired content (Lawal's 19:13 of 22 November 2026, section 4, point 5)", () => {
+  const call = async (state: Parameters<typeof fakeDb>[0]) => {
+    const { db } = fakeDb(state)
+    let called = 0
+    const out = await socialWatchdog(db, { now: NOW, origin: 'https://x', secret: 's', fetcher: async () => (called++, new Response('{}')) })
+    return { called, out }
+  }
+
+  it('a piece 25 minutes past its slot and inside its window is recovered: the route is called once', async () => {
+    const r = await call({ lastRunAt: ago(4).toISOString(), switchOn: true, oldestDue: ago(25).toISOString(), latestAt: new Date(NOW.getTime() + 60 * 60_000).toISOString() })
+    expect(r.called).toBe(1)
+  })
+
+  it('a piece past its latest acceptable time is never a reason to call: nothing is called', async () => {
+    const r = await call({ lastRunAt: ago(4).toISOString(), switchOn: true, oldestDue: ago(25).toISOString(), latestAt: ago(1).toISOString() })
+    expect(r.called).toBe(0)
+  })
+
+  it('a row from before the window was stored counts only within 30 minutes of its slot', async () => {
+    expect(LEGACY_WINDOW_MINUTES).toBe(30)
+    expect((await call({ lastRunAt: ago(4).toISOString(), switchOn: true, oldestDue: ago(25).toISOString() })).called).toBe(1)
+    expect((await call({ lastRunAt: ago(4).toISOString(), switchOn: true, oldestDue: ago(31).toISOString() })).called).toBe(0)
+  })
+
+  it('a piece the provider may already hold (a submission on record) is the scheduled run to reconcile, never the watchdog to resend', () => {
+    const src = readFileSync(join(process.cwd(), 'src/lib/social/publish-run.ts'), 'utf8')
+    expect(src).toMatch(/\.eq\('state', 'scheduled'\)\s*\.is\('submission_ref', null\)/)
   })
 })

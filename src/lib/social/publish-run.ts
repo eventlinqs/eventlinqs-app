@@ -20,6 +20,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export const RUN_MISSING_MINUTES = 25
 /** A scheduled piece this far past its slot, with the switch on, is overdue (two runs missed). */
 export const PIECE_OVERDUE_MINUTES = 20
+/** A schedule written before its window was stored (migration 20261122193001) is recovered only this close to its slot. */
+export const LEGACY_WINDOW_MINUTES = 30
 /** The reversal: while on, only the hour's own run publishes, as the hourly cron did (the PM's 17:20). */
 export const HOURLY_FLAG = 'social_publish_hourly'
 
@@ -169,7 +171,24 @@ export async function socialWatchdog(
   if (last.error) return { overdue: [`the last run could not be read: ${last.error.message}`], action: 'none: it could not read' }
   const flag = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
   if (flag.error) return { overdue: [`the switch could not be read: ${flag.error.message}`], action: 'none: it could not read' }
-  const due = await db.from('social_piece_schedules').select('go_at').eq('state', 'scheduled').lt('go_at', input.now.toISOString()).order('go_at', { ascending: true }).limit(1).maybeSingle()
+  // THE WATCHDOG NEVER REVIVES EXPIRED CONTENT (Lawal's 19:13, section 4, point 5; timing.ts): a piece past its latest
+  // acceptable time is the scheduled run's to expire, and one the provider may already hold (a submission on record) is
+  // the scheduled run's to reconcile with the provider first; neither makes the watchdog call the publisher. A row from
+  // before the window was stored counts only within LEGACY_WINDOW_MINUTES of its slot.
+  const dueRows = await db
+    .from('social_piece_schedules')
+    .select('go_at, latest_at')
+    .eq('state', 'scheduled')
+    .is('submission_ref', null)
+    .lt('go_at', input.now.toISOString())
+    .order('go_at', { ascending: true })
+    .limit(50)
+  const due = {
+    error: dueRows.error,
+    data: ((dueRows.data ?? []) as { go_at: string; latest_at: string | null }[]).find((r) =>
+      r.latest_at ? Date.parse(r.latest_at) > input.now.getTime() : Date.parse(r.go_at) > input.now.getTime() - LEGACY_WINDOW_MINUTES * 60_000,
+    ) ?? null,
+  }
   if (due.error) return { overdue: [`the due pieces could not be read: ${due.error.message}`], action: 'none: it could not read' }
   const lastRunAt = last.data?.started_at ? new Date(String(last.data.started_at)) : null
   const switchOn = flag.data?.enabled === true

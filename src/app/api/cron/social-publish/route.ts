@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -215,9 +215,29 @@ export async function GET(request: NextRequest) {
         policyFaults.push(`the standing policy could not run: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
+    // EXPIRY AT ONCE, EVERY RUN (timing.ts; Lawal's 19:13 of 22 November 2026, sections 4 and 5): a scheduled piece whose
+    // event was cancelled, postponed, finished or sold out, or whose latest acceptable time has passed, is expired with
+    // its reason before anything is scheduled or published. Its own guard: a failure is said and never stops the run.
+    try {
+      const lapsed = await expireLapsedSchedules(db, now)
+      for (const x of lapsed.expired) console.log(`[cron/social-publish] expired: ${x}`)
+      for (const u of lapsed.unread) console.log(`[cron/social-publish] expiry not read: ${u}`)
+    } catch (error) {
+      console.error('[cron/social-publish] the expiry sweep could not run:', error instanceof Error ? error.message : error)
+    }
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
     for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
+    // A SAFE CORRECTION IS RECORDED (Lawal's correction, 19:04 of 22 November 2026, section 1): each place line given its
+    // night's own venue before posting, in the log and the audit trail.
+    if ((published.corrected ?? []).length > 0) {
+      for (const c of published.corrected ?? []) console.log(`[cron/social-publish] corrected before posting: ${c}`)
+      try {
+        await recordAnonAuditEvent({ action: 'system.social.fact_corrected', actorEmail: 'cron/social-publish', metadata: { corrected: published.corrected } })
+      } catch (error) {
+        console.error('[cron/social-publish] the correction could not be recorded in the audit trail:', error instanceof Error ? error.message : error)
+      }
+    }
     // THE SWITCH GOES OFF BY CODE only on a breach of the standing policy (policy-guard.ts switchTrips), with its alarm
     // row; a held, refused or failed piece is held alone and the run goes on (Lawal's hardening order, section 2 A). A
     // policy that could not run approved nothing; it is said and recorded, never a global stop.

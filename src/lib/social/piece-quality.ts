@@ -3,6 +3,7 @@ import { namesAStandIn, STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { captionMarkFaults } from './caption-marks'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_ZONE, sessionAt } from './lifecycle'
+import { placeOfLine, placeVerdict, type KnownVenues } from './venue-identity'
 import { getAllCities } from '@/lib/cities/data'
 
 /**
@@ -41,7 +42,9 @@ export type QualityNight = Pick<CampaignNight, 'eventId' | 'title' | 'summary' |
   /** The row's own price and place, for the fact match (the 05:15 standard, check 3) and the free wording (check 4). */
   readonly isFree?: boolean | null
   readonly venueAddress?: string | null
-  /** Other names its venue is published under (venues.aliases): 'Federation Square' for 'Fed Square'. */
+  /** Its venue row's id, where it has one: two venue ids are never one venue (venue-identity.ts). */
+  readonly venueId?: string | null
+  /** Its venue row's own name and the aliases recorded for that venue id (venue_aliases, each with its source). */
   readonly venueAliases?: readonly string[]
 }
 
@@ -67,6 +70,9 @@ export type QualityInput = {
    * run hours before a piece goes and leave it out (the PM's 09:10 of 22 November 2026).
    */
   readonly goesAt?: Date
+  /** Every venue name and alias we hold, normalised, to its venue id (venue-identity.ts knownVenueIndex): a place line
+   * that names exactly another venue is held; one that names no venue we hold is corrected at publishing. */
+  readonly knownVenues?: KnownVenues
 }
 
 /** A first line that is only a stage word or a stock phrase (the 05:15 standard, check 5). */
@@ -104,10 +110,15 @@ function standardFaults(input: QualityInput, ids: ReadonlySet<string>): string[]
       if (!midnight && !TIME_IN_LINE.test(dated)) out.push(`[standard] ${n.title}: its date line states no time ('${dated || 'no date line'}').`)
       // 3. FACT MATCH: the hours and the place are the row's own, read now.
       if (!midnight && TIME_IN_LINE.test(dated) && !dated.toLowerCase().includes(clock(n.startDate))) out.push(`[standard] ${n.title}: its date line does not carry its start, ${clock(n.startDate)}, as its row reads now.`)
-      // The venue's own name or any alias its row records (the PM's 18:46 of 22 November 2026: Fed Square and Federation
-      // Square are one venue); a place line naming neither is still refused.
-      const names = [n.venueName ?? '', ...(n.venueAliases ?? [])].map((x) => x.trim().toLowerCase().slice(0, 12)).filter((x) => x !== '')
-      if (n.venueName && placed && !names.some((x) => placed.toLowerCase().includes(x))) out.push(`[standard] ${n.title}: its place line does not name its venue, ${n.venueName}.`)
+      // THE VENUE BY ITS IDENTITY (Lawal's correction, 19:04 of 22 November 2026, section 1; venue-identity.ts): the
+      // listing's name, the venue row's own name or a recorded alias names it (Fed Square and Federation Square are one
+      // venue). A place naming exactly another venue we hold is a material discrepancy and holds this piece only; a place
+      // naming no venue we hold is corrected from the rows at publishing (correctPlaceLines), never a hold.
+      const place = placeOfLine(placed)
+      if (n.venueName && place !== null) {
+        const verdict = placeVerdict(place, [n.venueName, ...(n.venueAliases ?? [])], input.knownVenues ?? new Map(), n.venueId ?? null)
+        if (verdict.kind === 'other') out.push(`[standard] ${n.title}: its place line names ${verdict.name}, a different venue from its own, ${n.venueName}.`)
+      }
       // 4. FREE WORDING: a free night never says 'ticket'.
       if (n.isFree === true && /ticket/i.test(caption)) out.push(`[standard] ${n.title}: a free night's caption says 'ticket'.`)
       // 5. FIRST LINE: never only a stage word or a stock phrase; it names something of the night's own words.
