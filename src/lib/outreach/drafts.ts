@@ -8,12 +8,21 @@
  * communication gateway (voice-gate.ts) judges its words and Lawal approves those exact words before it is recorded as
  * sent. Until 31 October an email inside an approved play was stored QUEUED for the sender here; that ended. The
  * database judges it again and refuses what it must (migrations 213001 and 224001), in its own words.
+ *
+ * THE CONTACT POLICY FIRST, THE CONTEXT WITH IT (Lawal, 23 November 2026, 01:51, through the PM's 01:52, items 1 and 2):
+ * every workflow drafts through here, so before a word is written the one contact policy (./contact-policy.ts) reads
+ * every message to the organiser, its replies, suppression, opt outs and bounces; a letter it holds is not drafted, and
+ * the caller is told the rule, the reason and the next eligible date. A drafted message carries its context (the event
+ * or campaign it is about), which with its category and step is the database's duplicate key (migration 20261123020001):
+ * two runs drafting the same letter at once leave one row, and the second is told, in plain words, that it is already
+ * drafted (refusalFromError), never an error that stops its run.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { renderTemplate, type MessageChannel, type MessagePurpose } from './rules'
 import { factsForContact } from './facts'
 import { refusalFromError, type Done } from './crm'
+import { decisionWords, readContactPolicy, type PolicyRule } from './contact-policy'
 
 type Admin = SupabaseClient<Database>
 
@@ -40,24 +49,46 @@ export type DraftRequest = {
    * 13 November 2026, 06:50, ruling 1), kept on the draft like a basis. Null when the line names a night on EventLinqs.
    */
   lineSource?: { readonly url: string; readonly readOn: string } | null
+  /**
+   * What the message is about, part of its duplicate key (migration 20261123020001): ./contact-policy.ts contextKeys,
+   * 'event:<events.id>' for a letter about a night, 'play:<outreach_plays.id>' for a play's campaign letter with no night,
+   * and so on; a follow up passes its first letter's. Null where it has none.
+   */
+  contextKey?: string | null
   scheduledFor: Date
   origin: string
   draftedBy: string
 }
 
-export type DraftResult = Done<{ id: string; state: 'held'; heldBecause: string[] }>
+/**
+ * Drafted (held), refused (the database's words, or a read that failed), or HELD BY THE CONTACT POLICY: nothing is
+ * drafted, and the caller reports the rule, the reason and the next eligible moment (null: not by waiting).
+ */
+export type DraftResult =
+  | Done<{ id: string; state: 'held'; heldBecause: string[] }>
+  | { state: 'held by policy'; rule: PolicyRule; reason: string; nextEligibleAt: string | null }
 
 export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<DraftResult> {
   const template = r.templateId
-    ? await db.from('outreach_templates').select('id, channel, purpose, step, subject, body').eq('id', r.templateId).maybeSingle()
+    ? await db.from('outreach_templates').select('id, key, channel, purpose, step, subject, body').eq('id', r.templateId).maybeSingle()
     : await db
         .from('outreach_templates')
-        .select('id, channel, purpose, step, subject, body')
+        .select('id, key, channel, purpose, step, subject, body')
         .eq('key', r.templateKey)
         .order('version', { ascending: false })
         .limit(1)
         .maybeSingle()
   if (template.error || !template.data) return { state: 'refused', reason: `no template ${r.templateKey}` }
+  const step = r.purpose === 'cadence' ? (r.step ?? 1) : null
+
+  // THE ONE CONTACT POLICY, before a word is written, judged at the minute the letter would land.
+  const decision = await readContactPolicy(
+    db,
+    { contactId: r.contactId, purpose: r.purpose, step, templateKey: (template.data.key as string | null) ?? null, moment: 'draft' },
+    r.scheduledFor,
+  )
+  if (decision.state === 'unread') return { state: 'refused', reason: `whether they may be written to now could not be read: ${decision.why}` }
+  if (decision.state === 'held') return { state: 'held by policy', rule: decision.rule, reason: decisionWords(decision), nextEligibleAt: decision.nextEligibleAt }
   const contact = await db.from('organiser_contacts').select('channel, unsubscribe_token').eq('id', r.contactId).single()
   if (contact.error) return { state: 'refused', reason: refusalFromError(contact.error) }
 
@@ -82,8 +113,9 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
     .insert({
       contact_id: r.contactId,
       purpose: r.purpose,
-      step: r.purpose === 'cadence' ? (r.step ?? 1) : null,
+      step,
       template_id: template.data.id,
+      context_key: r.contextKey ?? null,
       play_id: r.playId ?? null,
       subject: rendered.subject,
       body: rendered.body,

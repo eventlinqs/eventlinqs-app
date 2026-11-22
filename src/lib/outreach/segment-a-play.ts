@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { contextKeys } from './contact-policy'
 import { draftFromTemplate } from './drafts'
 import { readSegmentAFacts } from './segment-a-read'
 import { melbourneDayOf, segmentAFields } from './segment-a-letter'
@@ -44,8 +45,8 @@ export async function draftSegmentALetter(
     readonly now: Date
     readonly origin: string
     readonly actingUser: string
-    /** For a follow up: the first letter, whose thread and subject it keeps. */
-    readonly first?: { readonly id: string; readonly subject: string | null }
+    /** For a follow up: the first letter, whose thread, subject and context (the night it was about) it keeps. */
+    readonly first?: { readonly id: string; readonly subject: string | null; readonly contextKey?: string | null }
   },
 ): Promise<SegmentADraft> {
   if (!inBusinessHours(input.scheduledFor, 'Australia/Melbourne')) {
@@ -96,12 +97,15 @@ export async function draftSegmentALetter(
     step: input.step,
     playId: input.play.id,
     extraFields: { ...segmentAFields(read.facts), 'thread subject': thread },
+    // A first letter is about its night; a follow up keeps its first letter's context, so one sequence is one context.
+    contextKey: input.first ? (input.first.contextKey ?? null) : contextKeys.event(read.eventId),
     inReplyTo: null,
     scheduledFor: input.scheduledFor,
     origin: input.origin,
     draftedBy: input.actingUser,
   })
   if (drafted.state === 'refused') return { state: 'refused', why: drafted.reason }
+  if (drafted.state === 'held by policy') return { state: 'held', touchId: null, why: [drafted.reason] }
   if (drafted.value.heldBecause.length > 0) return { state: 'held', touchId: drafted.value.id, why: drafted.value.heldBecause }
 
   const touch = await db.from('outreach_touches').select('subject, body').eq('id', drafted.value.id).single()

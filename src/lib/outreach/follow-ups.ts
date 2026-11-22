@@ -82,15 +82,15 @@ const baseFields = (t: Theirs) =>
   })
 
 /** The first letters Lawal sent, with the contacts that already have a message at the given step. */
-async function readSent(db: Admin, step: number): Promise<{ firsts: { id: string; contactId: string; subject: unknown; sentAt: string }[]; taken: Set<string>; dayFourSent: Set<string> }> {
+async function readSent(db: Admin, step: number): Promise<{ firsts: { id: string; contactId: string; subject: unknown; sentAt: string; contextKey: string | null }[]; taken: Set<string>; dayFourSent: Set<string> }> {
   const firsts = await db
     .from('outreach_touches')
-    .select('id, contact_id, subject, sent_at, outreach_templates!inner(key)')
+    .select('id, contact_id, subject, sent_at, context_key, outreach_templates!inner(key)')
     .eq('state', 'sent')
     .eq('step', 1)
     .in('outreach_templates.key', FIRST_KEYS)
   if (firsts.error) throw new Error(`the first letters sent could not be read: ${firsts.error.message}`)
-  const rows = (firsts.data ?? []).filter((t) => t.sent_at).map((t) => ({ id: t.id as string, contactId: t.contact_id as string, subject: t.subject, sentAt: t.sent_at as string }))
+  const rows = (firsts.data ?? []).filter((t) => t.sent_at).map((t) => ({ id: t.id as string, contactId: t.contact_id as string, subject: t.subject, sentAt: t.sent_at as string, contextKey: (t.context_key as string | null) ?? null }))
   const ids = [...new Set(rows.map((r) => r.contactId))]
   const taken = new Set<string>()
   const dayFourSent = new Set<string>()
@@ -160,11 +160,15 @@ async function draftFollowUps(db: Admin, input: { readonly now: Date; readonly o
       purpose: 'cadence',
       step,
       extraFields: fields,
+      // A follow up keeps its first letter's context: one sequence, one context (migration 20261123020001).
+      contextKey: first.contextKey,
       scheduledFor: input.now,
       origin: input.origin,
       draftedBy: founder.id,
     })
     if (done.state === 'refused') refused.push({ contactId: first.contactId, why: done.reason })
+    // The one contact policy held it (./contact-policy.ts): not drafted, said with its reason.
+    else if (done.state === 'held by policy') skipped.push({ contactId: first.contactId, why: done.reason })
     else {
       drafted += 1
       if (done.value.heldBecause.length > 0) held.push({ contactId: first.contactId, why: done.value.heldBecause.join('; ') })

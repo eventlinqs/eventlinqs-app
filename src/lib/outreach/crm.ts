@@ -20,6 +20,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import type { Objection } from './objections'
+import { decisionWords, readContactPolicy } from './contact-policy'
 
 type Admin = SupabaseClient<Database>
 type Tables = Database['public']['Tables']
@@ -130,7 +131,9 @@ const PLAIN_CONSTRAINTS: Record<string, string> = {
   organiser_contacts_one_per_address: 'That address is already a contact.',
   organiser_contacts_basis_is_whole: 'The basis is not whole: the page, the date, the no-messages check and the relevance are all needed.',
   organiser_contacts_address_shape: 'That address is not in a shape the channel takes.',
-  outreach_touches_one_per_step: 'That step is already drafted or sent for this contact.',
+  // The longer name first: refusalFromError takes the first name the message contains (migration 20261123020001).
+  outreach_touches_one_per_step_without_context: 'That step is already drafted or sent for this contact.',
+  outreach_touches_one_per_step: 'That letter is already drafted or sent for this contact: the same purpose, about the same event or campaign, at the same step.',
   organiser_venues_pkey: 'That venue already has an organiser.',
 }
 
@@ -213,13 +216,20 @@ export async function recordContact(db: Admin, input: ContactInput): Promise<Don
   return result(await db.from('organiser_contacts').insert(row).select('id').single())
 }
 
-/** A draft held for Lawal. The database refuses it if the contact may not be written to. */
+/**
+ * A draft held for Lawal. The one contact policy reads it first (./contact-policy.ts), as for every workflow, and the
+ * database refuses it if the contact may not be written to.
+ */
 export async function draftTouch(
   db: Admin,
-  input: { contactId: string; step: 1 | 2 | 3; subject: string | null; body: string; trackedLink?: string | null; draftedBy: string },
+  input: { contactId: string; step: 1 | 2 | 3; subject: string | null; body: string; trackedLink?: string | null; contextKey?: string | null; draftedBy: string },
 ): Promise<Done<{ id: string }>> {
+  const decision = await readContactPolicy(db, { contactId: input.contactId, purpose: 'cadence', step: input.step, templateKey: null, moment: 'draft' }, new Date())
+  if (decision.state === 'unread') return { state: 'refused', reason: `whether they may be written to now could not be read: ${decision.why}` }
+  if (decision.state === 'held') return { state: 'refused', reason: decisionWords(decision) }
   return result(await db.from('outreach_touches').insert({
     contact_id: input.contactId,
+    context_key: input.contextKey ?? null,
     step: input.step,
     subject: input.subject,
     body: input.body,

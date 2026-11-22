@@ -140,10 +140,11 @@ update public.outreach_touches t
    and t.template_id <> (select id from public.outreach_templates where key = d.template order by version desc limit 1);
 
 -- 4. The drafts, HELD in that play; each email carries its contact's own unsubscribe link.
-insert into public.outreach_touches (contact_id, purpose, step, template_id, play_id, subject, body, held_because, state, drafted_by)
+insert into public.outreach_touches (contact_id, purpose, step, template_id, play_id, context_key, subject, body, held_because, state, drafted_by)
 select c.id, 'cadence', 1,
        (select id from public.outreach_templates where key = d.template order by version desc limit 1),
        (select id from public.outreach_plays where name = 'D7 venue partnerships'),
+       'play:' || (select id from public.outreach_plays where name = 'D7 venue partnerships'),
        d.subject, replace(d.body, ${q(TOKEN)}, c.unsubscribe_token::text), d.held, 'held', ${q(by)}
   from w6_d7 d
   join w6_d7_org g on g.organiser = d.organiser

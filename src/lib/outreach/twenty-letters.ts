@@ -106,6 +106,8 @@ export const TWENTY_LETTERS: readonly TwentyLetter[] = [TWENTY_ADVICE, TWENTY_OF
 
 /** A public night of theirs, as the template names it. */
 export interface TheirNight {
+  /** Its row on EventLinqs (events.id), the context its letter is about (migration 20261123020001); absent for an event read from their own page. */
+  readonly eventId?: string | null
   /** Its page on EventLinqs (/events/<slug>), for the listed letter's link; absent for an event read from their own page. */
   readonly slug?: string | null
   readonly title: string
