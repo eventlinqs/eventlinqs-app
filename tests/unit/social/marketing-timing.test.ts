@@ -172,7 +172,6 @@ describe('cancelled, postponed, sold out; missing facts; live coverage', () => {
     const t = timingOf({ moment: 'running', day: '2026-11-28', nights: [perth], preferredAt: at('2026-11-28T02:00:00Z') }, at('2026-11-28T02:00:00Z'))
     expect(t).toMatchObject({ kind: 'window', latestAt: '2026-11-28T04:00:00.000Z' })
   })
-  })
 
   it('live coverage only with approved content: without it, not planned; with it, while the session is open', () => {
     const base = { moment: 'final_day' as const, day: '2026-11-22', nights: [AMCF], preferredAt: at('2026-11-22T08:00:00Z'), objective: 'live_coverage' as const }

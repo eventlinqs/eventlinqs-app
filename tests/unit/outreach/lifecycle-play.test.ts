@@ -155,7 +155,7 @@ describe('the planner and the sender carry law 49 plays', () => {
   it('the sender reads the clock again before a law 49 letter goes: never inside T-7', async () => {
     const { readFileSync } = await import('node:fs')
     const src = readFileSync('src/lib/outreach/sender.ts', 'utf8').replace(/\r\n/g, '\n')
-    expect(src).toContain("if (!key.startsWith('segment_a_') && !isLifecycleKey(key)) return null")
+    expect(src).toContain("if (!key.startsWith('segment_a_') && !isLifecycleKey(key)) {")
     expect(src).toContain('return lifecycleStillAsks(ev.data.start_date as string, (ev.data.timezone as string | null) ?? null, now)')
   })
 })

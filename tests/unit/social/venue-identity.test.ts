@@ -82,7 +82,7 @@ describe('the caption from verified data: a safe difference corrected before pos
     endDate: '2026-11-22T11:00:00Z',
     timezone: 'Australia/Melbourne',
     isFree: true,
-  } as QualityNight
+  } as unknown as QualityNight
   const caption = (place: string) =>
     [
       'Last day today for African music, food and dance at Federation Square, and still on.',

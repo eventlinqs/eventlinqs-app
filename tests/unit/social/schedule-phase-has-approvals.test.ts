@@ -29,7 +29,7 @@ describe('the schedule and live phases run after the day\'s approvals', () => {
 
   it('in the run, the approvals come before the scheduling, and the scheduling before the plan check', () => {
     const policy = route.indexOf('if (hourRun && POLICY_HOURS.has(melbourneHour(now)))')
-    const schedule = route.indexOf('const scheduled = await scheduleApprovedPieces(db, now)')
+    const schedule = route.indexOf('scheduled = await scheduleApprovedPieces(db, now)')
     const check = route.indexOf('plan = planCheckWords(dry, later.count ?? 0)')
     expect(policy).toBeGreaterThan(-1)
     expect(policy).toBeLessThan(schedule)

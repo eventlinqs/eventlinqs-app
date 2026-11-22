@@ -156,7 +156,8 @@ describe("every ten minutes, with the hour keeping its own work (the PM's 17:20 
     expect(main).toContain('if (hourRun && POLICY_HOURS.has(melbourneHour(now))) {')
     expect(main).toContain('if (hourRun && (melbourneHour(now) === 6 || redrawn.redrawn.length > 0)) {')
     expect(main).toContain('const phase = hourRun ? socialPhaseAt(melbourneHour(now)) : null')
-    expect(main).toMatch(/\n    const scheduled = await scheduleApprovedPieces\(db, now\)\n    const published = await publishDuePieces\(db, now,/)
+    expect(main).toMatch(/\n      scheduled = await scheduleApprovedPieces\(db, now\)\n/)
+    expect(main).toMatch(/\n    const published = await publishDuePieces\(db, now,/)
   })
 })
 
