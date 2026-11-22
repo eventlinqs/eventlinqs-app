@@ -9,6 +9,7 @@ import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach
 import { runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
+import { isolated, isStepFault } from '@/lib/ops/isolated'
 import { melbourneMinutes, outreachPhaseAt } from '@/lib/ops/timetable'
 import { recordMissedRuns } from '@/lib/ops/missed-runs'
 import { recordSendingDomainCheck } from '@/lib/outreach/dns-check'
@@ -18,6 +19,7 @@ import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-u
 import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
 import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, poolCapFor, runBasisPool, weekFirstLetters } from '@/lib/outreach/basis-pool'
+import { engineRecheckStore, recheckUnticked } from '@/lib/outreach/engine-recheck'
 
 /**
  * THE OUTREACH RUN, EVERY 15 MINUTES (window 6, 28 October 2026; the engine plan's FULL AUTOMATION).
@@ -43,6 +45,7 @@ export const dynamic = 'force-dynamic'
 
 const DNS_EVERY_MS = 6 * 3_600_000
 const INBOX_LOOKBACK_MS = 2 * 86_400_000
+const RUN = 'cron/outreach-run'
 
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)
@@ -70,18 +73,23 @@ export async function GET(request: NextRequest) {
     if (sender.data.mode !== 'hold' && actingUser) {
       if (graph) {
         // Both mailboxes (law 33 (a)): an acquisition letter goes from lawal@, so its reply comes back there.
+        // EACH MAILBOX AND EACH STEP BELOW IN ITS OWN GUARD (Lawal's 15:14 of 22 November 2026; the PM's 15:15, F1): one
+        // mailbox's Graph error, one play's throw, never answers the run 500 and never stops the sender below; each fault
+        // is named in the answer (faults) and in the phase record.
         const read: Record<string, unknown> = {}
         for (const mailbox of OUR_MAILBOXES) {
-          const messages = await graphReadInbox({ ...graph, mailbox }, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
-          read[mailbox] = await handleInbox(db, messages, { mailbox, origin, actingUser, now })
+          read[mailbox] = await isolated(RUN, `the inbox of ${mailbox}`, async () => {
+            const messages = await graphReadInbox({ ...graph, mailbox }, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
+            return handleInbox(db, messages, { mailbox, origin, actingUser, now })
+          })
         }
         inbox = read
       }
       // The learning loop judges each play's test once, before the plan, so the winner is drafted from the same run.
-      judged = await judgePlays(db, now)
-      plays = await planPlays(db, { now, origin, actingUser })
-      dms = await planDms(db, { now, origin, actingUser })
-      partners = await planRelationship(db, { now, origin, actingUser })
+      judged = await isolated(RUN, 'judging the plays', () => judgePlays(db, now))
+      plays = await isolated(RUN, 'planning the plays', () => planPlays(db, { now, origin, actingUser }))
+      dms = await isolated(RUN, 'drafting the DMs', () => planDms(db, { now, origin, actingUser }))
+      partners = await isolated(RUN, "the partners' messages", () => planRelationship(db, { now, origin, actingUser }))
     } else if (sender.data.mode === 'hold') {
       inbox = 'not read: the sender is on hold'
       plays = 'not planned: the sender is on hold'
@@ -186,7 +194,7 @@ export async function GET(request: NextRequest) {
     }
     // THE TWENTY'S POOL GROWS BY ITSELF (src/lib/outreach/basis-pool.ts; Lawal's 10:42 of 13 November 2026): once a night,
     // in the 23:30 turn in Melbourne, a few CRM organisers' own sites read politely and each published events address
-    // recorded with its page and day; its no-messages check is Lawal's own, before any message leaves held. It stops a
+    // recorded with its page and day; its no-messages check is the engine's own (engineCheck), read again at 23:45. It stops a
     // minute inside the function's 300 s from the run's start. Reading and
     // recording only; nothing sends. A failure is reported and logged and never stops the run above.
     let pool: unknown = 'not this turn: the pool grows in the 23:30 turn'
@@ -207,8 +215,18 @@ export async function GET(request: NextRequest) {
         pool = { error: message }
       }
     }
+    // THE ENGINE READS AGAIN THE ADDRESSES IT HAS NOT CLEARED (the PM's 15:48 of 22 November 2026, F5): the pool turn's
+    // second run, 23:45 in Melbourne, re-reads each unticked contact's own page and ticks it by the engine's check, or
+    // records why not on the contact; the run's own guard keeps a fault here from touching anything else.
+    let recheck: unknown = 'not this turn: the engine re-reads unticked addresses in the 23:45 turn'
+    if (hour === POOL_HOUR && minute >= POOL_MINUTE_FROM + 15 && minute < POOL_MINUTE_FROM + 30) {
+      recheck = await isolated(RUN, 'the engine re-reading unticked addresses', () => recheckUnticked(engineRecheckStore(db), fetch, now, now.getTime() + 240_000))
+      console.log(`[cron/outreach-run] the engine's re-read: ${JSON.stringify(recheck)}`)
+    }
     // THE TIMETABLE'S OUTREACH PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
     // the phase this quarter hour holds, the letters this run sent as its units.
+    // Every step this run contained, by name: a mailbox's read, the plays, the DMs, the partners (F1), the engine's re-read (F5).
+    const faults = [...(typeof inbox === 'object' && inbox !== null ? Object.values(inbox) : []), judged, plays, dms, partners, recheck].filter(isStepFault)
     const outreachPhase = outreachPhaseAt(melbourneMinutes(now))
     if (outreachPhase) {
       const report = sent as { sent?: readonly unknown[]; failed?: readonly unknown[]; refused?: readonly unknown[]; note?: string }
@@ -218,8 +236,8 @@ export async function GET(request: NextRequest) {
         startedAt: now,
         endedAt: new Date(),
         units: report.sent?.length ?? 0,
-        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}`,
-        failed: (report.failed?.length ?? 0) > 0,
+        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}${faults.length ? `; contained: ${faults.map((f) => `${f.step}: ${f.error}`).join('; ')}` : ''}`.slice(0, 2000),
+        failed: (report.failed?.length ?? 0) > 0 || faults.length > 0,
       })
     }
     // THE MISSED-RUN ALARM (Lawal's 09:01 of 20 November 2026, item 4; src/lib/ops/missed-runs.ts): this run already comes
@@ -227,7 +245,7 @@ export async function GET(request: NextRequest) {
     // no new cron. A failed read or write is named in the answer and never stops the run above.
     const watchdog = await recordMissedRuns(db, now)
     if ('unread' in watchdog) console.error('[cron/outreach-run] the missed-run alarm could not run:', watchdog.unread)
-    return NextResponse.json({ ok: true, dns, inbox, judged, plays, dms, partners, selfQueued, sent, acquisition, tasks, twenty, spotlight, followUps, sentItems, pool, watchdog })
+    return NextResponse.json({ ok: true, faults, dns, inbox, judged, plays, dms, partners, selfQueued, sent, acquisition, tasks, twenty, spotlight, followUps, recheck, sentItems, pool, watchdog })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

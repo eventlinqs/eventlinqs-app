@@ -117,7 +117,7 @@ export function providerNamed(text: string): string | null {
   return PROVIDERS.find((p) => new RegExp(`\\b${p}\\b`, 'i').test(text)) ?? null
 }
 
-export type InboxReport = { read: number; matched: number; unmatched: number; autoReplies: number; bounces: number; replies: { id: string; outcome: string; confidence: number; action: string }[] }
+export type InboxReport = { read: number; matched: number; unmatched: number; autoReplies: number; bounces: number; replies: { id: string; outcome: string; confidence: number; action: string }[]; failed: { messageId: string | null; error: string }[] }
 
 const OUR_ID = /<[^<>\s]+@eventlinqs\.com>/gi
 
@@ -132,8 +132,12 @@ export async function handleInbox(
   messages: InboundMessage[],
   deps: { mailbox: string; origin: string; actingUser: string; now: Date },
 ): Promise<InboxReport> {
-  const report: InboxReport = { read: messages.length, matched: 0, unmatched: 0, autoReplies: 0, bounces: 0, replies: [] }
+  const report: InboxReport = { read: messages.length, matched: 0, unmatched: 0, autoReplies: 0, bounces: 0, replies: [], failed: [] }
   for (const m of messages) {
+    // ONE MESSAGE IN ITS OWN GUARD (Lawal's 15:14 of 22 November 2026: no individual message may disable a whole
+    // operation; the PM's 15:15, F3): a reply that fails to log or act is recorded with its message id and the reason,
+    // and every later message in the mailbox is still read. A message never logged is read again next run, by its id.
+    try {
     if (m.fromAddress === deps.mailbox.toLowerCase()) continue
     const kind = classifyInbound(m)
     if (kind.kind === 'auto_reply') {
@@ -231,6 +235,11 @@ export async function handleInbox(
     }
     await db.from('outreach_replies').update({ action_taken: action }).eq('id', logged.data.id)
     report.replies.push({ id: logged.data.id, outcome: kind.outcome, confidence: kind.confidence, action })
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      console.error(`[outreach/replies] ${deps.mailbox}: message ${m.internetMessageId || '(no id)'} not handled:`, error)
+      report.failed.push({ messageId: m.internetMessageId || null, error })
+    }
   }
   return report
 }

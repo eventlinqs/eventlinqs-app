@@ -6833,6 +6833,8 @@ export type Database = {
           consent_wording: string | null
           created_at: string
           created_by: string
+          engine_check_note: string | null
+          engine_checked_on: string | null
           evidence_file: string | null
           hubspot_contact_id: string | null
           id: string
@@ -6855,6 +6857,8 @@ export type Database = {
           consent_wording?: string | null
           created_at?: string
           created_by: string
+          engine_check_note?: string | null
+          engine_checked_on?: string | null
           evidence_file?: string | null
           hubspot_contact_id?: string | null
           id?: string
@@ -6877,6 +6881,8 @@ export type Database = {
           consent_wording?: string | null
           created_at?: string
           created_by?: string
+          engine_check_note?: string | null
+          engine_checked_on?: string | null
           evidence_file?: string | null
           hubspot_contact_id?: string | null
           id?: string
