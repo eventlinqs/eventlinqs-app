@@ -7831,6 +7831,7 @@ export type Database = {
           comms_source: string | null
           comms_subtype: string | null
           contact_id: string
+          context_key: string | null
           drafted_at: string
           drafted_by: string
           failed_reason: string | null
@@ -7863,6 +7864,7 @@ export type Database = {
           comms_source?: string | null
           comms_subtype?: string | null
           contact_id: string
+          context_key?: string | null
           drafted_at?: string
           drafted_by: string
           failed_reason?: string | null
@@ -7895,6 +7897,7 @@ export type Database = {
           comms_source?: string | null
           comms_subtype?: string | null
           contact_id?: string
+          context_key?: string | null
           drafted_at?: string
           drafted_by?: string
           failed_reason?: string | null
