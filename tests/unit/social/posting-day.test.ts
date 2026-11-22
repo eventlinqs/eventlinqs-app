@@ -52,6 +52,9 @@ describe('a post on its night’s own day says so', () => {
     const src = readFileSync('src/lib/social/store.ts', 'utf8')
     // The revision is proved there before the call (train AF: a piece with no revision or own format is held first), so the
     // call reads it plainly.
-    expect(src).toMatch(/caption: onItsDay\(rev\.versions\[platform\]\.caption \?\? '', rev\.slides, now\)/)
+    // The approved words, their place given the night's own venue where it names none we hold (venue-identity.ts), then
+    // the day's word set at the minute it posts.
+    expect(src).toMatch(/const facts = await placeCorrectionFor\(db, rev\.eventIds, rev\.versions\[platform\]\.caption \?\? ''\)/)
+    expect(src).toMatch(/caption: onItsDay\(facts\.caption, rev\.slides, now\)/)
   })
 })

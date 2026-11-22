@@ -1,3 +1,4 @@
+import { knownVenueIndex } from '@/lib/social/venue-identity'
 import { describe, expect, it } from 'vitest'
 import { captionFor, dayWordOf, hookFor, experiencesOf, practicalLine, whereOf } from '@/lib/social/lifecycle'
 import { pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
@@ -99,7 +100,12 @@ describe("the publish gate's five checks, on the exact caption", () => {
 
   it('3. a fact that is not the row is refused: the wrong start, the wrong venue', () => {
     expect(judge(GOOD.replace('10am to 10pm', '11am to 10pm')).join(' ')).toMatch(/does not carry its start, 10am/)
-    expect(judge(GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne')).join(' ')).toMatch(/does not name its venue/)
+    // A different venue we hold is a material discrepancy (venue-identity.ts): Birrarung Marr is not Federation Square.
+    const known = knownVenueIndex([{ venueId: 'v-birrarung', name: 'Birrarung Marr' }])
+    const wrong = GOOD.replace('Federation Square, Melbourne', 'Birrarung Marr, Melbourne')
+    expect(pieceQuality({ slides, caption: wrong, captions: [wrong], momentKind: 'final_day', madeAt: '2026-11-21T19:00:00Z', nights: new Map([['amcf', amcf()]]), now: new Date('2026-11-21T19:30:00Z'), knownVenues: known }).join(' ')).toMatch(
+      /its place line names Birrarung Marr, a different venue from its own, Federation Square\./,
+    )
   })
 
   it('a piece that is not a lifecycle moment is not judged by these checks', () => {

@@ -56,6 +56,8 @@ vi.mock('@/lib/outreach/planner', () => ({
 }))
 vi.mock('@/lib/outreach/sender', () => ({
   runOutreachSender: async () => (h.calls.push('sender'), { mode: 'live', sent: [], failed: [], refused: [], outsideHours: 0 }),
+  // The expiry sweep (event-validity.ts): no held or queued letter names a passed event here.
+  expireLapsedLetters: async () => ({ voided: [], unread: [] }),
 }))
 vi.mock('@/lib/outreach/self-queue', () => ({ queueApprovedHeldLetters: async () => ({ queued: [], waiting: [] }) }))
 vi.mock('@/lib/ops/phase-runs', () => ({

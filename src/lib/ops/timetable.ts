@@ -21,7 +21,9 @@ export const RIDES = {
   // (UTC+10, from April) the same UTC hours read 02:25, 08:25, 14:25 and 20:25.
   collection: { path: '/api/cron/collection-run', schedule: '25 4,10,16,22 * * *' },
   listings: { path: '/api/cron/listing-occurrences', schedule: '10 * * * *' },
-  social: { path: '/api/cron/social-publish', schedule: '40 * * * *' },
+  // Every ten minutes by the PM's 17:20 of 22 November 2026 (a piece due at 18:00 went at 18:40); the hour's own work and
+  // its phase row stay in the run at 40 to 49 minutes past (src/lib/social/publish-run.ts isHourRun).
+  social: { path: '/api/cron/social-publish', schedule: '*/10 * * * *' },
   outreach: { path: '/api/cron/outreach-run', schedule: '*/15 * * * *' },
   heartbeat: { path: '/api/cron/health-heartbeat', schedule: '0 21 * * *' },
   // 04:20 Melbourne in daylight time, inside verify (04:20 to 04:40); it ran at 05:00, after verify's cutoff, so verify

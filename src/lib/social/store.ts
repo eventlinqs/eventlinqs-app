@@ -13,6 +13,8 @@ import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
 import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
+import { correctPlaceLines, knownVenueIndex, type KnownVenues } from './venue-identity'
+import { pastLatest, timingOf, type Timing, type TimingNight } from './timing'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
 import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
@@ -727,7 +729,135 @@ async function seasonBeganOf(db: Db, rows: readonly Record<string, unknown>[]): 
   return out
 }
 
-function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null = null): QualityNight {
+/** A venue row's own name and the aliases recorded for it, the names a place line may give it; none without a row. */
+export function venueNamesOf(row: { name?: string | null } | null, aliases: readonly string[] = []): string[] {
+  if (!row) return []
+  return [row.name ?? '', ...aliases].filter((a): a is string => typeof a === 'string' && a.trim() !== '')
+}
+
+/**
+ * The aliases recorded for these venues (venue_aliases, each with its source), by venue id. These only ever add names a
+ * place line may use, so a failed read is said and read as none: the place is then corrected from the rows at publishing,
+ * never passed on a guess (venue-identity.ts).
+ */
+async function venueAliasesOf(db: Db, venueIds: readonly string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>()
+  if (venueIds.length === 0) return out
+  try {
+    const { data, error } = await db.from('venue_aliases').select('venue_id, alias').in('venue_id', [...venueIds])
+    if (error) throw new Error(error.message)
+    for (const r of (data ?? []) as { venue_id: string; alias: string }[]) out.set(r.venue_id, [...(out.get(r.venue_id) ?? []), r.alias])
+  } catch (e) {
+    console.error('[social] the venue aliases could not be read; none used', e instanceof Error ? e.message : e)
+  }
+  return out
+}
+
+/**
+ * Every venue name and alias we hold, normalised, to its venue id (knownVenueIndex), so a place line that names exactly
+ * another venue is held and never corrected over. Paged past the row ceiling. A failed read is said and read as none:
+ * the place is then corrected from the night's own rows, which can only make the post name its true venue.
+ */
+async function knownVenuesOf(db: Db): Promise<KnownVenues> {
+  try {
+    const rows: { venueId: string; name: string }[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await db.from('venues').select('id, name').order('id').range(from, from + 999)
+      if (error) throw new Error(error.message)
+      const page = (data ?? []) as { id: string; name: string | null }[]
+      for (const v of page) if (v.name) rows.push({ venueId: v.id, name: v.name })
+      if (page.length < 1000) break
+    }
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await db.from('venue_aliases').select('venue_id, alias').order('id').range(from, from + 999)
+      if (error) throw new Error(error.message)
+      const page = (data ?? []) as { venue_id: string; alias: string }[]
+      for (const a of page) rows.push({ venueId: a.venue_id, name: a.alias })
+      if (page.length < 1000) break
+    }
+    return knownVenueIndex(rows)
+  } catch (e) {
+    console.error('[social] the venues we hold could not be read; the place check reads none', e instanceof Error ? e.message : e)
+    return new Map()
+  }
+}
+
+/** A night as the timing engine reads it, from a NIGHT_COLUMNS row (timing.ts). */
+export function timingNightOf(e: Record<string, unknown>): TimingNight {
+  const free = e.is_free === true || ((e.ticket_tiers as TierRow[] | null) ?? []).filter((t) => t.is_active).every((t) => Number((t as { price?: number }).price ?? 0) === 0) && e.is_free !== false
+  return {
+    title: String(e.title ?? 'This night'),
+    startDate: (e.start_date as string | null) ?? null,
+    endDate: (e.end_date as string | null) ?? null,
+    timezone: (e.timezone as string | null) ?? null,
+    status: (e.status as string | null) ?? null,
+    isFree: e.is_free === true ? true : e.is_free === false ? false : free,
+    soldOut: soldOut((e.ticket_tiers as TierRow[] | null) ?? [], (e.event_booking_links as { availability: string }[] | null) ?? []),
+  }
+}
+
+/** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now. */
+export function timingOfRows(momentKey: string | null, nights: readonly Record<string, unknown>[], preferredAt: Date | null, now: Date): Timing {
+  const m = parseMomentKey(momentKey)
+  const rows = nights.map(timingNightOf)
+  const multiDay = nights.some((e) => e.end_date && Date.parse(String(e.end_date)) - Date.parse(String(e.start_date)) >= 24 * 3_600_000)
+  return timingOf({ moment: m?.kind ?? null, day: m?.day ?? null, nights: rows, preferredAt, multiDay }, now)
+}
+
+/** A piece's timing read now: its moment key and its newest version's nights. A failed read is said, never a pass. */
+async function timingOfPiece(db: Db, pieceId: string, preferredAt: Date | null, now: Date): Promise<Timing> {
+  const { data: piece, error } = await db.from('social_pieces').select('moment_key').eq('id', pieceId).maybeSingle()
+  if (error) return { kind: 'held', reason: `its moment could not be read (${error.message}); it waits for the next run` }
+  const rev = await newestRevision(db, pieceId)
+  const ids = rev?.eventIds ?? []
+  const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
+  if (nerr) return { kind: 'held', reason: `its nights could not be read (${nerr.message}); it waits for the next run` }
+  return timingOfRows((piece as { moment_key?: string | null } | null)?.moment_key ?? null, (nights ?? []) as Record<string, unknown>[], preferredAt, now)
+}
+
+/**
+ * EXPIRY AT ONCE (Lawal's 19:13, sections 4 and 5; the PM's 19:13, item 4): every run (every ten minutes) reads each
+ * scheduled piece's timing now, due or not, and expires those whose event was cancelled, postponed or finished, sold out
+ * or closed its registration, or whose latest acceptable time has passed, each with its reason. A failed read leaves the
+ * schedule as it was and says why; it is never published on a guess either, since the claim reads the same again.
+ */
+export async function expireLapsedSchedules(db: Db, now: Date): Promise<{ readonly expired: readonly string[]; readonly unread: readonly string[] }> {
+  const expired: string[] = []
+  const unread: string[] = []
+  const { data, error } = await db.from('social_piece_schedules').select('id, piece_id, go_at, latest_at').eq('state', 'scheduled').order('go_at').limit(200)
+  if (error) return { expired, unread: [`the schedules could not be read: ${error.message}`] }
+  const byPiece = new Map<string, { id: string; goAt: string; latestAt: string | null }[]>()
+  for (const r of (data ?? []) as { id: string; piece_id: string; go_at: string; latest_at: string | null }[]) {
+    byPiece.set(r.piece_id, [...(byPiece.get(r.piece_id) ?? []), { id: r.id, goAt: r.go_at, latestAt: r.latest_at }])
+  }
+  for (const [pieceId, rows] of byPiece) {
+    let t: Timing
+    try {
+      t = await timingOfPiece(db, pieceId, new Date(rows[0].goAt), now)
+    } catch (e) {
+      unread.push(`${pieceId}: ${e instanceof Error ? e.message : String(e)}`)
+      continue
+    }
+    if (t.kind === 'held') {
+      unread.push(`${pieceId}: ${t.reason}`)
+      continue
+    }
+    for (const r of rows) {
+      const reason = t.kind === 'expired' ? `EXPIRED: ${t.reason}` : pastLatest(r.latestAt ?? t.latestAt, now)
+      if (!reason) continue
+      const { error: uerr } = await db.from('social_piece_schedules').update({ state: 'expired', held_reason: reason.slice(0, 500) }).eq('id', r.id).eq('state', 'scheduled')
+      if (uerr) unread.push(`${r.id}: ${uerr.message}`)
+      else expired.push(`${pieceId} (${r.id}): ${reason}`)
+    }
+  }
+  return { expired, unread }
+}
+
+/** The venue ids of these event rows. */
+const venueIdsOf = (rows: readonly Record<string, unknown>[]) => [...new Set(rows.map((e) => e.venue_id as string | null).filter((v): v is string => typeof v === 'string'))]
+
+function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null = null, aliasesByVenue: ReadonlyMap<string, readonly string[]> = new Map()): QualityNight {
+  const venueId = (e.venue_id as string | null) ?? null
   return {
     seasonBegan,
     isFree: typeof e.is_free === 'boolean' ? (e.is_free as boolean) : null,
@@ -736,6 +866,12 @@ function qualityNightOf(e: Record<string, unknown>, seasonBegan: string | null =
     title: String(e.title),
     summary: (e.summary as string | null) ?? null,
     venueName: (e.venue_name as string | null) ?? null,
+    // The venue row's own name and its recorded aliases (migration 20261122181501): the place check accepts any of the
+    // venue's names. The row's own name is the one the engine's caption writers print (campaign.ts placeOf), so the
+    // engine's place line and the check agree by construction: AMCF's listing reads 'Fed Square', its venue row
+    // 'Federation Square'.
+    venueId,
+    venueAliases: venueNamesOf(e.venue_row as { name?: string | null } | null, venueId ? (aliasesByVenue.get(venueId) ?? []) : []),
     host: (e.venue_name as string | null) ?? null,
     categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
     startDate: String(e.start_date),
@@ -769,6 +905,7 @@ export async function pieceDependencies(
     return [e instanceof Error ? e.message : String(e)]
   }
 
+  const aliases = await venueAliasesOf(db, venueIdsOf([...byId.values()]))
   /* LAW 22, THE PUBLISH GATE (the PM's 21:58 and 22:02 of 17 November 2026): the piece's own content by one rule set
      (piece-quality.ts), here at approval and again at publishing, every platform's caption read; it carries Lawal's lock. */
   issues.push(
@@ -778,9 +915,10 @@ export async function pieceDependencies(
       captions: [rev.caption, ...Object.values(rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].filter((c) => c !== ''),
       momentKind: parseMomentKey((piece as { moment_key?: string | null }).moment_key ?? null)?.kind ?? null,
       madeAt: await drawnAtOf(db, pieceId, rev),
-      nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e, began.get(e.id as string) ?? null)])),
+      nights: new Map([...byId.values()].map((e) => [e.id as string, qualityNightOf(e, began.get(e.id as string) ?? null, aliases)])),
       now,
       goesAt: opts.goesAt,
+      knownVenues: await knownVenuesOf(db),
     }),
   )
 
@@ -961,7 +1099,17 @@ export async function pieceDependencies(
   issues.push(...(await visualFaults(rev.slides, piece.format as 'feed' | 'story', await slideImagesNow(db, rev.slides, now))))
 
   /* K10: the creative checks, each platform's words and each slide's place as its night holds it. */
-  issues.push(...creativeRefusals(rev, new Map([...byId.values()].map((e) => [e.id as string, { venueName: (e.venue_name as string | null) ?? null, title: String(e.title) }]))))
+  issues.push(
+    ...creativeRefusals(
+      rev,
+      new Map(
+        [...byId.values()].map((e) => [
+          e.id as string,
+          { venueName: (e.venue_name as string | null) ?? null, title: String(e.title), venueNames: venueNamesOf(e.venue_row as { name?: string | null } | null, e.venue_id ? (aliases.get(e.venue_id as string) ?? []) : []) },
+        ]),
+      ),
+    ),
+  )
 
   /* The piece's own page answers on this deployment and lists every night it advertises. */
   const path = new URL(String(piece.link)).pathname
@@ -2140,6 +2288,9 @@ export async function scheduleApprovedPieces(
   /* Each piece's window from its own nights, read now. */
   const ids = [...new Set(due.flatMap((d) => d.eventIds))]
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
+  // Read once for the run, when the first piece is judged (venue-identity.ts): every venue we hold, and these nights' aliases.
+  let known: KnownVenues | undefined
+  let nightAliases: Map<string, string[]> | undefined
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
   // When each night's season began (seasonBeganOf), for the gate's first day rule below; a failed read throws, as the
   // nights' own read does, and the run holds.
@@ -2212,23 +2363,39 @@ export async function scheduleApprovedPieces(
     const at = asked ? now : (plan.moments.get(d.id) ?? late?.firstFree)
     if (!at) continue
     const goAt = at.toISOString()
-    const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt }))
+    // THE TIMING ENGINE AT SCHEDULING (timing.ts; Lawal's 19:13, section 4, point 2): the piece's window from its own
+    // facts, stored on both rows; a slot past its latest acceptable time is recorded EXPIRED at once, never published.
+    const pieceNights = ((nights ?? []) as Record<string, unknown>[]).filter((e) => d.rev.eventIds.includes(e.id as string))
+    const timing = timingOfRows(d.momentKey, pieceNights, at, now)
+    const windowCols = timing.kind === 'window' ? { objective: timing.objective, latest_at: timing.latestAt, expires_at: timing.expiresAt, recovery: timing.recovery, timing_basis: timing.basis.slice(0, 500) } : {}
+    const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt, ...windowCols }))
     const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
     if (ierr) {
       held.push(`${d.id}: ${ierr.code === '23505' ? 'scheduled already' : (refusalOf(ierr.message) ?? ierr.message)}`)
       continue
     }
+    const outOfWindow = timing.kind === 'window' ? pastLatest(timing.latestAt, at) : timing.kind === 'expired' ? `EXPIRED: ${timing.reason}` : null
+    if (outOfWindow || timing.kind === 'held') {
+      const state = timing.kind === 'held' ? 'held' : 'expired'
+      const reason = timing.kind === 'held' ? `Not scheduled: ${timing.reason}` : `Not scheduled, ${outOfWindow}`
+      await db.from('social_piece_schedules').update({ state, held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
+      held.push(`${d.id}: ${reason}`)
+      continue
+    }
     /* LAW 22, THE PUBLISH GATE at scheduling: the approved version's own content, by the same rule set as approval and
        publishing (piece-quality.ts), read against its nights as they are now. */
+    known ??= await knownVenuesOf(db)
+    nightAliases ??= await venueAliasesOf(db, venueIdsOf((nights ?? []) as Record<string, unknown>[]))
     const quality = pieceQuality({
       slides: d.rev.slides,
       caption: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].join('\n'),
       captions: [d.rev.caption, ...Object.values(d.rev.versions ?? {}).map((v) => (v as { caption?: string } | null)?.caption ?? '')].filter((c) => c !== ''),
       momentKind: parseMomentKey(d.momentKey)?.kind ?? null,
       madeAt: await drawnAtOf(db, d.id, d.rev),
-      nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>, seasonBegun.get(n.id as string) ?? null)])),
+      nights: new Map((nights ?? []).map((n) => [n.id as string, qualityNightOf(n as Record<string, unknown>, seasonBegun.get(n.id as string) ?? null, nightAliases)])),
       now,
       goesAt: at,
+      knownVenues: known,
     })
     if (quality.length > 0) {
       const reason = `Not scheduled, held by the publish gate: ${quality.join(' ')}`
@@ -2294,6 +2461,8 @@ export type Published = {
   readonly wouldPublish: readonly string[]
   /** Left scheduled as it was, and why: an earlier submission the provider could not be asked about (AV (a)). */
   readonly waiting: readonly string[]
+  /** Each safe correction made to a caption before it posted, as it was made (venue-identity.ts correctPlaceLines). */
+  readonly corrected?: readonly string[]
 }
 
 /**
@@ -2307,20 +2476,48 @@ export type Published = {
  */
 export async function markPublished(
   db: Db,
-  input: { readonly scheduleId: string; readonly pieceId: string; readonly approvalId: string; readonly ref: string; readonly now: Date; readonly platform?: SocialPlatform; readonly submission?: string | null },
+  input: {
+    readonly scheduleId: string
+    readonly pieceId: string
+    readonly approvalId: string
+    readonly ref: string
+    readonly now: Date
+    readonly platform?: SocialPlatform
+    readonly submission?: string | null
+    /** Its window and objective, and its first night's start, for the measure (Lawal's 19:13, section 9). */
+    readonly measure?: PostingMeasure
+  },
 ): Promise<{ readonly error: string | null; readonly posting: string }> {
   const { error } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: input.ref, published_at: input.now.toISOString() }).eq('id', input.scheduleId).eq('state', 'scheduled')
   if (error) return { error: refusalOf(error.message) ?? error.message, posting: 'not recorded: the schedule was not marked published' }
   const posting = PUBLIC_POST_URL.test(input.ref)
-    ? await recordAutoPosting(db, { pieceId: input.pieceId, approvalId: input.approvalId, postUrl: input.ref, postedAt: input.now, platform: input.platform, submission: input.submission ?? null })
+    ? await recordAutoPosting(db, { pieceId: input.pieceId, approvalId: input.approvalId, postUrl: input.ref, postedAt: input.now, platform: input.platform, submission: input.submission ?? null, measure: input.measure })
     : 'waits for its public address (the read back records it)'
   return { error: null, posting }
+}
+
+/** The measure beside a publication (Lawal's 19:13, section 9): its objective, its window and its lead to the start. */
+export type PostingMeasure = { readonly objective: string | null; readonly latestAt: string | null; readonly firstStart: string | null }
+
+/** The posting row's measure columns; none when the measure is not known (a post recorded by the read back). Pure. */
+export function measureCols(m: PostingMeasure | undefined, postedAt: Date): Record<string, unknown> {
+  if (!m) return {}
+  const lead = m.firstStart ? Math.round((Date.parse(m.firstStart) - postedAt.getTime()) / 60_000) : null
+  return { objective: m.objective, latest_at: m.latestAt, minutes_before_start: Number.isFinite(lead) ? lead : null }
+}
+
+/** The earliest start among these nights, for the measure; null when none can be read. */
+async function firstStartOf(db: Db, eventIds: readonly string[]): Promise<string | null> {
+  if (eventIds.length === 0) return null
+  const { data, error } = await db.from('events').select('start_date').in('id', [...eventIds]).order('start_date').limit(1)
+  if (error) return null
+  return ((data ?? [])[0] as { start_date?: string } | undefined)?.start_date ?? null
 }
 
 /** The posting of a post the engine published, by its approval's own person; never throws, it says. */
 export async function recordAutoPosting(
   db: Db,
-  input: { readonly pieceId: string | null; readonly approvalId: string | null; readonly postUrl: string; readonly postedAt: Date; readonly platform?: SocialPlatform; readonly submission?: string | null },
+  input: { readonly pieceId: string | null; readonly approvalId: string | null; readonly postUrl: string; readonly postedAt: Date; readonly platform?: SocialPlatform; readonly submission?: string | null; readonly measure?: PostingMeasure },
 ): Promise<string> {
   if (!input.pieceId || !input.approvalId) return 'not recorded: its piece or approval is not known'
   if (!PUBLIC_POST_URL.test(input.postUrl)) return 'not recorded: not a public post address'
@@ -2332,7 +2529,7 @@ export async function recordAutoPosting(
     // kept Facebook's row only, the second insert refused by a key of one row per piece and read as 'recorded already'.
     const platform = input.platform ?? networkOfPost(input.postUrl)
     const provider = input.submission ? (input.submission.startsWith('blotato:') ? input.submission : `blotato:${input.submission}`) : null
-    const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: input.approvalId, post_url: input.postUrl, posted_at: input.postedAt.toISOString(), recorded_by: by, platform, provider_ref: provider })
+    const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: input.approvalId, post_url: input.postUrl, posted_at: input.postedAt.toISOString(), recorded_by: by, platform, provider_ref: provider, ...measureCols(input.measure, input.postedAt) })
     if (!error) return 'recorded'
     if (error.code === '23505') return `recorded already on ${platform}`
     console.error('[social] the posting could not be recorded (the post went out):', { pieceId: input.pieceId, error: error.message })
@@ -2425,12 +2622,20 @@ async function earlierSubmission(db: Db, pieceId: string, platform: SocialPlatfo
 export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly publisher: Publisher | null; readonly fetcher?: Fetcher; readonly reader?: BlotatoPostReader | null }): Promise<Published> {
   const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
   const switchOn = flag?.enabled === true
-  const { data: rows, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, platform, go_at').eq('state', 'scheduled').lte('go_at', now.toISOString()).order('go_at').limit(50)
+  const { data: rows, error } = await db.from('social_piece_schedules').select('id, piece_id, approval_id, platform, go_at, latest_at, objective').eq('state', 'scheduled').lte('go_at', now.toISOString()).order('go_at').limit(50)
+  // Time passes while a run checks and sends: the clock read just before a submission is the run's minute plus that.
+  const startedAt = Date.now()
+  const clock = () => new Date(now.getTime() + (Date.now() - startedAt))
   if (error) throw new Error(`the schedules could not be read: ${error.message}`)
   const published: string[] = []
   const held: string[] = []
   const wouldPublish: string[] = []
   const waiting: string[] = []
+  const corrected: string[] = []
+  const expire = async (id: string, reason: string) => {
+    await db.from('social_piece_schedules').update({ state: 'expired', held_reason: reason.slice(0, 500) }).eq('id', id).eq('state', 'scheduled')
+    held.push(`${id}: ${reason}`)
+  }
   const hold = async (id: string, reason: string) => {
     await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('id', id).eq('state', 'scheduled')
     held.push(`${id}: ${reason}`)
@@ -2493,6 +2698,15 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
         continue
       }
     }
+    // THE TIMING ENGINE AT CLAIMING AND BEFORE ANY RETRY (timing.ts; Lawal's 19:13, section 4, points 3 and 5): after the
+    // provider's own record is read above (never a blind withdrawal of a post that may be live), a schedule past its own
+    // stored window is EXPIRED with its reason at once, never published. A row from before the window was stored, and an
+    // event since cancelled, postponed, finished or sold out, are read from the piece's facts with the checks below.
+    const storedLapse = r.latest_at ? pastLatest(r.latest_at as string, now) : null
+    if (storedLapse) {
+      await expire(id, storedLapse)
+      continue
+    }
     // A CHECK THAT FAILS HOLDS ITS OWN PIECE, NEVER THE RUN (law 23: one failed post never stops unrelated operations).
     // On 18 November 2026 at 15:13 a check threw on the first of Lawal's twelve approved posts and the whole run stopped
     // with every one of them still due; now that piece is held with the reason and the next is read.
@@ -2500,6 +2714,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     let rev: Revision | null
     let format: SocialFormat | null
     let misfit: string | null
+    let timing: Timing
     try {
       // Published at this minute, so words that say on now are judged against that day's doors now (goesAt).
       issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, goesAt: now })
@@ -2508,8 +2723,19 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
       // a file Instagram or Facebook would refuse is held with its measured size and Meta's own rule, never sent.
       misfit = rev === null || format === null ? null : await slidesMisfit(rev.slides, platform, format, opts.fetcher ?? fetch)
+      timing = await timingOfPiece(db, pieceId, new Date(r.go_at as string), now)
     } catch (e) {
       await hold(id, `Not published: the checks before publishing could not finish (${e instanceof Error ? e.message : String(e)}).`)
+      continue
+    }
+    const latestAt = (r.latest_at as string | null) ?? (timing.kind === 'window' ? timing.latestAt : null)
+    const lapsed = timing.kind === 'expired' ? `EXPIRED: ${timing.reason}` : latestAt ? pastLatest(latestAt, now) : null
+    if (lapsed) {
+      await expire(id, lapsed)
+      continue
+    }
+    if (timing.kind === 'held') {
+      await hold(id, `Not published: ${timing.reason}`)
       continue
     }
     if (issues.length > 0) {
@@ -2533,7 +2759,17 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       // 18 November 2026, item 1), set at the moment it posts. It posts in its own format, never one guessed from its slides.
       // Law 40: the Collab invite the approved version carries, Instagram only (the publisher refuses it anywhere else).
       const collaborators = platform === 'instagram' ? (rev.versions[platform].collaborators ?? []) : []
-      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(rev.versions[platform].caption ?? '', rev.slides, now), collaborators })
+      // THE FACTS FROM THE ROWS (Lawal's correction, section 1; venue-identity.ts): a place line naming no venue we hold
+      // is given the night's own venue before it posts, and the correction is recorded.
+      // THE TIMING ENGINE IMMEDIATELY BEFORE SUBMISSION (Lawal's 19:13, section 4, point 4): the checks above take time.
+      const lateNow = latestAt ? pastLatest(latestAt, clock()) : null
+      if (lateNow) {
+        await expire(id, lateNow)
+        continue
+      }
+      const facts = await placeCorrectionFor(db, rev.eventIds, rev.versions[platform].caption ?? '')
+      for (const c of facts.corrections) corrected.push(`${pieceId} on ${platform}: "${c.from}" became "${c.to}"`)
+      const { ref, submission } = await opts.publisher({ pieceId, platform, format, slides: rev.slides, caption: onItsDay(facts.caption, rev.slides, now), collaborators })
       // THE OUTSIDE ID FIRST, WHERE ONLY ITS OWN SHAPE IS CHECKED (the PM's 18:40 of 18 November 2026, item 1 (a)): Blotato's
       // submission goes to its own column while the row still reads scheduled, so a refusal of the reference below can
       // never lose it. On 18 November five accepted posts lost theirs: the only record was the refused update.
@@ -2542,7 +2778,16 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
         if (serr) console.error('[social] the submission could not be written to its own column', { id, submission, error: serr.message })
       }
       // Marked published and, with a public address, recorded as it went, in one step (markPublished, AV (a)).
-      const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now, platform, submission: submission ?? null })
+      const marked = await markPublished(db, {
+        scheduleId: id,
+        pieceId,
+        approvalId: r.approval_id as string,
+        ref,
+        now,
+        platform,
+        submission: submission ?? null,
+        measure: { objective: (r.objective as string | null) ?? (timing.kind === 'window' ? timing.objective : null), latestAt, firstStart: await firstStartOf(db, rev.eventIds) },
+      })
       // A reference the database refuses is kept FIRST in the held reason, so the post it names can always be read back.
       if (marked.error) await hold(id, `Sent as ${ref}; the database refused that reference: ${marked.error}`)
       else published.push(`${pieceId} on ${platform}: ${ref}`)
@@ -2554,7 +2799,28 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       await hold(id, `Not published: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
-  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish, waiting }
+  return { switchOn, due: (rows ?? []).length, published, held, wouldPublish, waiting, corrected }
+}
+
+/**
+ * A one night piece's caption with its place line given the night's own venue where it names no venue we hold
+ * (venue-identity.ts). A piece of several nights, or a night with no venue on record, is left as it is. A failed read
+ * leaves the caption as it is: the gate has already judged it.
+ */
+async function placeCorrectionFor(db: Db, eventIds: readonly string[], caption: string): Promise<{ readonly caption: string; readonly corrections: readonly { readonly from: string; readonly to: string }[] }> {
+  if (eventIds.length !== 1) return { caption, corrections: [] }
+  try {
+    const { data, error } = await db.from('events').select('id, venue_name, venue_id, venue_row:venues(name)').eq('id', eventIds[0]).maybeSingle()
+    if (error || !data) return { caption, corrections: [] }
+    const e = data as unknown as { venue_name: string | null; venue_id: string | null; venue_row: { name: string | null } | null }
+    const aliases = e.venue_id ? ((await venueAliasesOf(db, [e.venue_id])).get(e.venue_id) ?? []) : []
+    const canonical = (e.venue_row?.name ?? '').trim() || (e.venue_name ?? '').trim() || null
+    const own = [e.venue_name ?? '', ...venueNamesOf(e.venue_row, aliases)].filter((x) => x.trim() !== '')
+    return correctPlaceLines(caption, { canonical, own, venueId: e.venue_id }, await knownVenuesOf(db))
+  } catch (e) {
+    console.error('[social] the place could not be read for its correction; the caption goes as approved', e instanceof Error ? e.message : e)
+    return { caption, corrections: [] }
+  }
 }
 
 /**

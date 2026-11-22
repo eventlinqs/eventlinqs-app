@@ -1,5 +1,5 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
-import { claimPublishLease, deploymentOf, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
+import { claimPublishLease, deploymentOf, HOURLY_FLAG, isHourRun, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
 import { socialPhaseAt } from '@/lib/ops/timetable'
 import { planCheckWords } from '@/lib/ops/plan-check'
 import { midnightIn } from '@/lib/dates/zone-midnight'
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
+import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -19,13 +19,17 @@ import { planAsOf } from '@/lib/social/plan-for'
 
 export const dynamic = 'force-dynamic'
 
-/** The Melbourne hours whose run gives the standing policy's approvals (06:40 first, then every three hours). */
-const POLICY_HOURS: ReadonlySet<number> = new Set([6, 9, 12, 15, 18])
+/** The Melbourne hours whose run gives the standing policy's approvals: 05:40 first, so the timetable's schedule phase
+ * has the day's posts approved and scheduled before 06:00 (law 35; the PM's 18:46 of 22 November 2026, fix 2: the 05:40
+ * phase failed on 21 and 22 November reading nothing scheduled while the eligible posts waited for 06:40), then 06:40
+ * for the live phase, then every three hours. */
+const POLICY_HOURS: ReadonlySet<number> = new Set([5, 6, 9, 12, 15, 18])
 
 /** The hour on Melbourne's clock, where the guide's cities keep their days. */
 function melbourneHour(now: Date): number {
   return Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', hourCycle: 'h23' }).format(now))
 }
+
 
 /**
  * APPROVED PIECES SCHEDULE THEMSELVES (the release checklist B5; the project manager's 20:17 of 28 October 2026). At 40
@@ -129,10 +133,22 @@ export async function GET(request: NextRequest) {
       await recordPublishRun(db, { route: '/api/cron/social-publish', startedAt: now, endedAt: new Date(), deployment: deploymentOf(), switchOn: false, drawn: 0, approved: 0, scheduled: 0, due: 0, published: 0, held: 0, failed: 0, ok: true, result: `skipped: ${lease.why}` })
       return NextResponse.json({ ok: true, skipped: lease.why })
     }
+    const hourRun = isHourRun(now)
+    /* THE REVERSAL (the PM's 17:20): if the watchdog has found two publishing runs overlapping, or a piece with two
+       posting rows on one network, it turns social_publish_hourly on (src/lib/social/publish-run.ts), and every run
+       but the hour's own does nothing and says so, as the hourly cron did, until a person turns it off. */
+    if (!hourRun) {
+      const { data: hourly } = await db.from('feature_flags').select('enabled').eq('flag', HOURLY_FLAG).maybeSingle()
+      if (hourly?.enabled === true) {
+        await recordPublishRun(db, { route: '/api/cron/social-publish', startedAt: now, endedAt: new Date(), deployment: deploymentOf(), switchOn: false, drawn: 0, approved: 0, scheduled: 0, due: 0, published: 0, held: 0, failed: 0, ok: true, result: `skipped: ${HOURLY_FLAG} is on (the watchdog's reversal), so only the hour's own run publishes` })
+        await releasePublishLease(db, holder)
+        return NextResponse.json({ ok: true, skipped: `${HOURLY_FLAG} is on` })
+      }
+    }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
        moment, and the line goes to the 08:00 report. A failed pre-flight is said and never stops the run. */
-    if (melbourneHour(now) === PREFLIGHT_HOUR) {
+    if (hourRun && melbourneHour(now) === PREFLIGHT_HOUR) {
       try {
         const founder = await founderAccount(db)
         const p = await runPreflight(db, { now, siteOrigin: getSiteUrl(), apply: founder.id !== null, by: founder.id })
@@ -147,7 +163,7 @@ export async function GET(request: NextRequest) {
        again by the planner before anything is scheduled, so a week planned by older code reaches the switch-on in the
        look it can be approved in. Never an approved piece. A failed redraw never holds the publishing below. */
     let redrawn: { redrawn: readonly string[]; kept: readonly string[] } = { redrawn: [], kept: [] }
-    try {
+    if (hourRun) try {
       redrawn = await redrawOlderLook(db, now)
       if (redrawn.redrawn.length > 0 || redrawn.kept.length > 0) console.log(`[cron/social-publish] drawn again in the locked look: ${redrawn.redrawn.length}; kept as they are: ${redrawn.kept.length}`)
       for (const k of redrawn.kept) console.log(`[cron/social-publish] kept: ${k}`)
@@ -156,15 +172,15 @@ export async function GET(request: NextRequest) {
     }
     /* THE STANDING PUBLISHING POLICY (law 31, Lawal's 12:03 of 19 November 2026): while the switch is on, every drafted
        piece of the week in an approved family is given the checked approval in the founder's name (store.ts
-       approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Five runs a day, 06:40
-       first so the day is prepared before 07:00, because each check reads the night's booking link. A failure is said
+       approveUnderStandingPolicy), so in-policy posts publish by themselves in the cadence bands. Six runs a day, 05:40
+       first so the day is prepared before 06:00 (law 35), because each check reads the night's booking link. A failure is said
        and never stops the publishing below.
        IT FAILS CLOSED (the PM's 10:47 of 20 November 2026, item 1; src/lib/social/policy-guard.ts): the dry run first,
        every piece logged eligible or not; the policy approves only what it read eligible; and any approval outside it,
        any failed check of an approved piece, or any publish error turns the switch off by code with an alarm row. */
     let policyHour: PolicyHour | null = null
     const policyFaults: string[] = []
-    if (POLICY_HOURS.has(melbourneHour(now))) {
+    if (hourRun && POLICY_HOURS.has(melbourneHour(now))) {
       try {
         const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
         if (flag?.enabled === true) {
@@ -199,9 +215,38 @@ export async function GET(request: NextRequest) {
         policyFaults.push(`the standing policy could not run: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
-    const scheduled = await scheduleApprovedPieces(db, now)
+    // EXPIRY AT ONCE, EVERY RUN (timing.ts; Lawal's 19:13 of 22 November 2026, sections 4 and 5): a scheduled piece whose
+    // event was cancelled, postponed, finished or sold out, or whose latest acceptable time has passed, is expired with
+    // its reason before anything is scheduled or published. Its own guard: a failure is said and never stops the run.
+    try {
+      const lapsed = await expireLapsedSchedules(db, now)
+      for (const x of lapsed.expired) console.log(`[cron/social-publish] expired: ${x}`)
+      for (const u of lapsed.unread) console.log(`[cron/social-publish] expiry not read: ${u}`)
+    } catch (error) {
+      console.error('[cron/social-publish] the expiry sweep could not run:', error instanceof Error ? error.message : error)
+    }
+    // A SCHEDULING FAULT NEVER STOPS PUBLISHING (the inventory of 19:3x, rule 49: a throw here ended the whole run with
+    // nothing published; Lawal's 15:13: no single failure disables an entire business operation). It is said and held.
+    let scheduled: Awaited<ReturnType<typeof scheduleApprovedPieces>>
+    try {
+      scheduled = await scheduleApprovedPieces(db, now)
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error)
+      console.error('[cron/social-publish] scheduling could not run; publishing goes on:', why)
+      scheduled = { scheduled: [], held: [`scheduling could not run: ${why}`], floor: [] }
+    }
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
     for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
+    // A SAFE CORRECTION IS RECORDED (Lawal's correction, 19:04 of 22 November 2026, section 1): each place line given its
+    // night's own venue before posting, in the log and the audit trail.
+    if ((published.corrected ?? []).length > 0) {
+      for (const c of published.corrected ?? []) console.log(`[cron/social-publish] corrected before posting: ${c}`)
+      try {
+        await recordAnonAuditEvent({ action: 'system.social.fact_corrected', actorEmail: 'cron/social-publish', metadata: { corrected: published.corrected } })
+      } catch (error) {
+        console.error('[cron/social-publish] the correction could not be recorded in the audit trail:', error instanceof Error ? error.message : error)
+      }
+    }
     // THE SWITCH GOES OFF BY CODE only on a breach of the standing policy (policy-guard.ts switchTrips), with its alarm
     // row; a held, refused or failed piece is held alone and the run goes on (Lawal's hardening order, section 2 A). A
     // policy that could not run approved nothing; it is said and recorded, never a global stop.
@@ -263,7 +308,7 @@ export async function GET(request: NextRequest) {
        piece once. After the publishing above, so a slow or failed plan never holds a post back. */
     let planned: { created: number; existing: number; held: number } | null = null
     // Also in the run that drew the week again, so a piece the new drawing adds (a venue spotlight) is there that hour.
-    if (melbourneHour(now) === 6 || redrawn.redrawn.length > 0) {
+    if (hourRun && (melbourneHour(now) === 6 || redrawn.redrawn.length > 0)) {
       try {
         const week = await planCampaignWeek(db, { plannedBy: null, now })
         planned = { created: week.created, existing: week.existing, held: week.held.length }
@@ -278,7 +323,7 @@ export async function GET(request: NextRequest) {
     }
     // THE TIMETABLE'S SOCIAL PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
     // the phase this hour holds, its pieces scheduled and published as its units.
-    const phase = socialPhaseAt(melbourneHour(now))
+    const phase = hourRun ? socialPhaseAt(melbourneHour(now)) : null
     if (phase) {
       // THE DAILY PLAN CHECK (Lawal's 09:01 of 20 November 2026, item 3; src/lib/ops/plan-check.ts): at the schedule and live
       // phases, the policy's own dry run and what is scheduled for the rest of the day, on the phase row itself. A read that

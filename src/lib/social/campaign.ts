@@ -4,6 +4,7 @@ import { tierOf } from '@/lib/events/relevance'
 import { isEventLinqsListing, isListingsOrganisation } from '@/lib/listings/shown-organiser'
 import type { PosterNight } from '@/lib/broadcast/daily-poster'
 import { carriesBannedWord, quotableSummary } from './words'
+import { namesOwnVenue } from './venue-identity'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
@@ -2163,7 +2164,11 @@ const MAX_TAGS = 3
  * section 13 lands; K12 deterministic): each platform version within its length, at most three tags, no exclamation
  * mark or long dash, a call to action in each, and the slides' places as their nights hold them.
  */
-export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['versions'] }, nights: ReadonlyMap<string, { venueName: string | null; title: string }>): string[] {
+export function creativeRefusals(
+  rev: { slides: Slide[]; versions: PiecePlan['versions'] },
+  // Each night's venue names: the listing's, the venue row's own (the name the writers print) and its recorded aliases.
+  nights: ReadonlyMap<string, { venueName: string | null; title: string; venueNames?: readonly string[] }>,
+): string[] {
   const issues: string[] = []
   for (const platform of ['instagram', 'facebook'] as const) {
     const v = rev.versions[platform]
@@ -2193,7 +2198,9 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     if (s.t !== 'night' && s.t !== 'story') continue
     const night = nights.get(s.eventId)
     if (!night) continue
-    if (night.venueName && !s.meta.startsWith(night.venueName)) issues.push(`${s.title}: its place on the slide is not the night's venue, ${night.venueName}.`)
+    // By the venue's identity (venue-identity.ts; Lawal's correction of 19:04, 22 November 2026), never one spelling: the
+    // writers print the venue row's own name, the listing may carry another (Federation Square and Fed Square).
+    if (night.venueName && !namesOwnVenue(s.meta.split(' \u00b7 ')[0] ?? '', [night.venueName, ...(night.venueNames ?? [])])) issues.push(`${s.title}: its place on the slide is not the night's venue, ${night.venueName}.`)
   }
   /* The PM's 15:55 of 19 November 2026, item 6: while stand-ins are out of the plan, a slide never goes with a stock
      photograph or a stock photograph's credit line; it goes with the night's own permitted photograph or in type. */
@@ -2204,14 +2211,12 @@ export function creativeRefusals(rev: { slides: Slide[]; versions: PiecePlan['ve
     })
   }
   /* The locked look's cards: the place a card names is the night's venue (its venue row's own name, or the listing's). */
-  const squash = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, '')
   for (const s of rev.slides) {
     if (s.t !== 'days') continue
     for (const r of s.rows) {
       const night = nights.get(r.eventId)
       if (!night?.venueName) continue
-      const [a, b] = [squash(night.venueName), squash(r.place)]
-      if (!a.includes(b) && !b.includes(a)) issues.push(`${r.title}: its place on the card is not the night's venue, ${night.venueName}.`)
+      if (!namesOwnVenue(r.place, [night.venueName, ...(night.venueNames ?? [])])) issues.push(`${r.title}: its place on the card is not the night's venue, ${night.venueName}.`)
     }
   }
   return issues

@@ -5,9 +5,11 @@ import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
 import type { CampaignNight, PiecePlan, Slide } from './campaign'
 import { goHop } from './go-hop'
+import { pastLatest, timingOf } from './timing'
 import {
   captionFor,
   collabWorthIt,
+  isRepeat,
   collaboratorsFor,
   dayIn,
   daysFrom,
@@ -111,6 +113,20 @@ function dayTimes(n: LifecycleNight, day: string, zone: string): string | null {
 }
 
 /** The night a moment is about: the run's night on that day, else its first. */
+/**
+ * THE TIMING ENGINE AT PLANNING (timing.ts; Lawal's 19:13 of 22 November 2026, section 4, point 1): a moment is drawn only
+ * when the band it would take falls inside its own window (its latest acceptable time), so a late post is never drawn.
+ */
+function timingRefusal(c: Candidate, n: CampaignNight, ln: LifecycleNight, day: string, at: Date, now: Date): string | null {
+  const free = n.cta?.state === 'free_open' || n.cta?.state === 'free_registration'
+  const t = timingOf(
+    { moment: c.moment.kind, day, nights: [{ title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null, timezone: ln.timezone ?? null, isFree: free }], preferredAt: at, multiDay: c.run.days.length > 1, recurring: isRepeat(c.run) },
+    now,
+  )
+  if (t.kind !== 'window') return t.reason
+  return pastLatest(t.latestAt, at)
+}
+
 function nightForDay(run: Run, day: string): LifecycleNight {
   return (
     run.nights.find((n) => {
@@ -374,11 +390,11 @@ export async function planLifecyclePieces(
     if (!n) return 'its night could not be read'
     const photo = rankPhotos(photos.get(n.eventId) ?? [], c.moment.format, used)[0]
     if (!photo || photo.width === null || photo.height === null) return `no permitted photograph for a ${c.moment.format}`
-    if (input.ownerAsked) return endedByNow(ln.endDate ?? null, input.now) ? 'it has ended' : null
+    if (input.ownerAsked) return endedByNow(ln.endDate ?? null, input.now) ? 'it has ended' : timingRefusal(c, n, ln, day, input.now, input.now)
     const zone = ln.timezone?.trim() || LIFECYCLE_ZONE
     if (endedByFirstBand(ln.endDate ?? null, zone, c.moment.format, day)) return `it ends before the ${c.moment.format}'s first band that day`
     const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
-    return 'why' in band ? band.why : null
+    return 'why' in band ? band.why : timingRefusal(c, n, ln, day, band.at, input.now)
   }
   const choice = chooseToday(candidates, drawable)
   for (const p of choice.passedOver) {
@@ -405,6 +421,11 @@ export async function planLifecyclePieces(
         notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: it has ended; not drawn`)
         continue
       }
+      const expired = timingRefusal(c, n, ln, day, input.now, input.now)
+      if (expired) {
+        notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${expired}; not drawn`)
+        continue
+      }
       // Judged by that day's own session (lifecycle.ts sessionAt), never the season's first day.
       onNow = Date.parse(sessionAt({ startDate: ln.startDate, endDate: ln.endDate ?? null }, ln.timezone?.trim() || LIFECYCLE_ZONE, input.now).start) <= input.now.getTime()
     } else {
@@ -418,6 +439,11 @@ export async function planLifecyclePieces(
       const band = postableBand({ kind: c.moment.kind, format: c.moment.format, night: { title: n.title, startDate: ln.startDate, endDate: ln.endDate ?? null }, day, zone: ln.timezone?.trim() || LIFECYCLE_ZONE, now: input.now, repeatDay: repeatDayOf(c.run, c.moment.kind, day) })
       if ('why' in band) {
         notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${band.why}; not drawn`)
+        continue
+      }
+      const expired = timingRefusal(c, n, ln, day, band.at, input.now)
+      if (expired) {
+        notes.push(`${n.title} ${c.moment.kind} ${c.moment.format}: ${expired}; not drawn`)
         continue
       }
       onNow = band.onNow
