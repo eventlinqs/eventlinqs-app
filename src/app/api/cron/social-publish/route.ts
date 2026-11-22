@@ -12,7 +12,6 @@ import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
-import { runSocialPlanEngine } from '@/lib/social/plan-engine'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
@@ -225,14 +224,6 @@ export async function GET(request: NextRequest) {
       for (const u of lapsed.unread) console.log(`[cron/social-publish] expiry not read: ${u}`)
     } catch (error) {
       console.error('[cron/social-publish] the expiry sweep could not run:', error instanceof Error ? error.message : error)
-    }
-    // THE SOCIAL SUB ENGINE (plan-engine.ts; Lawal's 19:39 of 22 November 2026): the event changes outbox from its own
-    // position, and the events it has not planned yet, each decided and planned by its own criteria. Its own guard.
-    try {
-      const plans = await runSocialPlanEngine(db, now)
-      console.log(`[cron/social-publish] social plans: ${plans.planned} written, outbox position ${plans.position}${plans.faults.length ? `; ${plans.faults.join(' | ')}` : ''}`)
-    } catch (error) {
-      console.error('[cron/social-publish] the social plan engine could not run:', error instanceof Error ? error.message : error)
     }
     // A SCHEDULING FAULT NEVER STOPS PUBLISHING (the inventory of 19:3x, rule 49: a throw here ended the whole run with
     // nothing published; Lawal's 15:13: no single failure disables an entire business operation). It is said and held.
