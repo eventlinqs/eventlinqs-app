@@ -16,6 +16,7 @@ import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuali
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
 import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
+import { scopeToRecord } from './grant-scope'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
@@ -1790,7 +1791,8 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     evidence_file: input.evidenceFile,
     event_id: eventId,
     attribution_text: input.attributionText,
-    scope: input.scope,
+    // A grant whose own words permit promotion is recorded for social as well as site (grant-scope.ts; the PM's 11:05).
+    scope: scopeToRecord(input.scope, input.permissionEvidence),
     archival: input.archival,
     expires_at: input.expiresAt,
     restrictions: input.restrictions,

@@ -518,6 +518,23 @@ export type PhotoAsset = {
   readonly leadRank: number | null
   readonly width: number | null
   readonly height: number | null
+  /** What the person who looked recorded it shows (social_assets.shows); empty when not yet recorded. */
+  readonly shows?: readonly string[]
+}
+
+/** What makes a photograph show the event itself: its crowd, its stage, its own name, its setting. */
+const SHOWS_THE_EVENT = new Set(['crowd', 'stage', 'name', 'setting'])
+
+/**
+ * HOW STRONGLY A PHOTOGRAPH SHOWS ITS EVENT (the PM's 11:05 of 22 November 2026; Lawal, 10:52: 'I don't like your photo
+ * selection ... use those better ones'): one for each of its crowd, its stage, its own name and its setting, two less
+ * for a close crop or a detail. AMCF's Fed Square crowd under the skyline and its main stage with AMCF's name on the
+ * screen lead; three dancers in a close crop with a camera rig behind them does not. Zero when nothing is recorded,
+ * so a set no one has described ranks by lead rank as before. Pure.
+ */
+export function showsTheEvent(shows: readonly string[] | undefined): number {
+  const s = new Set(shows ?? [])
+  return [...s].filter((w) => SHOWS_THE_EVENT.has(w)).length - (s.has('close') || s.has('detail') ? 2 : 0)
 }
 
 /** Instagram's feed range, as Meta states it ('Aspect ratio: Must be within a 4:5 to 1.91:1 range',
@@ -528,7 +545,8 @@ const FEED_RATIO_MAX = 1.91
 /**
  * The photographs a piece may carry, best first, within the policy only (the PM's 14:20 item 1): a photograph (never a
  * flyer, law 37 (b)), looked at and ranked by a person (law 37 (k)), never posted before on either network (law 37 (l)),
- * its size known. Then lead rank, then whole fit to the format, then width.
+ * its size known. First how strongly it shows the event (showsTheEvent), then lead rank, then whole fit to the format,
+ * then width; the used set keeps each post of a run on a different photograph.
  */
 export function rankPhotos(assets: readonly PhotoAsset[], format: SocialFormat, used: ReadonlySet<string>): PhotoAsset[] {
   const fits = (a: PhotoAsset): number => {
@@ -538,7 +556,7 @@ export function rankPhotos(assets: readonly PhotoAsset[], format: SocialFormat, 
   }
   return assets
     .filter((a) => a.type === 'photo' && a.leadRank !== null && !used.has(a.url) && (a.width ?? 0) > 0 && (a.height ?? 0) > 0)
-    .sort((a, b) => (a.leadRank ?? 99) - (b.leadRank ?? 99) || fits(b) - fits(a) || (b.width ?? 0) - (a.width ?? 0) || a.assetId.localeCompare(b.assetId))
+    .sort((a, b) => showsTheEvent(b.shows) - showsTheEvent(a.shows) || (a.leadRank ?? 99) - (b.leadRank ?? 99) || fits(b) - fits(a) || (b.width ?? 0) - (a.width ?? 0) || a.assetId.localeCompare(b.assetId))
 }
 
 /** An Instagram username as Instagram allows it: letters, numbers, full stops and underscores, at most 30. */

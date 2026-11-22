@@ -10284,6 +10284,7 @@ export type Database = {
           restrictions: string | null
           rights_holder: string
           scope: string
+          shows: string[]
           source_height: number | null
           source_url: string
           source_width: number | null
@@ -10318,6 +10319,7 @@ export type Database = {
           restrictions?: string | null
           rights_holder: string
           scope: string
+          shows?: string[]
           source_height?: number | null
           source_url: string
           source_width?: number | null
@@ -10352,6 +10354,7 @@ export type Database = {
           restrictions?: string | null
           rights_holder?: string
           scope?: string
+          shows?: string[]
           source_height?: number | null
           source_url?: string
           source_width?: number | null
