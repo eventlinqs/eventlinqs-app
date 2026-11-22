@@ -321,3 +321,64 @@ describe('the whole publish path on every approved piece', () => {
     expect(out.held.filter((h) => h.includes('LANY: its ticket page answers 404.')).length).toBe(3)
   }, 120_000)
 })
+
+/*
+ * LAWAL'S HARDENING ORDER OF 22 NOVEMBER 2026, SECTION 5, ON THESE SAME APPROVED PIECES: test 8 (Instagram succeeds while
+ * Facebook fails) and test 7 (the provider times out after it may have accepted). Each network is its own row; a failed
+ * or uncertain one is held alone with its reason and the run goes on; a later run sends nothing a second time.
+ */
+describe.skipIf(LIVE)('section 5 of the hardening order: one network failing, a timeout, and no second send', () => {
+  const setup = () => {
+    const tables: Record<string, Row[]> = {
+      feature_flags: fixture.feature_flags ?? [],
+      social_piece_schedules: (fixture.social_piece_schedules ?? []).map((s) => ({ ...s, state: 'scheduled' })),
+      social_pieces: fixture.social_pieces ?? [],
+      social_piece_revisions: fixture.social_piece_revisions ?? [],
+      social_piece_approvals: fixture.social_piece_approvals ?? [],
+      events: fixture.events ?? [],
+      venue_distribution_off: (fixture.venue_distribution_off ?? []) as Row[],
+    }
+    const { db } = fixtureDb(tables)
+    const schedules = tables.social_piece_schedules
+    const now = new Date(Math.max(...schedules.map((s) => Date.parse(String(s.go_at)))) + 60_000)
+    const gateHeld = new Set([...tooTallFor(schedules), ...stockFor(schedules), ...crossedFor(schedules)])
+    const reaching = schedules.filter((s) => !gateHeld.has(String(s.id)))
+    return { db, now, reaching }
+  }
+
+  it('test 8, per row: one send fails while the others go: the failed row held alone with its reason, nothing sent twice (every Facebook row of this fixture is held by the gate before sending, so the failing sends are half of its Instagram rows)', async () => {
+    const { publishDuePieces } = await import('@/lib/social/store')
+    const t = setup()
+    const failing = new Set(t.reaching.filter((_, i) => i % 2 === 1).map((s) => `${String(s.piece_id)} ${String(s.platform)}`))
+    expect(failing.size).toBeGreaterThan(0)
+    const calls: string[] = []
+    const publisher = vi.fn(async (p: { readonly pieceId: string; readonly platform: string }) => {
+      calls.push(`${p.pieceId} ${p.platform}`)
+      if (failing.has(`${p.pieceId} ${p.platform}`)) throw new Error(`Blotato answered 502 for ${p.platform}`)
+      return { ref: `https://www.instagram.com/p/fx-${p.pieceId.slice(0, 8)}` }
+    })
+    const first = await publishDuePieces(t.db as never, t.now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(first.published.length).toBe(t.reaching.length - failing.size)
+    expect(first.held.filter((h) => h.includes('Blotato answered 502')).length).toBe(failing.size)
+    calls.length = 0
+    await publishDuePieces(t.db as never, new Date(t.now.getTime() + 3_600_000), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(calls).toEqual([])
+  }, 120_000)
+
+  it('test 7: the provider times out on every send: each held with the reason, and never sent again blind', async () => {
+    const { publishDuePieces } = await import('@/lib/social/store')
+    const t = setup()
+    let sends = 0
+    const publisher = vi.fn(async () => {
+      sends++
+      throw new Error('The operation was aborted due to timeout')
+    })
+    const first = await publishDuePieces(t.db as never, t.now, { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(sends).toBe(t.reaching.length)
+    expect(first.published).toEqual([])
+    expect(first.held.filter((h) => h.includes('aborted due to timeout')).length).toBe(t.reaching.length)
+    sends = 0
+    await publishDuePieces(t.db as never, new Date(t.now.getTime() + 3_600_000), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(sends).toBe(0)
+  }, 120_000)
+})
