@@ -8,6 +8,7 @@ import { readPlatformOrganiserIds, withoutPlatformOrganisers } from '@/lib/growt
 import { BASIS_PATHS, basisFinds, domainOf } from './basis-find'
 import { ACQ_GUIDE_CITIES } from './acq-target'
 import { organiserCitySlugs } from './organiser-city'
+import { cityFromOwnPages, type OwnCity } from './own-city'
 
 /**
  * THE TWENTY'S POOL GROWS BY ITSELF (Lawal's 10:42 of 13 November 2026: every engine runs by itself; his 06:51: 200
@@ -20,8 +21,23 @@ import { organiserCitySlugs } from './organiser-city'
  * 20261031053501). So nothing is ever sent to an address this finds until Lawal opens its page and presses.
  */
 
-/** Organisers read a night: five pages each, at one request a second. */
+/** Organisers read a night: five pages each, at one request a second per site. */
 export const POOL_PER_NIGHT = 12
+
+/**
+ * WHILE THE WEEK AHEAD IS SHORT (the PM's 10:30 of 22 November 2026, item (b)): while the coming week holds fewer than
+ * WEEK_FIRST_LETTERS first letters (law 38's ten a day, Monday to Saturday), a night reads up to POOL_PER_NIGHT_SHORT
+ * organisers; back to POOL_PER_NIGHT once the week is full. Sites are read POOL_SITES_AT_ONCE at a time, each site still
+ * one request a second, robots.txt first, stopped at its first 403 or 429 (law 14 (k)).
+ */
+export const WEEK_FIRST_LETTERS = 60
+export const POOL_PER_NIGHT_SHORT = 60
+export const POOL_SITES_AT_ONCE = 6
+
+/** The night's cap from the coming week's first letters (drafted, queued or sent, never void). Pure. */
+export function poolCapFor(weekFirstLetters: number): number {
+  return weekFirstLetters < WEEK_FIRST_LETTERS ? POOL_PER_NIGHT_SHORT : POOL_PER_NIGHT
+}
 
 /** The Melbourne hour and quarter of the twenty's run that grows the pool: the 23:30 turn. */
 export const POOL_HOUR = 23
@@ -31,8 +47,12 @@ export const POOL_MINUTE_FROM = 30
 export const RELEVANCE =
   'They publish and run public events; the message invites them to list their own nights on EventLinqs, which relates to that role.'
 
-/** inGuideCity: placed in one of the four guide cities by organiser-city.ts's three roads, as the pool's count reads it. */
-export type PoolCandidate = { id: string; name: string; website: string; known: string[]; inGuideCity?: boolean }
+/**
+ * inGuideCity: placed in one of the four guide cities by organiser-city.ts's roads, as the pool's count reads it.
+ * cityKnown: placed in any city by those roads. One without is read for the city its own pages print, even when it already
+ * holds an address (the PM's 10:30 of 22 November 2026, (a): seven organisers with an address had no city that morning).
+ */
+export type PoolCandidate = { id: string; name: string; website: string; known: string[]; inGuideCity?: boolean; cityKnown?: boolean }
 
 /**
  * THE FOUR GUIDE CITIES FIRST (the PM's 00:59 of 21 November 2026, item 3; law 38): organisers placed in Melbourne,
@@ -47,7 +67,18 @@ export type PoolOutcome = { organiser: string; outcome: string; recorded: number
 export interface PoolStore {
   candidates(): Promise<PoolCandidate[]>
   /** Records the contact with its basis whole but its no-messages check unticked; false when the address is held already. */
-  record(row: { organiserId: string; address: string; pageUrl: string; day: string; pageHtml?: string; inGuideCity?: boolean }): Promise<boolean>
+  record(row: {
+    organiserId: string
+    address: string
+    pageUrl: string
+    day: string
+    pageHtml?: string
+    inGuideCity?: boolean
+    kind?: 'own domain' | 'free mail'
+    quote?: string
+  }): Promise<boolean>
+  /** Records the city the organiser's own page prints, with that page, the words and the day; false when it holds one. */
+  recordCity?(row: { organiserId: string; place: OwnCity; day: string }): Promise<boolean>
 }
 
 async function get(fetcher: Fetcher, url: string): Promise<{ status: number | null; body: string; url: string }> {
@@ -61,73 +92,108 @@ async function get(fetcher: Fetcher, url: string): Promise<{ status: number | nu
 
 const melbourneDay = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
 
-/** One night's reading: up to `cap` organisers in today's order, each politely; stops when the deadline nears. */
+/**
+ * One night's reading: up to `cap` organisers in today's order, POOL_SITES_AT_ONCE sites at a time, each site politely;
+ * no new site is started once the deadline passes. One organiser's failure is its own outcome line and never stops the
+ * rest (Lawal's outreach engine rebuild of 22 November 2026, section 6: "One failed organiser must not stop the batch").
+ */
 export async function runBasisPool(
   store: PoolStore,
   fetcher: Fetcher,
   now: Date,
   deadline: number,
-  options: { cap?: number; pauseMs?: number } = {},
+  options: { cap?: number; pauseMs?: number; atOnce?: number } = {},
 ): Promise<PoolOutcome[]> {
   const cap = options.cap ?? POOL_PER_NIGHT
+  const atOnce = Math.max(1, options.atOnce ?? POOL_SITES_AT_ONCE)
   const pauseMs = options.pauseMs ?? 1000
   const pause = () => (pauseMs > 0 ? new Promise((r) => setTimeout(r, pauseMs)) : Promise.resolve())
   const day = melbourneDay(now)
-  const out: PoolOutcome[] = []
-  for (const o of poolOrder(await store.candidates(), day).slice(0, cap)) {
-    if (Date.now() >= deadline) break
+  const queue = poolOrder(await store.candidates(), day).slice(0, cap)
+
+  const readOne = async (o: PoolCandidate): Promise<PoolOutcome> => {
     let origin: string
     try {
       origin = new URL(o.website).origin
     } catch {
-      out.push({ organiser: o.name, outcome: 'its website is not an address', recorded: 0 })
-      continue
+      return { organiser: o.name, outcome: 'its website is not an address', recorded: 0 }
     }
     const robots = await get(fetcher, `${origin}/robots.txt`)
     if (robots.status === null || robots.status === 403 || robots.status === 429 || robots.status >= 500) {
-      out.push({ organiser: o.name, outcome: `robots.txt answered ${robots.status ?? 'nothing'}: not read`, recorded: 0 })
-      continue
+      return { organiser: o.name, outcome: `robots.txt answered ${robots.status ?? 'nothing'}: not read`, recorded: 0 }
     }
     const pages: { url: string; html: string }[] = []
-    let refused: number | null = null
     for (const p of BASIS_PATHS) {
       const url = p ? `${origin}${p}` : o.website
       const at = new URL(url)
       if (robotsVerdict(robots.status, robots.body, at.pathname + at.search) === 'disallowed') continue
       await pause()
       const page = await get(fetcher, url)
-      if (page.status === 403 || page.status === 429) {
-        refused = page.status
-        break
-      }
+      if (page.status === 403 || page.status === 429) return { organiser: o.name, outcome: `the site answered ${page.status}: never read`, recorded: 0 }
       if (page.body && !pages.some((x) => x.url === page.url)) pages.push({ url: page.url, html: page.body })
     }
-    if (refused !== null) {
-      out.push({ organiser: o.name, outcome: `the site answered ${refused}: never read`, recorded: 0 })
-      continue
+    if (pages.length === 0) return { organiser: o.name, outcome: 'none of its own pages could be read', recorded: 0 }
+
+    // Where it is, from its own pages, when no road has placed it yet (the PM's 10:30 (a)); recorded before its addresses so
+    // an address found the same night can take the engine's page check.
+    let place: OwnCity | null = null
+    let placed = ''
+    if (o.cityKnown !== true && store.recordCity) {
+      place = cityFromOwnPages(pages, ACQ_GUIDE_CITIES)
+      if (place && (await store.recordCity({ organiserId: o.id, place, day }))) placed = `; placed in ${place.city} by its own page`
     }
-    if (pages.length === 0) {
-      out.push({ organiser: o.name, outcome: 'none of its own pages could be read', recorded: 0 })
-      continue
-    }
+    const inGuideCity = o.inGuideCity === true || (place !== null && ACQ_GUIDE_CITIES.includes(place.city))
+
     const { finds, refused: notTaken } = basisFinds({ name: o.name, website: o.website }, pages, o.known)
     let recorded = 0
     for (const f of finds) {
       const pageHtml = pages.find((p) => p.url === f.pageUrl)?.html
-      if (await store.record({ organiserId: o.id, address: f.address, pageUrl: f.pageUrl, day, pageHtml, inGuideCity: o.inGuideCity === true })) recorded += 1
+      if (await store.record({ organiserId: o.id, address: f.address, pageUrl: f.pageUrl, day, pageHtml, inGuideCity, kind: f.kind, quote: f.quote })) recorded += 1
     }
-    out.push({
+    return {
       organiser: o.name,
-      outcome: `${recorded} recorded${notTaken.length ? `; ${notTaken.length} not taken (${notTaken[0].why})` : ''}${finds.length === 0 && notTaken.length === 0 ? '; no address at its own domain on its own pages' : ''}`,
+      outcome: `${recorded} recorded${placed}${notTaken.length ? `; ${notTaken.length} not taken (${notTaken[0].why})` : ''}${finds.length === 0 && notTaken.length === 0 ? '; no address it publishes on its own pages' : ''}`,
       recorded,
-    })
+    }
   }
-  return out
+
+  const results: (PoolOutcome | undefined)[] = new Array(queue.length)
+  let next = 0
+  const worker = async () => {
+    while (next < queue.length) {
+      if (Date.now() >= deadline) return
+      const i = next++
+      const o = queue[i]
+      try {
+        results[i] = await readOne(o)
+      } catch (error) {
+        results[i] = { organiser: o.name, outcome: `the read failed: ${error instanceof Error ? error.message : String(error)}`, recorded: 0 }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(atOnce, queue.length) }, worker))
+  return results.filter((r): r is PoolOutcome => r !== undefined)
 }
 
 type Db = SupabaseClient<Database>
 
-/** The pool's database: CRM organisers with their own website and no contact with a basis yet; the platform never. */
+/**
+ * The coming week's first letters (step 1, never void: held, queued, sending or sent), slotted from now to seven days on,
+ * for poolCapFor. A failed read is thrown; the run reads the short week's cap then (reading more is harmless).
+ */
+export async function weekFirstLetters(db: Db, now: Date): Promise<number> {
+  const until = new Date(now.getTime() + 7 * 86_400_000).toISOString()
+  const { count, error } = await db
+    .from('outreach_touches')
+    .select('id', { count: 'exact', head: true })
+    .eq('step', 1)
+    .in('state', ['held', 'queued', 'sending', 'sent'])
+    .gte('scheduled_for', now.toISOString())
+    .lt('scheduled_for', until)
+  if (error) throw new Error(`the week's first letters could not be counted: ${error.message}`)
+  return count ?? 0
+}
+
 /**
  * THE ENGINE CHECKS THE PAGE (law 43; Lawal, 21 November 2026, 01:05, through the PM's 01:05: "the engine checks. The
  * engine reads each organizer's page and saves a copy as evidence. You see each one in the morning report and can stop
@@ -137,7 +203,10 @@ type Db = SupabaseClient<Database>
  * sha256 (the database recomputes it, migration 20261121010002) and only then the contact is ticked, by the engine. Any
  * doubt leaves that one address unticked, held for a person, and never stops the night's run.
  */
-export async function engineCheck(db: Db, r: { organiserId: string; address: string; pageUrl: string; pageHtml?: string; inGuideCity?: boolean }): Promise<'checked' | 'left'> {
+export async function engineCheck(
+  db: Db,
+  r: { organiserId: string; address: string; pageUrl: string; pageHtml?: string; inGuideCity?: boolean; kind?: 'own domain' | 'free mail'; quote?: string },
+): Promise<'checked' | 'left'> {
   if (!r.inGuideCity || !r.pageHtml || !/^https:\/\//i.test(r.pageUrl)) return 'left'
   try {
     const contact = await db.from('organiser_contacts').select('id').eq('channel', 'email').eq('address', r.address).eq('organiser_id', r.organiserId).maybeSingle()
@@ -149,7 +218,15 @@ export async function engineCheck(db: Db, r: { organiserId: string; address: str
       page_html: r.pageHtml,
       page_sha256,
       checked_by: 'engine',
-      verdict: { address_on_own_site: true, no_statement_against_messages: true, runs_events_in_its_city: true },
+      // 'address_on_own_site': published on the organiser's own site (the page is theirs), whether the address is at its own
+      // domain or a free mail provider (address_kind); the words that publish it are quoted, and the time is checked_at.
+      verdict: {
+        address_on_own_site: true,
+        no_statement_against_messages: true,
+        runs_events_in_its_city: true,
+        address_kind: r.kind ?? 'own domain',
+        quote: (r.quote ?? '').slice(0, 300),
+      },
     })
     if (saved.error) {
       console.error('[basis-pool] the page copy could not be saved; the address stays unticked:', saved.error.message)
@@ -181,20 +258,32 @@ export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
         list.push({ address: String(c.address), basis: String(c.basis) })
         byOrganiser.set(c.organiser_id as string, list)
       }
-      const open = organisers
-        .filter((o) => /^https:\/\//i.test(String(o.website_url)) && domainOf(String(o.website_url)))
-        .filter((o) => !(byOrganiser.get(o.id) ?? []).some((c) => c.basis !== 'none'))
-      // Each one's city by the pool count's own three roads; a failed read places none first, and the night reads as before.
-      const cities = await organiserCitySlugs(db, open.map((o) => ({ id: o.id, found_on: o.found_on ?? null, organisation_id: o.organisation_id ?? null })), new Date()).catch(
+      const withSite = organisers.filter((o) => /^https:\/\//i.test(String(o.website_url)) && domainOf(String(o.website_url)))
+      // Each one's city by organiser-city.ts's roads; a failed read places none, and the night reads as before.
+      const cities = await organiserCitySlugs(db, withSite.map((o) => ({ id: o.id, found_on: o.found_on ?? null, organisation_id: o.organisation_id ?? null })), new Date()).catch(
         () => new Map<string, string>(),
       )
+      // Read: every organiser with no address held on a basis yet, and every one no road has placed (for its own pages' city).
+      const open = withSite.filter((o) => !(byOrganiser.get(o.id) ?? []).some((c) => c.basis !== 'none') || !cities.has(o.id))
       return open.map((o) => ({
         id: o.id,
         name: String(o.name),
         website: String(o.website_url).trim(),
         known: (byOrganiser.get(o.id) ?? []).map((c) => c.address),
         inGuideCity: ACQ_GUIDE_CITIES.includes(cities.get(o.id) ?? ''),
+        cityKnown: cities.has(o.id),
       }))
+    },
+
+    async recordCity(r) {
+      const { data, error } = await db
+        .from('organisers')
+        .update({ city_slug: r.place.city, city_source_url: r.place.pageUrl, city_quote: r.place.quote.slice(0, 300), city_seen_on: r.day })
+        .eq('id', r.organiserId)
+        .is('city_slug', null)
+        .select('id')
+      if (error) throw new Error(`the city its own page prints could not be recorded: ${error.message}`)
+      return (data ?? []).length > 0
     },
 
     async record(r) {

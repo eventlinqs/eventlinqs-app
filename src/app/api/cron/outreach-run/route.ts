@@ -17,7 +17,7 @@ import { TWENTY_ADVICE_DRAFTING, draftTheTwenty, founderAccount, storeSegmentALe
 import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-ups'
 import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
-import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, runBasisPool } from '@/lib/outreach/basis-pool'
+import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, poolCapFor, runBasisPool, weekFirstLetters } from '@/lib/outreach/basis-pool'
 
 /**
  * THE OUTREACH RUN, EVERY 15 MINUTES (window 6, 28 October 2026; the engine plan's FULL AUTOMATION).
@@ -196,7 +196,10 @@ export async function GET(request: NextRequest) {
     if (hour === POOL_HOUR && minute >= POOL_MINUTE_FROM && minute < POOL_MINUTE_FROM + 15) {
       try {
         const founder = await founderAccount(db)
-        pool = founder.id === null ? `not read: ${founder.why}` : await runBasisPool(basisPoolStore(db, founder.id), fetch, now, now.getTime() + 240_000)
+        // While the coming week is short of its sixty first letters the night reads up to sixty organisers, else twelve
+        // (the PM's 10:30 of 22 November 2026, item (b)); a failed count reads the short week's cap.
+        const cap = poolCapFor(await weekFirstLetters(db, now).catch(() => 0))
+        pool = founder.id === null ? `not read: ${founder.why}` : await runBasisPool(basisPoolStore(db, founder.id), fetch, now, now.getTime() + 240_000, { cap })
         console.log(`[cron/outreach-run] the pool: ${JSON.stringify(pool)}`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

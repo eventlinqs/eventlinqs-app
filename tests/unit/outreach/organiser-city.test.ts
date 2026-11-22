@@ -23,6 +23,7 @@ function fakeDb(tables: Rows) {
         or: () => chain,
         order: () => chain,
         limit: () => chain,
+        range: (from: number, to: number) => ((rows = rows.slice(from, to + 1)), chain),
         then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok),
       }
       return chain
