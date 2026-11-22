@@ -46,6 +46,18 @@ export function addressRank(address: string, personName: string | null): number 
 
 export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[]; error?: string }
 
+/** Each play's decisions as log lines: its cap and use, then each contact queued, held, refused or not drafted, with why. Pure. */
+export function playDecisionLines(reports: readonly PlayReport[]): string[] {
+  const out: string[] = []
+  for (const r of reports) {
+    out.push(`play ${r.name} (${r.playId.slice(0, 8)}): cap ${r.cap}, used ${r.usedToday}, queued ${r.queued}, held ${r.held.length}, refused ${r.refused.length}, not drafted ${(r.notDrafted ?? []).length}${r.error ? `; error: ${r.error}` : ''}`)
+    for (const h of r.held) out.push(`play ${r.playId.slice(0, 8)} held ${h.contactId}: ${h.why.join(' | ')}`)
+    for (const x of r.refused) out.push(`play ${r.playId.slice(0, 8)} refused ${x.contactId}: ${x.why}`)
+    for (const n of r.notDrafted ?? []) out.push(`play ${r.playId.slice(0, 8)} not drafted ${n.contactId}: ${n.why}`)
+  }
+  return out
+}
+
 const SPACING_MINUTES = 10
 const DAY_MS = 86_400_000
 

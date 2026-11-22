@@ -53,6 +53,8 @@ vi.mock('@/lib/outreach/planner', () => ({
   },
   planDms: async () => (h.calls.push('dms'), []),
   planRelationship: async () => (h.calls.push('partners'), []),
+  // Each play's decisions said in the log (the PM's 23:56): none to say here.
+  playDecisionLines: () => [],
 }))
 vi.mock('@/lib/outreach/sender', () => ({
   runOutreachSender: async () => (h.calls.push('sender'), { mode: 'live', sent: [], failed: [], refused: [], outsideHours: 0 }),

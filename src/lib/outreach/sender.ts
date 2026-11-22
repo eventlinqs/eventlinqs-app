@@ -436,7 +436,7 @@ export async function expireLapsedLetters(db: Admin, now: Date): Promise<{ reado
     .select('id, state, body, outreach_templates(key)')
     .in('state', ['held', 'queued'])
     .like('body', '%/events/%')
-    .order('created_at')
+    .order('drafted_at')
     .limit(300)
   if (error) return { voided, unread: [`the letters could not be read: ${error.message}`] }
   const letters = (data ?? []) as unknown as { id: string; state: string; body: string; outreach_templates: { key: string } | null }[]
