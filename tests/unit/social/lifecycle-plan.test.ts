@@ -35,7 +35,7 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   ...over,
 })
 
-type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; organisers?: unknown[]; past?: unknown[]; failHistory?: boolean; failPast?: boolean }
+type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; described?: unknown[]; organisers?: unknown[]; past?: unknown[]; failHistory?: boolean; failPast?: boolean }
 function fakeDb(rows: Rows): SupabaseClient {
   // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
   // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
@@ -57,6 +57,8 @@ function fakeDb(rows: Rows): SupabaseClient {
       if (table === 'organisations') return chain([])
       if (table === 'social_piece_postings') return chain(rows.postings ?? [])
       if (table === 'social_piece_schedules') return chain(rows.schedules ?? [])
+      // What each photograph shows, as a person recorded it (social_assets.shows); none described unless a test says so.
+      if (table === 'social_assets') return chain(rows.described ?? [])
       // The season's ended nights (lifecycle-plan.ts readSeasonPast); the fixture holds only those it means as ended.
       if (table === 'events') return chain(rows.past ?? [], rows.failPast ? { message: 'connection reset' } : null)
       throw new Error(`unexpected table ${table}`)

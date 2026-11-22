@@ -10284,6 +10284,7 @@ export type Database = {
           restrictions: string | null
           rights_holder: string
           scope: string
+          shows: string[]
           source_height: number | null
           source_url: string
           source_width: number | null
@@ -10318,6 +10319,7 @@ export type Database = {
           restrictions?: string | null
           rights_holder: string
           scope: string
+          shows?: string[]
           source_height?: number | null
           source_url: string
           source_width?: number | null
@@ -10352,6 +10354,7 @@ export type Database = {
           restrictions?: string | null
           rights_holder?: string
           scope?: string
+          shows?: string[]
           source_height?: number | null
           source_url?: string
           source_width?: number | null
@@ -10747,8 +10750,10 @@ export type Database = {
           approval_id: string
           id: string
           piece_id: string
+          platform: string
           post_url: string
           posted_at: string
+          provider_ref: string | null
           recorded_at: string
           recorded_by: string
         }
@@ -10756,8 +10761,10 @@ export type Database = {
           approval_id: string
           id?: string
           piece_id: string
+          platform: string
           post_url: string
           posted_at: string
+          provider_ref?: string | null
           recorded_at?: string
           recorded_by: string
         }
@@ -10765,8 +10772,10 @@ export type Database = {
           approval_id?: string
           id?: string
           piece_id?: string
+          platform?: string
           post_url?: string
           posted_at?: string
+          provider_ref?: string | null
           recorded_at?: string
           recorded_by?: string
         }
@@ -10774,14 +10783,14 @@ export type Database = {
           {
             foreignKeyName: "social_piece_postings_approval_id_fkey"
             columns: ["approval_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "social_piece_approvals"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "social_piece_postings_piece_id_fkey"
             columns: ["piece_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "social_pieces"
             referencedColumns: ["id"]
           },

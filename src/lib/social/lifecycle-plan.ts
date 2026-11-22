@@ -196,6 +196,14 @@ async function readPhotos(db: Db, eventIds: readonly string[], now: Date): Promi
   if (eventIds.length === 0) return out
   const { data, error } = await db.rpc('social_usable_images_all', { p_events: [...new Set(eventIds)], p_at: now.toISOString() })
   if (error) throw new Error(`the photographs permitted for social could not be read: ${error.message}`)
+  // What a person who looked recorded each shows (social_assets.shows; the PM's 11:05): the ranking reads it first.
+  const assetIds = [...new Set(((data ?? []) as Record<string, unknown>[]).map((r) => r.asset_id as string))]
+  const showsOf = new Map<string, string[]>()
+  if (assetIds.length > 0) {
+    const { data: described, error: derr } = await db.from('social_assets').select('id, shows').in('id', assetIds)
+    if (derr) throw new Error(`what the photographs show could not be read: ${derr.message}`)
+    for (const d of (described ?? []) as { id: string; shows: string[] | null }[]) showsOf.set(d.id, d.shows ?? [])
+  }
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     const list = out.get(r.event_id as string) ?? []
     list.push({
@@ -205,6 +213,7 @@ async function readPhotos(db: Db, eventIds: readonly string[], now: Date): Promi
       leadRank: (r.lead_rank as number | null) ?? null,
       width: (r.source_width as number | null) ?? null,
       height: (r.source_height as number | null) ?? null,
+      shows: showsOf.get(r.asset_id as string) ?? [],
     })
     out.set(r.event_id as string, list)
   }

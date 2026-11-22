@@ -1,0 +1,31 @@
+name: social reconcile, read only
+
+# THE READ ONLY BLOTATO RECONCILE (the PM's 09:55 of 22 November 2026, item 2): every held schedule Blotato may have
+# accepted, matched against Blotato's own published posts by production's social run (?reconcile=read). It writes
+# nothing; it runs only when asked.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-reconcile
+  cancel-in-progress: false
+
+jobs:
+  read:
+    name: the held rows against Blotato, read only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask production's social run for its reconcile
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 'https://www.eventlinqs.com.au/api/cron/social-publish?reconcile=read' \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat answer.json; echo
+          [ "$code" = 200 ]

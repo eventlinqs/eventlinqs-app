@@ -16,6 +16,7 @@ import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuali
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
 import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
+import { scopeToRecord } from './grant-scope'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
@@ -1641,6 +1642,12 @@ export function olderLookRedraws(
   return { redraw, kept }
 }
 
+/** The network a post address belongs to ('sent' is a partner kit), as migration 20261122124501 fills it. Pure. */
+export function networkOfPost(postUrl: string): 'instagram' | 'facebook' | 'partner' {
+  if (postUrl === 'sent') return 'partner'
+  return /^https:\/\/(www\.)?instagram\.com\//i.test(postUrl) ? 'instagram' : 'facebook'
+}
+
 /** A piece as it went (F8): its address, or "sent" for a partner kit; the database refuses one without its approval. */
 export async function recordPiecePosting(db: Db, input: { readonly pieceId: string; readonly postUrl: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
@@ -1648,8 +1655,8 @@ export async function recordPiecePosting(db: Db, input: { readonly pieceId: stri
     ? await db.from('social_piece_approvals').select('id').eq('piece_id', input.pieceId).eq('revision', rev.version).maybeSingle()
     : { data: null }
   if (!approval) return { state: 'refused', reason: 'Approve this version first: nothing goes without your approval.' }
-  const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: approval.id as string, post_url: input.postUrl, posted_at: input.now.toISOString(), recorded_by: input.by })
-  if (error) return { state: 'refused', reason: error.code === '23505' ? 'This piece is recorded already.' : (refusalOf(error.message) ?? error.message) }
+  const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: approval.id as string, post_url: input.postUrl, posted_at: input.now.toISOString(), recorded_by: input.by, platform: networkOfPost(input.postUrl) })
+  if (error) return { state: 'refused', reason: error.code === '23505' ? 'This piece is recorded already on that network.' : (refusalOf(error.message) ?? error.message) }
   return { state: 'done' }
 }
 
@@ -1790,7 +1797,8 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     evidence_file: input.evidenceFile,
     event_id: eventId,
     attribution_text: input.attributionText,
-    scope: input.scope,
+    // A grant whose own words permit promotion is recorded for social as well as site (grant-scope.ts; the PM's 11:05).
+    scope: scopeToRecord(input.scope, input.permissionEvidence),
     archival: input.archival,
     expires_at: input.expiresAt,
     restrictions: input.restrictions,
@@ -2299,12 +2307,12 @@ export type Published = {
  */
 export async function markPublished(
   db: Db,
-  input: { readonly scheduleId: string; readonly pieceId: string; readonly approvalId: string; readonly ref: string; readonly now: Date },
+  input: { readonly scheduleId: string; readonly pieceId: string; readonly approvalId: string; readonly ref: string; readonly now: Date; readonly platform?: SocialPlatform; readonly submission?: string | null },
 ): Promise<{ readonly error: string | null; readonly posting: string }> {
   const { error } = await db.from('social_piece_schedules').update({ state: 'published', published_ref: input.ref, published_at: input.now.toISOString() }).eq('id', input.scheduleId).eq('state', 'scheduled')
   if (error) return { error: refusalOf(error.message) ?? error.message, posting: 'not recorded: the schedule was not marked published' }
   const posting = PUBLIC_POST_URL.test(input.ref)
-    ? await recordAutoPosting(db, { pieceId: input.pieceId, approvalId: input.approvalId, postUrl: input.ref, postedAt: input.now })
+    ? await recordAutoPosting(db, { pieceId: input.pieceId, approvalId: input.approvalId, postUrl: input.ref, postedAt: input.now, platform: input.platform, submission: input.submission ?? null })
     : 'waits for its public address (the read back records it)'
   return { error: null, posting }
 }
@@ -2312,7 +2320,7 @@ export async function markPublished(
 /** The posting of a post the engine published, by its approval's own person; never throws, it says. */
 export async function recordAutoPosting(
   db: Db,
-  input: { readonly pieceId: string | null; readonly approvalId: string | null; readonly postUrl: string; readonly postedAt: Date },
+  input: { readonly pieceId: string | null; readonly approvalId: string | null; readonly postUrl: string; readonly postedAt: Date; readonly platform?: SocialPlatform; readonly submission?: string | null },
 ): Promise<string> {
   if (!input.pieceId || !input.approvalId) return 'not recorded: its piece or approval is not known'
   if (!PUBLIC_POST_URL.test(input.postUrl)) return 'not recorded: not a public post address'
@@ -2320,9 +2328,13 @@ export async function recordAutoPosting(
     const { data: approval, error: aerr } = await db.from('social_piece_approvals').select('approved_by').eq('id', input.approvalId).maybeSingle()
     const by = (approval as { approved_by?: string } | null)?.approved_by
     if (aerr || !by) return `not recorded: its approval could not be read (${aerr?.message ?? 'no row'})`
-    const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: input.approvalId, post_url: input.postUrl, posted_at: input.postedAt.toISOString(), recorded_by: by })
+    // ONE ROW PER NETWORK (migration 20261122124501; the PM's 12:17 item 2): AMCF's 11:40 feed went to both networks and
+    // kept Facebook's row only, the second insert refused by a key of one row per piece and read as 'recorded already'.
+    const platform = input.platform ?? networkOfPost(input.postUrl)
+    const provider = input.submission ? (input.submission.startsWith('blotato:') ? input.submission : `blotato:${input.submission}`) : null
+    const { error } = await db.from('social_piece_postings').insert({ piece_id: input.pieceId, approval_id: input.approvalId, post_url: input.postUrl, posted_at: input.postedAt.toISOString(), recorded_by: by, platform, provider_ref: provider })
     if (!error) return 'recorded'
-    if (error.code === '23505') return 'recorded already'
+    if (error.code === '23505') return `recorded already on ${platform}`
     console.error('[social] the posting could not be recorded (the post went out):', { pieceId: input.pieceId, error: error.message })
     return `not recorded: ${refusalOf(error.message) ?? error.message}`
   } catch (e) {
@@ -2339,7 +2351,7 @@ export async function recordAutoPosting(
 export async function recordMissingPostings(db: Db): Promise<{ readonly recorded: readonly string[]; readonly notRecorded: readonly string[] }> {
   const { data, error } = await db
     .from('social_piece_schedules')
-    .select('piece_id, approval_id, published_ref, published_at, social_pieces(social_piece_postings(id))')
+    .select('piece_id, approval_id, platform, published_ref, published_at, submission_ref, social_pieces(social_piece_postings(id, platform))')
     .eq('state', 'published')
     .like('published_ref', 'https://%')
     .order('published_at', { ascending: true })
@@ -2350,11 +2362,15 @@ export async function recordMissingPostings(db: Db): Promise<{ readonly recorded
   const seen = new Set<string>()
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     const pieceId = r.piece_id as string
-    const piece = (Array.isArray(r.social_pieces) ? r.social_pieces[0] : r.social_pieces) as { social_piece_postings?: unknown[] | null } | null
-    if (seen.has(pieceId) || (piece?.social_piece_postings ?? []).length > 0) continue
-    seen.add(pieceId)
-    const said = await recordAutoPosting(db, { pieceId, approvalId: r.approval_id as string, postUrl: String(r.published_ref), postedAt: new Date(String(r.published_at)) })
-    if (said === 'recorded' || said === 'recorded already') recorded.push(`${pieceId}: ${String(r.published_ref)}`)
+    // Per network (migration 20261122124501): a piece with Facebook's row still needs Instagram's.
+    const platform = String(r.platform) as SocialPlatform
+    const piece = (Array.isArray(r.social_pieces) ? r.social_pieces[0] : r.social_pieces) as { social_piece_postings?: { platform?: string }[] | { platform?: string } | null } | null
+    const rows = piece?.social_piece_postings ? (Array.isArray(piece.social_piece_postings) ? piece.social_piece_postings : [piece.social_piece_postings]) : []
+    const key = `${pieceId} ${platform}`
+    if (seen.has(key) || rows.some((g) => g.platform === platform)) continue
+    seen.add(key)
+    const said = await recordAutoPosting(db, { pieceId, approvalId: r.approval_id as string, postUrl: String(r.published_ref), postedAt: new Date(String(r.published_at)), platform, submission: (r.submission_ref as string | null) ?? null })
+    if (said === 'recorded' || said.startsWith('recorded already')) recorded.push(`${pieceId} on ${platform}: ${String(r.published_ref)}`)
     else notRecorded.push(`${pieceId}: ${said}`)
   }
   return { recorded, notRecorded }
@@ -2471,7 +2487,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       }
       if (said.status !== 'failed') {
         const ref = said.status === 'published' && said.publicUrl !== null && PUBLIC_POST_URL.test(said.publicUrl) ? said.publicUrl : earlier
-        const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now })
+        const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now, platform, submission: earlier })
         if (marked.error) await hold(id, `Sent as ${ref}; the database refused that reference: ${marked.error}`)
         else published.push(`${pieceId} on ${platform}: ${ref} (its earlier submission, read on the provider: ${said.status}; not sent again)`)
         continue
@@ -2526,7 +2542,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
         if (serr) console.error('[social] the submission could not be written to its own column', { id, submission, error: serr.message })
       }
       // Marked published and, with a public address, recorded as it went, in one step (markPublished, AV (a)).
-      const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now })
+      const marked = await markPublished(db, { scheduleId: id, pieceId, approvalId: r.approval_id as string, ref, now, platform, submission: submission ?? null })
       // A reference the database refuses is kept FIRST in the held reason, so the post it names can always be read back.
       if (marked.error) await hold(id, `Sent as ${ref}; the database refused that reference: ${marked.error}`)
       else published.push(`${pieceId} on ${platform}: ${ref}`)
