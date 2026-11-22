@@ -9,14 +9,17 @@
  * recipient." A draft that fails any is HELD with the rule named (the project manager's 20:10), never sent; the
  * database refuses to queue or send a message whose held_because is not empty (20261028213001).
  *
- * THREE READINGS, where the file's own texts would fail its own rules as written, said here so nobody re-derives them:
- *   1. "Exactly one question" binds the FIRST message of a cadence (messages 1, 1b and 2, each built around one ask).
- *      Messages 3, 4, 5, 7, 8 and 10 carry no question at all, so elsewhere the rule is AT MOST one.
- *   2. "Under 125 words" (60 for a DM) counts the message, not the closing: message 1's own text with Lawal's
- *      five-line signature and the unsubscribe line would pass 125 on its own.
- *   3. "A signature and an unsubscribe line on every email" wins over the shorter "Kind regards, Lawal" closings of
- *      messages 7, 8 and 9: those are commercial messages too (Spam Act ss 17 and 18), and the database refuses an
- *      email with no unsubscribe link.
+ * THE NUMERICAL RULES ARE GONE (Lawal, 20:45 of 22 November 2026, adopting C:\dev\START-16OCT\COMMS-STANDARD-REVIEW-22NOV.md:
+ * "I would remove that numerical rule entirely ... Remove arbitrary numerical writing rules, including requirements that
+ * 'you' must appear more frequently than 'we'. Evaluate communication by its actual quality and purpose, not superficial
+ * word counts"; the PM's 20:47, item 1). The you and we count, the question counts and the 125 and 60 word limits are
+ * removed; no count stands in for quality. What is law or fact stays: the greeting, no unfilled field (no invented fact),
+ * no promise of sales or reach, the sender's signature and the unsubscribe line, no dashes, no exclamation marks.
+ *
+ * ONE READING, where the file's own texts would fail its own rules as written, said here so nobody re-derives it:
+ * "A signature and an unsubscribe line on every email" wins over the shorter "Kind regards, Lawal" closings of
+ * messages 7, 8 and 9: those are commercial messages too (Spam Act ss 17 and 18), and the database refuses an email
+ * with no unsubscribe link.
  *
  * PURE: no database, no network. The template's text comes from its row (outreach_templates), never from here.
  */
@@ -40,12 +43,6 @@ export const REPLY_SIGNATURE = [PLATFORM_ENTITY.legalName, `Founder, ${PLATFORM_
 
 /** How every DM ends, word for word. */
 export const DM_SIGN_OFF = "Lawal, EventLinqs (reply stop and I won't message again)"
-
-export const EMAIL_CONTENT_MAX_WORDS = 125
-export const DM_CONTENT_MAX_WORDS = 60
-
-const YOU_WORDS = new Set(['you', 'your', 'yours', "you're", "you'll", "you'd", "you've", 'yourself', 'yourselves'])
-const WE_WORDS = new Set(['we', 'our', 'ours', "we're", "we'll", "we'd", "we've", 'ourselves'])
 
 /** Promises the file forbids: returns, sales, reach. Matched case-insensitively on word boundaries. */
 const PROMISES = [
@@ -80,14 +77,6 @@ export type Draft = {
   closing: string
 }
 
-function words(text: string): string[] {
-  return text
-    .replace(/https?:\/\/\S+/g, ' ')
-    .split(/\s+/)
-    .map((w) => w.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, '').replace(/\u2019/g, "'").toLowerCase())
-    .filter(Boolean)
-}
-
 /** Every rule the draft fails, each named in plain words. Empty means it may queue. */
 export function ruleFailures(draft: Draft): string[] {
   const failures: string[] = []
@@ -98,24 +87,9 @@ export function ruleFailures(draft: Draft): string[] {
 
   if (!/^Hi [^,\n]{1,80},/.test(draft.content)) failures.push('opens "Hi [first name]," or "Hi [venue] team,"')
 
-  const w = words(draft.content)
-  const you = w.filter((x) => YOU_WORDS.has(x)).length
-  const we = w.filter((x) => WE_WORDS.has(x)).length
-  if (we > 0 && you <= we) failures.push(`you and your outnumber we and our: found ${you} to ${we}`)
-
-  const questions = (draft.content.match(/\?/g) ?? []).length
-  if (draft.purpose === 'cadence' && draft.step === 1) {
-    if (questions !== 1) failures.push(`exactly one question: found ${questions}`)
-  } else if (questions > 1) {
-    failures.push(`at most one question: found ${questions}`)
-  }
-
   for (const p of PROMISES) if (p.test(whole)) failures.push('no ROI claims and no promises of sales or reach')
   for (const n of NEVER) if (n.pattern.test(whole)) failures.push(n.rule)
   for (const i of INSTRUCTIONS) if (i.test(draft.content)) failures.push('never rules for the recipient')
-
-  const max = draft.channel === 'email' ? EMAIL_CONTENT_MAX_WORDS : DM_CONTENT_MAX_WORDS
-  if (w.length >= max) failures.push(`${draft.channel === 'email' ? 'an email' : 'a DM'} is under ${max} words: found ${w.length}`)
 
   if (draft.channel === 'email') {
     if (!draft.subject || draft.subject.trim().length < 3) failures.push('an email has a subject')

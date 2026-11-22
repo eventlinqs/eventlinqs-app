@@ -4,14 +4,16 @@ import { DM_SIGN_OFF, LAWAL_SIGNATURE, composeBody, emailClosing, fillTemplate, 
 /**
  * THE MESSAGES FILE's RULES (C:\dev\START-16OCT\EVENTLINQS-ORGANISER-MESSAGES-28OCT.md), pinned against the file's own
  * texts: messages 1, 2, 3 and 4 as written must pass once their fields are filled, and each rule must fail on its own
- * breach. The texts are copied here as test data only; the product reads them from outreach_templates.
+ * breach. The texts are copied here as test data only; the product reads them from outreach_templates. Message 1 is
+ * written to the communication standard (Lawal, 20:45 of 22 November 2026): no stock pleasantry, so "Hi <name>," and
+ * straight into the true line; and the numerical rules (you and we, the question counts, the word limits) are gone.
  */
 
 const UNSUB = 'https://www.eventlinqs.com.au/unsubscribe/outreach?c=tok'
 
 const MESSAGE_1 = [
   'Hi [first name],',
-  "I hope you're all well. [true line]",
+  '[true line]',
   "We'd love to help fill the room. Your [nights] are already on EventLinqs' [city] guide, and we'd like to feature them in our weekly picks on Instagram and Facebook, with every link going straight to your own page.",
   "Here's your listing: [claim link]. Claim it in two minutes and it's yours to update, with your own posters and photos. It's free, and you keep your own booking setup.",
   'Would that work for you?',
@@ -72,16 +74,17 @@ describe('each rule fails on its own breach', () => {
     draft.content = draft.content.replace('Hi Sam,', 'Hello Sam,')
     expect(ruleFailures(draft)).toContain('opens "Hi [first name]," or "Hi [venue] team,"')
   })
-  test('we outnumbering you', () => {
+  // THE NUMERICAL RULES ARE GONE (Lawal, 20:45 of 22 November 2026: "A professional email can contain more instances of
+  // 'we' than 'you' and still be excellent ... I would remove that numerical rule entirely"; the PM's 20:47, item 1).
+  test('more we than you is never a hold', () => {
     const draft = email('Hi Sam,\nWe built our guide and we think our picks are what we do best. Would that work?', 1)
-    expect(ruleFailures(draft)).toContain('you and your outnumber we and our: found 0 to 5')
+    expect(ruleFailures(draft)).toEqual([])
   })
-  test('two questions on a first message', () => {
-    const draft = email(MESSAGE_1.replace('Would that work for you?', 'Would that work for you? Is Friday better?'), 1)
-    expect(ruleFailures(draft)).toContain('exactly one question: found 2')
+  test('two questions on a first message is never a hold', () => {
+    expect(ruleFailures(email(MESSAGE_1.replace('Would that work for you?', 'Would that work for you? Is Friday better?'), 1))).toEqual([])
   })
-  test('no question on a first message', () => {
-    expect(ruleFailures(email(MESSAGE_1.replace('Would that work for you?', 'Thanks for your time.'), 1))).toContain('exactly one question: found 0')
+  test('no question on a first message is never a hold', () => {
+    expect(ruleFailures(email(MESSAGE_1.replace('Would that work for you?', 'Thanks for your time.'), 1))).toEqual([])
   })
   test('a promise of sales', () => {
     expect(ruleFailures(email(MESSAGE_1.replace('Would that work for you?', 'It will boost your sales. Would that work for you?'), 1))).toContain(
@@ -89,7 +92,7 @@ describe('each rule fails on its own breach', () => {
     )
   })
   test("I'm Lawal from, and we're new", () => {
-    const failures = ruleFailures(email(MESSAGE_1.replace("I hope you're all well.", "I'm Lawal from EventLinqs and we're new."), 1))
+    const failures = ruleFailures(email(MESSAGE_1.replace('[true line]', "I'm Lawal from EventLinqs and we're new. [true line]"), 1))
     expect(failures).toContain('never "I\'m Lawal from"')
     expect(failures).toContain('never "we\'re new"')
   })
@@ -98,9 +101,9 @@ describe('each rule fails on its own breach', () => {
       'never rules for the recipient',
     )
   })
-  test('too long', () => {
+  test('a long letter is never held for its word count', () => {
     const long = MESSAGE_1.replace('Would that work for you?', `${'Your night is great. '.repeat(15)}Would that work for you?`)
-    expect(ruleFailures(email(long, 1)).some((f) => f.startsWith('an email is under 125 words'))).toBe(true)
+    expect(ruleFailures(email(long, 1))).toEqual([])
   })
   test('no signature or unsubscribe line', () => {
     const draft = email(MESSAGE_1, 1)
