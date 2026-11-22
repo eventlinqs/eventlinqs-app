@@ -39,17 +39,29 @@ type Admin = SupabaseClient<Database>
 
 /**
  * THE MINIMUM GAP, IN DAYS, between an unanswered unsolicited message to an organiser and the next unsolicited first
- * letter to them, whatever its category. UNSOURCED: neither the communication standard (EL-COMMS-STANDARD-LOCKED-17NOV.md),
- * the communication law (COMMUNICATION-LAW-25OCT.md), the standard's review (COMMS-STANDARD-REVIEW-22NOV.md) nor law 49
- * (EVENT-LIFECYCLE-ENGINE-LOCKED-21NOV.md) states one, read whole on 23 November 2026, and no primary source of a sender
- * practice for organiser outreach was found to cite (the Spam Act 2003 sets no frequency). So the conservative value is
- * chosen: 30 days, the window the database already gives one live cold cadence per organiser (outreach_touch_is_lawful,
- * migration 20261029210001: "another contact written to in the last 30 days who has not replied"), and three times the
- * longest cold sequence (day 0, day 4, day 10: crm.ts CADENCE_DAYS). One value, here, never typed into a workflow.
+ * letter to them of another purpose, a sequence's own scheduled follow ups excepted. RULED by the PM at 03:47 of
+ * 23 November 2026 (Lawal's 01:51: one contact policy, "not another rigid rule"), SOURCED: Unify's knowledge base,
+ * "enabling re-enrollment into different sequences after 30-60 days (to avoid over-contacting prospects)", its default
+ * period 45 to 90 days (https://support.unifygtm.com/articles/9341974144); and Outreach's sequence ruleset setting
+ * "Prospects must not have been contacted within the last" (https://support.outreach.io/hc/en-us/articles/217723638),
+ * the same control as a configurable latency. 30 is the low end of the cited range, chosen because our letters are about
+ * dated events. One value here, changed only by a ruling or by its reversal condition below; never typed into a workflow.
+ * REVERSAL, read by the engine: any organiser reply or opt out since the ruling that names frequency moves it to
+ * CONTACT_GAP_DAYS_RAISED (45), the start of the cited default range (gapDaysFrom).
  */
 export const CONTACT_GAP_DAYS = 30
+export const CONTACT_GAP_DAYS_RAISED = 45
+export const CONTACT_GAP_RULED_AT = '2026-11-23T03:47:00+11:00'
 export const CONTACT_GAP_SOURCE =
-  'UNSOURCED: no comms standard or cited sender practice states a gap; 30 days, the window the database already gives one live cold cadence per organiser (migration 20261029210001)'
+  'Ruled by the PM, 03:47 of 23 November 2026: 30 days, the low end of Unify (support.unifygtm.com/articles/9341974144, re-enrollment after 30-60 days) and Outreach (support.outreach.io/hc/en-us/articles/217723638, a configurable "not contacted within the last" latency); 45 once a reply or opt out names frequency'
+
+/** Words that name contact frequency in a reply or an opt out ("too many emails", "too often", "stop emailing me"). */
+const NAMES_FREQUENCY = /\b(too (many|often|frequent(ly)?)|so many (e-?mails|messages|letters)|(stop|keep) (e-?mailing|emailing|writing|contacting|messaging)|every (day|week)|again and again|spam(ming)?)\b/i
+
+/** The gap in force: raised to 45 when any reply or opt out since the ruling names frequency (the reversal). Pure. */
+export function gapDaysFrom(texts: readonly (string | null | undefined)[]): number {
+  return texts.some((t) => typeof t === 'string' && NAMES_FREQUENCY.test(t)) ? CONTACT_GAP_DAYS_RAISED : CONTACT_GAP_DAYS
+}
 
 const DAY_MS = 86_400_000
 
@@ -96,6 +108,8 @@ export type PolicyHistory = {
   readonly bounced: readonly { readonly contactId: string; readonly at: string | null }[]
   /** organisers.organisation_id is set: they hold an EventLinqs account. */
   readonly claimed: boolean
+  /** The gap in force, in days (gapDaysFrom: 45 once any reply or opt out since the ruling names frequency, else 30). */
+  readonly gapDays?: number
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -155,7 +169,8 @@ export function contactDecision(c: PolicyCandidate, h: PolicyHistory, now: Date)
 
   // 4. Frequency: one unsolicited first touch inside the gap, a sequence's own scheduled follow up excepted.
   if ((c.step ?? 1) > 1) return { state: 'allowed' }
-  const gap = CONTACT_GAP_DAYS * DAY_MS
+  const gapDays = h.gapDays ?? CONTACT_GAP_DAYS
+  const gap = gapDays * DAY_MS
   const cold = h.touches.filter((t) => t.purpose === 'cadence')
   const inFlight = cold.filter((t) => (c.moment === 'draft' ? ['queued', 'sending'] : ['sending']).includes(t.state))[0]
   if (inFlight) {
@@ -163,7 +178,7 @@ export function contactDecision(c: PolicyCandidate, h: PolicyHistory, now: Date)
     const at = new Date(from + gap).toISOString()
     const to = h.contacts.find((x) => x.id === inFlight.contactId)?.address ?? 'them'
     const kind = inFlight.category ? `${inFlight.category} ` : ''
-    return held('gap', `an unsolicited ${kind}letter to ${to} is already on its way; one unsolicited first letter per ${CONTACT_GAP_DAYS} days, so the next may go from ${melbourneDateWords(at)}`, at)
+    return held('gap', `an unsolicited ${kind}letter to ${to} is already on its way; one unsolicited first letter per ${gapDays} days, so the next may go from ${melbourneDateWords(at)}`, at)
   }
   const unanswered = cold
     .filter((t) => t.state === 'sent' && t.sentAt)
@@ -176,7 +191,7 @@ export function contactDecision(c: PolicyCandidate, h: PolicyHistory, now: Date)
     const kind = last.category ? `${last.category} ` : ''
     return held(
       'gap',
-      `last written unsolicited on ${melbourneDateWords(last.sentAt)} (a ${kind}letter to ${to}) and not answered; one unsolicited first letter per ${CONTACT_GAP_DAYS} days, so the next may go from ${melbourneDateWords(at)}`,
+      `last written unsolicited on ${melbourneDateWords(last.sentAt)} (a ${kind}letter to ${to}) and not answered; one unsolicited first letter per ${gapDays} days, so the next may go from ${melbourneDateWords(at)}`,
       at,
     )
   }
@@ -250,6 +265,18 @@ export async function readContactHistory(db: Admin, contactId: string, excludeTo
     : { data: [] as { touch_id: string; occurred_at: string }[], error: null }
   if (bounces.error) return { state: 'unread', why: `their bounces could not be read: ${bounces.error.message}` }
   const contactOfTouch = new Map((touches.data ?? []).map((t) => [t.id as string, t.contact_id as string]))
+  // THE REVERSAL (the PM's 03:47 of 23 November 2026): every reply and opt out since the ruling, from any organiser, read
+  // for words that name frequency; one such moves the gap to 45. A failed read keeps the higher gap, never the lower.
+  const sinceRuling = new Date(CONTACT_GAP_RULED_AT).toISOString()
+  const said = await db.from('outreach_replies').select('wording, objection').gte('received_at', sinceRuling).limit(HISTORY_CEILING)
+  const left = await db.from('outreach_unsubscribes').select('reason, comment').gte('created_at', sinceRuling).limit(HISTORY_CEILING)
+  const gapDays =
+    said.error || left.error
+      ? CONTACT_GAP_DAYS_RAISED
+      : gapDaysFrom([
+          ...(said.data ?? []).flatMap((r) => [r.wording as string | null, r.objection as string | null]),
+          ...(left.data ?? []).flatMap((u) => [u.reason as string | null, u.comment as string | null]),
+        ])
   return {
     state: 'read',
     history: {
@@ -269,6 +296,7 @@ export async function readContactHistory(db: Admin, contactId: string, excludeTo
       suppressed: (unsubs.data ?? []).filter((u) => u.email).map((u) => ({ address: String(u.email), at: (u.created_at as string | null) ?? null })),
       bounced: (bounces.data ?? []).map((b) => ({ contactId: contactOfTouch.get(b.touch_id as string) ?? '', at: (b.occurred_at as string | null) ?? null })),
       claimed: Boolean(org.data?.organisation_id),
+      gapDays,
     },
   }
 }
