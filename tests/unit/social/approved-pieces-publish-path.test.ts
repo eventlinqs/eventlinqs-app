@@ -381,4 +381,26 @@ describe.skipIf(LIVE)('section 5 of the hardening order: one network failing, a 
     await publishDuePieces(t.db as never, new Date(t.now.getTime() + 3_600_000), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
     expect(sends).toBe(0)
   }, 120_000)
+
+  // THE TEN MINUTE CADENCE (the PM's 17:20 of 22 November 2026: a piece due at 18:00 went at 18:40). A schedule is taken
+  // by the first run at or after its slot, never before it, and only once: runs ten minutes before, at, and ten minutes
+  // after the latest slot of this fixture.
+  it('every ten minutes: a schedule is taken by the first run at or after its slot, and only once', async () => {
+    const { publishDuePieces } = await import('@/lib/social/store')
+    const t = setup()
+    const latest = t.reaching.reduce((a, b) => (Date.parse(String(a.go_at)) >= Date.parse(String(b.go_at)) ? a : b))
+    const slot = Date.parse(String(latest.go_at))
+    const key = `${String(latest.piece_id)} ${String(latest.platform)}`
+    const sent: string[] = []
+    const publisher = vi.fn(async (p: { readonly pieceId: string; readonly platform: string }) => {
+      sent.push(`${p.pieceId} ${p.platform}`)
+      return { ref: `https://www.instagram.com/p/tm-${p.pieceId.slice(0, 8)}` }
+    })
+    await publishDuePieces(t.db as never, new Date(slot - 10 * 60_000), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(sent).not.toContain(key)
+    await publishDuePieces(t.db as never, new Date(slot), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(sent.filter((k) => k === key)).toHaveLength(1)
+    await publishDuePieces(t.db as never, new Date(slot + 10 * 60_000), { siteOrigin: 'https://www.eventlinqs.com.au', publisher, fetcher: served })
+    expect(sent.filter((k) => k === key)).toHaveLength(1)
+  }, 120_000)
 })

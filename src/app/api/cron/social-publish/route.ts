@@ -1,5 +1,5 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
-import { claimPublishLease, deploymentOf, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
+import { claimPublishLease, deploymentOf, HOURLY_FLAG, isHourRun, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
 import { socialPhaseAt } from '@/lib/ops/timetable'
 import { planCheckWords } from '@/lib/ops/plan-check'
 import { midnightIn } from '@/lib/dates/zone-midnight'
@@ -26,6 +26,7 @@ const POLICY_HOURS: ReadonlySet<number> = new Set([6, 9, 12, 15, 18])
 function melbourneHour(now: Date): number {
   return Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', hourCycle: 'h23' }).format(now))
 }
+
 
 /**
  * APPROVED PIECES SCHEDULE THEMSELVES (the release checklist B5; the project manager's 20:17 of 28 October 2026). At 40
@@ -129,10 +130,22 @@ export async function GET(request: NextRequest) {
       await recordPublishRun(db, { route: '/api/cron/social-publish', startedAt: now, endedAt: new Date(), deployment: deploymentOf(), switchOn: false, drawn: 0, approved: 0, scheduled: 0, due: 0, published: 0, held: 0, failed: 0, ok: true, result: `skipped: ${lease.why}` })
       return NextResponse.json({ ok: true, skipped: lease.why })
     }
+    const hourRun = isHourRun(now)
+    /* THE REVERSAL (the PM's 17:20): if the watchdog has found two publishing runs overlapping, or a piece with two
+       posting rows on one network, it turns social_publish_hourly on (src/lib/social/publish-run.ts), and every run
+       but the hour's own does nothing and says so, as the hourly cron did, until a person turns it off. */
+    if (!hourRun) {
+      const { data: hourly } = await db.from('feature_flags').select('enabled').eq('flag', HOURLY_FLAG).maybeSingle()
+      if (hourly?.enabled === true) {
+        await recordPublishRun(db, { route: '/api/cron/social-publish', startedAt: now, endedAt: new Date(), deployment: deploymentOf(), switchOn: false, drawn: 0, approved: 0, scheduled: 0, due: 0, published: 0, held: 0, failed: 0, ok: true, result: `skipped: ${HOURLY_FLAG} is on (the watchdog's reversal), so only the hour's own run publishes` })
+        await releasePublishLease(db, holder)
+        return NextResponse.json({ ok: true, skipped: `${HOURLY_FLAG} is on` })
+      }
+    }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
        moment, and the line goes to the 08:00 report. A failed pre-flight is said and never stops the run. */
-    if (melbourneHour(now) === PREFLIGHT_HOUR) {
+    if (hourRun && melbourneHour(now) === PREFLIGHT_HOUR) {
       try {
         const founder = await founderAccount(db)
         const p = await runPreflight(db, { now, siteOrigin: getSiteUrl(), apply: founder.id !== null, by: founder.id })
@@ -147,7 +160,7 @@ export async function GET(request: NextRequest) {
        again by the planner before anything is scheduled, so a week planned by older code reaches the switch-on in the
        look it can be approved in. Never an approved piece. A failed redraw never holds the publishing below. */
     let redrawn: { redrawn: readonly string[]; kept: readonly string[] } = { redrawn: [], kept: [] }
-    try {
+    if (hourRun) try {
       redrawn = await redrawOlderLook(db, now)
       if (redrawn.redrawn.length > 0 || redrawn.kept.length > 0) console.log(`[cron/social-publish] drawn again in the locked look: ${redrawn.redrawn.length}; kept as they are: ${redrawn.kept.length}`)
       for (const k of redrawn.kept) console.log(`[cron/social-publish] kept: ${k}`)
@@ -164,7 +177,7 @@ export async function GET(request: NextRequest) {
        any failed check of an approved piece, or any publish error turns the switch off by code with an alarm row. */
     let policyHour: PolicyHour | null = null
     const policyFaults: string[] = []
-    if (POLICY_HOURS.has(melbourneHour(now))) {
+    if (hourRun && POLICY_HOURS.has(melbourneHour(now))) {
       try {
         const { data: flag } = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
         if (flag?.enabled === true) {
@@ -263,7 +276,7 @@ export async function GET(request: NextRequest) {
        piece once. After the publishing above, so a slow or failed plan never holds a post back. */
     let planned: { created: number; existing: number; held: number } | null = null
     // Also in the run that drew the week again, so a piece the new drawing adds (a venue spotlight) is there that hour.
-    if (melbourneHour(now) === 6 || redrawn.redrawn.length > 0) {
+    if (hourRun && (melbourneHour(now) === 6 || redrawn.redrawn.length > 0)) {
       try {
         const week = await planCampaignWeek(db, { plannedBy: null, now })
         planned = { created: week.created, existing: week.existing, held: week.held.length }
@@ -278,7 +291,7 @@ export async function GET(request: NextRequest) {
     }
     // THE TIMETABLE'S SOCIAL PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):
     // the phase this hour holds, its pieces scheduled and published as its units.
-    const phase = socialPhaseAt(melbourneHour(now))
+    const phase = hourRun ? socialPhaseAt(melbourneHour(now)) : null
     if (phase) {
       // THE DAILY PLAN CHECK (Lawal's 09:01 of 20 November 2026, item 3; src/lib/ops/plan-check.ts): at the schedule and live
       // phases, the policy's own dry run and what is scheduled for the rest of the day, on the phase row itself. A read that

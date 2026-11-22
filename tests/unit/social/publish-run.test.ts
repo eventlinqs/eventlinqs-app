@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { LEASE_SECONDS, overdueNow, PIECE_OVERDUE_MINUTES, publishRunRow, RUN_MISSING_MINUTES, socialWatchdog } from '@/lib/social/publish-run'
+import { HOURLY_FLAG, isHourRun, LEASE_SECONDS, overdueNow, PIECE_OVERDUE_MINUTES, publishRunRow, reversalReasons, RUN_MISSING_MINUTES, socialWatchdog } from '@/lib/social/publish-run'
 
 /*
  * THE PUBLISHING RUN, ACCOUNTED FOR AND WATCHED (Lawal's hardening order of 22 November 2026, sections 2 E and 4; tests 6,
@@ -23,22 +23,25 @@ describe('the run row', () => {
 })
 
 describe('what is overdue (the watchdog judges)', () => {
-  it('a run missing for more than 70 minutes is overdue; a fresh one is not', () => {
-    expect(overdueNow({ now: NOW, lastRunAt: ago(RUN_MISSING_MINUTES + 1), switchOn: true, oldestDue: null }).join(' ')).toMatch(/more than 70/)
+  it('a run missing for more than 25 minutes (two ten-minute runs missed) is overdue; a fresh one is not', () => {
+    expect(RUN_MISSING_MINUTES).toBe(25)
+    expect(overdueNow({ now: NOW, lastRunAt: ago(RUN_MISSING_MINUTES + 1), switchOn: true, oldestDue: null }).join(' ')).toMatch(/more than 25/)
     expect(overdueNow({ now: NOW, lastRunAt: ago(5), switchOn: true, oldestDue: null })).toEqual([])
     expect(overdueNow({ now: NOW, lastRunAt: null, switchOn: false, oldestDue: null })).toEqual(['no social publish run is recorded'])
   })
 
-  it('a piece 30 minutes past its slot is overdue only while the switch is on', () => {
+  it('a piece 20 minutes past its slot is overdue only while the switch is on', () => {
+    expect(PIECE_OVERDUE_MINUTES).toBe(20)
     expect(overdueNow({ now: NOW, lastRunAt: ago(5), switchOn: true, oldestDue: ago(PIECE_OVERDUE_MINUTES + 1) }).join(' ')).toMatch(/past its slot with the switch on/)
     expect(overdueNow({ now: NOW, lastRunAt: ago(5), switchOn: false, oldestDue: ago(120) })).toEqual([])
     expect(overdueNow({ now: NOW, lastRunAt: ago(5), switchOn: true, oldestDue: ago(10) })).toEqual([])
   })
 })
 
-/** A database that answers the watchdog's three reads and keeps what it writes. */
-function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue: string | null }) {
+/** A database that answers the watchdog's reads (and the reversal's two lists) and keeps what it writes. */
+function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue: string | null; runs?: unknown[]; postings?: unknown[] }) {
   const writes: Record<string, unknown>[] = []
+  const lists: Record<string, unknown[]> = { social_publish_runs: state.runs ?? [], social_piece_postings: state.postings ?? [] }
   const answer: Record<string, unknown> = {
     social_publish_runs: state.lastRunAt ? { started_at: state.lastRunAt } : null,
     feature_flags: { enabled: state.switchOn },
@@ -52,8 +55,11 @@ function fakeDb(state: { lastRunAt: string | null; switchOn: boolean; oldestDue:
         lt: () => q,
         order: () => q,
         limit: () => q,
+        gte: () => q,
         maybeSingle: async () => ({ data: answer[table] ?? null, error: null }),
+        then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: lists[table] ?? [], error: null }).then(ok),
         insert: async (row: Record<string, unknown>) => (writes.push({ table, ...row }), { error: null }),
+        update: (row: Record<string, unknown>) => ({ eq: async (_c: string, v: unknown) => (writes.push({ table, update: v, ...row }), { error: null }) }),
       }
       return q
     },
@@ -99,7 +105,7 @@ describe('one publishing run at a time (tests 6 and 12 at the route: the lease b
     const main = route.slice(route.indexOf('const holder = `social-publish'))
     const claim = main.indexOf('await claimPublishLease(db, holder)')
     expect(claim).toBeGreaterThan(-1)
-    for (const work of ['if (melbourneHour(now) === PREFLIGHT_HOUR)', 'approveUnderStandingPolicy(db', 'await scheduleApprovedPieces(db, now)', 'await publishDuePieces(db, now']) {
+    for (const work of ['if (hourRun && melbourneHour(now) === PREFLIGHT_HOUR)', 'approveUnderStandingPolicy(db', 'await scheduleApprovedPieces(db, now)', 'await publishDuePieces(db, now']) {
       expect(main.indexOf(work), work).toBeGreaterThan(claim)
     }
     expect(main.slice(claim, main.indexOf('/* THE PRE FLIGHT'))).toMatch(/if \(!lease\.held\) \{[\s\S]*return NextResponse\.json\(\{ ok: true, skipped: lease\.why \}\)/)
@@ -121,5 +127,69 @@ describe('one publishing run at a time (tests 6 and 12 at the route: the lease b
 
   it('the health sentinel runs the watchdog every pass but a drill', () => {
     expect(sentinel).toMatch(/if \(!drill\) \{\s*try \{\s*watchdog = await socialWatchdog\(createAdminClient\(\)/)
+  })
+})
+
+describe("every ten minutes, with the hour keeping its own work (the PM's 17:20 of 22 November 2026)", () => {
+  it('vercel.json runs the publish route every ten minutes', () => {
+    const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as { crons: { path: string; schedule: string }[] }
+    expect(vercel.crons.find((c) => c.path === '/api/cron/social-publish')?.schedule).toBe('*/10 * * * *')
+  })
+
+  it("the hour's own run is the one at 40 to 49 minutes past, in Melbourne", () => {
+    // 18:40, 18:49, 18:50 and 18:39 in Melbourne (daylight time, +11:00) on 22 November 2026.
+    expect(isHourRun(new Date('2026-11-22T07:40:00Z'))).toBe(true)
+    expect(isHourRun(new Date('2026-11-22T07:49:59Z'))).toBe(true)
+    expect(isHourRun(new Date('2026-11-22T07:50:00Z'))).toBe(false)
+    expect(isHourRun(new Date('2026-11-22T07:39:59Z'))).toBe(false)
+  })
+
+  it("the pre-flight, the week drawn again, the policy's approvals, the week's plan and the phase row stay in the hour's own run; scheduling and publishing run every time", () => {
+    const main = route.slice(route.indexOf('const holder = `social-publish'))
+    expect(main).toContain('if (hourRun && melbourneHour(now) === PREFLIGHT_HOUR) {')
+    expect(main).toContain('if (hourRun) try {\n      redrawn = await redrawOlderLook(db, now)')
+    expect(main).toContain('if (hourRun && POLICY_HOURS.has(melbourneHour(now))) {')
+    expect(main).toContain('if (hourRun && (melbourneHour(now) === 6 || redrawn.redrawn.length > 0)) {')
+    expect(main).toContain('const phase = hourRun ? socialPhaseAt(melbourneHour(now)) : null')
+    expect(main).toMatch(/\n    const scheduled = await scheduleApprovedPieces\(db, now\)\n    const published = await publishDuePieces\(db, now,/)
+  })
+})
+
+describe("the reversal, checked by the watchdog itself (the PM's 17:20)", () => {
+  const run = (start: string, end: string, result = '0 scheduled; 1 due; 1 published, 0 held') => ({ started_at: start, ended_at: end, result })
+
+  it('two runs that both held the lease and overlap are found; a run that found the lease held never counts', () => {
+    expect(reversalReasons([run('2026-11-22T07:40:00Z', '2026-11-22T07:41:00Z'), run('2026-11-22T07:50:00Z', '2026-11-22T07:50:05Z')], [])).toEqual([])
+    expect(reversalReasons([run('2026-11-22T07:40:00Z', '2026-11-22T07:52:00Z'), run('2026-11-22T07:50:00Z', '2026-11-22T07:50:05Z')], [])).toEqual([
+      'two publishing runs overlapped (started 2026-11-22T07:40:00Z and 2026-11-22T07:50:00Z)',
+    ])
+    expect(reversalReasons([run('2026-11-22T07:40:00Z', '2026-11-22T07:52:00Z'), run('2026-11-22T07:50:00Z', '2026-11-22T07:50:01Z', 'skipped: the lease is held')], [])).toEqual([])
+  })
+
+  it('a piece with two posting rows on one network is found', () => {
+    expect(reversalReasons([], [{ piece_id: 'p1', platform: 'instagram' }, { piece_id: 'p1', platform: 'facebook' }])).toEqual([])
+    expect(reversalReasons([], [{ piece_id: 'p1', platform: 'instagram' }, { piece_id: 'p1', platform: 'instagram' }])).toEqual(['a piece has 2 posting rows on one network (p1 instagram)'])
+  })
+
+  it('on an overlap the watchdog turns the hourly switch on, says why in its row, marks the row failed, and calls nothing when nothing is overdue', async () => {
+    const { db, writes } = fakeDb({
+      lastRunAt: ago(4).toISOString(),
+      switchOn: true,
+      oldestDue: null,
+      runs: [run('2026-11-21T23:30:00Z', '2026-11-21T23:42:00Z'), run('2026-11-21T23:40:00Z', '2026-11-21T23:40:09Z')],
+    })
+    let called = 0
+    const out = await socialWatchdog(db, { now: NOW, origin: 'https://x', secret: 's', fetcher: async () => (called++, new Response('{}')) })
+    expect(called).toBe(0)
+    expect(out.reversal).toMatch(new RegExp(`^${HOURLY_FLAG} turned on: two publishing runs overlapped`))
+    expect(writes).toContainEqual(expect.objectContaining({ table: 'feature_flags', update: HOURLY_FLAG, enabled: true }))
+    expect(writes.find((w) => w.table === 'social_publish_runs')).toMatchObject({ ok: false, failed: 1 })
+  })
+
+  it("the route honours the switch: every run but the hour's own does nothing while it is on, and says so", () => {
+    const main = route.slice(route.indexOf('const hourRun = isHourRun(now)'))
+    expect(main.indexOf("db.from('feature_flags').select('enabled').eq('flag', HOURLY_FLAG)")).toBeGreaterThan(-1)
+    expect(main.indexOf('if (!hourRun) {')).toBeLessThan(main.indexOf('await scheduleApprovedPieces(db, now)'))
+    expect(main).toMatch(/result: `skipped: \$\{HOURLY_FLAG\} is on \(the watchdog's reversal\)/)
   })
 })

@@ -80,7 +80,7 @@ describe('the switch goes off by code, with its alarm', () => {
 
 describe('the run is wired to fail closed', () => {
   it('logs the dry run before the policy approves, and approves only what it read eligible', () => {
-    const block = route.slice(route.indexOf('if (POLICY_HOURS.has(melbourneHour(now)))'), route.indexOf('const scheduled = await scheduleApprovedPieces('))
+    const block = route.slice(route.indexOf('if (hourRun && POLICY_HOURS.has(melbourneHour(now)))'), route.indexOf('const scheduled = await scheduleApprovedPieces('))
     const dry = block.indexOf('standingPolicyDryRun(db')
     expect(dry).toBeGreaterThan(-1)
     expect(block.indexOf("action: 'system.social.standing_policy_dry_run'")).toBeGreaterThan(dry)

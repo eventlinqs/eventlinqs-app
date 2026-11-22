@@ -10,14 +10,34 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  *     a run that finds it held does nothing, so a repeated cron, a retried invocation and the watchdog never run two
  *     publishing processes.
  *   - THE WATCHDOG (the health sentinel, every five minutes, independent of the social cron): a run missing for more
- *     than 70 minutes, or a piece due more than 30 minutes past its slot while the switch is on, is reported, and the
- *     one publish route is called once, through the same lease. It never publishes itself.
+ *     than 25 minutes, or a piece due more than 20 minutes past its slot while the switch is on, is reported, and the
+ *     one publish route is called once, through the same lease. It never publishes itself. Since the PM's 17:20 the
+ *     route runs every ten minutes; if the watchdog finds two runs overlapping, or a piece with two posting rows on one
+ *     network, it turns HOURLY_FLAG on and only the hour's own run publishes until a person turns it off.
  */
 
-/** No run for longer than this means the hourly scheduler missed (it fires at :40 every hour). */
-export const RUN_MISSING_MINUTES = 70
-/** A scheduled piece this far past its slot, with the switch on, is overdue. */
-export const PIECE_OVERDUE_MINUTES = 30
+/** No run for longer than this means the scheduler missed two runs (it fires every ten minutes; the PM's 17:20). */
+export const RUN_MISSING_MINUTES = 25
+/** A scheduled piece this far past its slot, with the switch on, is overdue (two runs missed). */
+export const PIECE_OVERDUE_MINUTES = 20
+/** The reversal: while on, only the hour's own run publishes, as the hourly cron did (the PM's 17:20). */
+export const HOURLY_FLAG = 'social_publish_hourly'
+
+/**
+ * THE HOUR'S OWN RUN (the PM's 17:20 of 22 November 2026: the route runs every ten minutes, so a piece is published at
+ * the first run at or after its slot, not up to 59 minutes late). The work that belongs to an hour (the pre-flight, the
+ * week drawn again, the standing policy's approvals, the week's plan and the timetable's phase row) runs only in the run
+ * at 40 to 49 minutes past, the one the hourly cron always was; scheduling, publishing and reading posts back run in
+ * every run. Pure.
+ */
+export function isHourRun(now: Date): boolean {
+  return melbourneMinuteOfHour(now) >= 40 && melbourneMinuteOfHour(now) < 50
+}
+
+function melbourneMinuteOfHour(now: Date): number {
+  return Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', minute: '2-digit' }).format(now))
+}
+
 /** How long a run may hold the lease before it is free again (a run that dies frees it by expiry). */
 export const LEASE_SECONDS = 600
 
@@ -111,6 +131,29 @@ export function overdueNow(input: { readonly now: Date; readonly lastRunAt: Date
   return out
 }
 
+/**
+ * THE REVERSAL'S EVIDENCE (the PM's 17:20 of 22 November 2026): two publishing runs that both held the lease and overlap
+ * in time, or one piece with two posting rows on one network. Either means running every ten minutes is not safe, and
+ * the watchdog turns HOURLY_FLAG on. A run that found the lease held ('skipped: ...') did nothing and never counts. Pure.
+ */
+export function reversalReasons(
+  runs: readonly { readonly started_at: string; readonly ended_at: string | null; readonly result: string | null }[],
+  postings: readonly { readonly piece_id: string; readonly platform: string }[],
+): string[] {
+  const out: string[] = []
+  const working = runs
+    .filter((r) => !String(r.result ?? '').startsWith('skipped:') && r.ended_at)
+    .map((r) => ({ start: Date.parse(r.started_at), end: Date.parse(String(r.ended_at)), at: r.started_at }))
+    .sort((a, b) => a.start - b.start)
+  for (let i = 1; i < working.length; i++) {
+    if (working[i].start < working[i - 1].end) out.push(`two publishing runs overlapped (started ${working[i - 1].at} and ${working[i].at})`)
+  }
+  const seen = new Map<string, number>()
+  for (const p of postings) seen.set(`${p.piece_id} ${p.platform}`, (seen.get(`${p.piece_id} ${p.platform}`) ?? 0) + 1)
+  for (const [key, n] of seen) if (n > 1) out.push(`a piece has ${n} posting rows on one network (${key})`)
+  return out
+}
+
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
 
 /**
@@ -121,7 +164,7 @@ export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
 export async function socialWatchdog(
   db: SupabaseClient,
   input: { readonly now: Date; readonly origin: string; readonly secret: string | undefined; readonly fetcher?: Fetcher; readonly dry?: boolean },
-): Promise<{ readonly overdue: readonly string[]; readonly action: string }> {
+): Promise<{ readonly overdue: readonly string[]; readonly action: string; readonly reversal?: string }> {
   const last = await db.from('social_publish_runs').select('started_at').eq('route', '/api/cron/social-publish').order('started_at', { ascending: false }).limit(1).maybeSingle()
   if (last.error) return { overdue: [`the last run could not be read: ${last.error.message}`], action: 'none: it could not read' }
   const flag = await db.from('feature_flags').select('enabled').eq('flag', 'social_auto_publish').maybeSingle()
@@ -131,10 +174,30 @@ export async function socialWatchdog(
   const lastRunAt = last.data?.started_at ? new Date(String(last.data.started_at)) : null
   const switchOn = flag.data?.enabled === true
   const oldestDue = due.data?.go_at ? new Date(String(due.data.go_at)) : null
+  // THE REVERSAL, CHECKED BY THE WATCHDOG ITSELF (the PM's 17:20): the last day's publishing runs and posting rows.
+  // Its own guard: a failed read is said in the row and never stops the overdue check below.
+  let reversal = ''
+  try {
+    const since = new Date(input.now.getTime() - 24 * 3_600_000).toISOString()
+    const runs = await db.from('social_publish_runs').select('started_at, ended_at, result').eq('route', '/api/cron/social-publish').gte('started_at', since).limit(500)
+    const posts = await db.from('social_piece_postings').select('piece_id, platform').gte('posted_at', since).limit(1000)
+    if (runs.error || posts.error) throw new Error((runs.error ?? posts.error)!.message)
+    const reasons = reversalReasons((runs.data ?? []) as never, (posts.data ?? []) as never)
+    if (reasons.length > 0) {
+      const on = input.dry ? { error: null } : await db.from('feature_flags').update({ enabled: true, updated_at: input.now.toISOString() }).eq('flag', HOURLY_FLAG)
+      reversal = on.error
+        ? `reversal needed but ${HOURLY_FLAG} could not be turned on: ${on.error.message}; ${reasons.join('; ')}`
+        : `${HOURLY_FLAG} turned on${input.dry ? ' (dry: not written)' : ''}: ${reasons.join('; ')}`
+      console.error(`[social/publish-run] ${reversal}`)
+    }
+  } catch (fault) {
+    reversal = `the reversal check could not read: ${fault instanceof Error ? fault.message : String(fault)}`
+  }
   const overdue = overdueNow({ now: input.now, lastRunAt, switchOn, oldestDue })
-  if (overdue.length === 0) return { overdue, action: 'none needed' }
+  if (overdue.length === 0 && !reversal) return { overdue, action: 'none needed' }
   let action: string
-  if (input.dry) action = 'dry: the publish route was not called'
+  if (overdue.length === 0) action = 'the publish route was not called: nothing is overdue'
+  else if (input.dry) action = 'dry: the publish route was not called'
   else if (!input.secret) action = 'not called: no cron secret in this environment'
   else {
     try {
@@ -157,9 +220,9 @@ export async function socialWatchdog(
     due: oldestDue ? 1 : 0,
     published: 0,
     held: 0,
-    failed: action.startsWith('the publish route called once: HTTP 2') ? 0 : 1,
-    ok: action.startsWith('the publish route called once: HTTP 2') || action.startsWith('dry'),
-    result: `overdue: ${overdue.join('; ')}; ${action}`,
+    failed: (overdue.length > 0 && !action.startsWith('the publish route called once: HTTP 2')) || reversal ? 1 : 0,
+    ok: (overdue.length === 0 || action.startsWith('the publish route called once: HTTP 2') || action.startsWith('dry')) && !reversal,
+    result: `overdue: ${overdue.join('; ') || 'none'}; ${action}${reversal ? `; ${reversal}` : ''}`,
   })
-  return { overdue, action }
+  return { overdue, action, ...(reversal ? { reversal } : {}) }
 }
