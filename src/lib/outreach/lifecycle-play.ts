@@ -5,7 +5,8 @@ import { draftFromTemplate } from './drafts'
 import { readLifecycleFacts } from './lifecycle-read'
 import { LIFECYCLE_SUBTYPE, lifecycleFields, type LifecycleKey } from './lifecycle-letters'
 import { greetingOf, melbourneDayOf } from './segment-a-letter'
-import { inBusinessHours } from './sender'
+import { nextWindowStart } from './self-queue'
+import { DEFAULT_SEND_WINDOW, inBusinessHours } from './sender'
 import { touchVoiceMessage } from './touch-voice'
 import { readVoicePolicy, voiceProblems } from './voice-gate'
 
@@ -29,6 +30,23 @@ import { readVoicePolicy, voiceProblems } from './voice-gate'
 
 type Admin = SupabaseClient<Database>
 
+/** The night before a sending window: from 23:30 to the window's 06:00 opening (law 44's window, DEFAULT_SEND_WINDOW). */
+export const AHEAD_MS = 6.5 * 3_600_000
+
+/**
+ * WHEN A LAW 49 PLAY DRAFTS, AND FROM WHICH MOMENT ITS LETTERS ARE SLOTTED (the PM's 13:40 of 22 November 2026, on Lawal's
+ * order that each day's ten are queued by 05:55, any shortfall refilled the night before): inside law 44's window, now;
+ * the night before a window (AHEAD_MS before its opening, so from 23:30), the window's opening, so the night's runs draft,
+ * check and queue the morning's letters ahead, and the 23:45 run refills from the addresses the 23:30 pool found; at any
+ * other hour, null, and nothing is drafted. The sender reads every check again at the send minute (sender.ts: the slot,
+ * the one first letter per organiser, the gateway's words, the night's clock) and voids what is no longer true.
+ */
+export function lifecycleSlotBase(now: Date, zone = 'Australia/Melbourne'): Date | null {
+  if (inBusinessHours(now, zone, DEFAULT_SEND_WINDOW)) return now
+  const opens = nextWindowStart(now, zone, DEFAULT_SEND_WINDOW)
+  return opens.getTime() - now.getTime() <= AHEAD_MS ? opens : null
+}
+
 export type LifecycleDraft =
   | { readonly state: 'queued'; readonly touchId: string }
   | { readonly state: 'held'; readonly touchId: string | null; readonly why: readonly string[] }
@@ -51,7 +69,9 @@ export async function draftLifecycleLetter(
   if (!inBusinessHours(input.scheduledFor, 'Australia/Melbourne')) {
     return { state: 'not drafted', why: "outside law 44's window: drafted in the hour it goes, so its days to go are that day's" }
   }
-  const read = await readLifecycleFacts(db, { key: input.key, playId: input.play.id, contactId: input.contactId, now: input.now, origin: input.origin })
+  // The clock is read at the minute the letter lands, not the minute it is drafted: a letter drafted the night before
+  // (lifecycleSlotBase) is judged on the morning's days to go, as its words already count them (lifecycleFields).
+  const read = await readLifecycleFacts(db, { key: input.key, playId: input.play.id, contactId: input.contactId, now: input.scheduledFor, origin: input.origin })
   if (read.state !== 'read') return { state: 'not drafted', why: read.why }
 
   const landsOn = melbourneDayOf(input.scheduledFor.toISOString())

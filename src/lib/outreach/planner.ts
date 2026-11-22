@@ -19,7 +19,7 @@ import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 import { draftSegmentALetter } from './segment-a-play'
-import { draftLifecycleLetter } from './lifecycle-play'
+import { draftLifecycleLetter, lifecycleSlotBase } from './lifecycle-play'
 import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
 import { organiserCitySlugs } from './organiser-city'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
@@ -153,12 +153,16 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
   for (const play of plays.data ?? []) {
     const capAnswer = await db.rpc('outreach_play_cap_today', { p_play: play.id })
     const cap = capAnswer.data ?? 0
-    const used = await db
-      .from('outreach_touches')
-      .select('id', { count: 'exact', head: true })
-      .eq('play_id', play.id)
-      .in('state', ['queued', 'sending', 'sent'])
-      .gte('drafted_at', melbourneDayStart(deps.now).toISOString())
+    const lifecycle = play.step1_template_id !== null ? (lifecyclePlays.get(play.step1_template_id) ?? null) : null
+    // A LAW 49 PLAY'S DAY (the PM's 13:40 of 22 November 2026): it drafts in law 44's window, or the night before it for
+    // the morning (lifecycleSlotBase, ./lifecycle-play.ts), and its cap counts the letters SCHEDULED on that day, so the
+    // letters drafted the night before count against the morning's ten and the morning never drafts ten more.
+    const base = lifecycle ? lifecycleSlotBase(deps.now) : deps.now
+    const dayStart = melbourneDayStart(base ?? deps.now)
+    const counted = db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('play_id', play.id).in('state', ['queued', 'sending', 'sent'])
+    const used = lifecycle
+      ? await counted.gte('scheduled_for', dayStart.toISOString()).lt('scheduled_for', melbourneDayStart(new Date(dayStart.getTime() + 36 * 3_600_000)).toISOString())
+      : await counted.gte('drafted_at', melbourneDayStart(deps.now).toISOString())
     const report: PlayReport = { playId: play.id, name: play.name, cap, usedToday: used.count ?? 0, queued: 0, held: [], refused: [] }
     const judgement = play.variant_template_id ? await db.from('outreach_play_judgements').select('outcome').eq('play_id', play.id).maybeSingle() : null
     if (judgement?.error) throw new Error(`outreach_play_judgements: ${judgement.error.message}`)
@@ -166,7 +170,6 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     let room = cap - report.usedToday
     let slot = 0
     const segmentA = play.step1_template_id !== null && segmentAPlays.has(play.step1_template_id)
-    const lifecycle = play.step1_template_id !== null ? (lifecyclePlays.get(play.step1_template_id) ?? null) : null
 
     const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null, first?: { id: string; subject: string | null }) => {
       if (segmentA) {
@@ -256,7 +259,10 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         // THE CLOCK'S COHORT (law 49): each organiser once, the clock deciding whether its letter is due today and on
         // which night (./lifecycle-read.ts). Being written to before does not end it: PERM and ACQ are two letters, from
         // two addresses (law 33), never mixed (law 24); a letter of the same kind already gone, or a reply, does.
-        for (const c of candidates.data ?? []) {
+        // Outside the window and the night before it, nothing is drafted (lifecycleSlotBase is null). The night before,
+        // each letter is slotted from the window's opening after the ones already scheduled for that morning.
+        const ahead = base !== null && base.getTime() > deps.now.getTime()
+        for (const c of base === null ? [] : (candidates.data ?? [])) {
           if (room <= 0) break
           if (seenOrganiser.has(c.organiser_id)) continue
           if (allowed && !allowed.has(c.organiser_id)) continue
@@ -267,7 +273,9 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
             key: lifecycle,
             contactId: c.id,
             templateId: play.step1_template_id,
-            scheduledFor: new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
+            scheduledFor: ahead
+              ? new Date(base.getTime() + (report.usedToday + slot) * SPACING_MINUTES * 60_000)
+              : new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
             now: deps.now,
             origin: deps.origin,
             actingUser: deps.actingUser,

@@ -25,11 +25,12 @@ const TOTS: LifecycleFacts = {
 }
 const CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://www.geelonggallery.org.au/contact', noMarketingStatementChecked: true }
 
-const read = vi.hoisted(() => ({ answer: null as unknown, calls: 0 }))
+const read = vi.hoisted(() => ({ answer: null as unknown, calls: 0, now: null as Date | null }))
 const drafted = vi.hoisted(() => ({ answer: null as unknown, request: null as unknown }))
 vi.mock('@/lib/outreach/lifecycle-read', () => ({
-  readLifecycleFacts: vi.fn(async () => {
+  readLifecycleFacts: vi.fn(async (_db: unknown, input: { now: Date }) => {
     read.calls++
+    read.now = input.now
     return read.answer
   }),
 }))
@@ -82,6 +83,14 @@ describe("a law 49 letter is queued only when its clock says due and it passes w
     expect(r.state).toBe('not drafted')
     expect(read.calls).toBe(0)
     expect(updates).toEqual([])
+  })
+
+  it('a letter drafted the night before reads the clock at the minute it lands, not the minute it is drafted', async () => {
+    const { db } = fakeDb({ subject: null, body: '' })
+    read.answer = { state: 'not due', why: 'stood in' }
+    const night = new Date('2026-11-22T12:30:00Z') // Sunday 22 November, 23:30 in Melbourne
+    await draftLifecycleLetter(db, { ...input('lifecycle_acq', MON_7), now: night })
+    expect(read.now).toEqual(MON_7)
   })
 
   it('not due on the clock: no letter, with why', async () => {
