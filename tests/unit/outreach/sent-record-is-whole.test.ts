@@ -28,20 +28,28 @@ function fakeDb() {
       return { data: [{ id: 'q-1', comms_category: 'PERM', contact_id: 'c-1', subject: 'Your nights', body: 'Hi Sam,\nEventLinqs.', in_reply_to: null }], error: null }
     }
     if (call.table === 'outreach_touches' && call.op === 'select') return { data: [], error: null }
-    if (call.table === 'organiser_contacts') return { data: { organiser_id: 'o1', address: 'sam@eventlinqs.com', unsubscribe_token: TOKEN }, error: null }
+    if (call.table === 'organiser_contacts') return { data: { id: 'c-1', organiser_id: 'o1', address: 'sam@eventlinqs.com', unsubscribe_token: TOKEN, basis: 'conspicuous_publication' }, error: null }
     if (call.table === 'organiser_venues') return { data: [], error: null }
+    // The contact policy's reads (src/lib/outreach/contact-policy.ts): an organiser with no account, nothing heard back,
+    // no address suppressed, nothing bounced.
+    if (call.table === 'organisers') return { data: { organisation_id: null }, error: null }
+    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: 'q-1' }, error: null }
     return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
   }
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'order', 'limit']) b[m] = () => b
-    for (const m of ['eq', 'lte', 'neq']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
+    for (const m of ['eq', 'lte', 'neq', 'gte', 'ilike', 'is']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
     b.not = (col: string, _op: string, val: unknown) => (call.filters.push([`not:${col}`, val]), b)
     b.in = (col: string, val: unknown) => (call.filters.push([`in:${col}`, val]), b)
     b.single = async () => answer(call)
     b.maybeSingle = async () => answer(call)
-    b.then = (resolve: (v: unknown) => unknown) => resolve(answer(call))
+    // A read of many rows answers a list, as PostgREST does, whatever row the test's table names.
+    b.then = (resolve: (v: unknown) => unknown) => {
+      const r = answer(call)
+      return resolve(r.data !== null && typeof r.data === 'object' && !Array.isArray(r.data) ? { ...r, data: [r.data] } : r)
+    }
     return b
   }
   const db = {

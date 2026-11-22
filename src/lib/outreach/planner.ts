@@ -19,6 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
+import { contextKeys } from './contact-policy'
 import { draftSegmentALetter } from './segment-a-play'
 import { draftLifecycleLetter, lifecycleSlotBase } from './lifecycle-play'
 import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
@@ -92,6 +93,8 @@ export async function planDms(db: Admin, deps: { now: Date; origin: string; acti
   const report: DmReport = { drafted: 0, followUps: 0, held: [], refused: [] }
   const record = (contactId: string, r: Awaited<ReturnType<typeof draftFromTemplate>>, followUp: boolean) => {
     if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+    // The one contact policy held it (./contact-policy.ts): nothing drafted, said with its reason and next eligible date.
+    else if (r.state === 'held by policy') report.held.push({ contactId, why: [r.reason] })
     else {
       if (r.value.heldBecause.length) report.held.push({ contactId, why: r.value.heldBecause })
       if (followUp) report.followUps++
@@ -99,12 +102,12 @@ export async function planDms(db: Admin, deps: { now: Date; origin: string; acti
     }
   }
 
-  const firsts = await db.from('outreach_touches').select('contact_id, sent_at, organiser_contacts!inner(channel)').eq('step', 1).eq('state', 'sent').eq('organiser_contacts.channel', 'instagram')
+  const firsts = await db.from('outreach_touches').select('contact_id, sent_at, context_key, organiser_contacts!inner(channel)').eq('step', 1).eq('state', 'sent').eq('organiser_contacts.channel', 'instagram')
   for (const first of firsts.data ?? []) {
     if (melbourneDaysBetween(new Date(first.sent_at as string), deps.now) < 4) continue
     const later = await db.from('outreach_touches').select('id').eq('contact_id', first.contact_id).eq('step', 2).neq('state', 'void').limit(1)
     if ((later.data ?? []).length) continue
-    record(first.contact_id, await draftFromTemplate(db, { contactId: first.contact_id, templateKey: 'day4_dm', purpose: 'cadence', step: 2, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), true)
+    record(first.contact_id, await draftFromTemplate(db, { contactId: first.contact_id, templateKey: 'day4_dm', purpose: 'cadence', step: 2, contextKey: (first.context_key as string | null) ?? null, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), true)
   }
 
   const today = await db
@@ -187,7 +190,7 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     let slot = 0
     const segmentA = play.step1_template_id !== null && segmentAPlays.has(play.step1_template_id)
 
-    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null, first?: { id: string; subject: string | null }) => {
+    const draft = async (contactId: string, step: 1 | 2 | 3, templateId: string, half: Half | null = null, first?: { id: string; subject: string | null; contextKey: string | null }) => {
       if (segmentA) {
         const a = await draftSegmentALetter(db, {
           play: { id: play.id, name: play.name },
@@ -217,11 +220,14 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         step,
         playId: play.id,
         half,
+        // A play's first letter is about its campaign; a follow up keeps its first letter's context (one sequence, one context).
+        contextKey: first ? first.contextKey : contextKeys.play(play.id),
         scheduledFor: new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
         origin: deps.origin,
         draftedBy: deps.actingUser,
       })
       if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+      else if (r.state === 'held by policy') report.held.push({ contactId, why: [r.reason] })
       else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
       else {
         report.queued++
@@ -232,14 +238,14 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
 
     // 1. Follow-ups that are due. A law 49 play has none: the event's clock owns its follow ups, and their words wait on
     // Lawal's one template approval.
-    const firsts = lifecycle ? { data: [] } : await db.from('outreach_touches').select('id, contact_id, sent_at, subject').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
+    const firsts = lifecycle ? { data: [] } : await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
     for (const first of firsts.data ?? []) {
       if (room <= 0) break
       const days = melbourneDaysBetween(new Date(first.sent_at as string), deps.now)
       const later = await db.from('outreach_touches').select('step, state').eq('contact_id', first.contact_id).in('step', [2, 3]).neq('state', 'void')
       const has = (n: number) => (later.data ?? []).some((t) => t.step === n)
       const sent2 = (later.data ?? []).some((t) => t.step === 2 && t.state === 'sent')
-      const thread = { id: first.id as string, subject: (first.subject as string | null) ?? null }
+      const thread = { id: first.id as string, subject: (first.subject as string | null) ?? null, contextKey: (first.context_key as string | null) ?? null }
       if (!has(2) && days >= 4 && play.step2_template_id) await draft(first.contact_id, 2, play.step2_template_id, null, thread)
       else if (sent2 && !has(3) && days >= 10 && play.step3_template_id) await draft(first.contact_id, 3, play.step3_template_id, null, thread)
     }
@@ -422,6 +428,7 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     }
     const r = await draftFromTemplate(db, { contactId, templateKey: 'anything_coming_up', purpose: 'relationship', scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
     if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
+    else if (r.state === 'held by policy') report.held.push({ contactId, why: [r.reason] })
     else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
     else report.queued++
   }
@@ -459,11 +466,13 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
       purpose: 'relationship',
       extraFields: afterYourNightFields(night.figures, event.data.title),
       nightReportId: night.id,
+      contextKey: contextKeys.report(night.id),
       scheduledFor: deps.now,
       origin: deps.origin,
       draftedBy: deps.actingUser,
     })
     if (r.state === 'refused') report.afterNight.refused.push({ contactId, why: r.reason })
+    else if (r.state === 'held by policy') report.afterNight.held.push({ contactId, why: [r.reason] })
     else if (r.value.state === 'held') report.afterNight.held.push({ contactId, why: r.value.heldBecause })
     else report.afterNight.queued++
   }
@@ -509,11 +518,13 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
       purpose: 'relationship',
       extraFields: featuredFields({ title: event.data.title, cityName: city.data?.name ?? null, wentOutAt, caption: rev.data?.caption ?? null, link: kit.link, images: kitImages(deps.origin, kit.id) }),
       trackedLink: kit.link,
+      contextKey: contextKeys.kit(kit.id),
       scheduledFor: deps.now,
       origin: deps.origin,
       draftedBy: deps.actingUser,
     })
     if (r.state === 'refused') report.featured.refused.push({ contactId, why: r.reason })
+    else if (r.state === 'held by policy') report.featured.held.push({ contactId, why: [r.reason] })
     else if (r.value.state === 'held') report.featured.held.push({ contactId, why: r.value.heldBecause })
     else report.featured.queued++
   }
@@ -559,8 +570,9 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     const thread = await db.from('outreach_touches').select('subject').eq('contact_id', contactId).not('subject', 'is', null).order('drafted_at', { ascending: false }).limit(1)
     if (thread.error) throw new Error(`outreach_touches: ${thread.error.message}`)
     const subject = thread.data?.[0]?.subject ? String(thread.data[0].subject).replace(/^(re|fw|fwd):\s*/i, '') : null
-    const r = await draftFromTemplate(db, { contactId, templateKey: 'withdrawal_confirmed', purpose: 'relationship', extraFields: { 'thread subject': subject }, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
+    const r = await draftFromTemplate(db, { contactId, templateKey: 'withdrawal_confirmed', purpose: 'relationship', extraFields: { 'thread subject': subject }, contextKey: contextKeys.withdrawal(w.id), scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser })
     if (r.state === 'refused') report.withdrawal.refused.push({ contactId, why: r.reason })
+    else if (r.state === 'held by policy') report.withdrawal.held.push({ contactId, why: [r.reason] })
     else if (r.value.state === 'held') report.withdrawal.held.push({ contactId, why: r.value.heldBecause })
     else report.withdrawal.queued++
   }

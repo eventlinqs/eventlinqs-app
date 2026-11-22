@@ -130,6 +130,17 @@ describe("a law 49 letter is queued only when its clock says due and it passes w
     expect(updates.some((u) => u.payload.state === 'queued')).toBe(false)
   })
 
+  // THE TWELVE (the PM's 01:52 of 23 November 2026, item 3): the one contact policy holds the offer to an organiser
+  // written to unsolicited inside its gap; nothing is drafted, and the play says why and from when.
+  it('a letter the contact policy holds is not drafted: held with its reason and next eligible date, never queued', async () => {
+    const reason = 'held by the contact policy (gap): last written unsolicited on 18 Nov 2026 (a PERM letter to info@geelonggallery.org.au) and not answered; one unsolicited first letter per 30 days, so the next may go from 18 Dec 2026'
+    drafted.answer = { state: 'held by policy', rule: 'gap', reason, nextEligibleAt: '2026-12-17T20:00:00.000Z' }
+    const { db, updates } = fakeDb({ subject: null, body: '' })
+    expect(await draftLifecycleLetter(db, input('lifecycle_acq'))).toEqual({ state: 'held', touchId: null, why: [reason] })
+    expect(updates).toEqual([])
+    expect((drafted.request as { contextKey: string }).contextKey).toBe('event:e1')
+  })
+
   it("a CRM rule's hold stays held, never queued", async () => {
     drafted.answer = { state: 'done', value: { id: 't1', state: 'held', heldBecause: ['a field could not be filled from verified facts: [photo source]'] } }
     const { db, updates } = fakeDb({ subject: null, body: '' })

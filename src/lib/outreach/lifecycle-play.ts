@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { mailboxFor } from './addresses'
+import { contextKeys } from './contact-policy'
 import { draftFromTemplate } from './drafts'
 import { readLifecycleFacts } from './lifecycle-read'
 import { LIFECYCLE_SUBTYPE, lifecycleFields, type LifecycleKey } from './lifecycle-letters'
@@ -83,12 +84,16 @@ export async function draftLifecycleLetter(
     step: 1,
     playId: input.play.id,
     extraFields: lifecycleFields(read.facts, input.scheduledFor),
+    // The night it is about: law 49's PERM and ACQ about one night are two letters, each once (migration 20261123020001).
+    contextKey: contextKeys.event(read.eventId),
     inReplyTo: null,
     scheduledFor: input.scheduledFor,
     origin: input.origin,
     draftedBy: input.actingUser,
   })
   if (drafted.state === 'refused') return { state: 'refused', why: drafted.reason }
+  // The one contact policy held it (./contact-policy.ts): nothing drafted, held with its reason and next eligible date.
+  if (drafted.state === 'held by policy') return { state: 'held', touchId: null, why: [drafted.reason] }
   if (drafted.value.heldBecause.length > 0) return { state: 'held', touchId: drafted.value.id, why: drafted.value.heldBecause }
 
   const touch = await db.from('outreach_touches').select('subject, body').eq('id', drafted.value.id).single()

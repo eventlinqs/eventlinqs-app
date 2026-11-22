@@ -5,6 +5,7 @@ import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readDailyTwenty } from './daily-twenty-read'
 import { voidTouch } from './crm'
 import { draftFromTemplate, type DraftRequest } from './drafts'
+import { contextKeys } from './contact-policy'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
 import type { TemplateRow } from './rules'
@@ -143,7 +144,7 @@ export async function nextNightOf(
 ): Promise<TheirNight | null> {
   // The soonest night a letter drafted now can still reach (sendableFrom), never one today or tomorrow.
   const n = (await readTheirNights(db, organiser, now, 10)).find((x) => isSendableNight(x.startDate, now))
-  return n ? { slug: n.slug, title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
+  return n ? { eventId: n.eventId, slug: n.slug, title: n.title, startDate: n.startDate, timezone: n.timezone, venueName: n.venueName, isFree: n.isFree } : null
 }
 
 /** How long a recorded read of their own page stands before it is read again (a page changes; never a stale line). */
@@ -290,6 +291,8 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
         origin: input.origin,
       }),
       lineSource: pageEvent ? { url: pageEvent.pageUrl, readOn: pageEvent.readOn } : null,
+      // The night the letter is about: its row on EventLinqs, else the event read from their own page.
+      contextKey: listed?.eventId ? contextKeys.event(listed.eventId) : pageEvent ? contextKeys.page(pageEvent.pageUrl, pageEvent.startDate) : null,
       scheduledFor: input.now,
       origin: input.origin,
       draftedBy: founder.id,
@@ -315,6 +318,8 @@ export async function draftTheTwenty(db: Admin, input: { readonly now: Date; rea
       done = await draftFromTemplate(db, request)
     }
     if (done.state === 'refused') refused.push({ organiser: a.organiserName, why: done.reason })
+    // The one contact policy held it (./contact-policy.ts): not drafted, said with its reason and next eligible date.
+    else if (done.state === 'held by policy') skipped.push({ organiser: a.organiserName, why: done.reason })
     else if (done.value.heldBecause.length > 0) {
       drafted += 1
       held.push({ organiser: a.organiserName, why: done.value.heldBecause.join('; ') })

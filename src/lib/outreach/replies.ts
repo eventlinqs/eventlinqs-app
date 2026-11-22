@@ -18,6 +18,7 @@ import type { Database } from '@/types/database'
 import { PROVIDER_NAMES } from '@/lib/events/booking-links'
 import type { InboundMessage } from './graph'
 import { draftFromTemplate } from './drafts'
+import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
 
 type Admin = SupabaseClient<Database>
@@ -225,11 +226,15 @@ export async function handleInbox(
         purpose,
         extraFields: { 'thread subject': m.subject.replace(/^(re|fw|fwd):\s*/i, ''), provider: providerNamed(stripQuoted(m.text)) },
         inReplyTo: m.internetMessageId || null,
+        contextKey: m.internetMessageId ? contextKeys.reply(m.internetMessageId) : null,
         scheduledFor: deps.now,
         origin: deps.origin,
         draftedBy: deps.actingUser,
       })
-      action = drafted.state === 'done' ? `${kind.answerKey} ${drafted.value.state}${drafted.value.heldBecause.length ? `: ${drafted.value.heldBecause.join('; ')}` : ''}` : `${kind.answerKey} refused: ${drafted.reason}`
+      action =
+        drafted.state === 'done'
+          ? `${kind.answerKey} ${drafted.value.state}${drafted.value.heldBecause.length ? `: ${drafted.value.heldBecause.join('; ')}` : ''}`
+          : `${kind.answerKey} ${drafted.state === 'held by policy' ? 'not drafted' : 'refused'}: ${drafted.reason}`
     } else if (clear && kind.outcome === 'no') {
       action = 'the organiser is stopped; nothing sent'
     }

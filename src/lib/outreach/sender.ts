@@ -32,6 +32,7 @@ import { firstLetterBlocked, organisationDomain, type LetterRecord } from './one
 import { mailboxFor } from './addresses'
 import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
 import { eventSlugOf, letterExpiry } from './event-validity'
+import { decisionWords, readContactPolicy, type PolicyRule } from './contact-policy'
 
 type Admin = SupabaseClient<Database>
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -144,6 +145,11 @@ export type SenderReport = {
   outsideHours: number
   /** Law 42: letters whose slot fell on a missed day, re planned to today or held for a redraft, each with its reason. */
   replanned?: string[]
+  /**
+   * Letters the contact policy held at the minute they would have left (./contact-policy.ts): each set aside, never sent,
+   * with its rule and next eligible moment; each is also in refused, with its reason, for the press that sent it.
+   */
+  policyHeld?: { id: string; rule: PolicyRule; nextEligibleAt: string | null }[]
   note?: string
 }
 
@@ -350,6 +356,27 @@ export async function runOutreachSender(
         continue
       }
     }
+    // THE ONE CONTACT POLICY, AGAIN AT THE MINUTE IT WOULD LEAVE (Lawal, 23 November 2026, 01:51; ./contact-policy.ts):
+    // every message to the organiser, its replies, suppression, opt outs and bounces are read again now, so a letter queued
+    // before a reply, a stop, a bounce or another unsolicited letter is set aside with why and when, never sent. A read that
+    // fails leaves it queued and says so: never sent on a guess.
+    const policy = await readContactPolicy(
+      db,
+      { touchId: t.id, contactId: t.contact_id, purpose: t.purpose ?? '', step: t.step, templateKey: t.outreach_templates?.key ?? null, moment: 'send' },
+      deps.now,
+    )
+    if (policy.state === 'unread') {
+      report.refused.push({ id: t.id, reason: `whether they may be written to now could not be read: ${policy.why}; not sent on a guess` })
+      continue
+    }
+    if (policy.state === 'held') {
+      const why = decisionWords(policy).slice(0, 480)
+      await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')
+      report.refused.push({ id: t.id, reason: why })
+      report.policyHeld ??= []
+      report.policyHeld.push({ id: t.id, rule: policy.rule, nextEligibleAt: policy.nextEligibleAt })
+      continue
+    }
     // ITS WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2): every queued message passes the
     // voice gate's word rules (voice-gate.ts wordsProblems) here, at the one send path, so no play, planner or template
     // version can send words the gateway refuses; one that fails is voided with why, never sent, and is drafted again.
@@ -374,6 +401,11 @@ export async function runOutreachSender(
       report.refused.push({ id: t.id, reason: from.refused })
       continue
     }
+    // ONE MESSAGE, HOWEVER OFTEN IT IS TRIED (the PM's 01:52 of 23 November 2026, item 4): the claim moves the row from
+    // queued to sending only where it is still queued, so of two runs, a retried run or Lawal's press racing the cron, one
+    // takes it and the other is told 'taken by another run'; the database refuses any other move into sending
+    // (outreach_touch_is_lawful: 'only a queued message is taken for sending'), and a send whose outcome is unknown is
+    // closed failed by outreach_close_stuck_sends, never queued again by any code here.
     const claim = await db.from('outreach_touches').update({ state: 'sending' }).eq('id', t.id).eq('state', 'queued').select('id').maybeSingle()
     if (claim.error || !claim.data) {
       report.refused.push({ id: t.id, reason: claim.error?.message.replace(/^refused: /, '') ?? 'taken by another run' })

@@ -144,11 +144,15 @@ function fakeDb(answer: (call: Call, shape: 'many' | 'one') => { data: unknown; 
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'order', 'limit']) b[m] = () => b
-    for (const m of ['eq', 'lte', 'neq']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
+    for (const m of ['eq', 'lte', 'neq', 'in', 'gte', 'ilike', 'is']) b[m] = (col: string, val: unknown) => (call.filters.push([`${m}:${col}`, val]), b)
     b.not = (col: string, _op: string, val: unknown) => (call.filters.push([`not:${col}`, val]), b)
     b.single = async () => answer(call, 'one')
     b.maybeSingle = async () => answer(call, 'one')
-    b.then = (resolve: (v: unknown) => unknown) => resolve(answer(call, 'many'))
+    // A read of many rows answers a list, as PostgREST does, whatever row the test's table names.
+    b.then = (resolve: (v: unknown) => unknown) => {
+      const r = answer(call, 'many')
+      return resolve(r.data !== null && typeof r.data === 'object' && !Array.isArray(r.data) ? { ...r, data: [r.data] } : r)
+    }
     return b
   }
   const db = {
@@ -174,8 +178,12 @@ function standardDb(mode: string, opts: { refuse?: string[]; address?: string; q
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: opts.queued ?? QUEUED, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select') return { data: [], error: null }
-    if (call.table === 'organiser_contacts' && call.op === 'select') return { data: { organiser_id: 'o1', address: opts.address ?? 'sam@eventlinqs.com', unsubscribe_token: TOKEN }, error: null }
+    if (call.table === 'organiser_contacts' && call.op === 'select') return { data: { id: 'c-ok', organiser_id: 'o1', address: opts.address ?? 'sam@eventlinqs.com', unsubscribe_token: TOKEN, basis: 'conspicuous_publication' }, error: null }
     if (call.table === 'organiser_venues') return { data: [], error: null }
+    // The contact policy's reads (src/lib/outreach/contact-policy.ts): an organiser with no account, nothing heard back,
+    // no address suppressed, nothing bounced.
+    if (call.table === 'organisers') return { data: { organisation_id: null }, error: null }
+    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') {
       const id = call.filters.find(([k]) => k === 'eq:id')?.[1] as string
       const to = (call.payload as { state: string }).state
