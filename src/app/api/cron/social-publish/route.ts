@@ -9,7 +9,8 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
-import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
+import { reconcileHeld } from '@/lib/social/reconcile'
 import { recordBlotatoFigures } from '@/lib/growth/social-report'
 import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
@@ -63,6 +64,15 @@ export async function GET(request: NextRequest) {
     const founder = apply ? await founderAccount(db) : { id: null }
     const p = await runPreflight(db, { now: new Date(), siteOrigin: getSiteUrl(), apply, by: founder.id })
     return NextResponse.json({ preflight: true, ...p })
+  }
+
+  // THE READ ONLY BLOTATO RECONCILE (src/lib/social/reconcile.ts; the PM's 09:55 item 2): every held row Blotato may have
+  // accepted, matched against Blotato's own published posts; it writes nothing (.github/workflows/social-reconcile.yml).
+  if (request.nextUrl.searchParams.get('reconcile') === 'read') {
+    const search = socialPublishedSearchFromEnv()
+    if (search === null) return NextResponse.json({ reconcile: true, read: false, why: 'no Blotato key in this environment' }, { status: 409 })
+    const answers = await reconcileHeld(createAdminClient(), search)
+    return NextResponse.json({ reconcile: true, read: true, rows: answers.length, answers })
   }
 
   if (request.nextUrl.searchParams.get('readback') === 'only') {
