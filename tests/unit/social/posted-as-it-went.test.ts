@@ -60,7 +60,7 @@ describe('markPublished: one step marks the schedule and records the post as it 
     const out = await markPublished(t.db, { scheduleId: 's1', pieceId: 'p1', approvalId: 'ap1', ref: 'https://www.instagram.com/p/AbC123/', now: NOW })
     expect(out).toEqual({ error: null, posting: 'recorded' })
     expect(t.updates[0].change).toMatchObject({ state: 'published', published_ref: 'https://www.instagram.com/p/AbC123/' })
-    expect(t.inserts).toEqual([{ table: 'social_piece_postings', row: { piece_id: 'p1', approval_id: 'ap1', post_url: 'https://www.instagram.com/p/AbC123/', posted_at: NOW.toISOString(), recorded_by: 'founder-1' } }])
+    expect(t.inserts).toEqual([{ table: 'social_piece_postings', row: { piece_id: 'p1', approval_id: 'ap1', post_url: 'https://www.instagram.com/p/AbC123/', posted_at: NOW.toISOString(), recorded_by: 'founder-1', platform: 'instagram', provider_ref: null } }])
   })
 
   it("a provider's submission only: published, and the posting waits for the read back", async () => {
@@ -70,9 +70,9 @@ describe('markPublished: one step marks the schedule and records the post as it 
     expect(t.inserts).toEqual([])
   })
 
-  it('the second network finds the piece recorded already, and says so', async () => {
+  it('the same network recorded twice is said, never a second row (one row per piece per network, migration 20261122124501)', async () => {
     const t = fakeDb({ social_piece_approvals: [approval] }, { postingError: { code: '23505', message: 'duplicate key' } })
-    expect(await recordAutoPosting(t.db, { pieceId: 'p1', approvalId: 'ap1', postUrl: 'https://www.facebook.com/123_456', postedAt: NOW })).toBe('recorded already')
+    expect(await recordAutoPosting(t.db, { pieceId: 'p1', approvalId: 'ap1', postUrl: 'https://www.facebook.com/123_456', postedAt: NOW })).toBe('recorded already on facebook')
   })
 })
 
@@ -88,17 +88,17 @@ describe('the read back records the posting when the provider confirms the addre
     expect(t.inserts.map((i) => i.row.post_url)).toEqual(['https://www.instagram.com/p/AbC123/'])
   })
 
-  it('a post that went public with no posting before AV is recorded by the sweep, once per piece', async () => {
+  it('a post that went public with no posting before AV is recorded by the sweep, once per network', async () => {
     const t = fakeDb({
       social_piece_schedules: [
-        { piece_id: 'p9', approval_id: 'ap1', published_ref: 'https://www.facebook.com/1_2', published_at: NOW.toISOString(), state: 'published', social_pieces: { social_piece_postings: [] } },
-        { piece_id: 'p9', approval_id: 'ap1', published_ref: 'https://www.instagram.com/p/X/', published_at: NOW.toISOString(), state: 'published', social_pieces: { social_piece_postings: [] } },
+        { piece_id: 'p9', approval_id: 'ap1', platform: 'facebook', published_ref: 'https://www.facebook.com/1_2', published_at: NOW.toISOString(), state: 'published', social_pieces: { social_piece_postings: [] } },
+        { piece_id: 'p9', approval_id: 'ap1', platform: 'instagram', published_ref: 'https://www.instagram.com/p/X/', published_at: NOW.toISOString(), state: 'published', social_pieces: { social_piece_postings: [] } },
       ],
       social_piece_approvals: [approval],
     })
     const out = await recordMissingPostings(t.db)
-    expect(out.recorded).toEqual(['p9: https://www.facebook.com/1_2'])
-    expect(t.inserts).toHaveLength(1)
+    expect(out.recorded).toEqual(['p9 on facebook: https://www.facebook.com/1_2', 'p9 on instagram: https://www.instagram.com/p/X/'])
+    expect(t.inserts).toHaveLength(2)
   })
 })
 
