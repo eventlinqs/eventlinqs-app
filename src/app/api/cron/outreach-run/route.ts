@@ -5,7 +5,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { graphConfigFromEnv, graphReadInbox } from '@/lib/outreach/graph'
 import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox } from '@/lib/outreach/replies'
-import { judgePlays, planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
+import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, type PlayReport } from '@/lib/outreach/planner'
 import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
@@ -88,6 +88,10 @@ export async function GET(request: NextRequest) {
       // The learning loop judges each play's test once, before the plan, so the winner is drafted from the same run.
       judged = await isolated(RUN, 'judging the plays', () => judgePlays(db, now))
       plays = await isolated(RUN, 'planning the plays', () => planPlays(db, { now, origin, actingUser }))
+      // EVERY PLAY DECISION, SAID WITH ITS REASON (the PM's 23:56 of 22 November 2026: one of Monday's ten letters was queued
+      // and the run kept no record of why the others were not; the reasons lived only in this run's answer, which nothing
+      // keeps). Each play's cap and use, and each contact queued, held, refused or not drafted with its reason, in the log.
+      if (!isStepFault(plays)) for (const line of playDecisionLines(plays as PlayReport[])) console.log(`[cron/outreach-run] ${line}`)
       dms = await isolated(RUN, 'drafting the DMs', () => planDms(db, { now, origin, actingUser }))
       partners = await isolated(RUN, "the partners' messages", () => planRelationship(db, { now, origin, actingUser }))
     } else if (sender.data.mode === 'hold') {
