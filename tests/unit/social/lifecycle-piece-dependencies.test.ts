@@ -31,10 +31,10 @@ const revision = {
   },
 }
 
-function fakeDb(opts: { event: Record<string, unknown>; usable: boolean }) {
+function fakeDb(opts: { event: Record<string, unknown>; usable: boolean; piece?: Record<string, unknown>; revision?: Record<string, unknown> }) {
   const rows: Record<string, Record<string, unknown>[]> = {
-    social_pieces: [{ id: 'p1', kind: 'coming_up', link: 'https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram', format: 'feed' }],
-    social_piece_revisions: [revision],
+    social_pieces: [opts.piece ?? { id: 'p1', kind: 'coming_up', link: 'https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram', format: 'feed' }],
+    social_piece_revisions: [opts.revision ?? revision],
     events: [opts.event],
     social_assets: [],
   }
@@ -46,6 +46,9 @@ function fakeDb(opts: { event: Record<string, unknown>; usable: boolean }) {
       eq: (k: string, v: unknown) => ((list = list.filter((r) => k === 'piece_id' || String(r[k]) === String(v))), q),
       neq: () => q,
       in: (k: string, vs: unknown[]) => ((list = list.filter((r) => vs.map(String).includes(String(r[k])))), q),
+      // The season read (store.ts seasonBeganOf): its window and the public rule's groups pass every fixture night.
+      or: () => q,
+      lt: () => q,
       order: () => q,
       limit: () => q,
       maybeSingle: () => ((one = true), q),
@@ -83,5 +86,20 @@ describe("the standing policy's check over a law 37 lifecycle piece", () => {
   it("the run's label from its posting day passes the gate's past day rule; the first day's label on a later day does not", () => {
     expect(pastDaysPrinted(['📅 Sat 21 to Sun 22 Nov'], NOW)).toEqual([])
     expect(pastDaysPrinted(['📅 Fri 20 to Sun 22 Nov'], NOW)).not.toEqual([])
+  })
+})
+
+describe('test 3 of the hardening order: a caption that fails the 05:15 standard is refused at approval', () => {
+  it("AMCF's revision 1, as the 06:40 policy approved it on 22 November, is refused with the standard's reasons", async () => {
+    const held = 'Final day today, still on until it closes.\n\nAfrican Music and Cultural Festival 2026\n\u{1F4CD} Federation Square\n\u{1F4C5} Sun 22 Nov\n\u{1F4B2} Free entry\n\n\u{1F39F} Event details and tickets: link in our bio'
+    const db = fakeDb({
+      event: night(),
+      usable: true,
+      piece: { id: 'p1', kind: 'lifecycle', link: 'https://www.eventlinqs.com.au/events/amcf-2026?utm_source=instagram', format: 'feed', moment_key: 'final_day|feed|2026-11-22|t:african music and cultural festival 2026|0d7a0801-e265-4920-96e1-94838ae52e7e|2026-11-20' },
+      revision: { ...revision, caption: held, versions: { instagram: { ...revision.versions.instagram, caption: held } } },
+    })
+    const issues = await pieceDependencies(db as never, 'p1', new Date('2026-11-21T19:40:00.000Z'), { siteOrigin: 'https://www.eventlinqs.com.au', fetcher: page })
+    expect(issues.join(' ')).toMatch(/\[standard\]/)
+    expect(issues.join(' ')).toMatch(/states no time/)
   })
 })

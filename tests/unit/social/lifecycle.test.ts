@@ -211,10 +211,10 @@ describe('words: a human first line, never repeated in the window, facts short a
     expect(ig.split('\n\n')).toEqual([
       'Today is the day.',
       'Street food and live music under the lights all evening.',
-      'Night Market\n\u{1F4CD} Fed Square\n\u{1F4C5} Sat 28 Nov\n\u{1F4B2} Free entry',
-      '\u{1F39F} Event details and tickets: link in our bio',
+      // The 05:15 standard (22 November 2026): the details line closes the fact block, and never says 'tickets'.
+      'Night Market\n\u{1F4CD} Fed Square\n\u{1F4C5} Sat 28 Nov\n\u{1F4B2} Free entry\n\u{1F39F} Details on EventLinqs: link in our bio',
     ])
-    expect(fb.endsWith('\u{1F39F} Event details and tickets:\nhttps://x?utm_source=facebook')).toBe(true)
+    expect(fb.endsWith('\u{1F39F} Details on EventLinqs:\nhttps://x?utm_source=facebook')).toBe(true)
     // The class (the PM's 01:09 item 4): AMCF's first lifecycle pieces were refused as drawn for carrying no emoji. Every
     // caption the planner draws now passes caption standard version 2's marks, on both networks.
     expect(captionMarkFaults(ig)).toEqual([])

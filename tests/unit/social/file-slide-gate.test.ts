@@ -84,7 +84,8 @@ describe('the publish run', () => {
         if (table === 'feature_flags') return answers({ data: { enabled: true }, error: null })
         if (table === 'social_piece_schedules') {
           return {
-            select: () => answers({ data: rows, error: null }),
+            // The identity read (store.ts publishedAlready) finds no earlier publication of either piece.
+            select: (cols: string) => answers({ data: cols === 'id, published_ref' ? [] : rows, error: null }),
             update: (payload: Record<string, unknown>) => ({
               eq: (_key: string, id: unknown) => {
                 held.push({ id, payload })
@@ -93,7 +94,15 @@ describe('the publish run', () => {
             }),
           }
         }
-        if (table === 'social_pieces') throw new Error('the piece could not be read: connection reset')
+        // The identity read (store.ts publishedAlready) asks for the piece's moment first; then its checks' read fails.
+        if (table === 'social_pieces') {
+          return {
+            select: (cols: string) => {
+              if (cols === 'moment_key') return answers({ data: null, error: null })
+              throw new Error('the piece could not be read: connection reset')
+            },
+          }
+        }
         throw new Error(`no other table is read before a check fails: ${table}`)
       },
     }

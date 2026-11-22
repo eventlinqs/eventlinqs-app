@@ -1,4 +1,5 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
+import { claimPublishLease, deploymentOf, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
 import { socialPhaseAt } from '@/lib/ops/timetable'
 import { planCheckWords } from '@/lib/ops/plan-check'
 import { midnightIn } from '@/lib/dates/zone-midnight'
@@ -109,6 +110,15 @@ export async function GET(request: NextRequest) {
   try {
     const db = createAdminClient()
     const now = new Date()
+    /* ONE PUBLISHING RUN AT A TIME (src/lib/social/publish-run.ts; Lawal's hardening order of 22 November 2026, sections
+       3 and 4): the run claims the one lease before it schedules or publishes; a repeated invocation, a retried cron or
+       the watchdog finding it held does nothing and says so on its own row. A run that dies frees it by expiry. */
+    const holder = `social-publish ${deploymentOf() ?? 'local'} ${now.toISOString()}`
+    const lease = await claimPublishLease(db, holder)
+    if (!lease.held) {
+      await recordPublishRun(db, { route: '/api/cron/social-publish', startedAt: now, endedAt: new Date(), deployment: deploymentOf(), switchOn: false, drawn: 0, approved: 0, scheduled: 0, due: 0, published: 0, held: 0, failed: 0, ok: true, result: `skipped: ${lease.why}` })
+      return NextResponse.json({ ok: true, skipped: lease.why })
+    }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
        moment, and the line goes to the 08:00 report. A failed pre-flight is said and never stops the run. */
@@ -182,9 +192,12 @@ export async function GET(request: NextRequest) {
     const scheduled = await scheduleApprovedPieces(db, now)
     const published = await publishDuePieces(db, now, { siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
     for (const w of published.waiting) console.log(`[cron/social-publish] waiting: ${w}`)
-    // THE SWITCH GOES OFF BY CODE on any fault of this run while it reads on (policy-guard.ts), with its alarm row.
+    // THE SWITCH GOES OFF BY CODE only on a breach of the standing policy (policy-guard.ts switchTrips), with its alarm
+    // row; a held, refused or failed piece is held alone and the run goes on (Lawal's hardening order, section 2 A). A
+    // policy that could not run approved nothing; it is said and recorded, never a global stop.
+    for (const f of policyFaults) console.error(`[cron/social-publish] ${f}`)
     if (published.switchOn) {
-      const trips = [...policyFaults, ...switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })]
+      const trips = switchTrips({ policy: policyHour, scheduleHeld: scheduled.held, publishHeld: published.held })
       if (trips.length > 0) await switchOffByCode(db, { now, phase: socialPhaseAt(melbourneHour(now)) ?? 'schedule', trips })
     }
     console.log(
@@ -285,6 +298,26 @@ export async function GET(request: NextRequest) {
         failed: published.held.length > 0 || plan?.failed === true,
       })
     }
+    /* EVERY RUN WRITES ITS OWN ROW (src/lib/social/publish-run.ts; Lawal's hardening order, section 2 E): an HTTP 200 is
+       not proof; this row, with its deployment and its counts, is. Then the lease is freed for the next run. */
+    const failedHere = policyFaults.length
+    await recordPublishRun(db, {
+      route: '/api/cron/social-publish',
+      startedAt: now,
+      endedAt: new Date(),
+      deployment: deploymentOf(),
+      switchOn: published.switchOn,
+      drawn: redrawn.redrawn.length + (planned?.created ?? 0),
+      approved: policyHour?.approved.length ?? 0,
+      scheduled: scheduled.scheduled.length,
+      due: published.due,
+      published: published.published.length,
+      held: scheduled.held.length + published.held.length,
+      failed: failedHere,
+      ok: failedHere === 0,
+      result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again${policyFaults.length > 0 ? `; ${policyFaults.join(' | ')}` : ''}`,
+    })
+    await releasePublishLease(db, holder)
     return NextResponse.json({ ok: true, redrawn, scheduled, published, planned })
   } catch (err) {
     console.error('[cron/social-publish] failed:', err)

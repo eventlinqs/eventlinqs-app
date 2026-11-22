@@ -1,5 +1,6 @@
 import { momentWindowOf, nextSlot, scheduleWindowOf, STARTING_CALENDAR, withStartingCalendar, type CadenceRule, type SocialFormat } from './cadence'
 import { carriesBannedWord } from './words'
+import { fromZonedInputValue, toZonedInputValue } from '@/lib/dates/event-time'
 
 /**
  * THE ENGINE THINKS IN EVENT LIFECYCLES AND NEVER REPEATS (law 37 (l), Lawal, 20 November 2026, 14:06; his yes to the
@@ -103,6 +104,69 @@ function daysOfNight(n: LifecycleNight, zone: string): string[] {
   const out = [first]
   while (out.length < 60 && out[out.length - 1] < last) out.push(nextDay(out[out.length - 1]))
   return out
+}
+
+/** One day's opening and closing of a night (ISO instants). */
+export type Session = { readonly start: string; readonly end: string }
+
+/**
+ * TODAY'S DAY OF THE RUN, NEVER THE SEASON'S FIRST DAY (the PM's 09:10 of 22 November 2026, a hotfix): a row that runs a
+ * full day or more (AMCF, 11am on 20 November to 8pm on 22 November, one row) is open each day from its start's clock
+ * to its end's clock in its own zone, the first day opening at its start and the last closing at its end; a closing
+ * clock at or before the opening clock closes the next day (a night from 11pm to 3am). A night of under a day is its
+ * one session. Before this the publish gate and the planner judged AMCF by 20 November, so its final day feed was held
+ * at the 08:40 run, quoted: 'it has started (2026-11-20T00:00:00+00:00)'. Pure.
+ */
+export function sessionsOf(night: { readonly startDate: string; readonly endDate: string | null }, zone: string): Session[] {
+  const start = Date.parse(night.startDate)
+  const end = night.endDate ? Date.parse(night.endDate) : start
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end - start >= DAY_MS)) return [{ start: night.startDate, end: night.endDate ?? night.startDate }]
+  const opens = toZonedInputValue(night.startDate, zone).slice(11, 16)
+  const closes = toZonedInputValue(night.endDate as string, zone).slice(11, 16)
+  const out: Session[] = []
+  let day = dayIn(new Date(start), zone)
+  for (let i = 0; i < 62; i++) {
+    const open = Date.parse(fromZonedInputValue(`${day}T${opens}`, zone))
+    if (!(open < end)) break
+    let close = Date.parse(fromZonedInputValue(`${day}T${closes}`, zone))
+    if (close <= open) close = Date.parse(fromZonedInputValue(`${nextDay(day)}T${closes}`, zone))
+    out.push({ start: new Date(Math.max(open, start)).toISOString(), end: new Date(Math.min(close, end)).toISOString() })
+    day = nextDay(day)
+  }
+  return out.length > 0 ? out : [{ start: night.startDate, end: night.endDate ?? night.startDate }]
+}
+
+/** The session a minute is judged by: the one open then or the next to open (the first not yet closed), else the last. */
+export function sessionAt(night: { readonly startDate: string; readonly endDate: string | null }, zone: string, at: Date): Session {
+  const all = sessionsOf(night, zone)
+  return all.find((s) => Date.parse(s.end) > at.getTime()) ?? all[all.length - 1]
+}
+
+/**
+ * A calendar day's own session: the first that is open at some minute of that day (a festival from 11pm to 10pm the
+ * next day is open through that morning), else, for a day before the night, its first, and after it, its last. Pure.
+ */
+export function sessionOfDay(night: { readonly startDate: string; readonly endDate: string | null }, zone: string, day: string): Session {
+  const all = sessionsOf(night, zone)
+  const overlaps = (s: Session) => dayIn(new Date(s.start), zone) <= day && dayIn(new Date(Math.max(Date.parse(s.start), Date.parse(s.end) - 1)), zone) >= day
+  return all.find(overlaps) ?? (day < dayIn(new Date(all[0].start), zone) ? all[0] : all[all.length - 1])
+}
+
+/** A night as the scheduler reads it on a moment's day: that day's own session (sessionOfDay), as start and end ms. */
+export function nightOnDay(n: { readonly title: string; readonly startDate: string; readonly endDate: string | null; readonly zone: string }, day: string): { title: string; start: number; end: number } {
+  const s = sessionOfDay({ startDate: n.startDate, endDate: n.endDate }, n.zone, day)
+  return { title: n.title, start: Date.parse(s.start), end: Date.parse(s.end) }
+}
+
+/**
+ * A lifecycle piece's window on its moment's day (the scheduler's, store.ts scheduleApprovedPieces): the moment's day
+ * (momentWindowOf) over its nights' own sessions that day (nightOnDay), never a season's first day; words that say on
+ * now never go before that day's doors open (the PM's 09:00 and 09:10 of 22 November 2026). Pure.
+ */
+export function lifecycleWindow(format: SocialFormat, day: string, onNow: boolean, own: readonly { readonly title: string; readonly start: number; readonly end: number }[]): { notBefore: Date; deadline: Date } {
+  const { notBefore, deadline } = momentWindowOf(day, scheduleWindowOf(format, own, undefined, { onNow }))
+  const doors = onNow && own.length > 0 ? Math.min(...own.map((n) => n.start)) : 0
+  return { notBefore: new Date(Math.max(notBefore.getTime(), doors)), deadline }
 }
 
 /**
@@ -376,14 +440,13 @@ export function chooseToday(
 }
 
 /**
- * WHETHER A MOMENT'S WORDS SAY THE NIGHT IS ON NOW (piece-quality.ts ON_NOW), by its kind: a running day and a final
- * day always do ('still on'), a first day does when its night has started by its band (FIRST_DAY_ON_NOW), and a moment
- * ahead of its night never does. Held against every first line by tests/unit/social/every-moment-has-a-window.test.ts.
- * Pure.
+ * WHETHER A MOMENT'S WORDS SAY THE NIGHT IS ON NOW (piece-quality.ts ON_NOW), by its kind: a first, running or final day
+ * does when that day's own session is open by its band ('still on' only once the doors are open: the PM's 09:00 of
+ * 22 November 2026), and a moment ahead of its night never does. Held against every first line by
+ * tests/unit/social/every-moment-has-a-window.test.ts and season-day.test.ts. Pure.
  */
 export function momentSaysOnNow(kind: MomentKind, startedByBand: boolean): boolean {
-  if (kind === 'running' || kind === 'final_day') return true
-  if (kind === 'first_day') return startedByBand
+  if (kind === 'first_day' || kind === 'running' || kind === 'final_day') return startedByBand
   return false
 }
 
@@ -410,22 +473,35 @@ export function postableBand(input: {
   const start = Date.parse(input.night.startDate)
   const end = input.night.endDate ? Date.parse(input.night.endDate) : start
   if (!Number.isFinite(start)) return { why: `${input.night.title} has no start` }
-  // A first day tries its words as 'starts today' first, then, when its night is under way by the band it can take, as
-  // on now; every other moment's words are fixed by its kind (momentSaysOnNow).
-  const tries = input.kind === 'first_day' || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  // A first, running or final day tries its words as true before that day's doors open first ('Last day today.'),
+  // then, when that day's session is open by the band it can take, as on now; every other moment's words are fixed by
+  // its kind (momentSaysOnNow). Each is judged by its own day's session (sessionsOf), never the season's first day.
+  const ownDay = input.kind === 'first_day' || input.kind === 'running' || input.kind === 'final_day'
+  const tries = ownDay || input.repeatDay ? [false, true] : [momentSaysOnNow(input.kind, false)]
+  const night = { startDate: input.night.startDate, endDate: input.night.endDate }
+  const today = sessionOfDay(night, input.zone, input.day)
+  const windowStart = ownDay ? Date.parse(today.start) : start
+  const windowEnd = ownDay ? Date.parse(today.end) : end
   let why = `no ${input.format} band on ${input.day}`
   for (const onNow of tries) {
-    const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start, end }], input.zone, { onNow }), input.zone)
-    const from = new Date(Math.max(input.now.getTime(), w.notBefore.getTime()))
+    const w = momentWindowOf(input.day, scheduleWindowOf(input.format, [{ title: input.night.title, start: windowStart, end: windowEnd }], input.zone, { onNow }), input.zone)
+    let from = new Date(Math.max(input.now.getTime(), w.notBefore.getTime()))
+    // Words that say on now wait for the doors: never a band before the session open at that minute opens.
+    if (onNow) from = new Date(Math.max(from.getTime(), Date.parse(sessionAt(night, input.zone, from).start)))
     const at = nextSlot(STARTING_RULE(input.format), from, input.zone)
     if (at.getTime() > w.deadline.getTime() || dayIn(at, input.zone) !== input.day) {
       why = `no ${input.format} band on ${input.day} inside its window (it closes ${w.deadline.toISOString()})`
       continue
     }
-    const started = start <= at.getTime()
-    const ended = end <= at.getTime()
+    const session = sessionAt(night, input.zone, at)
+    const started = Date.parse(session.start) <= at.getTime()
+    const ended = Date.parse(session.end) <= at.getTime()
     if (started && !(onNow && !ended)) {
       why = `${input.night.title} would have ${ended ? 'ended' : 'started'} by its ${input.format} band`
+      continue
+    }
+    if (!started && onNow) {
+      why = `${input.night.title} would not be open yet by its ${input.format} band`
       continue
     }
     return { at, onNow }
@@ -547,6 +623,15 @@ const FIRST_LINES: Record<MomentKind, readonly string[]> = {
 }
 
 /**
+ * A running or final day posted before that day's doors open (the PM's 09:00 of 22 November 2026: words true at publish
+ * time, 'still on' only after that day's opening): never on now (piece-quality.ts ON_NOW).
+ */
+const BEFORE_DOORS: Readonly<Record<'running' | 'final_day', readonly string[]>> = {
+  running: ['Open again today.', 'Back again today.', 'Another day of it today.'],
+  final_day: ['Last day today.', 'The final day is today.', 'Today is the last day.'],
+}
+
+/**
  * A first day whose night has already started by the format's first band that day (a night listed from midnight, or one
  * that opens before the morning post): its words say it is on now (piece-quality.ts ON_NOW), which is what lets the
  * scheduler give it the night's run and the publish gate post it after the night's start (law 22, class 1). 'It starts
@@ -588,9 +673,121 @@ export function endedByFirstBand(endIso: string | null, zone: string, format: So
   return Number(get('hour')) * 60 + Number(get('minute')) <= hour * 60
 }
 
+/**
+ * WHAT A READER WILL FIND THERE, IN THE LISTING'S OWN WORDS (the PM's 05:02 of 22 November 2026, item 1; Lawal, 04:50:
+ * "could it be any better ... a human would do this ... professional"). The first line names the night's own experiences
+ * (what you see, hear, eat) taken only from its listing's words, never invented: each phrase below is matched in the
+ * summary, then the title, in the order the listing says them, at most three, a longer phrase before a shorter one it holds.
+ */
+export const EXPERIENCE_PHRASES: readonly string[] = [
+  'street food', 'food trucks', 'food stalls', 'night market', 'artisan markets', 'live music', 'lantern gardens', 'fireworks',
+  'lanterns', 'markets', 'music', 'dance', 'djs', 'comedy', 'stand-up', 'theatre', 'film', 'art', 'workshops', 'cocktails',
+  'wine', 'beer', 'dumplings', 'rides', 'parade', 'choir', 'orchestra', 'jazz', 'trivia', 'games', 'circus', 'magic',
+]
+
+/** Up to three of the night's experiences, in the order its own words give them (summary first, then title). Pure. */
+export function experiencesOf(summary: string | null, title: string): string[] {
+  const text = ` ${(summary ?? '')} ${title} `.toLowerCase()
+  const found: { phrase: string; at: number }[] = []
+  for (const phrase of EXPERIENCE_PHRASES) {
+    const m = new RegExp(`(?<![a-z])${phrase.replace(/[-]/g, '\\-')}(?![a-z])`).exec(text)
+    if (!m) continue
+    // A shorter phrase inside one already found ('music' inside 'live music') adds nothing.
+    if (found.some((f) => f.phrase.includes(phrase) && Math.abs(f.at - m.index) <= f.phrase.length)) continue
+    found.push({ phrase, at: m.index })
+  }
+  return found.sort((a, b) => a.at - b.at).slice(0, 3).map((f) => (f.phrase === 'djs' ? 'DJs' : f.phrase))
+}
+
+function listOf(items: readonly string[]): string {
+  return items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
+/**
+ * THE NIGHT'S OWN FIRST LINE (the PM's 05:02, item 1): its experiences, its place, and the day's stage in words that keep
+ * the publish gate's rule (piece-quality.ts ON_NOW: a first, running or final day under way by its band says 'on now' or
+ * 'still on'; momentSaysOnNow). Null when the listing names no experience, and the moment's own bank speaks instead. Pure.
+ */
+export function hookFor(kind: MomentKind, experiences: readonly string[], place: string | null, opts: { readonly startedByBand?: boolean; readonly repeatDay?: boolean; readonly title?: string | null } = {}): string | null {
+  // The 05:15 standard, check 5: never a stock phrase; with no experience in its words, the night's own title names it.
+  const named = experiences.length > 0 ? experiences : opts.title ? [opts.title] : []
+  if (named.length === 0) return null
+  const what = listOf(named)
+  const What = what.charAt(0).toUpperCase() + what.slice(1)
+  const at = place && place.length <= 40 ? ` at ${place}` : ''
+  if (opts.repeatDay) return opts.startedByBand ? `${What}${at}, on now.` : `${What}${at}, on today.`
+  switch (kind) {
+    case 'first_day':
+      return opts.startedByBand ? `${What}${at}, on now from today.` : `${What}${at}, from today.`
+    // A running or final day says 'still on' only once that day's doors are open by its band (sessionsOf; the PM's 09:00
+    // of 22 November 2026), and words true before them otherwise.
+    case 'running':
+      return opts.startedByBand ? `${What}${at}, still on today.` : `${What}${at}, on again today.`
+    case 'final_day':
+      return opts.startedByBand ? `Last day today for ${what}${at}, and still on.` : `Last day today for ${what}${at}.`
+    case 'tomorrow':
+      return `${What}${at}, tomorrow.`
+    case 'final_push':
+      return `${What}${at}, only days away.`
+    default:
+      return `${What}${at}, coming up.`
+  }
+}
+
+/** The place line: the venue, its street address and its city, each said once (an address holding the city keeps it). */
+export function whereOf(place: string | null, address: string | null, city: string | null): string {
+  const parts: string[] = []
+  const has = (s: string) => parts.some((p) => p.toLowerCase().includes(s.toLowerCase()))
+  if (place && place.trim()) parts.push(place.trim())
+  if (address && address.trim() && !has(address.trim())) parts.push(address.trim())
+  if (city && city.trim() && !has(city.trim())) parts.push(city.trim())
+  return parts.join(', ')
+}
+
+/** The day word of the 05:15 standard: Today, Tomorrow, or the weekday, as the night's day reads from the post's day. */
+export function dayWordOf(nightDay: string, postDay: string): string {
+  if (nightDay === postDay) return 'Today'
+  const next = new Date(Date.parse(`${postDay}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+  if (nightDay === next) return 'Tomorrow'
+  return new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${nightDay}T12:00:00Z`))
+}
+
+/**
+ * THE PRACTICAL LINE (the 05:15 standard): free and nothing to book, free with a place to register, or how to buy. A free
+ * night never says 'ticket' (check 4).
+ */
+export function practicalLine(cta: { readonly freeEntry: boolean; readonly registrationRequired: boolean; readonly ticketingByEventLinqs: boolean }): string {
+  if (cta.freeEntry) return "It's free, and there's nothing to book."
+  if (cta.registrationRequired) return cta.ticketingByEventLinqs ? "It's free; register your place on EventLinqs." : "It's free; register your place through the link."
+  return cta.ticketingByEventLinqs ? 'Tickets are on EventLinqs.' : 'Tickets are on sale through the link.'
+}
+
+/**
+ * THE NIGHT'S HOURS, ALWAYS STATED (the PM's 05:02, item 2): its start and end in its own zone ('11am to 10pm'), its start
+ * alone for a row running a day or more ('from 10am'), none for a date-only listing (a start at local midnight). Pure.
+ */
+export function nightTimes(startIso: string, endIso: string | null, zone: string): string | null {
+  const start = new Date(startIso)
+  if (!Number.isFinite(start.getTime())) return null
+  const hm = new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(start)
+  if (hm === '00:00') return null
+  const t = (d: Date) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true }).format(d).replace(':00', '').replace(/\s/g, '').toLowerCase()
+  const end = endIso ? new Date(endIso) : null
+  if (!end || !Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) return `from ${t(start)}`
+  return end.getTime() - start.getTime() < 24 * 3_600_000 ? `${t(start)} to ${t(end)}` : `from ${t(start)}`
+}
+
 /** The first line for a moment, never one used inside the window; null when every line is spent (then no post). */
-export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false): string | null {
-  const bank = repeatDay ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY) : kind === 'first_day' && startedByBand ? FIRST_DAY_ON_NOW : FIRST_LINES[kind]
+export function firstLineFor(kind: MomentKind, _salesOpen: boolean, usedRecently: ReadonlySet<string>, seed: number, startedByBand = false, repeatDay = false, hook: string | null = null): string | null {
+  // The night's own line first (hookFor), when it has not been said inside the window; then the moment's bank.
+  if (hook && !usedRecently.has(hook)) return hook
+  const bank = repeatDay
+    ? (startedByBand ? REPEAT_DAY_ON_NOW : REPEAT_DAY)
+    : kind === 'first_day' && startedByBand
+      ? FIRST_DAY_ON_NOW
+      : (kind === 'running' || kind === 'final_day') && !startedByBand
+        ? BEFORE_DOORS[kind]
+        : FIRST_LINES[kind]
   for (let i = 0; i < bank.length; i++) {
     const line = bank[(seed + i) % bank.length]
     if (!usedRecently.has(line)) return line
@@ -635,6 +832,15 @@ export type CaptionFacts = {
   readonly title: string
   readonly place: string | null
   readonly dateLabel: string
+  /** The night's hours (nightTimes), stated beside its date; none for a date-only listing. */
+  readonly times?: string | null
+  /** The 05:15 standard's fact block: who runs it, the street address and city, and the day word (Today, Tomorrow, a weekday). */
+  readonly organiser?: string | null
+  readonly address?: string | null
+  readonly city?: string | null
+  readonly dayWord?: string | null
+  /** The practical line: free and nothing to book, how to register, or how to buy (practicalLine). */
+  readonly practical?: string | null
   readonly priceLine: string | null
   /** The listing's own words, its first sentence only. */
   readonly summary: string | null
@@ -667,14 +873,21 @@ export function captionFor(input: {
   const quotable = sentence.length >= 20 && sentence.length <= 200 && !carriesBannedWord(sentence, f.names ?? [f.title])
   const experience = quotable ? sentence.replace(/!+$/, '.') : ''
   const price = f.priceLine ? f.priceLine.replace(/\.$/, '').trim() : ''
-  const signposts = [
-    f.title,
-    f.place ? `\u{1F4CD} ${f.place}` : '',
-    `\u{1F4C5} ${f.dateLabel}`,
+  // THE 05:15 STANDARD'S FACT BLOCK: 'Title, by Organiser', then four markers, each a fact: the place with its street
+  // address and city, the day word with the date and the hours, the price or 'Free entry', and the details link.
+  const by = f.organiser && !f.title.toLowerCase().includes(f.organiser.toLowerCase()) ? `${f.title}, by ${f.organiser}` : f.title
+  const where = whereOf(f.place, f.address ?? null, f.city ?? null)
+  const when = [f.dayWord ?? '', f.dateLabel, f.times ?? ''].filter((x) => x !== '').join(', ')
+  const details = input.platform === 'instagram' ? '\u{1F39F} Details on EventLinqs: link in our bio' : `\u{1F39F} Details on EventLinqs:\n${input.link}`
+  const facts = [
+    by,
+    where ? `\u{1F4CD} ${where}` : '',
+    `\u{1F4C5} ${when}`,
     price ? `\u{1F4B2} ${/^free$/i.test(price) ? 'Free entry' : price}` : '',
+    details,
   ]
     .filter((l) => l !== '')
     .join('\n')
-  const link = input.platform === 'instagram' ? '\u{1F39F} Event details and tickets: link in our bio' : `\u{1F39F} Event details and tickets:\n${input.link}`
-  return [input.firstLine, experience, signposts, link].filter((p) => p !== '').join('\n\n')
+  const paragraph = [experience, f.practical ?? ''].filter((x) => x !== '').join(' ')
+  return [input.firstLine, paragraph, facts].filter((p) => p !== '').join('\n\n')
 }
