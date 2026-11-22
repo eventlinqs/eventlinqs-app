@@ -21,6 +21,7 @@ const TOTS: LifecycleFacts = {
   websiteUrl: 'https://www.geelonggallery.org.au',
   night: { title: 'Gallery Tots', slug: 'gallery-tots-geelong-gallery-2026-12-11', startDate: '2026-12-10T23:00:00Z', timezone: 'Australia/Melbourne', citySlug: 'geelong', bookingUrl: 'https://events.humanitix.com/gallery-tots' },
   photoLink: PHOTO,
+  approvalLink: PHOTO,
   origin: ORIGIN,
 }
 const CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://www.geelonggallery.org.au/contact', noMarketingStatementChecked: true }
@@ -100,7 +101,7 @@ describe("a law 49 letter is queued only when its clock says due and it passes w
   })
 
   it('PERM passing whole is queued for the sender, to the thread contact the reader chose, from the play\'s own version', async () => {
-    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS, MON_7), UNSUB)
+    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS), UNSUB)
     const { db, updates } = fakeDb({ subject: r.subject, body: r.body })
     expect(await draftLifecycleLetter(db, input('lifecycle_perm'))).toEqual({ state: 'queued', touchId: 't1' })
     const req = drafted.request as { contactId: string; templateId: string; step: number; playId: string; extraFields: Record<string, string | null> }
@@ -108,21 +109,23 @@ describe("a law 49 letter is queued only when its clock says due and it passes w
     expect(req.templateId).toBe('tpl1')
     expect(req.step).toBe(1)
     expect(req.playId).toBe('p1')
-    expect(req.extraFields.days).toBe('18')
+    // No countdown (the communication standard, Lawal's 20:45 of 22 November 2026): the night's day and date, from its record.
+    expect(req.extraFields).not.toHaveProperty('days')
+    expect(req.extraFields['event day']).toBe('Friday 11 December')
     expect(updates).toHaveLength(1)
     expect(updates[0].payload).toMatchObject({ state: 'queued', provider: 'graph' })
     expect(updates[0].filters).toContainEqual(['state', 'held'])
   })
 
   it('ACQ passing whole is queued; its offer led subject is judged as an acquisition first letter', async () => {
-    const r = renderTemplate(LIFECYCLE_ACQ, lifecycleFields(TOTS, MON_7), UNSUB)
+    const r = renderTemplate(LIFECYCLE_ACQ, lifecycleFields(TOTS), UNSUB)
     const { db } = fakeDb({ subject: r.subject, body: r.body })
     expect(await draftLifecycleLetter(db, input('lifecycle_acq'))).toEqual({ state: 'queued', touchId: 't1' })
   })
 
   it('a word the gateway refuses keeps it held with the reason recorded, never queued', async () => {
-    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS, MON_7), UNSUB)
-    const { db, updates } = fakeDb({ subject: r.subject, body: r.body.replace('show it properly', 'feature it properly') })
+    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS), UNSUB)
+    const { db, updates } = fakeDb({ subject: r.subject, body: r.body.replace('Thanks for your time.', "We'll feature it in our guides. Thanks for your time.") })
     const out = await draftLifecycleLetter(db, input('lifecycle_perm'))
     expect(out.state).toBe('held')
     expect(out.state === 'held' ? out.why.join(' ') : '').toContain('unproved claim')

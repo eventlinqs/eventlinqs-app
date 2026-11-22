@@ -23,6 +23,19 @@ import { greetingOf, letterTitle } from './segment-a-letter'
  * and our" (./rules.ts; r2 read 5 to 7 and every draft would have been held) takes 'your listing' for 'this listing'
  * and 'If you'd rather use' for 'If you'd rather we used', and the one tap link stands where 'and we'll use that one' was.
  *
+ * VERSION 2, THE COMMUNICATION STANDARD (Lawal, 20:45 of 22 November 2026: he adopted C:\dev\START-16OCT\
+ * COMMS-STANDARD-REVIEW-22NOV.md, "follow this A to Z", "change everything, even the greetings"; the PM's 20:47, items 1 to
+ * 4). PERM is the approved permission request word for word, personalised only from the records: the event, the
+ * organiser's team, the city, the day and date, the page its image is on, and the approval link. No claim link and no
+ * "listed free": the claim invitation is its own letter in the acquisition flow (item 4). No stock pleasantry in either
+ * letter, and no countdown: ACQ's subject names the night's day and date as the record holds it ("on Saturday 12
+ * December"), never "[days] days to". Its one follow up is ./perm-follow-up.ts. Version 1 stays stored, retired.
+ *
+ * THE APPROVAL LINK IS THE CALLER'S. The approved words say "You can review the image and approve its use here"; the
+ * photo page that exists today (/photos/<contact>/<proof>, ./photo-link.ts) is an upload form that does not show the
+ * image, so it is not used in its place. Until the caller supplies LifecycleFacts.approvalLink (the approval page of the
+ * PM's 20:47 item 5), [approval link] stays unfilled and every PERM draft is held for it, never sent with a stand in.
+ *
  * THE CLOCK DECIDES. lifecycleChoice asks the event clock (src/lib/events/event-clock.ts) whether the play's step is due
  * on one of the organiser's nights today: never inside T-7, never on or after the night. Pure.
  */
@@ -46,24 +59,31 @@ const P = (...paragraphs: string[]) => paragraphs.join('\n\n')
 const CLOSE = 'Kind regards,\n[signature]\n\n[unsubscribe]'
 const SOURCE =
   "The PM's 09:23 drafts of 21 November 2026 as fixed through the gateway (the PM's 10:15 ruling 7; C:/dev/EVIDENCE/EL-21NOV/law49 r2), Lawal's go on the wording at 09:25: 'Yep, good work. We can perfect everything later. Good work, just finish it up.'"
+/** Where version 2's words come from: Lawal's adopted review of 20:45, 22 November 2026, and the PM's 20:47 order. */
+export const STANDARD_SOURCE =
+  "The communication standard: Lawal adopted C:/dev/START-16OCT/COMMS-STANDARD-REVIEW-22NOV.md at 20:45 of 22 November 2026 ('follow this A to Z', 'change everything, even the greetings'); the PM's 20:47 order, items 1 to 4."
 
 export const LIFECYCLE_PERM: LifecycleLetter = {
   key: 'lifecycle_perm',
   channel: 'email',
   purpose: 'cadence',
   step: 1,
-  subject: 'Your [event] listing on EventLinqs: may we use your photo?',
+  subject: 'Promoting [event] on EventLinqs',
   body: [
     P(
       'Hi [greeting],',
-      "I hope you're well.",
-      "[event] on [event day] is now listed free on EventLinqs, the what's on guide for [city]: [event link]",
-      "With [days] days to go, we'd like to show it properly: in our weekend newsletter, on our Instagram and Facebook, and near the top of our [city] guide. To do that well, we'd like to use your event photo, the one on [photo source].",
-      "Could you reply yes to let us use it for your listing and its promotion? If you'd rather use a different photo, just send it, or add it here in one tap: [photo link]",
+      "We're featuring upcoming [city] events on EventLinqs and have included [event] on [event day].",
+      "We'd love to help more people discover the event through our Instagram, Facebook, and upcoming event guides.",
+      // The approved words say "on your website"; the page is named from the record, so an image on a ticketing
+      // platform's page is never said to be on their website (no fact the record does not hold).
+      'Could you please confirm whether we have permission to use the event image displayed on [photo source] for this promotion?',
+      'You can review the image and approve its use here: [approval link].',
+      'If another party owns the image, please let us know so we can contact the appropriate rights holder.',
+      'Thanks for your time.',
     ),
     CLOSE,
   ].join('\n\n'),
-  source: `${SOURCE} PERM lifecycle v1, with the one tap photo link of the PM's 13:01, item 3.`,
+  source: `${STANDARD_SOURCE} PERM lifecycle v2, the approved permission request (item 2), with the legally required sender details and opt out unchanged. Earlier: ${SOURCE}`,
 }
 
 export const LIFECYCLE_ACQ: LifecycleLetter = {
@@ -71,19 +91,18 @@ export const LIFECYCLE_ACQ: LifecycleLetter = {
   channel: 'email',
   purpose: 'cadence',
   step: 1,
-  subject: "[days] days to [event]: let's fill it",
+  subject: "[event] on [event day]: let's fill it",
   body: [
     P(
       'Hi [greeting],',
-      "I hope you're well.",
-      "I'm Lawal, founder of EventLinqs, the what's on guide for [city]. [event] is already listed with us: [event link]",
+      "I'm Lawal, founder of EventLinqs, the what's on guide for [city]. [event] on [event day] is already listed with us: [event link]",
       'Over its last two weeks we put it in front of people looking for something to do in [city], on the [city] guide.',
       "If you'd like more from it, you can claim the listing for free, keep the details up to date yourself and sell tickets directly, with every attendee's details yours to keep.",
       'Would you like me to set that up for you?',
     ),
     CLOSE,
   ].join('\n\n'),
-  source: `${SOURCE} ACQ lifecycle v1.`,
+  source: `${STANDARD_SOURCE} ACQ lifecycle v2: no stock pleasantry, and the night's day and date in place of the countdown. Earlier: ${SOURCE}`,
 }
 
 export const LIFECYCLE_LETTERS: readonly LifecycleLetter[] = [LIFECYCLE_PERM, LIFECYCLE_ACQ]
@@ -117,33 +136,41 @@ export interface LifecycleFacts {
   readonly personName: string | null
   readonly websiteUrl: string | null
   readonly night: LifecycleNight
-  /** Their secure photo link, whole (./photo-link.ts); null leaves a PERM draft held. */
+  /** Their secure photo link, whole (./photo-link.ts): the upload page, which version 1 of PERM named. */
   readonly photoLink: string | null
+  /**
+   * THE APPROVAL LINK the approved permission request names ("You can review the image and approve its use here"): the
+   * page that shows the exact image and its uses and records the grant (the PM's 20:47, item 5). The caller must supply
+   * it; absent or null, [approval link] stays unfilled and the PERM draft is held.
+   */
+  readonly approvalLink?: string | null
   readonly origin: string
 }
 
 const cityName = (slug: string | null): string | null => CITY_NAMES.find(([s]) => s === slug)?.[1] ?? null
 
 /**
- * Days to go, counted as the clock counts them: calendar days from today to the night's first day, in its own zone.
+ * Days to go, counted as the clock counts them: calendar days from today to the night's first day, in its own zone. The
+ * clock's own count, for when a letter may go (lifecycleStillAsks); never written into a letter (no countdowns).
  */
 export function daysToGo(startIso: string, zone: string | null, now: Date): number {
   return lifecycleClock({ eventId: '', startIso, endIso: null, zone: zone || 'Australia/Melbourne', granted: false }, false, now).daysToStart
 }
 
-/** Every field the two letters fill, from the facts; a fact we do not hold stays unfilled, so the draft is held. */
-export function lifecycleFields(f: LifecycleFacts, now: Date): Record<string, string | null> {
+/**
+ * Every field the letters fill, from the facts; a fact we do not hold stays unfilled, so the draft is held. Every date is
+ * the night's own day and date, read from its record in its own zone ("Saturday 12 December"), never a count of days.
+ */
+export function lifecycleFields(f: LifecycleFacts): Record<string, string | null> {
   const title = letterTitle(f.night.title)
-  const days = daysToGo(f.night.startDate, f.night.timezone, now)
   return {
     greeting: f.organiserName.trim() || f.personName ? greetingOf(f.organiserName, f.personName) : null,
     event: title ? `${title.charAt(0).toUpperCase()}${title.slice(1)}` : null,
     'event day': dayWords(f.night.startDate, f.night.timezone),
     'event link': f.night.slug ? `${f.origin.replace(/\/+$/, '')}/events/${f.night.slug}` : null,
     city: cityName(f.night.citySlug),
-    days: days > 0 ? String(days) : null,
     'photo source': photoSourceWords(f.night.bookingUrl, f.websiteUrl),
-    'photo link': f.photoLink,
+    'approval link': f.approvalLink?.trim() || null,
   }
 }
 
