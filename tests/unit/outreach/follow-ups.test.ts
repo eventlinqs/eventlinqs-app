@@ -42,11 +42,13 @@ describe('the words', () => {
     ).toBe("AJ's Trivia Night on Wednesday 18 November is listed on EventLinqs: https://www.eventlinqs.com.au/events/aj-s-trivia-night-aunty-jacks-2026-11-18")
   })
 
-  it('keeps the thread, the warm line, the reply signature without the ABN, the opt out, and no banned punctuation', () => {
+  // No stock pleasantry (the communication standard, Lawal's 20:45 of 22 November 2026): "Hi <name>," then its night.
+  it('keeps the thread, opens straight on the night, the reply signature without the ABN, the opt out, and no banned punctuation', () => {
     expect(TWENTY_DAY4.subject).toBe('Re: [thread subject]')
     const lines = TWENTY_DAY4.body.split('\n')
     expect(lines[0]).toBe('Hi [greeting],')
-    expect(lines[1].startsWith("I hope you're well.")).toBe(true)
+    expect(lines[1]).toBe('[night line]')
+    expect(TWENTY_DAY4.body + TWENTY_DAY10.body).not.toMatch(/I hope/)
     expect(lines.slice(lines.indexOf('Kind regards,') + 1, lines.indexOf('Kind regards,') + 3)).toEqual(['Lawal Adams', 'Founder, EventLinqs'])
     expect(TWENTY_DAY4.body).not.toContain('ABN')
     expect(lines.at(-1)).toBe('[unsubscribe]')

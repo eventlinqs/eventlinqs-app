@@ -137,7 +137,7 @@ describe('the own page letter', () => {
     const advice = TWENTY_LETTERS.find((l) => l.key === 'twenty_advice')!
     const own = TWENTY_OWN_PAGE.body.split('\n')
     const listed = advice.body.split('\n')
-    expect(own[1]).toBe("I hope you're well. I saw [event] on [event day] at [event place] on your website.")
+    expect(own[1]).toBe('I saw [event] on [event day] at [event place] on your website.')
     expect(own[2]).toBe("You can add your own photos to EventLinqs here, and choose where they're used: [photo link]")
     expect(own.join(' ')).not.toMatch(/listed on EventLinqs|\[event link\]/)
     expect(own.filter((_, i) => i !== 1 && i !== 2)).toEqual(listed.filter((_, i) => i !== 1 && i !== 2))

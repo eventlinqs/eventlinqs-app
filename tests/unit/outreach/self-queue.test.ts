@@ -67,7 +67,9 @@ describe("the gateway's standing rule, ported", () => {
     expect(standingClear(l, POLICY, [{ ...APPROVAL, on: false }]).cleared).toBe(false)
     expect(standingClear(l, POLICY, [{ ...APPROVAL, words: ' ' }]).cleared).toBe(false)
     expect(standingClear(l, 'ffffffffffffffff').reason).toBe('the voice policy changed since the standing approval: Lawal approves again')
-    expect(standingClear({ ...l, template: 'acq_first v2' }, POLICY).reason).toBe('no standing approval for acq_first v2')
+    expect(standingClear({ ...l, template: 'acq_first v9' }, POLICY).reason).toBe('no standing approval for acq_first v9')
+    // v1's words under v2's name do not clear: v2 is v1 with the pleasantry taken out (Lawal, 20:45 of 22 November 2026).
+    expect(standingClear({ ...l, template: 'acq_first v2' }, POLICY).reason).toBe("the letter's body is not acq_first v2 with only its fields filled")
   })
   test("the app's copy is the gateway's own record, where both are on one machine", () => {
     const gateway = 'C:\\dev\\comms-gateway\\standing-approvals.json'

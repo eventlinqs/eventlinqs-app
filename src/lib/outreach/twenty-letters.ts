@@ -26,6 +26,10 @@ import type { TemplateRow } from './rules'
  * (live, 200 on www), their secure photo link ..., the free listing, and (for paid events) the conversion line"): the line
  * about their night now links its own page on EventLinqs and says the listing is free; the photo link has its own line.
  *
+ * Version 4 (Lawal, 20:45 of 22 November 2026, adopting C:\dev\START-16OCT\COMMS-STANDARD-REVIEW-22NOV.md, "change
+ * everything, even the greetings"; the PM's 20:47, item 1): "I hope you're well." is out of every letter; each opens
+ * "Hi <name>," and goes straight into the line about their night.
+ *
  * Stored as outreach_templates rows, versioned (never edited): ./twenty-drafts.ts writes the next version whenever these
  * words change, and drafts again any draft still held on an older one. Pure.
  */
@@ -47,7 +51,7 @@ export const TWENTY_ADVICE: TwentyLetter = {
   subject: '[event], could I ask your advice?',
   body: [
     'Hi [greeting],',
-    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
+    "[event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
     "You can add your own photos to it here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. You've been running events far longer than I have, and I'd love to learn from that.",
     'If you could change one thing about selling tickets, what would it be?',
@@ -65,7 +69,7 @@ export const TWENTY_OFFER: TwentyLetter = {
   subject: '[event], could I ask your advice?',
   body: [
     'Hi [greeting],',
-    "I hope you're well. [event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
+    "[event] on [event day] at [event place] is already listed on EventLinqs, free: [event link]",
     "You can add your own photos to it here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists.",
     "You could start with a few tickets alongside how you sell now. You keep the full face value of every ticket sold, and the ticket money is paid into your own bank account after the event.",
@@ -91,7 +95,7 @@ export const TWENTY_OWN_PAGE: TwentyLetter = {
   subject: '[event], could I ask your advice?',
   body: [
     'Hi [greeting],',
-    "I hope you're well. I saw [event] on [event day] at [event place] on your website.",
+    "I saw [event] on [event day] at [event place] on your website.",
     "You can add your own photos to EventLinqs here, and choose where they're used: [photo link]",
     "I'm Lawal Adams, and I'm building EventLinqs, a new Australian platform that builds a community around every event it lists. You've been running events far longer than I have, and I'd love to learn from that.",
     'If you could change one thing about selling tickets, what would it be?',

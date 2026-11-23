@@ -29,7 +29,7 @@ import {
 const ORIGIN = 'https://www.eventlinqs.com.au'
 const UNSUB = `${ORIGIN}/unsubscribe/outreach?t=00000000-0000-0000-0000-000000000000`
 const PHOTO = `${ORIGIN}/photos/00000000-0000-0000-0000-000000000000/00000000000000000000000000000000`
-const MON_23_7AM = new Date('2026-11-22T20:00:00Z') // Monday 23 November, 07:00 in Melbourne: law 44's window
+const APPROVAL = `${ORIGIN}/photos/00000000-0000-0000-0000-000000000000/11111111111111111111111111111111`
 const TOTS: LifecycleFacts = {
   organiserName: 'Geelong Gallery',
   personName: null,
@@ -43,6 +43,8 @@ const TOTS: LifecycleFacts = {
     bookingUrl: 'https://events.humanitix.com/gallery-tots-december',
   },
   photoLink: PHOTO,
+  // The approval page the approved permission request names; the caller supplies it (lifecycle-letters.ts).
+  approvalLink: APPROVAL,
   origin: ORIGIN,
 }
 const CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://www.geelonggallery.org.au/contact', noMarketingStatementChecked: true }
@@ -71,22 +73,32 @@ function gate(key: LifecycleKey, subject: string | null, body: string) {
 }
 
 describe("law 49's two letters, filled with a real night", () => {
-  it('PERM asks for the photo on their seller page, with the one tap link, and passes every rule and the gateway', () => {
-    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS, MON_23_7AM), UNSUB)
+  // Version 2, the communication standard (Lawal, 20:45 of 22 November 2026; the PM's 20:47, items 1 to 4): the approved
+  // permission request, no pleasantry, no countdown, no claim link and no "listed free".
+  it('PERM is the approved permission request, the image named on their seller page, and passes every rule and the gateway', () => {
+    const r = renderTemplate(LIFECYCLE_PERM, lifecycleFields(TOTS), UNSUB)
     expect(r.heldBecause).toEqual([])
-    expect(r.subject).toBe('Your Gallery Tots listing on EventLinqs: may we use your photo?')
-    expect(r.body).toContain("Gallery Tots on Friday 11 December is now listed free on EventLinqs, the what's on guide for Geelong: https://www.eventlinqs.com.au/events/gallery-tots-geelong-gallery-2026-12-11")
-    expect(r.body).toContain("With 18 days to go, we'd like to show it properly")
-    expect(r.body).toContain('the one on your Humanitix page.')
-    expect(r.body).toContain(`Could you reply yes to let us use it for your listing and its promotion? If you'd rather use a different photo, just send it, or add it here in one tap: ${PHOTO}`)
-    expect(r.body.startsWith('Hi Geelong Gallery team,\n\nI hope you\'re well.\n\n')).toBe(true)
+    expect(r.subject).toBe('Promoting Gallery Tots on EventLinqs')
+    expect(r.content).toBe(
+      [
+        'Hi Geelong Gallery team,',
+        "We're featuring upcoming Geelong events on EventLinqs and have included Gallery Tots on Friday 11 December.",
+        "We'd love to help more people discover the event through our Instagram, Facebook, and upcoming event guides.",
+        'Could you please confirm whether we have permission to use the event image displayed on your Humanitix page for this promotion?',
+        `You can review the image and approve its use here: ${APPROVAL}.`,
+        'If another party owns the image, please let us know so we can contact the appropriate rights holder.',
+        'Thanks for your time.',
+      ].join('\n\n'),
+    )
+    expect(r.body).not.toMatch(/days to go|listed free|claim|\/events\//i)
     expect(gate('lifecycle_perm', r.subject, r.body)).toEqual([])
   })
 
   it('ACQ offers the free listing on the clock, names only the guide, carries no photo link, and passes every rule and the gateway', () => {
-    const r = renderTemplate(LIFECYCLE_ACQ, lifecycleFields(TOTS, MON_23_7AM), UNSUB)
+    const r = renderTemplate(LIFECYCLE_ACQ, lifecycleFields(TOTS), UNSUB)
     expect(r.heldBecause).toEqual([])
-    expect(r.subject).toBe("18 days to Gallery Tots: let's fill it")
+    expect(r.subject).toBe("Gallery Tots on Friday 11 December: let's fill it")
+    expect(r.body.startsWith("Hi Geelong Gallery team,\n\nI'm Lawal, founder of EventLinqs, the what's on guide for Geelong. Gallery Tots on Friday 11 December is already listed with us: ")).toBe(true)
     expect(r.body).toContain('on the Geelong guide.')
     expect(r.body).not.toContain('/photos/')
     expect(r.body).not.toMatch(/newsletter|Instagram|Facebook/)
@@ -94,13 +106,16 @@ describe("law 49's two letters, filled with a real night", () => {
   })
 
   it('a fact we do not hold leaves the draft held, never a stand in', () => {
-    const noPage = lifecycleFields({ ...TOTS, night: { ...TOTS.night, bookingUrl: 'https://tickets.example-seller.net/x' } }, MON_23_7AM)
+    const noPage = lifecycleFields({ ...TOTS, night: { ...TOTS.night, bookingUrl: 'https://tickets.example-seller.net/x' } })
     expect(noPage['photo source']).toBeNull()
     expect(renderTemplate(LIFECYCLE_PERM, noPage, UNSUB).heldBecause.join(' ')).toContain('[photo source]')
-    const noLink = lifecycleFields({ ...TOTS, photoLink: null }, MON_23_7AM)
-    expect(renderTemplate(LIFECYCLE_PERM, noLink, UNSUB).heldBecause.join(' ')).toContain('[photo link]')
-    const noCity = lifecycleFields({ ...TOTS, night: { ...TOTS.night, citySlug: null } }, MON_23_7AM)
+    // The approval link is the caller's to supply: without it the request is held, never sent with the upload page in its place.
+    for (const approvalLink of [null, undefined, ' ']) {
+      expect(renderTemplate(LIFECYCLE_PERM, lifecycleFields({ ...TOTS, approvalLink }), UNSUB).heldBecause.join(' ')).toContain('[approval link]')
+    }
+    const noCity = lifecycleFields({ ...TOTS, night: { ...TOTS.night, citySlug: null } })
     expect(renderTemplate(LIFECYCLE_ACQ, noCity, UNSUB).heldBecause.join(' ')).toContain('[city]')
+    expect(renderTemplate(LIFECYCLE_PERM, noCity, UNSUB).heldBecause.join(' ')).toContain('[city]')
   })
 
   it('the seller is named by its own name, their own site as their website, anything else not at all', () => {
@@ -120,7 +135,7 @@ describe("law 49's two letters, filled with a real night", () => {
       expect(l.source).toContain("Yep, good work. We can perfect everything later. Good work, just finish it up.")
       expect(`${l.subject}\n${l.body}`).not.toMatch(/[\u2013\u2014]| - /)
     }
-    expect(LIFECYCLE_PERM.source).toContain("13:01")
+    for (const l of LIFECYCLE_LETTERS) expect(l.source).toContain('COMMS-STANDARD-REVIEW-22NOV.md')
     expect(isLifecycleKey('segment_a_first')).toBe(false)
   })
 })

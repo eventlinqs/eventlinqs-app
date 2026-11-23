@@ -18,9 +18,9 @@ const POLICY: VoicePolicy = readVoicePolicy()
 
 const SIG = ['Lawal Adams', 'Founder, EventLinqs', 'eventlinqs.com.au', 'ABN 30 837 447 587', 'Geelong, VIC, Australia']
 const OPT = "If you'd rather I didn't write again, just reply and say so, or unsubscribe here: https://www.eventlinqs.com.au/unsubscribe/outreach"
+// Written to the communication standard (Lawal, 20:45 of 22 November 2026): "Hi <name>," then straight into the purpose.
 const FIRST = [
   "Hi Her Majesty's Theatre Ballarat team,",
-  "I hope you're well.",
   'Your events are already listed on EventLinqs at no cost to you, each with a button straight to your own booking page. So far 6 people have opened their pages on EventLinqs.',
   "We'd love to help more people find Ian Moss and Troy Cassar-Daley: Together Alone Tour on Saturday 28 November: https://www.eventlinqs.com.au/events/ian-moss-and-troy-cassar-daley-together-alone-tour-her-majesty-s-theatre-ballarat-2026-11-28",
   "Send me one image of your next show you're happy for us to use, and I'll add it for you. Your tickets stay exactly where they are.",
@@ -39,7 +39,7 @@ const REPLY: VoiceMessage = {
   subject: 'Re: Your festival, could I ask your advice?',
   greetingName: 'Sam',
   threadRef: 'conv-1',
-  body: "Hi Sam,\n\nI hope you're well, and that the festival preparations are going smoothly.\n\nHere's your page on EventLinqs: https://www.eventlinqs.com.au/events/x\n\nKind regards,\n\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au",
+  body: "Hi Sam,\n\nHere's your page on EventLinqs: https://www.eventlinqs.com.au/events/x\n\nKind regards,\n\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au",
 }
 const has = (r: string[], s: string) => r.some((x) => x.includes(s))
 
@@ -68,8 +68,11 @@ describe('validate, as the gateway', () => {
   it('01: no greeting is blocked', () => {
     expect(has(voiceProblems({ ...REPLY, body: REPLY.body.replace('Hi Sam,\n\n', '') }, POLICY), 'greeting')).toBe(true)
   })
-  it('01b: no warm second line is blocked', () => {
-    expect(has(voiceProblems({ ...REPLY, body: REPLY.body.replace("I hope you're well, and that the festival preparations are going smoothly.", "I'm sorry this took longer.") }, POLICY), 'warmly')).toBe(true)
+  // The communication standard (Lawal, 20:45 of 22 November 2026; the PM's 20:47, item 1): no stock pleasantry is asked.
+  it('01b: no warm second line is needed: straight into the purpose passes, and a thank you too', () => {
+    expect(voiceProblems(REPLY, POLICY)).toEqual([])
+    expect(voiceProblems({ ...REPLY, body: REPLY.body.replace("Here's your page", "Thank you for writing back. Here's your page") }, POLICY)).toEqual([])
+    expect(voiceProblems(EMAIL, POLICY)).toEqual([])
   })
   it('02: no sign off is blocked', () => {
     expect(has(voiceProblems({ ...REPLY, body: REPLY.body.replace('Kind regards,', 'Cheers,') }, POLICY), 'Kind regards')).toBe(true)
@@ -155,8 +158,8 @@ describe("the standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 
   it('the advice subject is refused for an offer led one', () => {
     expect(has(voiceProblems({ ...EMAIL, subject: 'Your next show, could I ask your advice?' }, POLICY), 'offer led subject')).toBe(true)
   })
-  it('one call to action only', () => {
-    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace('Could you reply', 'If you could change one thing about selling tickets, what would it be? Could you reply') }, POLICY), 'one call to action')).toBe(true)
+  it('calls to action and questions are not counted (no numerical writing rule: Lawal, 20:45 of 22 November 2026)', () => {
+    expect(voiceProblems({ ...EMAIL, body: FIRST.replace('Could you reply', 'If you could change one thing about selling tickets, what would it be? Could you reply') }, POLICY)).toEqual([])
   })
   it('no internal word reaches a customer', () => {
     expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace('So far 6 people', "We read your site's robots.txt and our feed. So far 6 people") }, POLICY), 'internal word')).toBe(true)
@@ -172,8 +175,8 @@ describe("the standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 
     expect(has(voiceProblems({ ...EMAIL, consent: undefined }, POLICY), 'consent')).toBe(true)
     expect(has(voiceProblems({ ...EMAIL, consent: { ...CONSENT, noMarketingStatementChecked: false } }, POLICY), 'consent')).toBe(true)
   })
-  it("the warm line is its own paragraph (Lawal's rule 2)", () => {
-    expect(has(voiceProblems({ ...EMAIL, body: FIRST.replace("I hope you're well.\n\nYour events", "I hope you're well. Your events") }, POLICY), 'own paragraph')).toBe(true)
+  it('no warm line and no paragraph rule: the topic may follow the greeting at once (Lawal, 20:45 of 22 November 2026)', () => {
+    expect(voiceProblems({ ...EMAIL, body: FIRST.replace("team,\n\nYour events", 'team,\nYour events') }, POLICY)).toEqual([])
   })
   it('a reply or a service message is not held to the outreach checks', () => {
     expect(voiceProblems(REPLY, POLICY)).toEqual([])
@@ -185,7 +188,6 @@ describe("the standard's machine checks (EL-COMMS-STANDARD-LOCKED-17NOV.md Part 
 // a night is named.
 const ACQ_BODY = [
   'Hi Hop Temple team,',
-  "I hope you're well.",
   "I'd love to help more people in Ballarat find Hop Temple Country Night on Friday 4 December.",
   "We can list your events at no cost to you: we build the listing ourselves, put it in our Ballarat guide, and give it a button straight to your own booking page. Your tickets stay exactly where they are.",
   "Would you like me to list Hop Temple Country Night? Just reply yes, and I'll send you the link to look over before it goes live.",

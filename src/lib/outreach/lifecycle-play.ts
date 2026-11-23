@@ -68,10 +68,11 @@ export async function draftLifecycleLetter(
   },
 ): Promise<LifecycleDraft> {
   if (!inBusinessHours(input.scheduledFor, 'Australia/Melbourne')) {
-    return { state: 'not drafted', why: "outside law 44's window: drafted in the hour it goes, so its days to go are that day's" }
+    return { state: 'not drafted', why: "outside law 44's window: drafted in the hour it goes, so the clock that judges it is that day's" }
   }
   // The clock is read at the minute the letter lands, not the minute it is drafted: a letter drafted the night before
-  // (lifecycleSlotBase) is judged on the morning's days to go, as its words already count them (lifecycleFields).
+  // (lifecycleSlotBase) is judged on the morning's clock. Its words name the night's day and date from the record, never
+  // a count of days (lifecycleFields; the communication standard, Lawal's 20:45 of 22 November 2026).
   const read = await readLifecycleFacts(db, { key: input.key, playId: input.play.id, contactId: input.contactId, now: input.scheduledFor, origin: input.origin })
   if (read.state !== 'read') return { state: 'not drafted', why: read.why }
 
@@ -83,7 +84,7 @@ export async function draftLifecycleLetter(
     purpose: 'cadence',
     step: 1,
     playId: input.play.id,
-    extraFields: lifecycleFields(read.facts, input.scheduledFor),
+    extraFields: lifecycleFields(read.facts),
     // The night it is about: law 49's PERM and ACQ about one night are two letters, each once (migration 20261123020001).
     contextKey: contextKeys.event(read.eventId),
     inReplyTo: null,

@@ -60,8 +60,10 @@ let standard
 try {
   const s = JSON.parse(readFileSync(STANDARD, 'utf8'))
   const list = (a) => Array.isArray(a) && a.length > 0 && a.every((x) => typeof x === 'string' && x.length > 0)
-  if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.actions) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
-  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, actions: s.actions, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}) }
+  // 'actions' is no longer read: the one call to action count was removed with the other numerical rules (Lawal, 20:45 of
+  // 22 November 2026; COMMS-STANDARD-REVIEW-22NOV.md). standard.json keeps the list only for older trees' generators.
+  if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}) }
 } catch (e) {
   unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
 }

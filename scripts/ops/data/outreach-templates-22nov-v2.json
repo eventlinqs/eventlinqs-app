@@ -1,0 +1,33 @@
+{
+  "source": "Lawal, 20:45 of 22 November 2026: he adopted C:\\dev\\START-16OCT\\COMMS-STANDARD-REVIEW-22NOV.md ('follow this A to Z', 'change everything, even the greetings'); the PM's 20:47 order, item 1: no stock pleasantries ('I hope you're well' goes everywhere)",
+  "readings": "Version 2 of who_looks_after_events, anything_coming_up and acq_first: each is its newest stored text word for word with only the pleasantry taken out ('I hope you're all well.', 'I hope the [nights] are going well.', 'I hope you're well.'), so each opens 'Hi <name>,' and goes straight into its purpose. acq_first v1 is production's text as Lawal approved it (C:\\dev\\comms-gateway\\standing-approvals.json); its v2 there is this text. Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-22nov-v2.json --version 2, after reading that version 2 of none of these keys is already stored (the insert does nothing on a conflict).",
+  "templates": [
+    {
+      "key": "who_looks_after_events",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 1,
+      "message": "1b (version 2, no pleasantry)",
+      "subject": "[Night type] at [venue]",
+      "body": "Hi [venue] team,\nWho's the best person to talk to about your [night]? We'd like to feature it in EventLinqs' [city] picks, and I'd like it to reach the right person.\nKind regards,\n[signature]\n\n[unsubscribe]"
+    },
+    {
+      "key": "anything_coming_up",
+      "channel": "email",
+      "purpose": "relationship",
+      "step": null,
+      "message": "9 (version 2, no pleasantry)",
+      "subject": "Anything coming up at [venue]?",
+      "body": "Hi [first name],\nI don't have anything from [venue] on the guide for the next month. Anything coming up you'd like listed? Add it here: [link], or reply with the details and I'll set it up.\nKind regards,\n[signature]\n\n[unsubscribe]"
+    },
+    {
+      "key": "acq_first",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 1,
+      "message": "acq_first (version 2, no pleasantry)",
+      "subject": "Complimentary EventLinqs listing for [organiser]",
+      "body": "Hi [organiser] team,\n\nI came across [organiser] and thought your [what they run, or events] would be a great addition to our [city] events guide.\n\nYou can see the guide here: eventlinqs.com.au/city/[city]\n\nWe'd be happy to prepare a complimentary listing for your next event, with a direct link to your existing booking page. Your ticketing arrangements stay exactly as they are, and we'll handle the setup.\n\nWould you be happy for us to prepare a listing and send it to you for review?\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]"
+    }
+  ]
+}

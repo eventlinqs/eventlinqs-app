@@ -39,7 +39,6 @@ export interface VoicePolicy {
 export interface VoiceStandard {
   readonly outreachCategories: readonly VoiceCategory[]
   readonly offerSubjects: readonly string[]
-  readonly actions: readonly string[]
   readonly internalWords: readonly string[]
   readonly unprovedClaims: readonly string[]
   /**
@@ -96,17 +95,18 @@ export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   }
   const s = p.standard
   const standardWhole =
-    Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.actions) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead)
+    Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead)
   if (!standardWhole) throw new Error('POLICY_UNAVAILABLE: the communication standard is missing from the voice policy; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   return p as VoicePolicy
 }
 
-const WARM: Record<VoiceCategory, readonly string[]> = {
-  first_contact: ["I hope you're well", "I hope you're all well"],
-  follow_up: ["I hope you're well", "I hope you're all well"],
-  reply: ["I hope you're well", "I hope you're all well", 'Thank you'],
-  service: ["I hope you're well", "I hope you're all well", 'Thank you'],
-}
+/**
+ * THE COMMUNICATION STANDARD (Lawal, 20:45 of 22 November 2026: he adopted C:\dev\START-16OCT\COMMS-STANDARD-REVIEW-22NOV.md,
+ * "follow this A to Z", "change everything, even the greetings"; the PM's 20:47, item 1). No stock pleasantry is asked
+ * of any message: "Hi <name>," then straight into the purpose. The warm second line, its paragraph rule and the count of
+ * calls to action were style rules and are gone, here as in gateway.py; every check of law or fact stays.
+ */
+const CATEGORIES: readonly VoiceCategory[] = ['first_contact', 'follow_up', 'reply', 'service']
 const EMAIL = /^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/
 const URL_G = /https?:\/\/[^\s<>"]+/g
 const OPT_OUT = "If you'd rather I didn't write again"
@@ -168,7 +168,7 @@ export function wordsProblems(body: string, policy: VoicePolicy): string[] {
 export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] {
   const r: string[] = []
   const cat = msg.category
-  if (!(cat in WARM)) return [`unknown category ${String(cat)}`]
+  if (!CATEGORIES.includes(cat)) return [`unknown category ${String(cat)}`]
   const isEmail = msg.channel === 'email'
   const to = msg.to ?? []
   if (isEmail) {
@@ -194,7 +194,6 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
   if (!gname) r.push('greeting_name missing: the recipient must be verified before drafting')
   if (!/^Hi [^,]+,$/.test(L[0])) r.push(`first line must be the greeting "Hi <name>," on its own line; found ${JSON.stringify(L[0].slice(0, 60))}`)
   else if (gname && L[0] !== `Hi ${gname},`) r.push(`greeting names ${JSON.stringify(L[0].slice(3, -1))} but the verified recipient is ${JSON.stringify(gname)}`)
-  if (L.length > 1 && !WARM[cat].some((w) => L[1].startsWith(w))) r.push(`second line must open warmly (${WARM[cat].join(' / ')}); found ${JSON.stringify(L[1].slice(0, 60))}`)
 
   const k = L.indexOf('Kind regards,')
   let bodyBefore: string
@@ -255,27 +254,20 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
     if (!to.some((a) => a.toLowerCase() === p.recipient.toLowerCase())) continue
     for (const pat of p.neverAsk) if (new RegExp(pat, 'i').test(own)) r.push(`asks again for permission already given: ${p.topic} (${p.given})`)
   }
-  return [...r, ...standardProblems(msg, policy.standard, own, bodyBefore)]
+  return [...r, ...standardProblems(msg, policy.standard, bodyBefore)]
 }
 
 const dayOf = (d: string | undefined) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? Date.parse(`${d}T00:00:00Z`) : Number.NaN)
 
 /**
- * gateway.py standard_checks, line for line: Lawal's paragraph rule, then on a first letter or a follow up one call to
- * action, no internal word, no unproved claim, the consent basis, and the timing rule (3 or more days before its night).
+ * gateway.py standard_checks, line for line: on a first letter or a follow up, no internal word, no unproved claim, the
+ * consent basis, and the timing rule (3 or more days before its night). Lawal's paragraph rule and the one call to
+ * action count were removed on 22 November 2026 (his 20:45), in both.
  */
-function standardProblems(msg: VoiceMessage, std: VoiceStandard, own: string, bodyBefore: string): string[] {
+function standardProblems(msg: VoiceMessage, std: VoiceStandard, bodyBefore: string): string[] {
   const r: string[] = []
   const cat = msg.category
   if (!std.outreachCategories.includes(cat)) return r
-  const paras = own.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean)
-  if (paras.length > 1 && !WARM[cat].includes(paras[1]) && !WARM[cat].includes(paras[1].replace(/\.+$/, ''))) {
-    r.push(`the warm line is its own paragraph, and the topic starts in the next (Lawal's rule 2); found ${JSON.stringify(paras[1].slice(0, 60))}`)
-  }
-  const low = bodyBefore.toLowerCase()
-  const acts = std.actions.filter((a) => low.includes(a))
-  const asks = bodyBefore.split(/(?<=[.?!])\s+/).filter((x) => x.trim().endsWith('?'))
-  if (acts.length > 2 || asks.length > 1 || (acts.includes('what would it be') && acts.length > 1)) r.push(`one call to action only (standard rule 4): found ${JSON.stringify(acts.length > 0 ? acts : asks)}`)
   for (const pat of std.internalWords) {
     const m = bodyBefore.match(new RegExp(pat, 'i'))
     if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)

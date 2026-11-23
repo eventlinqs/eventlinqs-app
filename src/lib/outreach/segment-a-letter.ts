@@ -41,8 +41,9 @@ export const SEGMENT_A_FIRST: SegmentALetter = {
   subject: 'Helping more people find [event] on [event date]',
   body: [
     P(
+      // "Hi <name>," then straight into the purpose: no stock pleasantry (Lawal, 20:45 of 22 November 2026, adopting
+      // COMMS-STANDARD-REVIEW-22NOV.md, "change everything, even the greetings"; the PM's 20:47, item 1).
       'Hi [greeting],',
-      "I hope you're well.",
       '[listed line]',
       // VERSION 2, today-v2's own words (Lawal's APPROVE PERM of 18 November 2026, 13:46; the PM's 20:40 of 19 November):
       // version 1's founder sentence is out of every message (Lawal, 18 November 2026, 11:31). Version 1 stays stored, retired.
@@ -63,7 +64,7 @@ export const SEGMENT_A_DAY4: SegmentALetter = {
   purpose: 'cadence',
   step: 2,
   subject: 'Re: [thread subject]',
-  body: [P('Hi [greeting],', "I hope you're well.", '[night line]', '[photo why line]', 'Reply with one image, or add it here: [photo link]'), REPLY_CLOSE].join('\n\n'),
+  body: [P('Hi [greeting],', '[night line]', '[photo why line]', 'Reply with one image, or add it here: [photo link]'), REPLY_CLOSE].join('\n\n'),
   source: `${SOURCE}; standard-v1 msg-2`,
 }
 
@@ -73,7 +74,7 @@ export const SEGMENT_A_DAY10: SegmentALetter = {
   purpose: 'cadence',
   step: 3,
   subject: 'Re: [thread subject]',
-  body: [P('Hi [greeting],', "I hope you're well.", 'A quick note on [event] on [event day]. [still line]', "Here's the listing: [event link]"), REPLY_CLOSE].join('\n\n'),
+  body: [P('Hi [greeting],', 'A quick note on [event] on [event day]. [still line]', "Here's the listing: [event link]"), REPLY_CLOSE].join('\n\n'),
   source: `${SOURCE}; standard-v1 msg-3`,
 }
 

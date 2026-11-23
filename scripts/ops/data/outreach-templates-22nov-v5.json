@@ -1,0 +1,15 @@
+{
+  "source": "Lawal, 20:45 of 22 November 2026: he adopted C:\\dev\\START-16OCT\\COMMS-STANDARD-REVIEW-22NOV.md ('follow this A to Z', 'change everything, even the greetings'); the PM's 20:47 order, item 1: no stock pleasantries ('I hope you're well' goes everywhere)",
+  "readings": "Version 5 of first_invitation: version 3 (variant B) word for word with only 'I hope you're all well. ' taken out. Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-22nov-v5.json --version 5.",
+  "templates": [
+    {
+      "key": "first_invitation",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 1,
+      "message": "1 (version 5, variant B, no pleasantry)",
+      "subject": "[Venue]'s [nights], could I ask you something?",
+      "body": "Hi [first name],\n[true line]\nYour [nights] are already on EventLinqs' [city] guide. Claim your listing and each new one can list itself every week, with your own ticket links, your own posters and photos, and a ready-to-share post and caption whenever one is featured.\nHere's your listing: [claim link]. Claim it in two minutes and it's yours to update. It's free, and you keep your own booking setup.\nWould that work for you?\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}
