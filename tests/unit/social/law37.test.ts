@@ -8,7 +8,9 @@ import { pieceQuality } from '@/lib/social/piece-quality'
 /*
  * LAW 37, IMAGE FIRST, ORGANIC, NEVER AN ADVERT (Lawal, 20 November 2026, 11:21, locked 11:24; the PM's 11:28, train AI).
  * The photograph IS the post: whole, at its own shape, nothing printed on it; every earlier family off and refused by the
- * one validation pipeline. The drill is TODAY'S LIVE AMCF CARD, the boxed card that posted at 07:00 and drew nothing.
+ * one validation pipeline. LAW 37 REVISED (Lawal, 23 November 2026, 13:41, CREATIVE-POLICY-LAW37-REVISED-23NOV.md): original
+ * EventLinqs artwork is a first class format beside it, and in the pipeline that is only ever an approved file, posted as it
+ * is (the AMCF card of 20 November is one: an approved file, never a drawn family).
  */
 
 // The source photograph for the drawing tests: one flat colour, so anything drawn over it shows.
@@ -29,17 +31,35 @@ const photo = (line: string | null = null): Extract<Slide, { t: 'photo' }> => ({
   line,
 })
 
-describe('law 37: only a permitted photograph shown whole', () => {
+describe('law 37 as revised: a permitted photograph shown whole, or an approved file of designed artwork', () => {
   it('the earlier families are off', () => {
     expect(EARLIER_FAMILIES_ON).toBe(false)
   })
 
-  it("refuses today's live AMCF card, and every earlier slide", () => {
-    expect(law37Refusal([amcfLiveCard])).toBe(
-      "It is not in law 37's format: slide 1 is an earlier design (file), never posted again; only a permitted photograph shown whole posts.",
+  const ask = { t: 'ask', composition: 'close', count: 3, three: [] } as Slide
+  const cover = { t: 'week_cover', composition: 'contents_cover', range: '', lines: ['', '', ''], draws: null, line: '', photoEventId: null, photo: null, credit: null } as Slide
+  const brand = { t: 'brand', composition: 'close', headline: 'Say yes', line: 'x', action: 'Go', photo: null, credit: null } as Slide
+
+  it('refuses every older drawn family, alone or beside a photograph', () => {
+    expect(law37Refusal([ask])).toBe(
+      "It is not in law 37's format: slide 1 is an earlier design (ask), never posted again; only a permitted photograph shown whole or an approved file of designed artwork posts.",
     )
-    expect(law37Refusal([photo(), { t: 'ask', composition: 'close', count: 3, three: [] } as Slide, amcfLiveCard])).toMatch(/^It is not in law 37's format: slides 2, 3 are an earlier design \(ask, file\)/)
+    expect(law37Refusal([photo(), ask, cover, amcfLiveCard])).toMatch(/^It is not in law 37's format: slides 2, 3 are an earlier design \(ask, week_cover\)/)
+    expect(law37Refusal([brand])).toMatch(/slide 1 is an earlier design \(brand\)/)
     expect(law37Refusal([])).toMatch(/no slide/)
+  })
+
+  it("passes designed artwork: an approved file at its own address (Lawal's 13:41 of 23 November 2026)", () => {
+    expect(law37Refusal([amcfLiveCard])).toBeNull()
+    const set = [0, 1].map((i) => ({ ...(amcfLiveCard as object), url: `${APPROVED_FILE_PREFIX}comedy-weekend-${i === 0 ? 'cover' : 'shows'}-2026-11-27.jpg` }) as Slide)
+    expect(law37Refusal(set)).toBeNull()
+    expect(law37Refusal([photo(), ...set])).toBeNull()
+  })
+
+  it('a file anywhere but its approved address is still refused, as designed artwork is only ever an approved file', () => {
+    for (const url of ['https://example.com/social/approved/comedy.jpg', `${APPROVED_FILE_PREFIX}../comedy.jpg`, `${APPROVED_FILE_PREFIX}Comedy.PNG`, 'https://www.eventlinqs.com.au/social/stand-ins/crowd.jpg']) {
+      expect(law37Refusal([{ ...(amcfLiveCard as object), url } as Slide]), url).toMatch(/slide 1 is an earlier design \(file\)/)
+    }
   })
 
   it('passes a piece of whole photographs', () => {
@@ -47,9 +67,10 @@ describe('law 37: only a permitted photograph shown whole', () => {
     expect(law37Refusal([photo(), photo()])).toBeNull()
   })
 
-  it('the one validation pipeline holds the live AMCF card with the [law37] class', () => {
-    const issues = pieceQuality({ slides: [amcfLiveCard], caption: 'AMCF is on at Fed Square.', madeAt: '2026-11-20T00:00:00.000Z', nights: new Map(), now: new Date('2026-11-20T03:00:00Z') })
-    expect(issues.some((i) => i.startsWith("[law37] It is not in law 37's format"))).toBe(true)
+  it('the one validation pipeline holds an older drawn family with the [law37] class, and never an approved file', () => {
+    const at = { caption: 'AMCF is on at Fed Square.', madeAt: '2026-11-20T00:00:00.000Z', nights: new Map(), now: new Date('2026-11-20T03:00:00Z') }
+    expect(pieceQuality({ ...at, slides: [ask] }).some((i) => i.startsWith("[law37] It is not in law 37's format"))).toBe(true)
+    expect(pieceQuality({ ...at, slides: [amcfLiveCard] }).some((i) => i.startsWith('[law37]'))).toBe(false)
   })
 })
 

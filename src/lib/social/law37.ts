@@ -12,8 +12,18 @@
  * OFF behind EARLIER_FAMILIES_ON (law 13: never deleted, so it can return only by Lawal's word): while it is false no
  * piece any of whose slides is not a whole photograph is approved, scheduled or published, through the one validation
  * pipeline (piece-quality.ts pieceQuality), and the guard law37-only.mjs holds that.
+ *
+ * LAW 37 REVISED, THE CREATIVE POLICY (Lawal, 23 November 2026, 13:41, verbatim at
+ * C:\dev\START-16OCT\CREATIVE-POLICY-LAW37-REVISED-23NOV.md): "3. Original EventLinqs artwork. Allow professional
+ * typography, headlines, EventLinqs branding, editorial layouts and clear CTAs. These are legitimate creative formats, not
+ * exceptions that should be treated as inherently inferior." and "2. Official organiser posters. Preserve unchanged when
+ * required by the organizer's permission." So original EventLinqs artwork is a first class format beside the photograph,
+ * and an organiser's poster stays whole. In the one pipeline that is DESIGNED ARTWORK: an approved file (campaign.ts, the
+ * 'file' slide), a finished image a person approved, posted exactly as it is and never drawn again, at its own address
+ * under /social/approved/ on www (isApprovedFileUrl). Every other slide kind (the boxed cards, wordmark bands, badges and
+ * text only cards the planner drew) is still an earlier family, off behind EARLIER_FAMILIES_ON and refused here.
  */
-import type { Slide } from './campaign'
+import { isApprovedFileUrl, type Slide } from './campaign'
 
 /** Law 13: the earlier families stay in the code, off. Only Lawal's word turns them back on. */
 export const EARLIER_FAMILIES_ON = false
@@ -21,17 +31,35 @@ export const EARLIER_FAMILIES_ON = false
 /** The one slide of law 37's format. */
 export const LAW37_SLIDE = 'photo' as const
 
-/** Pure: why a piece's slides are not in law 37's format, or null when every slide is a permitted photograph shown whole. */
-export function law37Refusal(slides: readonly Pick<Slide, 't'>[]): string | null {
+/** The creative policy's designed artwork (Lawal's 13:41 of 23 November 2026): an approved file, posted as it is. */
+export const DESIGNED_ARTWORK_SLIDE = 'file' as const
+
+/** A slide as the policy reads it: its kind, and an approved file's own address. */
+export type PolicySlide = Pick<Slide, 't'> & { readonly url?: unknown }
+
+/**
+ * Pure: true for a slide the creative policy posts: a permitted photograph shown whole (law 37), or designed artwork, which
+ * is only ever an approved file at its own address under /social/approved/. Nothing else.
+ */
+export function inPolicyFormat(s: PolicySlide): boolean {
+  if (s.t === LAW37_SLIDE) return true
+  return s.t === DESIGNED_ARTWORK_SLIDE && typeof s.url === 'string' && isApprovedFileUrl(s.url)
+}
+
+/**
+ * Pure: why a piece's slides are not in the policy's format, or null when every slide is a permitted photograph shown whole
+ * or an approved file of designed artwork.
+ */
+export function law37Refusal(slides: readonly PolicySlide[]): string | null {
   if (EARLIER_FAMILIES_ON) return null
-  if (slides.length === 0) return "It has no slide, and law 37 posts only a permitted photograph shown whole."
-  const other = slides.map((s, i) => ({ t: s.t, n: i + 1 })).filter((s) => s.t !== LAW37_SLIDE)
+  if (slides.length === 0) return 'It has no slide, and the creative policy posts only a permitted photograph shown whole or an approved file of designed artwork.'
+  const other = slides.map((s, i) => ({ s, t: s.t, n: i + 1 })).filter(({ s }) => !inPolicyFormat(s))
   if (other.length === 0) return null
   const which = other.map((s) => s.n).join(', ')
   const kinds = [...new Set(other.map((s) => s.t))].join(', ')
   return other.length === 1
-    ? `It is not in law 37's format: slide ${which} is an earlier design (${kinds}), never posted again; only a permitted photograph shown whole posts.`
-    : `It is not in law 37's format: slides ${which} are an earlier design (${kinds}), never posted again; only a permitted photograph shown whole posts.`
+    ? `It is not in law 37's format: slide ${which} is an earlier design (${kinds}), never posted again; only a permitted photograph shown whole or an approved file of designed artwork posts.`
+    : `It is not in law 37's format: slides ${which} are an earlier design (${kinds}), never posted again; only a permitted photograph shown whole or an approved file of designed artwork posts.`
 }
 
 /** Instagram's feed bounds for a single image, 4:5 to 1.91:1, and its widest accepted width (Meta's ig-user/media reference). */
