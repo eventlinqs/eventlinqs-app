@@ -133,7 +133,8 @@ describe('the source asks of 23 November 2026', () => {
 })
 
 describe('the loader (scripts/ops/outreach-source-asks.ts)', () => {
-  const src = readFileSync('scripts/ops/outreach-source-asks.ts', 'utf8')
+  // The source as git stores it (LF): a Windows checkout writes CRLF, and the joins below are matched across a line break.
+  const src = readFileSync('scripts/ops/outreach-source-asks.ts', 'utf8').replace(/\r\n/g, '\n')
   it('runs on TEST only, and writes the production files without connecting', () => {
     expect(src).toContain("const TEST_REF = 'vkapkibzokmfaxqogypq'")
     expect(src.match(/api\.supabase\.com\/v1\/projects\/\$\{([A-Z_]+)\}/g)).toEqual(['api.supabase.com/v1/projects/${TEST_REF}'])
