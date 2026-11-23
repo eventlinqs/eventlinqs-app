@@ -167,6 +167,14 @@
       "express_consent"
     ],
     "minDaysAhead": 3,
+    "stockPleasantries": [
+      "\\bI hope you['’]?(re| are)( all)? (well|keeping well|doing well)\\b",
+      "\\bI hope (all is well|everything is well|this (email |message |note |letter )?finds you( all)?( well)?)",
+      "\\bhope (all is well|this finds you)\\b",
+      "\\b(I )?trust (you['’]re|you are|this finds you)( all)? well\\b",
+      "\\bI hope the [^.?!\\n]{1,60} (is|are) going well\\b",
+      "\\bI hope you['’]?(ve| have)( been)? (had|having) a (great|good|lovely|nice|wonderful) (week|weekend|day)\\b"
+    ],
     "acqFirstSubjects": [
       "^.+: more people, at no cost to you$",
       "^Free listing for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
