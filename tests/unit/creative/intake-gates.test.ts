@@ -226,7 +226,7 @@ describe('the creative intake gates', () => {
     })
 
     it('hold a long dash, a second exclamation mark, the positioning words and a caption that does not name the seller', () => {
-      const dash = FB.replace('breathe at', 'breathe — at')
+      const dash = FB.replace('breathe at', `breathe ${String.fromCharCode(0x2014)} at`)
       expect(faults(record({ captions: { instagram: IG, facebook: dash } })).join('\n')).toContain('long dash')
       const pos = FB.replace('🧘 Two hours', '🧘 The ticketing platform for two hours')
       expect(faults(record({ captions: { instagram: IG, facebook: pos } })).join('\n')).toContain('"ticketing platform"; EventLinqs is never called that')

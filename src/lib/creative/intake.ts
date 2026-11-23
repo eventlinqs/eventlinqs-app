@@ -165,6 +165,9 @@ export function intakeOfRow(row: Record<string, unknown>): IntakeRecord {
 
 /* ------------------------------------------------------------------ the database's caption rule, as words */
 
+/** The en dash, the em dash and the exclamation mark the database refuses, the dashes named by code point (words.ts does the same). */
+const REVISION_REFUSES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}!]`)
+
 /**
  * THE CAPTION THE DATABASE ENFORCES on social_piece_revisions.caption (20261028141001_social_campaigns.sql): between 1 and
  * 2,200 characters once trimmed, and never an en dash, an em dash or an exclamation mark. A record whose revision caption
@@ -173,7 +176,7 @@ export function intakeOfRow(row: Record<string, unknown>): IntakeRecord {
 export function revisionCaptionRefusal(caption: string): string | null {
   const length = caption.trim().length
   if (length < 1 || length > 2200) return `its caption runs to ${length} characters once trimmed; the database keeps 1 to 2,200`
-  if (/[–—!]/.test(caption)) return 'its caption carries an en dash, an em dash or an exclamation mark, which the database refuses'
+  if (REVISION_REFUSES.test(caption)) return 'its caption carries an en dash, an em dash or an exclamation mark, which the database refuses'
   return null
 }
 
