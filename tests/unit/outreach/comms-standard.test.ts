@@ -8,6 +8,7 @@ import { FOLLOW_UP_LETTERS } from '@/lib/outreach/follow-up-letters'
 import { LIFECYCLE_ACQ, LIFECYCLE_LETTERS, LIFECYCLE_PERM, LIFECYCLE_SUBTYPE, lifecycleFields, type LifecycleFacts } from '@/lib/outreach/lifecycle-letters'
 import { emailClosing, renderTemplate, ruleFailures, type Draft, type TemplateRow } from '@/lib/outreach/rules'
 import { SEGMENT_A_LETTERS } from '@/lib/outreach/segment-a-letter'
+import { SOURCE_ASK_EMAIL } from '@/lib/outreach/source-asks'
 import { touchVoiceMessage } from '@/lib/outreach/touch-voice'
 import { TWENTY_LETTERS } from '@/lib/outreach/twenty-letters'
 import { VENUE_ASK_DM, VENUE_ASK_EMAIL } from '@/lib/outreach/venue-asks'
@@ -75,7 +76,7 @@ function gate(subtype: string, step: number, subject: string | null, body: strin
 const STOCK = /\bI hope\b|\bhope (all is well|this finds you)\b|\btrust (you're|you are) well\b/i
 
 /** Every template the code holds, in every flow. */
-const CODE_TEMPLATES: readonly (TemplateRow & { key: string })[] = [...LIFECYCLE_LETTERS, ...SEGMENT_A_LETTERS, ...FOLLOW_UP_LETTERS, ...TWENTY_LETTERS, VENUE_ASK_EMAIL, VENUE_ASK_DM]
+const CODE_TEMPLATES: readonly (TemplateRow & { key: string })[] = [...LIFECYCLE_LETTERS, ...SEGMENT_A_LETTERS, ...FOLLOW_UP_LETTERS, ...TWENTY_LETTERS, VENUE_ASK_EMAIL, VENUE_ASK_DM, SOURCE_ASK_EMAIL]
 
 /** The template rows the data files hold, each with the version its file writes (outreach-templates.mjs --version). */
 function dataTemplates(): (TemplateRow & { key: string; version: number; file: string })[] {

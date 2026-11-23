@@ -1,0 +1,133 @@
+{
+  "source": "WINDOW 5C's seven source asks of 23 November 2026, drafted at the PM's 07:30 (C:\\dev\\EVIDENCE\\EL-23NOV\\source-asks\\SET.md and its source-ask-*.json, each read from that source's own pages). The founder adopted at 12:14: \"Apply the already-approved communication workflow to routine source requests.\" The name in each subject, the ask line, the address, the page it is published on, the no refusal check and the route found are read from each drafted file; the organiser, its owner, its website, the role and why the ask fits are the CRM's facts.",
+  "adopted": "The founder, 12:14 of 23 November 2026: \"Apply the already-approved communication workflow to routine source requests.\"",
+  "seenOn": "2026-11-23",
+  "notLoaded": [
+    {
+      "id": "source-ask-2-city-of-greater-bendigo",
+      "source": "City of Greater Bendigo: Events",
+      "channel": "email",
+      "address": "requests@bendigo.vic.gov.au",
+      "why": "Not loaded: requests@bendigo.vic.gov.au shares its organisation domain, bendigo.vic.gov.au, with tourism@bendigo.vic.gov.au, and the sender writes one first letter per organisation (src/lib/outreach/one-first-letter.ts: the same organiser or the same address domain), so the second would be refused at send. The one Bendigo letter goes to tourism@bendigo.vic.gov.au (Explore Bendigo, whose event terms carry the third party networks clause); the coordinator's ruling of 23 November 2026."
+    },
+    {
+      "id": "source-ask-7-whats-on-melbourne",
+      "source": "What's On Melbourne",
+      "channel": "website_form",
+      "address": "https://whatson.melbourne.vic.gov.au/contact-us",
+      "why": "A website form, not an email: the site publishes no email address, only its form. It is not loaded and not sent by the platform; the founder sends it himself, by hand, through that form."
+    }
+  ],
+  "asks": [
+    {
+      "id": "source-ask-1-city-of-ballarat",
+      "source": "City of Ballarat: What's on in Ballarat",
+      "organiser": "City of Ballarat",
+      "owner": "City of Ballarat",
+      "website": "https://www.ballarat.vic.gov.au",
+      "city": "Ballarat",
+      "site": "Ballarat In The Know",
+      "listings": "Ballarat In The Know",
+      "askLine": "As we could not find terms covering the reuse of these listings, we wanted to ask first. Could you let us know whether the City is happy for us to show the Ballarat In The Know listings this way?",
+      "contact": {
+        "channel": "email",
+        "address": "marketing@ballarat.vic.gov.au",
+        "publishedOn": "https://ballaratintheknow.com.au/list-your-event",
+        "role": "Marketing: the address the list your event page gives",
+        "relevance": "Published on Ballarat In The Know's list your event page, the City's own route for event listings there; the ask is whether the City is happy for EventLinqs to show those listings, each with a link back to its own page.",
+        "noMarketingStatementChecked": true,
+        "checkNote": "the page that publishes the address was read on 23 November 2026 and carries no statement refusing such messages (searched: unsolicited, do not send or contact, not for marketing or commercial use, spam: only form-spam and newsletter wording found)",
+        "evidence": "C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-1-city-of-ballarat.json"
+      },
+      "routeFound": "The City's What's On page sends readers to Visit Ballarat and Ballarat In The Know, an initiative funded by the City of Ballarat and Tourism Midwest Victoria; no data set or licence is published (the open data portal has no events data set); the City's website terms are silent on reuse. So the ask is the City's permission."
+    },
+    {
+      "id": "source-ask-3-explore-bendigo",
+      "source": "Bendigo Region (Explore Bendigo): What's On",
+      "organiser": "Bendigo Visitor Centre",
+      "owner": "City of Greater Bendigo (the site is operated on its behalf by the Bendigo Visitor Centre)",
+      "website": "https://www.bendigoregion.com.au",
+      "city": "Bendigo",
+      "site": "the Bendigo Region event calendar",
+      "listings": "Bendigo Region",
+      "askLine": "Your event listing terms say listings may be forwarded to other third party networks as deemed appropriate. Could you let us know whether you are happy for EventLinqs to be one of them?",
+      "contact": {
+        "channel": "email",
+        "address": "tourism@bendigo.vic.gov.au",
+        "publishedOn": "https://www.bendigoregion.com.au/explore-bendigo/bendigo-terms-and-conditions",
+        "role": "Tourism: the address the Bendigo Region event terms give",
+        "relevance": "Published in the Bendigo Region event terms, which say listings go to other third party networks as deemed appropriate; the ask is whether EventLinqs may be one of them.",
+        "noMarketingStatementChecked": true,
+        "checkNote": "the page that publishes the address was read on 23 November 2026 and carries no statement refusing such messages (searched: unsolicited, do not send or contact, not for marketing or commercial use, spam: only form-spam and newsletter wording found)",
+        "evidence": "C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-3-explore-bendigo.json"
+      },
+      "routeFound": "The site is \"operated on behalf of the City of Greater Bendigo\" by the Bendigo Visitor Centre; its event terms say listings \"may be forwarded to other third parties as deemed appropriate\" and go to \"Other third party networks as deemed appropriate\". So the ask is to be one of those networks."
+    },
+    {
+      "id": "source-ask-4-visit-geelong-bellarine",
+      "source": "Visit Geelong & The Bellarine: What's On",
+      "organiser": "Tourism Greater Geelong and The Bellarine",
+      "owner": "Tourism Greater Geelong and The Bellarine",
+      "website": "https://tourismgeelongbellarine.com.au",
+      "city": "Geelong and Bellarine",
+      "site": "Visit Geelong & The Bellarine",
+      "listings": "Visit Geelong & The Bellarine",
+      "askLine": "As we could not find terms covering the reuse of your What's On listings, we wanted to ask first. Could you let us know whether you are happy for us to show them this way?",
+      "contact": {
+        "channel": "email",
+        "address": "marketing@tourismgeelongbellarine.com.au",
+        "publishedOn": "https://tourismgeelongbellarine.com.au/about/contact/",
+        "role": "Marketing: the address the contact page gives",
+        "relevance": "Published on Tourism Greater Geelong and The Bellarine's contact page as its marketing address; the ask is permission to show the What's On listings of Visit Geelong & The Bellarine, for which no terms were found.",
+        "noMarketingStatementChecked": true,
+        "checkNote": "the page that publishes the address was read on 23 November 2026 and carries no statement refusing such messages (searched: unsolicited, do not send or contact, not for marketing or commercial use, spam: only form-spam and newsletter wording found)",
+        "evidence": "C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-4-visit-geelong-bellarine.json"
+      },
+      "routeFound": "No terms page was found (footer has none; /terms, /terms-and-conditions and /copyright answer 404); the public What's On has no published data route. So the ask is their permission."
+    },
+    {
+      "id": "source-ask-5-visit-ballarat",
+      "source": "Visit Ballarat: What's On",
+      "organiser": "Visit Ballarat",
+      "owner": "the City of Ballarat and Tourism Midwest Victoria (its terms name both as Us)",
+      "website": "https://www.visitballarat.com.au",
+      "city": "Ballarat",
+      "site": "Visit Ballarat",
+      "listings": "Visit Ballarat",
+      "askLine": "Your website's terms ask for written consent before its content is used on another website. Could you let us know whether you would give that consent for the What's On listings?",
+      "contact": {
+        "channel": "email",
+        "address": "hello@visitballarat.com.au",
+        "publishedOn": "https://www.visitballarat.com.au/plan-your-trip/want-to-chat-to-someone",
+        "role": "General enquiries: the address the contact page gives",
+        "relevance": "Published on Visit Ballarat's want to chat to someone page; its terms (clause 12.4) ask for prior written consent before its content is used on another website, and the ask is that consent for the What's On listings.",
+        "noMarketingStatementChecked": true,
+        "checkNote": "the page that publishes the address was read on 23 November 2026 and carries no statement refusing such messages (searched: unsolicited, do not send or contact, not for marketing or commercial use, spam: only form-spam and newsletter wording found)",
+        "evidence": "C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-5-visit-ballarat.json"
+      },
+      "routeFound": "Its terms (clause 12.4) allow no content to be \"incorporated into any other web site or used for any commercial purpose\" without \"the specific prior written consent of Us\" (the City of Ballarat and Tourism Midwest Victoria). So the ask is that written consent. Read from Wayback copies only: the live site answers our reader with HTTP 429."
+    },
+    {
+      "id": "source-ask-6-city-of-greater-geelong",
+      "source": "City of Greater Geelong: Events",
+      "organiser": "City of Greater Geelong Event Services",
+      "owner": "City of Greater Geelong",
+      "website": "https://www.geelongcity.vic.gov.au",
+      "city": "Geelong",
+      "site": "the City's events calendar",
+      "listings": "City of Greater Geelong",
+      "askLine": "The City's website terms allow its content to be used for personal or internal purposes only. Could you let us know whether the City offers a licence for this kind of use?",
+      "contact": {
+        "channel": "email",
+        "address": "events@geelongcity.vic.gov.au",
+        "publishedOn": "https://www.geelongcity.vic.gov.au/whats-happening/events/event-planning-and-support/planning-event/our-events-planning-guide",
+        "role": "Event Services: the address the events planning guide gives",
+        "relevance": "Published in the City's events planning guide as its Event Services address; the City's terms allow personal or internal use only, and the ask is whether the City offers a licence for showing its events calendar listings.",
+        "noMarketingStatementChecked": true,
+        "checkNote": "the page that publishes the address was read on 23 November 2026 and carries no statement refusing such messages (searched: unsolicited, do not send or contact, not for marketing or commercial use, spam: only form-spam and newsletter wording found)",
+        "evidence": "C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-6-city-of-greater-geelong.json"
+      },
+      "routeFound": "Its terms allow use \"solely for your personal and/or internal business purposes\" and no reproduction \"for any commercial purpose whatsoever\"; organisers license the City only \"for non-commercial purposes\". So the ask is whether the City offers a licence; it may not be able to give one."
+    }
+  ]
+}
