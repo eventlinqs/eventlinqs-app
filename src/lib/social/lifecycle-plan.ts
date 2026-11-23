@@ -31,7 +31,6 @@ import {
   hookFor,
   nightTimes,
   dayWordOf,
-  feedDayWordOf,
   practicalLine,
   storyLine,
   LIFECYCLE_ZONE,
@@ -285,8 +284,8 @@ function toLifecycleNight(n: CampaignNight): LifecycleNight {
   }
 }
 
-function dateLabel(iso: string, zone: string): string {
-  return new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(iso)).replace(/,/g, '')
+function dateLabel(iso: string, zone: string, style: 'short' | 'long' = 'short'): string {
+  return new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: style, day: 'numeric', month: style }).format(new Date(iso)).replace(/,/g, '')
 }
 
 /**
@@ -294,13 +293,19 @@ function dateLabel(iso: string, zone: string): string {
  * today' over 'Fri 20 Nov', its first day only). One day reads as one day; a night that runs over more than one day in
  * its zone reads as its run, 'Fri 20 to Sun 22 Nov', so a post on any of its days is true. An end recorded as a default
  * midnight never extends a night (law 22 class 2): an end at 00:00 belongs to the day before.
+ * 'long' writes the weekday and the month in full ('Tuesday 24 November', 'Saturday 21 to Sunday 22 November'): a feed
+ * post's day line, which says its day once and needs no day word beside it (feedNightDates).
  */
-export function nightDates(startIso: string, endIso: string | null, zone: string, onDay?: string): string {
+export function nightDates(startIso: string, endIso: string | null, zone: string, onDay?: string, style: 'short' | 'long' = 'short'): string {
   // A piece posts on a day of the run: its label starts there, never on a day already over (the publish gate's past day
   // rule, law 22): AMCF's Saturday post reads 'Sat 21 to Sun 22 Nov', its Sunday post 'Sun 22 Nov' (law 37 (l)).
   const dayKey = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  // A NIGHT PAST MIDNIGHT IS ONE NIGHT (Lawal's 16:04 of 23 November 2026: the date line from the record's own date and
+  // times): a night shorter than a day is dated by the day it starts, as its one session is (lifecycle.ts sessionsOf), so
+  // 10pm to 2am reads its Friday, never 'Fri 27 to Sat 28 Nov'.
+  if (endIso && Date.parse(endIso) - Date.parse(startIso) < 86_400_000) return dateLabel(startIso, zone, style)
   if (onDay && onDay > dayKey(new Date(startIso))) startIso = `${onDay}T12:00:00.000Z`
-  const first = dateLabel(startIso, zone)
+  const first = dateLabel(startIso, zone, style)
   if (!endIso) return first
   const lastInstant = new Date(new Date(endIso).getTime() - 1)
   const dayOf = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
@@ -308,8 +313,19 @@ export function nightDates(startIso: string, endIso: string | null, zone: string
   const part = (d: Date, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-AU', { timeZone: zone, ...opts }).format(d).replace(/,/g, '')
   const start = new Date(startIso)
   const sameMonth = part(start, { month: 'short', year: 'numeric' }) === part(lastInstant, { month: 'short', year: 'numeric' })
-  const head = sameMonth ? `${part(start, { weekday: 'short' })} ${part(start, { day: 'numeric' })}` : first
-  return `${head} to ${dateLabel(lastInstant.toISOString(), zone)}`
+  const head = sameMonth ? `${part(start, { weekday: style })} ${part(start, { day: 'numeric' })}` : first
+  return `${head} to ${dateLabel(lastInstant.toISOString(), zone, style)}`
+}
+
+/**
+ * A FEED POST'S DAY LINE (the PM's verify of 23 November 2026 on piece da22e104: its caption's date line read 'Tuesday,
+ * Tue 24 Nov, 7pm to 9pm', feedDayWordOf's weekday beside nightDates' label, which already carries it): the weekday and the
+ * date once, the month in full, no relative word ('Tuesday 24 November'; a run 'Saturday 21 to Sunday 22 November'), from
+ * the day the piece posts, as nightDates reads it. A story keeps its day word (Today, Tomorrow) beside nightDates' label.
+ * Pure.
+ */
+export function feedNightDates(startIso: string, endIso: string | null, zone: string, onDay?: string): string {
+  return nightDates(startIso, endIso, zone, onDay, 'long')
 }
 
 /** Whether a night has ended by this minute (an owner's Post now is judged at the minute it is pressed). */
@@ -478,7 +494,9 @@ export async function planLifecyclePieces(
     const facts = {
       title: n.title,
       place,
-      dateLabel: nightDates(n.startDate, n.endDate ?? null, c.run.zone, day),
+      // A feed post's day line says its weekday and date once, in full (feedNightDates), with no day word beside it; a story,
+      // which expires within the day, keeps Today or Tomorrow beside its date (the PM's verify of 23 November 2026).
+      dateLabel: c.moment.format === 'feed' ? feedNightDates(n.startDate, n.endDate ?? null, c.run.zone, day) : nightDates(n.startDate, n.endDate ?? null, c.run.zone, day),
       times: dayTimes(ln, day, ln.timezone?.trim() || c.run.zone),
       priceLine: n.priceLine,
       summary: n.summary,
@@ -486,8 +504,7 @@ export async function planLifecyclePieces(
       organiser: n.host ?? null,
       address: n.venueAddress ?? null,
       city: n.cityName ?? null,
-      // A feed post keeps no relative day word (feedDayWordOf); a story, which expires within the day, may.
-      dayWord: c.moment.format === 'feed' ? feedDayWordOf(nightDay < day ? day : nightDay) : dayWordOf(nightDay < day ? day : nightDay, day),
+      dayWord: c.moment.format === 'feed' ? null : dayWordOf(nightDay < day ? day : nightDay, day),
       practical: practicalLine(n.cta),
     }
     // The page a press lands on, with its tags, is the piece's stored link; the words carry the counted /go hop

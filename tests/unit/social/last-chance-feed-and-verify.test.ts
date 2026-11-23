@@ -57,7 +57,9 @@ describe('no relative words in a feed post', () => {
   it("a feed post's day word is the weekday, never Today or Tomorrow", () => {
     expect(feedDayWordOf('2026-11-24')).toBe('Tuesday')
     const plan = readFileSync('src/lib/social/lifecycle-plan.ts', 'utf8')
-    expect(plan).toMatch(/dayWord: c\.moment\.format === 'feed' \? feedDayWordOf\(/)
+    // The feed's day line now says its weekday once, in full, with no day word beside it (the PM's verify of 23 November 2026).
+    expect(plan).toMatch(/dayWord: c\.moment\.format === 'feed' \? null : dayWordOf\(/)
+    expect(plan).toMatch(/dateLabel: c\.moment\.format === 'feed' \? feedNightDates\(/)
   })
 })
 
