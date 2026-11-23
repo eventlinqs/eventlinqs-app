@@ -17,6 +17,7 @@ vi.mock('@/lib/redis/client', () => ({
 const messagesCreate = vi.fn()
 vi.mock('@/lib/ai/client', () => ({
   isAiConfigured: vi.fn(() => true),
+  anthropicOrganisation: vi.fn(() => null),
   getAnthropicClient: vi.fn(() => ({ messages: { create: messagesCreate } })),
 }))
 

@@ -87,7 +87,10 @@ describe('stages and moments', () => {
     expect(momentsDue(one, melb('2026-11-20'), { feedDays: ['2026-11-15'], storyDays: [], had: [] })).toEqual([])
     expect(momentsDue(one, melb('2026-11-20'), { feedDays: ['2026-11-13'], storyDays: [], had: [] }).map((m) => m.kind)).toEqual(['build'])
     expect(momentsDue(one, melb('2026-12-17'), none).map((m) => m.kind)).toEqual(['final_push'])
-    expect(momentsDue(one, melb('2026-12-19'), none).map((m) => `${m.kind}|${m.format}`)).toEqual(['tomorrow|story'])
+    // The last chance feed (the PM's 13:32 of 23 November 2026): a night that never had its final push gets it the day
+    // before, beside its story; one that had it gets the story alone.
+    expect(momentsDue(one, melb('2026-12-19'), none).map((m) => `${m.kind}|${m.format}`)).toEqual(['final_push|feed', 'tomorrow|story'])
+    expect(momentsDue(one, melb('2026-12-19'), { ...none, had: ['final_push|feed'] }).map((m) => `${m.kind}|${m.format}`)).toEqual(['tomorrow|story'])
   })
   it('expired and cancelled: nothing, ever', () => {
     const one = runsOf([night()])[0]

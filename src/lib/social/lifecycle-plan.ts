@@ -31,6 +31,7 @@ import {
   hookFor,
   nightTimes,
   dayWordOf,
+  feedDayWordOf,
   practicalLine,
   storyLine,
   LIFECYCLE_ZONE,
@@ -485,7 +486,8 @@ export async function planLifecyclePieces(
       organiser: n.host ?? null,
       address: n.venueAddress ?? null,
       city: n.cityName ?? null,
-      dayWord: dayWordOf(nightDay < day ? day : nightDay, day),
+      // A feed post keeps no relative day word (feedDayWordOf); a story, which expires within the day, may.
+      dayWord: c.moment.format === 'feed' ? feedDayWordOf(nightDay < day ? day : nightDay) : dayWordOf(nightDay < day ? day : nightDay, day),
       practical: practicalLine(n.cta),
     }
     // The page a press lands on, with its tags, is the piece's stored link; the words carry the counted /go hop

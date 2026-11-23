@@ -1,6 +1,6 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
-import { getAnthropicClient, isAiConfigured } from './client'
+import { anthropicOrganisation, getAnthropicClient, isAiConfigured } from './client'
 import { estimateCostMicroUsd } from './config'
 import { checkMonthlyBudget, recordSpend } from './cost-guard'
 import { logAi } from './logging'
@@ -708,6 +708,7 @@ async function callDraftModel(opts: {
 
   logAi({
     evt: 'ai.request',
+    org: anthropicOrganisation(),
     assistant: 'magic-start',
     who,
     ok: true,

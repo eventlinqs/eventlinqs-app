@@ -2258,6 +2258,16 @@ async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
  * approval. Writes schedules only; publishes nothing (F9). A second run finds them scheduled already (the database keeps
  * one per piece, network and approval).
  */
+/** Why an Instagram row waits while the bio's booking journey is unproven (instagramBioJourneyProven). */
+export const INSTAGRAM_BIO_UNPROVEN =
+  "the bio's booking journey to this event is not proven on a phone yet (flag instagram_bio_journey_proven), and an Instagram caption sends readers to the link in our bio; Facebook carries the event's own link and goes alone"
+
+/** The flag instagram_bio_journey_proven, read now; absent or unreadable is unproven (fails closed). */
+export async function instagramBioJourneyProven(db: Db): Promise<boolean> {
+  const { data, error } = await db.from('feature_flags').select('enabled').eq('flag', 'instagram_bio_journey_proven').maybeSingle()
+  return !error && data?.enabled === true
+}
+
 export async function scheduleApprovedPieces(
   db: Db,
   now: Date,
@@ -2291,6 +2301,8 @@ export async function scheduleApprovedPieces(
   // Read once for the run, when the first piece is judged (venue-identity.ts): every venue we hold, and these nights' aliases.
   let known: KnownVenues | undefined
   let nightAliases: Map<string, string[]> | undefined
+  // Read once for the run, when the first Instagram row is judged: whether the bio's booking journey is proven.
+  let bioProven: boolean | undefined
   if (nerr) throw new Error(`the nights of the approved pieces could not be read: ${nerr.message}`)
   // When each night's season began (seasonBeganOf), for the gate's first day rule below; a failed read throws, as the
   // nights' own read does, and the run holds.
@@ -2421,6 +2433,14 @@ export async function scheduleApprovedPieces(
         misfit = await slidesMisfit(d.rev.slides, platform, d.format, opts.fetcher ?? fetch)
       } catch (e) {
         misfit = `its fit for ${platform} could not be read (${e instanceof Error ? e.message : String(e)})`
+      }
+      // THE BOOKING JOURNEY ON INSTAGRAM (the PM's 13:06 item 2 and 13:12 item 3 of 23 November 2026): an Instagram post
+      // sends its reader to "the link in our bio", so it goes only once the bio's whole journey to the event is proven on
+      // a phone, recorded as the flag instagram_bio_journey_proven. Until then Facebook, which carries the event's own
+      // link in its caption, goes alone.
+      if (!misfit && platform === 'instagram') {
+        bioProven ??= await instagramBioJourneyProven(db)
+        if (!bioProven) misfit = INSTAGRAM_BIO_UNPROVEN
       }
       if (!misfit) {
         fits += 1
@@ -2926,7 +2946,7 @@ export async function readSchedules(db: Db, pieceIds: readonly string[]): Promis
 }
 
 export type PostedNow = {
-  readonly state: 'posted' | 'held'
+  readonly state: 'posted' | 'held' | 'drawn'
   readonly pieceId: string | null
   /** Each network's own answer: published with the provider's reference, or held with its reason. */
   readonly lines: readonly string[]
@@ -2951,8 +2971,25 @@ export type PostedNow = {
  */
 export async function postNightNow(
   db: Db,
-  input: { readonly eventId: string; readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly publisher: Publisher | null; readonly reader?: BlotatoPostReader | null; readonly fetcher?: Fetcher },
+  input: {
+    readonly eventId: string
+    readonly by: string
+    readonly now: Date
+    readonly siteOrigin: string
+    readonly publisher: Publisher | null
+    readonly reader?: BlotatoPostReader | null
+    readonly fetcher?: Fetcher
+    /**
+     * THE PM VERIFY GATE (Lawal's 13:05 and the PM's 13:06 of 23 November 2026: "Every piece stops at a PM VERIFY gate
+     * before it publishes ... only PASS publishes"). 'draw' draws the night's piece and stops, approving nothing, so it
+     * can be verified with its evidence; 'publish' takes the drawn piece the PM passed (pieceId) through the checked
+     * approval, a slot at this minute and the publisher. There is no single step that draws and publishes.
+     */
+    readonly stage: 'draw' | 'publish'
+    readonly pieceId?: string | null
+  },
 ): Promise<PostedNow> {
+  if (input.stage === 'publish') return publishPassedPiece(db, input)
   const planned = await planCampaignWeek(db, { plannedBy: input.by, now: input.now, ownerAsked: { eventId: input.eventId } })
   const keys = planned.momentKeys ?? []
   if (keys.length === 0) return { state: 'held', pieceId: null, lines: [planned.held.join(' ') || 'No feed post is due for this night today.'] }
@@ -2960,6 +2997,24 @@ export async function postNightNow(
   if (ferr) throw new Error(`the drawn piece could not be read: ${ferr.message}`)
   const pieceId = ((found ?? [])[0] as { id?: string } | undefined)?.id ?? null
   if (pieceId === null) return { state: 'held', pieceId: null, lines: [planned.held.join(' ') || 'The post was drawn but could not be read back.'] }
+  // Drawn, and stopped here for the PM's VERIFY: nothing is approved, scheduled or sent at this stage.
+  return { state: 'drawn', pieceId, lines: [`drawn for the PM's VERIFY, nothing approved or sent: piece ${pieceId}`] }
+}
+
+/**
+ * The second stage of postNightNow: the piece the PM passed, for the night the word named, approved checked in the standing
+ * approval's name, given a slot at this minute (every other check stands, Instagram's booking journey included) and sent
+ * through the publisher, then read back. A piece that does not name that night is refused before anything is written.
+ */
+async function publishPassedPiece(
+  db: Db,
+  input: { readonly eventId: string; readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly publisher: Publisher | null; readonly reader?: BlotatoPostReader | null; readonly fetcher?: Fetcher; readonly pieceId?: string | null },
+): Promise<PostedNow> {
+  const pieceId = input.pieceId ?? null
+  if (pieceId === null) return { state: 'held', pieceId: null, lines: ['Not published: the passed piece was not named.'] }
+  const rev = await newestRevision(db, pieceId)
+  if (!rev) return { state: 'held', pieceId, lines: ['Not published: the piece has no version.'] }
+  if (!rev.eventIds.includes(input.eventId)) return { state: 'held', pieceId, lines: ['Not published: the piece does not name that night.'] }
   const approved = await approvePieceChecked(db, { pieceId, by: input.by, now: input.now, siteOrigin: input.siteOrigin, fetcher: input.fetcher })
   if (approved.state === 'refused' && !/approved already/.test(approved.reason)) return { state: 'held', pieceId, lines: [approved.reason] }
   const scheduled = await scheduleApprovedPieces(db, input.now, { fetcher: input.fetcher, goNow: new Set([pieceId]) })
