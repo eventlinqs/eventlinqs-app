@@ -6,7 +6,7 @@ import { addedSlot, dayStart, planMoments, STARTING_CALENDAR, type CadenceRule, 
  * week's posts are not lost or doubled). Read before the fix (C:\dev\EVIDENCE\EL-16NOV\out14-train\
  * switch-on-deadlines.txt): under the four band calendar and approval order, two of out-14's fourteen pieces would have
  * published; a piece is held whole once any of its nights has ended, so each one must go before its earliest night ends.
- * The regression case below is out-14's own week, each piece's deadline the end of its earliest night as production held
+ * The regression case below is out-14's own week, each piece's latest useful time the end of its earliest night as production held
  * them at 09:16 that day (read only).
  */
 const rule = (over: Partial<CadenceRule> = {}): CadenceRule => ({ version: 1, gapHours: 12, slots: [], basis: 'starting', learnedFrom: 0, floorPosts: 12, settleHours: 48, setAt: new Date('2026-10-27T00:00:00Z'), ...over })
@@ -19,11 +19,11 @@ const mel = (local: string) => new Date(`${local}:00+11:00`)
 // the evening switch-on, the first scheduler run at 7:40 pm on Monday 16 November.
 const APPROVED = mel('2026-11-16T19:00')
 const RUN = mel('2026-11-16T19:40')
-const piece = (n: number, format: 'feed' | 'story', deadline: string, notBefore?: string): SchedulePiece => ({
+const piece = (n: number, format: 'feed' | 'story', latestUseful: string, notBefore?: string): SchedulePiece => ({
   id: String(n),
   format,
   approvedAt: APPROVED,
-  deadline: mel(deadline),
+  latestUseful: mel(latestUseful),
   notBefore: notBefore ? mel(notBefore) : null,
 })
 const OUT14: SchedulePiece[] = [
@@ -52,7 +52,7 @@ describe("the week's plan", () => {
     expect(plan.late).toEqual([])
     for (const p of OUT14) {
       const at = plan.moments.get(p.id)
-      if (at) expect(at.getTime()).toBeLessThanOrEqual((p.deadline as Date).getTime())
+      if (at) expect(at.getTime()).toBeLessThanOrEqual((p.latestUseful as Date).getTime())
     }
     expect(plan.moments.get('1')).toEqual(mel('2026-11-16T21:00'))
     expect(plan.moments.get('10')).toEqual(mel('2026-11-17T09:00'))
@@ -73,7 +73,7 @@ describe("the week's plan", () => {
   })
 
   it('a piece is late only when its own window holds no minute at all', () => {
-    const gone = { id: 'g', format: 'feed' as const, approvedAt: APPROVED, deadline: mel('2026-11-16T19:00') }
+    const gone = { id: 'g', format: 'feed' as const, approvedAt: APPROVED, latestUseful: mel('2026-11-16T19:00') }
     const plan = planMoments([gone], RULES, NONE, RUN)
     expect(plan.late.map((l) => l.id)).toEqual(['g'])
     expect(addedSlot([], RUN, mel('2026-11-16T19:00'), null)).toBeNull()
@@ -81,15 +81,15 @@ describe("the week's plan", () => {
 
   it('an added slot never shares a minute: a full window narrows the spacing before it ever drops a piece', () => {
     const from = mel('2026-11-17T10:00')
-    const deadline = mel('2026-11-17T10:30')
+    const latestUseful = mel('2026-11-17T10:30')
     const busy: number[] = []
     for (let i = 0; i < 31; i += 1) {
-      const at = addedSlot(busy, from, deadline, null)
+      const at = addedSlot(busy, from, latestUseful, null)
       expect(at).not.toBeNull()
       busy.push((at as Date).getTime())
     }
     expect(new Set(busy).size).toBe(31)
-    expect(addedSlot(busy, from, deadline, null)).toBeNull()
+    expect(addedSlot(busy, from, latestUseful, null)).toBeNull()
   })
 
   it('the bands keep the 12 hour floor; only an added slot, made because the day needs it, comes closer', () => {
@@ -113,9 +113,9 @@ describe("the week's plan", () => {
     expect(plan.moments.get('y')).toEqual(mel('2026-11-17T09:40'))
   })
 
-  it('earliest deadline first, the order given on a tie', () => {
-    const a = { id: 'a', format: 'feed' as const, approvedAt: APPROVED, deadline: mel('2026-11-21T00:00') }
-    const b = { id: 'b', format: 'feed' as const, approvedAt: APPROVED, deadline: mel('2026-11-17T12:00') }
+  it('soonest latest useful time first, the order given on a tie', () => {
+    const a = { id: 'a', format: 'feed' as const, approvedAt: APPROVED, latestUseful: mel('2026-11-21T00:00') }
+    const b = { id: 'b', format: 'feed' as const, approvedAt: APPROVED, latestUseful: mel('2026-11-17T12:00') }
     const c = { id: 'c', format: 'feed' as const, approvedAt: APPROVED }
     const plan = planMoments([c, a, b], RULES, NONE, RUN)
     expect(plan.moments.get('b')).toEqual(mel('2026-11-16T21:00'))

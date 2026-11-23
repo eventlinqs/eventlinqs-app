@@ -54,10 +54,10 @@ describe('every lifecycle moment has a window it can post in', () => {
           expect(line).not.toBeNull()
           const onNow = ON_NOW.test(line as string)
           const w = momentWindowOf(day, scheduleWindowOf(format, [n], ZONE, { onNow }))
-          expect(w.notBefore.getTime()).toBeLessThan(w.deadline.getTime())
+          expect(w.notBefore.getTime()).toBeLessThan(w.latestUseful.getTime())
           const opens = dayStart(new Date(`${day}T02:00:00Z`), ZONE)
           const plan = planMoments(
-            [{ id: 'p', format, approvedAt: new Date(opens.getTime() - 3_600_000), deadline: w.deadline, notBefore: w.notBefore, days: null }],
+            [{ id: 'p', format, approvedAt: new Date(opens.getTime() - 3_600_000), latestUseful: w.latestUseful, notBefore: w.notBefore, days: null }],
             { feed: rule('feed'), story: rule('story') },
             { feed: [], story: [] },
             new Date(opens.getTime() - 3_600_000),

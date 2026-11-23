@@ -211,7 +211,7 @@ export interface SchedulePiece {
   /** The earliest it may go: a story goes on the day of its first night (dayStart), never days before it. */
   readonly notBefore?: Date | null
   /** The latest it may go: the start of its earliest night (scheduleWindowOf), since no piece posts once its night has started. */
-  readonly deadline?: Date | null
+  readonly latestUseful?: Date | null
   /** The weekdays it may go on, on the zone's clock (0 is Sunday); none named, any day (weekendDaysOf). */
   readonly days?: readonly number[] | null
 }
@@ -219,7 +219,7 @@ export interface SchedulePiece {
 /**
  * A WEEKEND LINE GOES THURSDAY OR FRIDAY ONLY (the PM's 03:10 of 18 November 2026, class 6: 'Say yes to this weekend.' was
  * set for Monday 23 at 9 pm). A piece whose words name the weekend and that advertises no night of its own (a night's own
- * deadline already places it) may go only on a Thursday or a Friday. Null means any day.
+ * latest useful time already places it) may go only on a Thursday or a Friday. Null means any day.
  */
 export const WEEKEND_WORDS = /\b(this|the) weekend\b/i
 
@@ -234,14 +234,14 @@ function weekdayOf(at: Date, zone: string): number {
 
 export type WeekPlan = {
   readonly moments: ReadonlyMap<string, Date>
-  /** Pieces whose next free band falls after their deadline: never placed late, said with the band and the deadline. */
-  readonly late: readonly { readonly id: string; readonly firstFree: Date; readonly deadline: Date }[]
+  /** Pieces whose next free band falls after their latest useful time: never placed late, said with the band and that time. */
+  readonly late: readonly { readonly id: string; readonly firstFree: Date; readonly latestUseful: Date }[]
 }
 
 /** Midnight on the zone's clock of the day a moment falls on: the first moment a story about that day may go. */
 /**
  * A PIECE GOES BEFORE ITS NIGHT STARTS (the PM's 22:08 of 17 November 2026, class 2: "No piece posts in a slot after its
- * night starts"). An approved piece's window: its deadline the START of its earliest night (it was the end of its soonest
+ * night starts"). An approved piece's window: its latest useful time the START of its earliest night (it was the end of its soonest
  * ending night, so a daily poster took 9:25 pm on its own night, after the night began), and a story no earlier than its
  * first night's day. No night with a start, no window. Pure.
  */
@@ -250,15 +250,15 @@ export function scheduleWindowOf(
   nights: readonly { readonly title: string; readonly start: number; readonly end: number }[],
   zone: string = SOCIAL_ZONE,
   opts: { readonly onNow?: boolean } = {},
-): { deadline: Date | null; notBefore: Date | null; first: { title: string; start: Date } | null } {
+): { latestUseful: Date | null; notBefore: Date | null; first: { title: string; start: Date } | null } {
   const dated = nights.filter((n) => Number.isFinite(n.start))
-  if (dated.length === 0) return { deadline: null, notBefore: null, first: null }
+  if (dated.length === 0) return { latestUseful: null, notBefore: null, first: null }
   const first = dated.reduce((a, b) => (b.start < a.start ? b : a))
   // ON NOW (Lawal's 00:12 of 18 November 2026, section 5): a piece whose caption says the night is on now may go while
   // people can still go, until its earliest night ends.
   const ends = dated.map((n) => n.end).filter((e) => Number.isFinite(e))
   return {
-    deadline: opts.onNow && ends.length > 0 ? new Date(Math.min(...ends)) : new Date(first.start),
+    latestUseful: opts.onNow && ends.length > 0 ? new Date(Math.min(...ends)) : new Date(first.start),
     notBefore: format === 'story' ? dayStart(new Date(first.start), zone) : null,
     first: { title: first.title, start: new Date(first.start) },
   }
@@ -272,10 +272,10 @@ export function scheduleWindowOf(
  * its next free band, Sun 22 Nov, 6:00 pm, is after Colours of Asia: Garden of Wonders starts (Sun 22 Nov, 12:00 am)',
  * because the window took the later of the two days and was empty. Pure.
  */
-export function momentWindowOf(day: string, window: { readonly deadline: Date | null }, zone: string = SOCIAL_ZONE): { notBefore: Date; deadline: Date } {
+export function momentWindowOf(day: string, window: { readonly latestUseful: Date | null }, zone: string = SOCIAL_ZONE): { notBefore: Date; latestUseful: Date } {
   const opens = dayStart(new Date(`${day}T02:00:00Z`), zone)
   const shuts = dayStart(new Date(opens.getTime() + 36 * 3_600_000), zone)
-  return { notBefore: opens, deadline: new Date(Math.min(shuts.getTime(), window.deadline?.getTime() ?? Infinity)) }
+  return { notBefore: opens, latestUseful: new Date(Math.min(shuts.getTime(), window.latestUseful?.getTime() ?? Infinity)) }
 }
 
 export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
@@ -287,8 +287,8 @@ export function dayStart(at: Date, zone: string = SOCIAL_ZONE): Date {
  * B5, THE WEEK'S PLAN (the PM's 09:10 of 16 November 2026): every approved piece gets the next free band of its format
  * that keeps the format's gap from every moment already taken (the last post that went, and every schedule still
  * waiting from an earlier approval, so two approvals an hour apart never put two feed posts inside the floor), never
- * before its approval or its notBefore. Pieces are placed earliest deadline first, the order given on a tie, so the
- * nights that end soonest take the soonest bands; a piece whose next free band falls after its deadline is not placed
+ * before its approval or its notBefore. Pieces are placed soonest latest useful time first, the order given on a tie, so the
+ * nights that end soonest take the soonest bands; a piece whose next free band falls after its latest useful time is not placed
  * (it would be held whole at publishing) but returned as late. Pure, so the plan is driven by its own test.
  */
 export function planMoments(
@@ -299,9 +299,9 @@ export function planMoments(
   zone: string = SOCIAL_ZONE,
 ): WeekPlan {
   const moments = new Map<string, Date>()
-  const late: { id: string; firstFree: Date; deadline: Date }[] = []
+  const late: { id: string; firstFree: Date; latestUseful: Date }[] = []
   const busy: Record<SocialFormat, number[]> = { feed: taken.feed.map((d) => d.getTime()), story: taken.story.map((d) => d.getTime()) }
-  const order = pieces.map((p, i) => ({ p, i })).sort((a, b) => (a.p.deadline?.getTime() ?? Infinity) - (b.p.deadline?.getTime() ?? Infinity) || a.i - b.i)
+  const order = pieces.map((p, i) => ({ p, i })).sort((a, b) => (a.p.latestUseful?.getTime() ?? Infinity) - (b.p.latestUseful?.getTime() ?? Infinity) || a.i - b.i)
   for (const { p } of order) {
     const rule = rules[p.format]
     const gap = rule.gapHours * 3_600_000
@@ -319,17 +319,17 @@ export function planMoments(
       }
       break
     }
-    if (p.deadline && at.getTime() > p.deadline.getTime()) {
+    if (p.latestUseful && at.getTime() > p.latestUseful.getTime()) {
       // THE DAY ADDS A SLOT (Lawal, 22 November 2026, 01:31: the plan "adds slots when the day needs more, never drops an
-      // event's due moment for room"): every band before its deadline is taken, so it takes the first free minute inside
+      // event's due moment for room"): every band before its latest useful time is taken, so it takes the first free minute inside
       // its own window (addedSlot); it is late only when its window has no minute left at all.
-      const added = addedSlot(busy[p.format], new Date(Math.max(now.getTime(), p.approvedAt.getTime(), p.notBefore?.getTime() ?? 0)), p.deadline, p.days ?? null, zone)
+      const added = addedSlot(busy[p.format], new Date(Math.max(now.getTime(), p.approvedAt.getTime(), p.notBefore?.getTime() ?? 0)), p.latestUseful, p.days ?? null, zone)
       if (added) {
         moments.set(p.id, added)
         busy[p.format].push(added.getTime())
         continue
       }
-      late.push({ id: p.id, firstFree: at, deadline: p.deadline })
+      late.push({ id: p.id, firstFree: at, latestUseful: p.latestUseful })
       continue
     }
     moments.set(p.id, at)
@@ -342,15 +342,15 @@ export function planMoments(
 export const ADDED_SLOT_SPACINGS_MINUTES: readonly number[] = [15, 5, 1]
 
 /**
- * AN ADDED SLOT (Lawal, 22 November 2026, 01:31): the first whole minute from `from` to `deadline` that keeps the widest
+ * AN ADDED SLOT (Lawal, 22 November 2026, 01:31): the first whole minute from `from` to `latestUseful` that keeps the widest
  * spacing it can from every post of its format already placed, on its own weekdays where it has them; null only when the
  * window holds no free minute at all. Pure.
  */
-export function addedSlot(busy: readonly number[], from: Date, deadline: Date, days: readonly number[] | null, zone: string = SOCIAL_ZONE): Date | null {
+export function addedSlot(busy: readonly number[], from: Date, latestUseful: Date, days: readonly number[] | null, zone: string = SOCIAL_ZONE): Date | null {
   const first = Math.ceil(from.getTime() / 60_000) * 60_000
   for (const spacing of ADDED_SLOT_SPACINGS_MINUTES) {
     const gap = spacing * 60_000
-    for (let t = first; t <= deadline.getTime(); t += 60_000) {
+    for (let t = first; t <= latestUseful.getTime(); t += 60_000) {
       if (days && days.length > 0 && !days.includes(weekdayOf(new Date(t), zone))) continue
       if (!busy.some((b) => Math.abs(b - t) < gap)) return new Date(t)
     }
@@ -359,7 +359,7 @@ export function addedSlot(busy: readonly number[], from: Date, deadline: Date, d
 }
 
 /**
- * B5: the moments approved pieces go, with no deadlines and nothing waiting but the last post that went (the shape the
+ * B5: the moments approved pieces go, with no latest useful times and nothing waiting but the last post that went (the shape the
  * week's plan began with; planMoments is the whole rule). A feed piece and a story run on their own rules.
  */
 export function scheduleMoments(

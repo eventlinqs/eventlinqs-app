@@ -137,21 +137,21 @@ describe("the scheduler places a later day's piece on that day's own doors", () 
     withStartingCalendar({ version: 1, gapHours: format === 'feed' ? 12 : 2, slots: [], basis: 'starting', learnedFrom: 0, floorPosts: 0, settleHours: 0, setAt: new Date('2026-11-01T00:00:00Z') }, format)
   const amcfNight = { title: amcf.title, startDate: amcf.startDate, endDate: amcf.endDate ?? null, zone: ZONE }
   const approved = new Date('2026-11-21T19:40:00Z') // the 06:40 run on 22 November
-  const place = (format: 'feed' | 'story', w: { notBefore: Date; deadline: Date }) =>
-    planMoments([{ id: 'p', format, approvedAt: approved, deadline: w.deadline, notBefore: w.notBefore, days: null }], { feed: rule('feed'), story: rule('story') }, { feed: [], story: [] }, approved)
+  const place = (format: 'feed' | 'story', w: { notBefore: Date; latestUseful: Date }) =>
+    planMoments([{ id: 'p', format, approvedAt: approved, latestUseful: w.latestUseful, notBefore: w.notBefore, days: null }], { feed: rule('feed'), story: rule('story') }, { feed: [], story: [] }, approved)
 
   it("main's window read AMCF's 20 November start, so its last day's feed was late; that day's own window places it at 9 am", () => {
     const onMain = momentWindowOf('2026-11-22', scheduleWindowOf('feed', [{ title: amcf.title, start: Date.parse(amcf.startDate), end: Date.parse(amcf.endDate as string) }]))
     expect(place('feed', onMain).moments.get('p')).toBeUndefined()
     const w = lifecycleWindow('feed', '2026-11-22', false, [nightOnDay(amcfNight, '2026-11-22')])
-    expect(w.deadline.toISOString()).toBe('2026-11-22T00:00:00.000Z') // 11am, its doors that day
+    expect(w.latestUseful.toISOString()).toBe('2026-11-22T00:00:00.000Z') // 11am, its doors that day
     expect(place('feed', w).moments.get('p')?.toISOString()).toBe('2026-11-21T22:00:00.000Z') // 9 am in Melbourne
   })
 
   it("its 'still on' story never goes before that day's doors, and is placed at 6 pm while it is open", () => {
     const w = lifecycleWindow('story', '2026-11-22', true, [nightOnDay(amcfNight, '2026-11-22')])
     expect(w.notBefore.toISOString()).toBe('2026-11-22T00:00:00.000Z') // 11am
-    expect(w.deadline.toISOString()).toBe('2026-11-22T09:00:00.000Z') // 8pm, its close
+    expect(w.latestUseful.toISOString()).toBe('2026-11-22T09:00:00.000Z') // 8pm, its close
     expect(place('story', w).moments.get('p')?.toISOString()).toBe('2026-11-22T07:00:00.000Z') // 6 pm
   })
 })

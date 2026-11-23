@@ -528,7 +528,7 @@ export function dayOf(n: CampaignNight): string {
 /**
  * THE SPOTLIGHTS DRAWN FROM TOMORROW (the PM's 09:35 of 16 November 2026): the category and venue spotlights take no
  * night on or before the day they are drawn, since the week's plan places the week ahead and the soonest nights first
- * (planMoments, earliest deadline first) and a piece is held whole once any of its nights has ended. Out-14's two
+ * (planMoments, soonest latest useful time first) and a piece is held whole once any of its nights has ended. Out-14's two
  * Melbourne spotlights each carried a Monday 7:30 pm night, drawn on that Monday, and could not have gone whole. Drawn
  * before the week begins, the whole week (0).
  */

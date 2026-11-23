@@ -73,12 +73,12 @@ function daysAhead(now: Date, zone: string, count: number): Date[] {
 
 /**
  * A2: the weekdays a piece leans to, or null for none. Car C's learned days win once given; otherwise the rhythm's,
- * but only when one of them falls inside the piece's own window (from now or its notBefore to its deadline, or the next
+ * but only when one of them falls inside the piece's own window (from now or its notBefore to its latest useful time, or the next
  * seven days when it has none), so the lean never makes a piece late (law 18 wins). Pure.
  */
 export function rhythmDays(
   kind: string,
-  window: { readonly notBefore?: Date | null; readonly deadline?: Date | null },
+  window: { readonly notBefore?: Date | null; readonly latestUseful?: Date | null },
   now: Date,
   opts: { readonly learned?: readonly number[] | null; readonly zone?: string } = {},
 ): readonly number[] | null {
@@ -87,9 +87,9 @@ export function rhythmDays(
   if (!days || days.length === 0) return null
   const zone = opts.zone ?? SOCIAL_ZONE
   const from = new Date(Math.max(now.getTime(), window.notBefore?.getTime() ?? 0))
-  const until = window.deadline?.getTime() ?? from.getTime() + HORIZON_DAYS * DAY_MS
+  const until = window.latestUseful?.getTime() ?? from.getTime() + HORIZON_DAYS * DAY_MS
   for (const midnight of daysAhead(from, zone, HORIZON_DAYS + 1)) {
-    // A day counts when some of it is still inside the window: from its midnight (or from now) to before the deadline.
+    // A day counts when some of it is still inside the window: from its midnight (or from now) to before its latest useful time.
     const opens = Math.max(midnight.getTime(), from.getTime())
     if (opens >= until) break
     if (days.includes(weekdayOf(midnight, zone))) return days
@@ -113,7 +113,7 @@ export type FloorPlan = {
  * A1, THE DAILY FLOOR, over a plan from planMoments: for each of the next seven days on Melbourne's clock with no feed post
  * (counting every moment already taken), a discovery family piece placed on a day with two or more feed posts, or not
  * placed at all, is planned again on that day's own bands, inside its own window, where it lands on that day before its
- * deadline. No piece is made; a day nothing can fill is named. A story is never moved (each is its own night's), and a
+ * latest useful time. No piece is made; a day nothing can fill is named. A story is never moved (each is its own night's), and a
  * day without one is named the same way. Pure.
  */
 export function applyDailyFloor(input: {

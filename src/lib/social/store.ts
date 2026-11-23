@@ -2362,9 +2362,9 @@ async function waitingMoments(db: Db, format: SocialFormat): Promise<Date[]> {
 /**
  * B5, THE WEEK'S PLAN (the PM's 09:10 of 16 November 2026): every piece whose NEWEST revision a person approved, not gone
  * and not yet given its moment for that approval, gets one on Instagram and Facebook from planMoments (cadence.ts): the
- * next free band that keeps the gap from the last post and from every schedule still waiting, earliest deadline first.
- * A piece's deadline is the end of its earliest night, since publishing holds a piece whole once a night has ended; a
- * story waits for the day of its first night. A piece that cannot go before its deadline is never scheduled late: its
+ * next free band that keeps the gap from the last post and from every schedule still waiting, soonest latest useful time first.
+ * A piece's latest useful time is the end of its earliest night, since publishing holds a piece whole once a night has ended; a
+ * story waits for the day of its first night. A piece that cannot go before its latest useful time is never scheduled late: its
  * schedule is written and held at once with the reason, so it shows on /admin/social and is not tried again for that
  * approval. Writes schedules only; publishes nothing (F9). A second run finds them scheduled already (the database keeps
  * one per piece, network and approval).
@@ -2441,10 +2441,10 @@ export async function scheduleApprovedPieces(
     if (moment) {
       // The moment's day governs, a tomorrow story the day before its night (momentWindowOf, 21 November 2026); words
       // that say on now never go before that day's doors open ('still on' only after the opening: the PM's 09:00).
-      const { notBefore, deadline } = lifecycleWindow(d.format, moment.day, onNow, own)
-      return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline, notBefore, days: null }
+      const { notBefore, latestUseful } = lifecycleWindow(d.format, moment.day, onNow, own)
+      return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful, notBefore, days: null }
     }
-    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, deadline: window.deadline, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
+    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful: window.latestUseful, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
   })
 
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).
@@ -2468,7 +2468,7 @@ export async function scheduleApprovedPieces(
     const fp = pieces.find((p) => p.id === id)
     if (!fp) return null
     if (fp.notBefore && now.getTime() < fp.notBefore.getTime()) return `Not posted now: its day has not come (${dayTime(fp.notBefore.toISOString(), now)}).`
-    if (fp.deadline && now.getTime() > fp.deadline.getTime()) return `Not posted now: ${firstStarting.get(id)?.title ?? 'its night'} has started (${dayTime(fp.deadline.toISOString(), now)}), and a piece never posts once its night has started.`
+    if (fp.latestUseful && now.getTime() > fp.latestUseful.getTime()) return `Not posted now: ${firstStarting.get(id)?.title ?? 'its night'} has started (${dayTime(fp.latestUseful.toISOString(), now)}), and a piece never posts once its night has started.`
     return null
   }
   const scheduled: { pieceId: string; goAt: string }[] = []
@@ -2528,7 +2528,7 @@ export async function scheduleApprovedPieces(
     }
     if (late) {
       const night = firstStarting.get(d.id)
-      const reason = `Not scheduled: its next free band, ${dayTime(goAt, now)}, is after ${night?.title ?? 'its first night'} starts (${dayTime(late.deadline.toISOString(), now)}), and a piece never posts once its night has started. Regenerate it without that night and approve it again.`
+      const reason = `Not scheduled: its next free band, ${dayTime(goAt, now)}, is after ${night?.title ?? 'its first night'} starts (${dayTime(late.latestUseful.toISOString(), now)}), and a piece never posts once its night has started. Regenerate it without that night and approve it again.`
       await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
       held.push(`${d.id}: ${reason}`)
       continue

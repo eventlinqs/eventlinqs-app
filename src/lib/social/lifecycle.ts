@@ -163,10 +163,10 @@ export function nightOnDay(n: { readonly title: string; readonly startDate: stri
  * (momentWindowOf) over its nights' own sessions that day (nightOnDay), never a season's first day; words that say on
  * now never go before that day's doors open (the PM's 09:00 and 09:10 of 22 November 2026). Pure.
  */
-export function lifecycleWindow(format: SocialFormat, day: string, onNow: boolean, own: readonly { readonly title: string; readonly start: number; readonly end: number }[]): { notBefore: Date; deadline: Date } {
-  const { notBefore, deadline } = momentWindowOf(day, scheduleWindowOf(format, own, undefined, { onNow }))
+export function lifecycleWindow(format: SocialFormat, day: string, onNow: boolean, own: readonly { readonly title: string; readonly start: number; readonly end: number }[]): { notBefore: Date; latestUseful: Date } {
+  const { notBefore, latestUseful } = momentWindowOf(day, scheduleWindowOf(format, own, undefined, { onNow }))
   const doors = onNow && own.length > 0 ? Math.min(...own.map((n) => n.start)) : 0
-  return { notBefore: new Date(Math.max(notBefore.getTime(), doors)), deadline }
+  return { notBefore: new Date(Math.max(notBefore.getTime(), doors)), latestUseful }
 }
 
 /**
@@ -493,8 +493,8 @@ export function postableBand(input: {
     // Words that say on now wait for the doors: never a band before the session open at that minute opens.
     if (onNow) from = new Date(Math.max(from.getTime(), Date.parse(sessionAt(night, input.zone, from).start)))
     const at = nextSlot(STARTING_RULE(input.format), from, input.zone)
-    if (at.getTime() > w.deadline.getTime() || dayIn(at, input.zone) !== input.day) {
-      why = `no ${input.format} band on ${input.day} inside its window (it closes ${w.deadline.toISOString()})`
+    if (at.getTime() > w.latestUseful.getTime() || dayIn(at, input.zone) !== input.day) {
+      why = `no ${input.format} band on ${input.day} inside its window (it closes ${w.latestUseful.toISOString()})`
       continue
     }
     const session = sessionAt(night, input.zone, at)
