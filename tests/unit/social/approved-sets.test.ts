@@ -452,10 +452,11 @@ describe('a piece and its first revision are written together', () => {
     expect(writer).toContain(".from('social_pieces').delete().eq('id', pieceId)")
     expect(writer).toMatch(/const \{ error: derr \} = await db\.from\('social_pieces'\)\.delete\(\)/)
     // The one insert into social_pieces anywhere in src is the writer's own (the planner, its lifecycle moments, partner
-    // kits and the owner's Post now draw through planCampaignWeek; the approved sets through drawApprovedSet).
+    // kits and the owner's Post now draw through planCampaignWeek; the approved sets through drawApprovedSet; the creative
+    // intake's handoff through drawIntakePiece, the coordinator's (a) of 24 November 2026).
     const inserts = [...store.matchAll(/from\('social_pieces'\)\s*\.insert\(/g)].length
     expect(inserts).toBe(1)
-    for (const fn of ['export async function planCampaignWeek(', 'export async function drawApprovedSet(']) {
+    for (const fn of ['export async function planCampaignWeek(', 'export async function drawApprovedSet(', 'async function drawIntakePiece(']) {
       const at = store.indexOf(fn)
       expect(store.slice(at, store.indexOf('\n}\n', at)), fn).toContain('await writePieceWithFirstRevision(')
     }

@@ -35,8 +35,11 @@ const SELLER = listingCta([toBookingLink(linkRow)], false).where as string
 
 type Row = Record<string, unknown>
 
+/** A write the database refuses, by table: a check on an insert (23514), a missing grant or a trigger on an update or a delete. */
+type Refusals = { readonly insert?: Record<string, string>; readonly update?: Record<string, string>; readonly delete?: Record<string, string> }
+
 /** An in-memory database answering the chains Car A and the intake make; an unknown function answers nothing. */
-function memoryDb(tables: Record<string, Row[]>, rpcs: Record<string, (args: Row) => unknown>) {
+function memoryDb(tables: Record<string, Row[]>, rpcs: Record<string, (args: Row) => unknown>, refuse: Refusals = {}) {
   let seq = 0
   const id = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`
   const DEFAULTS: Record<string, () => Row> = {
@@ -54,6 +57,8 @@ function memoryDb(tables: Record<string, Row[]>, rpcs: Record<string, (args: Row
     const time = (v: unknown) => Date.parse(String(v))
     const run = () => {
       const all = (tables[table] ??= [])
+      const no = op.kind === 'insert' ? refuse.insert?.[table] : op.kind === 'update' ? refuse.update?.[table] : op.kind === 'delete' ? refuse.delete?.[table] : undefined
+      if (no) return { data: null, error: { code: op.kind === 'insert' ? '23514' : '42501', message: no } }
       if (op.kind === 'insert' || op.kind === 'upsert') {
         const made: Row[] = []
         for (const r of op.rows) {
@@ -159,7 +164,7 @@ const input = (over: Partial<IntakeInput> = {}): IntakeInput => ({
   ...over,
 })
 
-function world(opts: { usable?: () => boolean } = {}) {
+function world(opts: { usable?: () => boolean; refuse?: Refusals } = {}) {
   const usable = opts.usable ?? (() => true)
   const tables: Record<string, Row[]> = {
     cities: [{ slug: 'melbourne', name: 'Melbourne', free_guide: true, is_active: true, display_order: 1 }],
@@ -186,7 +191,7 @@ function world(opts: { usable?: () => boolean } = {}) {
   const db = memoryDb(tables, {
     social_asset_usable: (a) => a.p_url === PHOTO && a.p_event === EVENT && usable(),
     organiser_permission_for: () => null,
-  })
+  }, opts.refuse)
   return { tables, db: db as never }
 }
 
@@ -265,5 +270,48 @@ describe('the creative intake, again immediately before publishing', () => {
     const ig = tables.social_piece_schedules.find((s) => s.platform === 'instagram')
     expect(ig?.state).toBe('held')
     expect(String(ig?.held_reason)).toContain('instagram is not a destination of its intake record')
+  })
+})
+
+/*
+ * THE HANDOFF WRITES ITS PIECE AND ITS FIRST WORDS TOGETHER (the coordinator's (a) of 24 November 2026; the class of the
+ * PM's intake of 23 and 24 November: the comedy set's piece 28e4096c kept while its words were refused, its removal refused
+ * by a missing grant and never read). drawIntakePiece wrote its own piece and ignored its removal's answer, so a passed
+ * record whose words the database refused left an empty 'creative' piece holding the week's place, unsaid. It draws through
+ * the one writer now (store.ts writePieceWithFirstRevision), and the take-back after a record that could not be tied to its
+ * piece reads its answer too. Red on main: neither answer was read.
+ */
+describe('the handoff writes its piece and its first words together', () => {
+  const REFUSED_WORDS = 'new row for relation "social_piece_revisions" violates check constraint "social_piece_revisions_caption_marks"'
+  const NO_GRANT = 'permission denied for table social_pieces'
+
+  it('a refused removal of the empty piece is said, and the record is held with it', async () => {
+    const { receiveIntake } = await import('@/lib/social/store')
+    const { tables, db } = world({ refuse: { insert: { social_piece_revisions: REFUSED_WORDS }, delete: { social_pieces: NO_GRANT } } })
+    const out = await receiveIntake(db, input(), { now: RECEIVED, siteOrigin: ORIGIN, fetcher })
+    expect(out.state).toBe('held')
+    const said = (tables.creative_intake[0].check_reasons as string[]).join('\n')
+    expect(said).toMatch(new RegExp(`its empty piece ${String(tables.social_pieces[0]?.id)} could not be removed \\(${NO_GRANT}\\); it holds its place until a person removes it`))
+    expect(tables.social_piece_revisions).toHaveLength(0)
+  })
+
+  it('with the removal answered, the empty piece is gone and the place is free', async () => {
+    const { receiveIntake } = await import('@/lib/social/store')
+    const { tables, db } = world({ refuse: { insert: { social_piece_revisions: REFUSED_WORDS } } })
+    const out = await receiveIntake(db, input(), { now: RECEIVED, siteOrigin: ORIGIN, fetcher })
+    expect(out.state).toBe('held')
+    expect(tables.social_pieces).toHaveLength(0)
+    expect((tables.creative_intake[0].check_reasons as string[]).join('\n')).toContain('its empty piece was removed, so the place is free')
+  })
+
+  it("a piece that could not be taken back is said, never claimed taken back", async () => {
+    const { receiveIntake } = await import('@/lib/social/store')
+    // The record cannot be tied to its piece, and the database keeps a piece with words (migration 20261124040001).
+    const { tables, db } = world({ refuse: { update: { creative_intake: 'the record could not be written' }, delete: { social_pieces: 'refused: a piece with words, an approval, a schedule or a posting is never removed' } } })
+    const out = await receiveIntake(db, input(), { now: RECEIVED, siteOrigin: ORIGIN, fetcher })
+    expect(out.state).toBe('passed')
+    const lines = out.state === 'refused' ? '' : out.lines.join('\n')
+    expect(lines).toContain(`its piece ${String(tables.social_pieces[0]?.id)} could not be taken back (refused: a piece with words`)
+    expect(lines).not.toContain('the piece was taken back')
   })
 })

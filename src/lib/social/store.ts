@@ -1273,8 +1273,11 @@ function revisionRow(pieceId: string, version: number, p: PiecePlan, message: st
   }
 }
 
-/** A piece and its first revision written, or refused with the reason (duplicate: the week holds its place already). */
-export type PieceWritten = { readonly pieceId: string } | { readonly refused: string; readonly duplicate: boolean }
+/**
+ * A piece and its first revision written, or refused with the reason: at 'piece' the piece itself was refused (duplicate:
+ * the week holds its place already), at 'words' its first revision was, and the reason says what became of the piece.
+ */
+export type PieceWritten = { readonly pieceId: string } | { readonly refused: string; readonly duplicate: boolean; readonly at: 'piece' | 'words' }
 
 /**
  * A PIECE AND ITS FIRST REVISION ARE WRITTEN TOGETHER (the PM's intake of 23 and 24 November 2026: the comedy set's piece
@@ -1282,8 +1285,9 @@ export type PieceWritten = { readonly pieceId: string } | { readonly refused: st
  * Melbourne weekend carousel place, so the next intake was refused). The two rows are two writes, so when the revision is
  * refused the piece is removed at once, and the answer to that removal is read: the database allows it only for a piece
  * with nothing written under it (migration 20261124040001). The one writer of every piece and its first revision: the
- * week's planner (with the lifecycle's moments, the partner kits and the owner's Post now it draws through) and the
- * approved sets' intake. Never a piece without words, and a removal refused is said, never silent.
+ * week's planner (with the lifecycle's moments, the partner kits and the owner's Post now it draws through), the
+ * approved sets' intake and the creative intake's handoff (drawIntakePiece). Never a piece without words, and a removal
+ * refused is said, never silent.
  */
 export async function writePieceWithFirstRevision(
   db: Db,
@@ -1291,14 +1295,14 @@ export async function writePieceWithFirstRevision(
   firstRevision: (pieceId: string) => Record<string, unknown>,
 ): Promise<PieceWritten> {
   const { data, error: perr } = await db.from('social_pieces').insert(piece).select('id').single()
-  if (perr || !data) return { refused: refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row', duplicate: perr?.code === '23505' }
+  if (perr || !data) return { refused: refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row', duplicate: perr?.code === '23505', at: 'piece' }
   const pieceId = data.id as string
   const { error: rerr } = await db.from('social_piece_revisions').insert(firstRevision(pieceId))
   if (!rerr) return { pieceId }
   const words = `its words were not kept (${refusalOf(rerr.message) ?? rerr.message})`
   const { error: derr } = await db.from('social_pieces').delete().eq('id', pieceId)
-  if (derr) return { refused: `${words}, and its empty piece ${pieceId} could not be removed (${derr.message}); it holds its place until a person removes it`, duplicate: false }
-  return { refused: `${words}; its empty piece was removed, so the place is free`, duplicate: false }
+  if (derr) return { refused: `${words}, and its empty piece ${pieceId} could not be removed (${derr.message}); it holds its place until a person removes it`, duplicate: false, at: 'words' }
+  return { refused: `${words}; its empty piece was removed, so the place is free`, duplicate: false, at: 'words' }
 }
 
 /**
@@ -1727,9 +1731,15 @@ export async function checkIntake(db: Db, id: string, input: { readonly now: Dat
   }
   const kept = await keepIntakeCheck(db, id, { stage: 'intake', faults: [], state: 'handed_off', now: input.now, pieceId: drawn.pieceId })
   if (kept) {
-    // The record could not be tied to its piece: the piece is taken back, so a later check never draws a second.
-    await db.from('social_pieces').delete().eq('id', drawn.pieceId)
-    return { id, state: 'passed', faults: [], pieceId: null, lines: [`Passed, and not handed off: ${kept}; the piece was taken back.`] }
+    // The record could not be tied to its piece: the piece is taken back, so a later check never draws a second. The answer
+    // is read: the database removes only a piece with nothing written under it (migration 20261124040001), so a refusal is
+    // said, and the piece left stays unapproved and unscheduled, and never posts, since a creative piece with no intake
+    // record is held at publishing (intakeIssuesAtPublish).
+    const { error: berr } = await db.from('social_pieces').delete().eq('id', drawn.pieceId)
+    const back = berr
+      ? `its piece ${drawn.pieceId} could not be taken back (${berr.message}); it stays unapproved and unscheduled, and a creative piece with no intake record never posts`
+      : 'the piece was taken back'
+    return { id, state: 'passed', faults: [], pieceId: null, lines: [`Passed, and not handed off: ${kept}; ${back}.`] }
   }
   return { id, state: 'handed_off', faults: [], pieceId: drawn.pieceId, lines: [`Passed every gate and handed to publishing as piece ${drawn.pieceId}, UNAPPROVED and unscheduled, for the PM's verify.`] }
 }
@@ -1752,20 +1762,15 @@ async function drawIntakePiece(
   if (cerr) return { state: 'refused', reason: `the week's campaign could not be kept (${cerr.message})` }
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) return { state: 'refused', reason: "the week's campaign could not be read" }
-  const { data: piece, error: perr } = await db
-    .from('social_pieces')
-    .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() })
-    .select('id')
-    .single()
-  if (perr || !piece) return { state: 'refused', reason: `its piece was not kept (${refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row'})` }
-  const pieceId = piece.id as string
-  const { error: rerr } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, 1, p, null, 'planner', null, input.now))
-  if (rerr) {
-    // A piece with no words is never left behind.
-    await db.from('social_pieces').delete().eq('id', pieceId)
-    return { state: 'refused', reason: `its words were not kept (${refusalOf(rerr.message) ?? rerr.message})` }
-  }
-  return { state: 'drawn', pieceId }
+  // The piece and its first revision through the one writer: a piece whose words are refused is removed, and a removal
+  // the database refuses is said (writePieceWithFirstRevision).
+  const written = await writePieceWithFirstRevision(
+    db,
+    { campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
+    (pieceId) => revisionRow(pieceId, 1, p, null, 'planner', null, input.now),
+  )
+  if ('refused' in written) return { state: 'refused', reason: written.at === 'piece' ? `its piece was not kept (${written.refused})` : written.refused }
+  return { state: 'drawn', pieceId: written.pieceId }
 }
 
 /**
