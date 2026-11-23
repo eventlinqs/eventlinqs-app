@@ -507,7 +507,9 @@ export async function planLifecyclePieces(
       credit: null,
       width: photo.width,
       height: photo.height,
-      line: c.moment.format === 'story' ? storyLine(c.moment.kind, place) : null,
+      // An organiser's poster says its own facts, so its story carries no line of ours (playbook.ts poster-drawn-whole).
+      line: c.moment.format === 'story' && photo.type !== 'artwork' ? storyLine(c.moment.kind, place) : null,
+      ...(photo.type === 'artwork' ? { artwork: true as const } : {}),
     }
     // The 05:15 standard's facts, every one read from the night's own row.
     const nightDay = dayIn(new Date(ln.startDate), ln.timezone?.trim() || c.run.zone)

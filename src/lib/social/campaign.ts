@@ -189,7 +189,21 @@ export type Slide =
    * so the destination check measures what is drawn. `line` is a story's one small line of fact beneath the photograph
    * (a story carries no caption); a feed slide's is always null, its words in the caption.
    */
-  | { t: 'photo'; composition: 'photo_whole'; eventId: string; photo: string; credit: null; width: number; height: number; line: string | null }
+  | {
+      t: 'photo'
+      composition: 'photo_whole'
+      eventId: string
+      photo: string
+      credit: null
+      width: number
+      height: number
+      line: string | null
+      /**
+       * The organiser's own poster (an asset typed 'artwork'), drawn whole as the photograph is, with no line of ours on
+       * its story: the poster says its own facts (lifecycle.ts rankPhotos; the PM's intake read of 23 November 2026).
+       */
+      artwork?: true
+    }
   /**
    * AN APPROVED FILE, POSTED AS IT IS (Lawal, 18 November 2026, 11:55: "You can post this. You have my approval now",
    * of the SOCIAL-READY-15NOV posts; the PM's 12:20): a finished image Lawal approved, never drawn again. `url` is its

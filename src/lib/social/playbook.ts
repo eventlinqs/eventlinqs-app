@@ -102,4 +102,11 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: INTAKE_2215,
     date: '2026-11-23',
   },
+  {
+    id: 'poster-drawn-whole',
+    rule: "An organiser's poster (an asset typed artwork) is drawn as its own slide, whole: never cropped, no focal crop, nothing of ours over it or on its story; a photograph leads where both are permitted.",
+    reason: "The lifecycle planner drew only assets typed 'photo', so A Moment of Sanity's poster (9080529b), rightly typed artwork, dropped out of the engine; Lawal's 13:41 and the PM's 13:55 item 3: 'The only thing kept whole is an organiser's POSTER'.",
+    source: INTAKE_2215,
+    date: '2026-11-23',
+  },
 ]
