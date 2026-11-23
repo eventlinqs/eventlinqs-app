@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
+import { ctaFor } from '@/lib/events/cta'
 import { APPROVED_SETS, approvedSetNamed, approvedSetOfSlides, type ApprovedSet } from '@/lib/social/approved-sets'
 import { APPROVED_FILE_PREFIX, isApprovedFileUrl, pieceRefusal, planApprovedSet, type PiecePlan } from '@/lib/social/campaign'
 import { captionMarkFaults, exclamationCount } from '@/lib/social/caption-marks'
@@ -278,6 +279,20 @@ describe('an approved set, planned by the engine', () => {
       // No relative day word in a feed post (the PM's 13:32 of 23 November 2026).
       expect(`${p.versions.instagram.caption}\n${p.versions.facebook.caption}`).not.toMatch(/\b(today|tonight|tomorrow|this weekend|this week)\b/i)
     }
+  })
+
+  it("names the organiser's ticketing provider in the caption where every night sells through one, never on the artwork", async () => {
+    const kyivska = approvedSetNamed('kyivska-perepichka') as ApprovedSet
+    const sold = (provider: string) => ctaFor({ isFree: false, externalTicketUrl: `https://www.${provider.toLowerCase()}.com/au/event/1`, externalKind: 'tickets', providerName: provider })
+    const planned = planApprovedSet(kyivska, (await nightsOf(kyivska)).map((n) => ({ ...n, cta: sold('TryBooking') })), ORIGIN)
+    if ('refused' in planned) throw new Error(planned.refused)
+    expect(planned.plan.versions.instagram.caption).toContain('\u{1F39F} Event details and tickets through TryBooking: link in our bio')
+    expect(planned.plan.versions.facebook.caption).toContain('\u{1F39F} Event details and tickets through TryBooking:\nhttps://www.eventlinqs.com.au/go/PIECE_ID_HERE?via=facebook')
+    // Sold in several places, each night's own page names its seller: the caption names none.
+    const music = approvedSetNamed('live-music') as ApprovedSet
+    const mixed = planApprovedSet(music, (await nightsOf(music)).map((n, i) => ({ ...n, cta: sold(i % 2 === 0 ? 'Moshtix' : 'Ticketek') })), ORIGIN)
+    if ('refused' in mixed) throw new Error(mixed.refused)
+    expect(mixed.plan.versions.instagram.caption).toContain('\u{1F39F} Times and tickets for all four: link in our bio')
   })
 
   it('the publish gate passes each before its first night, holds it once that night has started, and the code in force would not draw it again', async () => {

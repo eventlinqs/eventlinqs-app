@@ -1657,6 +1657,13 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
         : `${listEmoji(sorted, false)} ${countPhrase(sorted)} in ${city.name}${days.size === 1 ? ` on ${local(first.startDate, first.timezone, { weekday: 'long' })}` : ''}.`
   const page = shows.length === 1 ? `/events/${first.slug}` : destinationOf(sorted, city).path
   const own = shows.length === 1 ? tagWord(first.title) : place ? tagWord(place) : tagWord(city.name)
+  // THE SELLER IN THE CAPTION, NEVER ON OUR ARTWORK (playbook.ts design-seller-in-the-caption; Lawal's 12:47 of 23 November
+  // 2026: booking is completed through the organiser's ticketing provider, and EventLinqs never implies it sells them):
+  // where every night sells through one outside site, the link line names it; nights sold in several places are each
+  // named on their own page.
+  const sellers = [...new Set(sorted.map((n) => (n.cta.state === 'paid_external' ? n.cta.where : null)))]
+  const seller = sellers.length === 1 && sellers[0] ? ` through ${sellers[0]}` : ''
+  const all = shows.length >= 2 ? ` for all ${countWord(shows.length).toLowerCase()}` : ''
   const words = listCaptions({
     hook,
     nights: sorted,
@@ -1667,7 +1674,7 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
     share: 'Tag who you are going with.',
     tags: standardTags(city, own),
     crop: FEED_CROP,
-    ...(place ? { lead: 'Event details and tickets' } : {}),
+    ...(place ? { lead: `Event details and tickets${seller}` } : seller ? { lead: `Times and tickets${all}${seller}` } : {}),
   })
   const slides = set.files.map((file): Slide => ({ t: 'file', composition: 'close', url: `${APPROVED_FILE_PREFIX}${file}`, format: 'feed', eventId: first.eventId, startDate: first.startDate }))
   const cardNames = (n: CampaignNight) => [CARD_TITLE_MAX, ASK_TITLE_MAX, DRAW_TITLE_MAX, 40].map((max) => cardTitle(n.title, max))
