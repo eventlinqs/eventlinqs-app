@@ -15,6 +15,26 @@ import { MAX_RETRIES, REQUEST_TIMEOUT_MS } from './config'
  */
 let client: Anthropic | null = null
 
+/**
+ * THE ORGANISATION THE KEY BELONGS TO (the PM's 13:20 and 13:32 of 23 November 2026, item 4): Anthropic names it on every
+ * response, "anthropic-organization-id: The ID of the organization that the API key or access token used in the request
+ * belongs to" (docs.claude.com/en/api/overview). The client's own fetch notes it from each response so the ai.request log
+ * line can carry it: an organisation id, never the key.
+ */
+let lastOrganisation: string | null = null
+
+/** The anthropic-organization-id of the last response this process received, or null before any. */
+export function anthropicOrganisation(): string | null {
+  return lastOrganisation
+}
+
+const notingFetch: typeof fetch = async (input, init) => {
+  const res = await fetch(input, init)
+  const org = res.headers.get('anthropic-organization-id')
+  if (org) lastOrganisation = org
+  return res
+}
+
 export function isAiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY)
 }
@@ -29,6 +49,7 @@ export function getAnthropicClient(): Anthropic {
     apiKey,
     timeout: REQUEST_TIMEOUT_MS,
     maxRetries: MAX_RETRIES,
+    fetch: notingFetch,
   })
   return client
 }

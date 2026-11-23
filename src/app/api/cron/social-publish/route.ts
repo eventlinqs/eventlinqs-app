@@ -108,17 +108,23 @@ export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.get('post') === 'now') {
     const event = request.nextUrl.searchParams.get('event') ?? ''
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event)) return NextResponse.json({ posted: false, why: 'the event is not an id' }, { status: 400 })
+    // THE PM VERIFY GATE (Lawal's 13:05 and the PM's 13:06 of 23 November 2026): stage=draw draws and stops; stage=publish
+    // takes the piece the PM passed (piece=<id>). Nothing draws and publishes in one call.
+    const stage = request.nextUrl.searchParams.get('stage') ?? ''
+    if (stage !== 'draw' && stage !== 'publish') return NextResponse.json({ posted: false, why: 'the stage is draw or publish' }, { status: 400 })
+    const piece = request.nextUrl.searchParams.get('piece') ?? ''
+    if (stage === 'publish' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(piece)) return NextResponse.json({ posted: false, why: 'the passed piece is not an id' }, { status: 400 })
     const db = createAdminClient()
     const now = new Date()
     const founder = await founderAccount(db)
     if (!founder.id) return NextResponse.json({ posted: false, why: "no founder account to approve in the standing approval's name" }, { status: 409 })
-    const result = await postNightNow(db, { eventId: event, by: founder.id, now, siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv() })
+    const result = await postNightNow(db, { eventId: event, by: founder.id, now, siteOrigin: getSiteUrl(), publisher: socialPublisherFromEnv(db, now), reader: socialPostReaderFromEnv(), stage, pieceId: stage === 'publish' ? piece : null })
     await recordAnonAuditEvent({
       action: 'system.social.post_now',
       actorEmail: 'cron/social-publish?post=now',
-      metadata: { event, piece: result.pieceId, state: result.state, lines: result.lines.slice(0, 10), waived: "the posting hours, for this night, by Lawal's word of 22 November 2026, 00:32" },
+      metadata: { event, stage, piece: result.pieceId, state: result.state, lines: result.lines.slice(0, 10), waived: "the posting hours, for this night, by Lawal's word of 22 November 2026, 00:32" },
     })
-    return NextResponse.json({ posted: result.state === 'posted', piece: result.pieceId, lines: result.lines })
+    return NextResponse.json({ posted: result.state === 'posted', drawn: result.state === 'drawn', piece: result.pieceId, lines: result.lines })
   }
 
   try {

@@ -14,6 +14,15 @@ on:
         description: the night's event id (a uuid), the night the owner's word names
         required: true
         type: string
+      stage:
+        description: draw (draw the night's piece and stop for the PM's VERIFY) or publish (the piece the PM passed)
+        required: true
+        type: choice
+        options: [draw, publish]
+      piece:
+        description: for publish, the piece id the PM passed
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -32,12 +41,16 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           EVENT: ${{ inputs.event }}
+          STAGE: ${{ inputs.stage }}
+          PIECE: ${{ inputs.piece }}
         run: |
           set -euo pipefail
           [[ "$EVENT" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "REFUSED: event $EVENT is not an id"; exit 2; }
-          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "https://www.eventlinqs.com.au/api/cron/social-publish?post=now&event=${EVENT}" \
+          [[ "$STAGE" == draw || "$STAGE" == publish ]] || { echo "REFUSED: stage $STAGE is not draw or publish"; exit 2; }
+          if [[ "$STAGE" == publish ]]; then [[ "$PIECE" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "REFUSED: piece $PIECE is not an id"; exit 2; }; fi
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "https://www.eventlinqs.com.au/api/cron/social-publish?post=now&event=${EVENT}&stage=${STAGE}&piece=${PIECE}" \
             -H "Authorization: Bearer $CRON_SECRET")
           echo "HTTP $code"
           cat answer.json; echo
           [ "$code" = 200 ]
-          grep -q '"posted":true' answer.json
+          if [[ "$STAGE" == draw ]]; then grep -q '"drawn":true' answer.json; else grep -q '"posted":true' answer.json; fi

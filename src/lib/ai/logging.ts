@@ -35,6 +35,8 @@ export type AiLogRecord = {
   resendId?: string
   /** Delivery-provider error string (Resend validation message). Never user content. */
   errorDetail?: string
+  /** The organisation the API key belongs to, from Anthropic's anthropic-organization-id response header; never the key. */
+  org?: string | null
 }
 
 export function hashIdentity(identity: string): string {

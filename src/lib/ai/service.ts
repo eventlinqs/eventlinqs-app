@@ -1,6 +1,6 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
-import { getAnthropicClient, isAiConfigured } from './client'
+import { anthropicOrganisation, getAnthropicClient, isAiConfigured } from './client'
 import { estimateCostMicroUsd, getDefaultModel } from './config'
 import { checkMonthlyBudget, recordSpend } from './cost-guard'
 import { logAi } from './logging'
@@ -155,6 +155,7 @@ export async function runAssistant(opts: {
 
   logAi({
     evt: 'ai.request',
+    org: anthropicOrganisation(),
     assistant: assistant.id,
     who,
     ok: true,

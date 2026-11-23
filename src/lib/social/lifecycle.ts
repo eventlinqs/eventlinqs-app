@@ -358,6 +358,10 @@ export function momentsDue(run: Run, now: Date, h: RunHistory): Moment[] {
       story('final_day')
       break
     case 'tomorrow':
+      // THE LAST CHANCE FEED (the PM's 13:32 of 23 November 2026, item 1: A Moment of Sanity reached its tomorrow stage
+      // with no final push ever posted, so the engine had only a story to offer, and a story carries no link). A night
+      // that never had its final push gets it the day before, beside its tomorrow story; one that had it gets the story.
+      if (!had({ kind: 'final_push', format: 'feed' })) feed('final_push', true)
       story('tomorrow')
       break
     case 'this_week': {
@@ -746,7 +750,9 @@ export function hookFor(kind: MomentKind, experiences: readonly string[], place:
     case 'tomorrow':
       return `${What}${at}, tomorrow.`
     case 'final_push':
-      return `${What}${at}, only days away.`
+      // No relative words in a feed post (the PM's 12:50 and 13:32 of 23 November 2026: "no relative date"): a feed post
+      // stays visible after its day, and the fact block below names the day and the date.
+      return `${What}${at}, coming up.`
     default:
       return `${What}${at}, coming up.`
   }
@@ -760,6 +766,15 @@ export function whereOf(place: string | null, address: string | null, city: stri
   if (address && address.trim() && !has(address.trim())) parts.push(address.trim())
   if (city && city.trim() && !has(city.trim())) parts.push(city.trim())
   return parts.join(', ')
+}
+
+/**
+ * A feed post's day word: always the weekday (the PM's 13:32 of 23 November 2026: "no relative date"), because a feed post
+ * stays on the profile after its day, where "Today" or "Tomorrow" would be false. A story expires within the day, so it
+ * keeps dayWordOf's words. Pure.
+ */
+export function feedDayWordOf(nightDay: string): string {
+  return new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${nightDay}T12:00:00Z`))
 }
 
 /** The day word of the 05:15 standard: Today, Tomorrow, or the weekday, as the night's day reads from the post's day. */
