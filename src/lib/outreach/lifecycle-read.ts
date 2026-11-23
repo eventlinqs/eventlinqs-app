@@ -5,7 +5,7 @@ import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { photoPath } from './photo-link'
 import { readTheirNights } from './their-nights'
 import { addressFitsName, melbourneDayOf } from './segment-a-letter'
-import { LIFECYCLE_SUBTYPE, lifecycleChoice, type LifecycleFacts, type LifecycleKey, type LifecycleNightClock } from './lifecycle-letters'
+import { LIFECYCLE_SUBTYPE, lifecycleChoice, nightsAskedAbout, type LifecycleFacts, type LifecycleKey, type LifecycleNightClock } from './lifecycle-letters'
 import type { VoiceConsent } from './voice-gate'
 
 /**
@@ -13,7 +13,11 @@ import type { VoiceConsent } from './voice-gate'
  * reaches, from production's own rows:
  *   who to write to     the contact the organiser was already written at, if any (one conversation per organiser, the
  *                        sender's one-first-letter rule), else the contact the play reached;
- *   whether to write    a reply from them, or a letter of this kind already gone or going, means no letter;
+ *   whether to write    a reply from them means no letter; the free promotion offer goes once per organiser, but the
+ *                        photo permission request is judged NIGHT BY NIGHT (law 49: each night's own clock; the master
+ *                        directive of 24 November 2026, A1): a night asked about already (its own request going or gone,
+ *                        or a letter naming no night that went while it was listed and ahead) is passed over, and the
+ *                        others are still asked, one letter at a time, the contact policy deciding when;
  *   their nights        ./their-nights.ts, the one reader of an organiser's own public nights, soonest first;
  *   granted             a night whose cover is the organiser's own photograph with recorded rights, or one they already
  *                        gave us images for (a current organiser authorised asset), needs no PERM;
@@ -56,12 +60,20 @@ export async function readLifecycleFacts(
     .eq('organiser_id', organiserId)
   if (theirs.error) return { state: 'not read', why: `their contacts could not be read: ${theirs.error.message}` }
   const ids = (theirs.data ?? []).map((c) => c.id as string)
-  const touches = await db.from('outreach_touches').select('contact_id, state, play_id, comms_subtype, sent_at').in('contact_id', ids).neq('state', 'void')
+  const touches = await db
+    .from('outreach_touches')
+    .select('contact_id, state, play_id, comms_subtype, sent_at, scheduled_for, drafted_at, context_key')
+    .in('contact_id', ids)
+    .neq('state', 'void')
   if (touches.error) return { state: 'not read', why: `their messages could not be read: ${touches.error.message}` }
   const replies = await db.from('outreach_replies').select('contact_id').in('contact_id', ids).limit(1)
   if (replies.error) return { state: 'not read', why: `their replies could not be read: ${replies.error.message}` }
   const subtype = LIFECYCLE_SUBTYPE[input.key]
-  const alreadyAsked = (touches.data ?? []).some((t) => t.comms_subtype === subtype && (GOING.includes(t.state as string) || t.play_id === input.playId))
+  // This kind's letters going or gone to them, or this play's own held one.
+  const mine = (touches.data ?? []).filter((t) => t.comms_subtype === subtype && (GOING.includes(t.state as string) || t.play_id === input.playId))
+  // The offer is one per organiser; the photo request is judged per night below (nightsAskedAbout), never organiser wide.
+  const perm = input.key === 'lifecycle_perm'
+  const alreadyAsked = !perm && mine.length > 0
   const replied = (replies.data ?? []).length > 0
   if (replied || alreadyAsked) {
     const c = lifecycleChoice(input.key, { replied, alreadyAsked, nights: [] }, input.now)
@@ -91,7 +103,7 @@ export async function readLifecycleFacts(
   )
   if (nights.length === 0) return { state: 'not due', why: 'no public night of theirs is listed ahead' }
   const nightIds = nights.map((n) => n.eventId)
-  const rows = await db.from('events').select('id, end_date, city_primary, external_ticket_url, cover_image_url').in('id', nightIds)
+  const rows = await db.from('events').select('id, end_date, city_primary, external_ticket_url, cover_image_url, created_at, published_at').in('id', nightIds)
   if (rows.error) return { state: 'not read', why: `their nights could not be read: ${rows.error.message}` }
   const rights = await db.from('event_image_rights').select('event_id, image_url, rights_state').in('event_id', nightIds).eq('image_role', 'cover')
   if (rights.error) return { state: 'not read', why: `their nights' photo rights could not be read: ${rights.error.message}` }
@@ -111,12 +123,26 @@ export async function readLifecycleFacts(
   if (given.error) return { state: 'not read', why: `the images they gave could not be read: ${given.error.message}` }
   const gaveFor = new Set((given.data ?? []).map((a) => a.event_id as string))
   const byId = new Map((rows.data ?? []).map((r) => [r.id as string, r]))
+  // THE NIGHTS ALREADY ASKED ABOUT, each by its own request (law 49, per night). A request names its night in its
+  // context (event:<id>); one naming none covers the nights listed and ahead when it went (nightsAskedAbout).
+  const askedNights = perm
+    ? nightsAskedAbout(
+        mine.map((t) => ({
+          contextKey: (t.context_key as string | null) ?? null,
+          wentIso: ((t.sent_at ?? t.scheduled_for ?? t.drafted_at) as string | null) ?? null,
+        })),
+        nights.map((n) => {
+          const row = byId.get(n.eventId)
+          return { eventId: n.eventId, startIso: n.startDate, listedIso: ((row?.published_at ?? row?.created_at) as string | null) ?? null }
+        }),
+      )
+    : new Set<string>()
   const clocks: LifecycleNightClock[] = nights.map((n) => {
     const row = byId.get(n.eventId)
     const cover = (row?.cover_image_url as string | null) ?? null
     const ownCover = cover !== null && (rights.data ?? []).some((r) => r.event_id === n.eventId && r.image_url === cover && GRANTED.includes(r.rights_state as string))
     const granted = ownCover || gaveFor.has(n.eventId)
-    return { eventId: n.eventId, startIso: n.startDate, endIso: (row?.end_date as string | null) ?? null, zone: n.timezone || 'Australia/Melbourne', granted }
+    return { eventId: n.eventId, startIso: n.startDate, endIso: (row?.end_date as string | null) ?? null, zone: n.timezone || 'Australia/Melbourne', granted, asked: askedNights.has(n.eventId) }
   })
   const choice = lifecycleChoice(input.key, { replied, alreadyAsked, nights: clocks }, input.now)
   if (!choice.due) return { state: 'not due', why: choice.why }
