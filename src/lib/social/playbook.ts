@@ -32,6 +32,7 @@ const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:3
 const DECISION_1247 = "Lawal's final creative decision, 23 November 2026, 12:47 (FINAL-CREATIVE-DECISION-23NOV.md)"
 const INTAKE_2215 = "the PM's intake read of 23 November 2026, 22:15"
 const INTAKE_2324 = "the PM's intake of 23 and 24 November 2026"
+const RETURN_0405 = "the PM's RETURN of 04:05 on 24 November 2026 (comedy piece ed0c1dca)"
 
 export const PLAYBOOK: readonly PlaybookRule[] = [
   {
@@ -151,6 +152,13 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     rule: "An approved set's piece that nobody has approved, scheduled or posted is drawn again with today's nights and words as a new revision, its piece id kept; an approved, scheduled or posted piece is never redrawn.",
     reason: "The live music (8d252108) and Kyivska (23f34b07) pieces were drawn at 22:15 with the captions train seven fixed, and intake, finding each by its first file, only ever answered 'drawn already'.",
     source: INTAKE_2324,
+    date: '2026-11-24',
+  },
+  {
+    id: 'caption-no-from-to-line',
+    rule: "No list caption carries a 'From ... on <day> to ... on <day>' line, on one day or several: the hook and the schedule beneath it carry it. It supersedes caption-no-from-to-on-one-day.",
+    reason: "The comedy piece read 'From Holy Sh!t Improv on Friday to Sunday Laughternoons on Sunday.', which restates its hook ('Three shows at Comedy Republic, Friday 27 to Sunday 29 November.') and the rows beneath it; the same generator wrote the live music defect.",
+    source: RETURN_0405,
     date: '2026-11-24',
   },
 ]

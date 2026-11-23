@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ctaFor, ctaPriceLine, type CtaInput } from '@/lib/events/cta'
-import { CAPTION_PHOTO_CREDITS, creativeRefusals, creditsOf, listCaptions, notAStreet, placeOf, planCampaign, type CampaignCity, type CampaignNight, type Slide } from '@/lib/social/campaign'
+import { CAPTION_PHOTO_CREDITS, creativeRefusals, creditsOf, fromToLine, listCaptions, notAStreet, placeOf, planCampaign, type CampaignCity, type CampaignNight, type Slide } from '@/lib/social/campaign'
 import { pieceCorrections } from '@/lib/social/piece-quality'
 
 /*
@@ -65,16 +65,20 @@ describe("a list caption's 'From ... to ...' line runs in time from each show's 
   const showtime = night({ at: '2026-11-21T03:00:00Z', title: 'Showtime' })
   const base = { hook: '\u{1F389} Two shows in Bendigo this weekend.', rows: ['a', 'b'], pictured: null, place: null, link: 'https://www.eventlinqs.com.au/city/bendigo', share: 'Send this to them.', tags: '#BendigoEvents #EventLinqs', crop: '4:5' as const }
 
+  // The line is never written in a caption now (the PM's RETURN of 04:05 on 24 November 2026; playbook.ts
+  // caption-no-from-to-line); its generator is kept (law 13), and these hold its order rule.
   it('names Witness, which opens on Friday, first', () => {
-    const out = listCaptions({ ...base, nights: [witnessSat, showtime], sessionsOf: (n) => (n.title === 'Witness for the Prosecution' ? [witnessFri, witnessSat] : [n]) })
-    expect(out.caption).toContain('From Witness for the Prosecution on Friday to Showtime on Saturday.')
+    expect(fromToLine([witnessSat, showtime], (n) => (n.title === 'Witness for the Prosecution' ? [witnessFri, witnessSat] : [n]))).toBe('From Witness for the Prosecution on Friday to Showtime on Saturday.')
   })
 
-  it('the drill: without its sessions both rows are on Saturday, so no from-to line is said at all', () => {
-    // Production drew 'From Showtime on Saturday to Witness for the Prosecution on Saturday.' here; a list on one day says
-    // no from-to line (the PM's intake read of 23 November 2026, 22:15; playbook.ts caption-no-from-to-on-one-day).
-    const out = listCaptions({ ...base, nights: [witnessSat, showtime] })
-    expect(out.caption).not.toMatch(/^From /m)
+  it('the drill: without its sessions both rows are on Saturday, so the line is none', () => {
+    expect(fromToLine([witnessSat, showtime])).toBeNull()
+  })
+
+  it('no list caption carries the line, with its sessions or without', () => {
+    const withSessions = listCaptions({ ...base, nights: [witnessSat, showtime], sessionsOf: (n) => (n.title === 'Witness for the Prosecution' ? [witnessFri, witnessSat] : [n]) })
+    expect(withSessions.caption).not.toMatch(/^From .* to .*$/m)
+    expect(listCaptions({ ...base, nights: [witnessSat, showtime] }).caption).not.toMatch(/^From .* to .*$/m)
   })
 })
 

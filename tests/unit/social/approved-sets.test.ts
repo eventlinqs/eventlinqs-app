@@ -231,8 +231,8 @@ describe('an approved set, planned by the engine', () => {
     const comedy = await planOf('comedy-weekend')
     expect(comedy.versions.instagram.caption).toBe(
       [
+        // No 'From ... to ...' line: the hook and the rows carry it (the PM's RETURN of 04:05 on 24 November 2026).
         '\u{1F602} Three shows at Comedy Republic, Friday 27 to Sunday 29 November.',
-        'From Holy Sh!t Improv on Friday to Sunday Laughternoons on Sunday.',
         'Fri 27 Nov, 5 pm and 6.30 pm and Sat 28 Nov, 6.30 pm: Holy Sh!t Improv',
         'Fri 27 Nov, 8 pm and Sat 28 Nov, 8 pm: Comedy Republic Main Stage',
         'Sun 29 Nov, 4 pm: Sunday Laughternoons',
