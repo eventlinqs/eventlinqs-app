@@ -175,6 +175,18 @@
       "\\bI hope the [^.?!\\n]{1,60} (is|are) going well\\b",
       "\\bI hope you['’]?(ve| have)( been)? (had|having) a (great|good|lovely|nice|wonderful) (week|weekend|day)\\b"
     ],
+    "founderIntroduction": [
+      "\\bI['’]?m Lawal\\b",
+      "\\bI am Lawal\\b",
+      "\\bmy name is Lawal\\b",
+      "\\b(this is|it['’]?s) Lawal\\b",
+      "\\bLawal here\\b",
+      "\\bI['’]?m (the |a )?(co-?)?founder of EventLinqs\\b",
+      "\\bI am (the |a )?(co-?)?founder of EventLinqs\\b",
+      "\\bI['’]?m building EventLinqs\\b",
+      "\\bI am building EventLinqs\\b",
+      "\\bbuilds a community around every event\\b"
+    ],
     "acqFirstSubjects": [
       "^.+: more people, at no cost to you$",
       "^Free listing for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",

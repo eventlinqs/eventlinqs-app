@@ -96,14 +96,14 @@ export const LIFECYCLE_ACQ: LifecycleLetter = {
   body: [
     P(
       'Hi [greeting],',
-      "I'm Lawal, founder of EventLinqs, the what's on guide for [city]. [event] on [event day] is already listed with us: [event link]",
+      "[event] on [event day] is already listed on EventLinqs, the what's on guide for [city]: [event link]",
       'Over its last two weeks we put it in front of people looking for something to do in [city], on the [city] guide.',
       "If you'd like more from it, you can claim the listing for free, keep the details up to date yourself and sell tickets directly, with every attendee's details yours to keep.",
       'Would you like me to set that up for you?',
     ),
     CLOSE,
   ].join('\n\n'),
-  source: `${STANDARD_SOURCE} ACQ lifecycle v2: no stock pleasantry, and the night's day and date in place of the countdown. Earlier: ${SOURCE}`,
+  source: `${STANDARD_SOURCE} ACQ lifecycle v2: no stock pleasantry, no founder sentence (Lawal, 11:31 of 18 November 2026; the PM's 23:16 of 23 November 2026, item 2: "the founder sentence stays OUT"), the opening on the night, already listed on EventLinqs, the what's on guide for its city, and the night's day and date in place of the countdown. Earlier: ${SOURCE}`,
 }
 
 export const LIFECYCLE_LETTERS: readonly LifecycleLetter[] = [LIFECYCLE_PERM, LIFECYCLE_ACQ]

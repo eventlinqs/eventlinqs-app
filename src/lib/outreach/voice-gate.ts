@@ -54,6 +54,13 @@ export interface VoiceStandard {
    * "Hi <name>," then straight into the purpose. standard.json stock_pleasantries, as gateway.py reads it; required.
    */
   readonly stockPleasantries: readonly string[]
+  /**
+   * THE FOUNDER SENTENCE IN ALL ITS FORMS (Lawal, 11:31 of 18 November 2026: the founder sentence, "I'm Lawal Adams, and
+   * I'm building EventLinqs ...", is removed from every template, "founder focused and an unproved claim"; the PM's 23:16
+   * of 23 November 2026, item 2): every first-person introduction of the founder, as patterns. standard.json
+   * founder_introduction, as gateway.py reads it; required. founderSentence above keeps its two literal wordings.
+   */
+  readonly founderIntroduction: readonly string[]
   /** The ACQ-FIRST letter's own offer subjects (standard.json of 18 November 11:25, the PM's ruling of 11:25). */
   readonly acqFirstSubjects?: readonly string[]
   /** The subject of the ACQ-FIRST letter that names no night: the timing rule applies only where a night is named. */
@@ -114,7 +121,7 @@ export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   }
   const s = p.standard
   const standardWhole =
-    Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead) && strings(s?.stockPleasantries)
+    Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead) && strings(s?.stockPleasantries) && strings(s?.founderIntroduction)
   if (!standardWhole) throw new Error('POLICY_UNAVAILABLE: the communication standard is missing from the voice policy; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
   const sa = s?.sourceAsk
   if (sa !== undefined && !(Boolean(sa) && strings(sa?.subjects) && typeof sa?.needsEventDate === 'boolean')) {
@@ -175,6 +182,21 @@ export function pleasantryProblems(bodyBefore: string, std: VoiceStandard): stri
   return r
 }
 
+/**
+ * THE FOUNDER SENTENCE IN ALL ITS FORMS (standard.json founder_introduction; gateway.py the same, in every message, word
+ * for word): a first-person introduction of the founder in the message's own words after its greeting and before its
+ * closing, so the signature block ("Lawal Adams / Founder, EventLinqs") and a DM's sign-off pass. Until 23 November 2026
+ * only two wordings were refused, and law 49's free promotion letter opened "I'm Lawal, founder of EventLinqs". Pure.
+ */
+export function founderIntroductionProblems(bodyBefore: string, std: VoiceStandard): string[] {
+  const r: string[] = []
+  for (const pat of std.founderIntroduction ?? []) {
+    const m = bodyBefore.match(new RegExp(pat, 'i'))
+    if (m) r.push(`the founder sentence is out of every message (Lawal, 11:31): a first-person introduction of the founder, "${m[0]}"`)
+  }
+  return r
+}
+
 /** Every reason the message may not be held as approved, scheduled or sent; empty when it passes. */
 /**
  * A MESSAGE'S WORDS, READ AGAIN AT SEND TIME (the PM's 20:40 of 19 November 2026, item 2: a letter carrying the founder
@@ -200,6 +222,7 @@ export function wordsProblems(body: string, policy: VoicePolicy): string[] {
     const m = before.match(new RegExp(pat, 'i'))
     if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
   }
+  r.push(...founderIntroductionProblems(before, std))
   r.push(...pleasantryProblems(before, std))
   return r
 }
@@ -265,6 +288,7 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
     if (low.includes(p.toLowerCase().replace(/^[. ]+|[. ]+$/g, ''))) r.push(`invites a no or offers an exit: ${JSON.stringify(p)} (communication law 5)`)
   }
   if (low.includes("i'm lawal from")) r.push('"I\'m Lawal from" is never used (Lawal\'s rule)')
+  r.push(...founderIntroductionProblems(bodyBefore, policy.standard))
   r.push(...pleasantryProblems(bodyBefore, policy.standard))
   if (/[\u2014\u2013]| - /.test(own)) r.push("em dash, en dash or spaced hyphen (Lawal's rule)")
   // gateway.py's placeholder pattern; the fourth word is written T(?:O)DO only so the source carries no to-do marker.

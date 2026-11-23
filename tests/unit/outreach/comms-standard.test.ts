@@ -12,7 +12,7 @@ import { SOURCE_ASK_EMAIL } from '@/lib/outreach/source-asks'
 import { touchVoiceMessage } from '@/lib/outreach/touch-voice'
 import { TWENTY_LETTERS } from '@/lib/outreach/twenty-letters'
 import { VENUE_ASK_DM, VENUE_ASK_EMAIL } from '@/lib/outreach/venue-asks'
-import { readVoicePolicy, voiceProblems } from '@/lib/outreach/voice-gate'
+import { founderIntroductionProblems, readVoicePolicy, voiceProblems } from '@/lib/outreach/voice-gate'
 
 /*
  * THE COMMUNICATION STANDARD (Lawal, 22 November 2026, 20:45: he adopted C:\dev\START-16OCT\COMMS-STANDARD-REVIEW-22NOV.md,
@@ -148,6 +148,16 @@ describe('2. no stock greeting: "Hi <name>," and straight into the purpose, in e
     const rows = dataTemplates().filter((x) => x.file.includes('22nov'))
     expect(rows.map((r) => r.key).sort()).toEqual(['acq_first', 'anything_coming_up', 'first_invitation', 'first_invitation', 'who_looks_after_events'])
     for (const r of rows) expect(renderTemplate(r, facts, UNSUB).heldBecause, `${r.key} (${r.file})`).toEqual([])
+  })
+  // THE FOUNDER SENTENCE IN ALL ITS FORMS (Lawal, 11:31 of 18 November 2026; the PM's 23:16 of 23 November 2026, item 2):
+  // no template that drafts today introduces the founder. The twenty still do, word for word from October, and draft
+  // nothing: they are switched off (TWENTY_ADVICE_DRAFTING, hidden and never deleted, law 13), which this holds.
+  it('no template that drafts introduces the founder; the twenty, which still do, stay switched off', () => {
+    const std = readVoicePolicy().standard
+    for (const t of CODE_TEMPLATES.filter((x) => !TWENTY_LETTERS.includes(x as (typeof TWENTY_LETTERS)[number]))) {
+      expect(founderIntroductionProblems(t.body.split('\n\nKind regards,')[0], std), t.key).toEqual([])
+    }
+    expect(readFileSync('src/lib/outreach/twenty-drafts.ts', 'utf8')).toMatch(/export const TWENTY_ADVICE_DRAFTING = false\b/)
   })
   it("the newest standing approval of each template carries none, and the app's copy is the gateway's record", () => {
     const standing = (JSON.parse(readFileSync('src/lib/outreach/standing-approvals.generated.json', 'utf8')) as { templates: { key: string; version: number; body: string; on: boolean }[] }).templates

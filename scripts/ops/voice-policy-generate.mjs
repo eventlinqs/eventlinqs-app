@@ -67,6 +67,9 @@ try {
   // stock_pleasantries, refused by gateway.py in every message): the one list, carried here, never copied by hand. A
   // standard without it is refused, so the gate never runs without the rule (23 November 2026, train seven).
   if (!list(s.stock_pleasantries)) throw new Error('stock_pleasantries missing')
+  // THE FOUNDER SENTENCE IN ALL ITS FORMS (Lawal, 11:31 of 18 November 2026; the PM's 23:16 of 23 November 2026, item 2):
+  // standard.json founder_introduction, every first-person introduction of the founder, refused by gateway.py; required.
+  if (!list(s.founder_introduction)) throw new Error('founder_introduction missing')
   // THE SOURCE ASK (the founder, 12:14 of 23 November 2026: "Apply the already-approved communication workflow to routine
   // source requests."; standard.json source_ask, as gateway.py reads it): a PERM-SOURCE first letter takes its own
   // subjects and no offer subject, and names no night. gateway.py and voice-gate.ts both know it by the subtype
@@ -74,7 +77,7 @@ try {
   if (s.source_ask !== undefined && (!s.source_ask || s.source_ask.subtype !== 'PERM-SOURCE' || !list(s.source_ask.subjects) || typeof s.source_ask.needs_event_date !== 'boolean')) {
     throw new Error('source_ask is not whole: subtype PERM-SOURCE, its subjects and needs_event_date')
   }
-  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, stockPleasantries: s.stock_pleasantries, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}), ...(s.source_ask !== undefined ? { sourceAsk: { subjects: s.source_ask.subjects, needsEventDate: s.source_ask.needs_event_date } } : {}) }
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, stockPleasantries: s.stock_pleasantries, founderIntroduction: s.founder_introduction, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}), ...(s.source_ask !== undefined ? { sourceAsk: { subjects: s.source_ask.subjects, needsEventDate: s.source_ask.needs_event_date } } : {}) }
 } catch (e) {
   unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
 }
