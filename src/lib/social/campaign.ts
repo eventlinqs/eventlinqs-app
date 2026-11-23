@@ -12,6 +12,7 @@ import { captionMarkFaults, holdsAtPublishing, emojiCount, MAX_EMOJI } from './c
 import { NO_STAND_INS, namesAStandIn, STAND_INS, STAND_INS_IN_PLAN, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
 import { goHop } from './go-hop'
 import { nightTimes } from './lifecycle'
+import { getSupabaseUrl } from '@/lib/supabase/env'
 import type { ApprovedSet } from './approved-sets'
 
 /**
@@ -51,6 +52,8 @@ export type PieceKind =
   | 'free_week'
   /** Family B (the master set's 01): a city's nights tonight, a story, dated by its day as a daily poster is. */
   | 'tonight'
+  /** A finished piece the creative intake passed and handed to publishing (src/lib/creative/intake.ts), never drawn here. */
+  | 'creative'
 
 /**
  * THE EDITION CITIES, in order (D5 of Lawal's final directive, 30 October 2026: 'Initially support Geelong and
@@ -237,9 +240,34 @@ export const APPROVED_FILE_PREFIX = 'https://www.eventlinqs.com.au/social/approv
 export const ORGANISER_OFFER_FILE = `${APPROVED_FILE_PREFIX}organisers-feed-ig45.jpg`
 export const ORGANISER_OFFER_SHOWS_UNTIL = '2026-12-05T13:00:00.000Z'
 
-/** True only for an approved file's own address on www. Pure. */
+/**
+ * WHERE THE CREATIVE ENGINE'S FINISHED IMAGES LIVE (src/lib/creative/intake.ts): our own storage, the event-images
+ * bucket under creative/<a uuid>/, a plain name and .jpg (Instagram's publishing API takes JPEG only, destination-specs.ts).
+ */
+export const CREATIVE_FILE_PATH = '/storage/v1/object/public/event-images/creative/'
+
+/** True only for a creative intake image in our own storage, on the host the one Supabase resolver names; none set, never. */
+export function isCreativeFileUrl(url: string, storageOrigin: string | null | undefined = getSupabaseUrl()): boolean {
+  let u: URL
+  let s: URL
+  try {
+    u = new URL(url)
+    s = new URL(String(storageOrigin ?? ''))
+  } catch {
+    return false
+  }
+  if (u.protocol !== 'https:' || u.host !== s.host || u.search !== '' || u.hash !== '' || u.username !== '' || u.password !== '') return false
+  if (!u.pathname.startsWith(CREATIVE_FILE_PATH)) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-z-]+\.jpg$/.test(u.pathname.slice(CREATIVE_FILE_PATH.length))
+}
+
+/**
+ * True only for an approved file's own address on www, or a creative intake image in our own storage (the PM's 13:33 of
+ * 23 November 2026: designed artwork is "the creative intake's pieces and the approved seven"). Pure but for the storage host.
+ */
 export function isApprovedFileUrl(url: string): boolean {
-  return url.startsWith(APPROVED_FILE_PREFIX) && /^[0-9a-z-]+\.jpg$/.test(url.slice(APPROVED_FILE_PREFIX.length))
+  if (url.startsWith(APPROVED_FILE_PREFIX) && /^[0-9a-z-]+\.jpg$/.test(url.slice(APPROVED_FILE_PREFIX.length))) return true
+  return isCreativeFileUrl(url)
 }
 export const OLDER_LOOK_IN_PLAN = false
 

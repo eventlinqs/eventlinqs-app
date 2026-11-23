@@ -1244,6 +1244,155 @@ export type Database = {
           },
         ]
       }
+      creative_budget: {
+        Row: {
+          cap_usd: number
+          generation_on: boolean
+          id: string
+          month_starts_day: number
+          reason: string
+          set_at: string
+          set_by: string
+        }
+        Insert: {
+          cap_usd: number
+          generation_on?: boolean
+          id?: string
+          month_starts_day?: number
+          reason: string
+          set_at?: string
+          set_by: string
+        }
+        Update: {
+          cap_usd?: number
+          generation_on?: boolean
+          id?: string
+          month_starts_day?: number
+          reason?: string
+          set_at?: string
+          set_by?: string
+        }
+        Relationships: []
+      }
+      creative_calls: {
+        Row: {
+          brief_id: string | null
+          cache_read_tokens: number
+          cache_write_tokens: number
+          called_at: string
+          cost_micro_usd: number
+          id: string
+          input_tokens: number
+          model: string
+          organisation: string | null
+          output_tokens: number
+          purpose: string
+          request_id: string | null
+        }
+        Insert: {
+          brief_id?: string | null
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          called_at?: string
+          cost_micro_usd: number
+          id?: string
+          input_tokens: number
+          model: string
+          organisation?: string | null
+          output_tokens: number
+          purpose: string
+          request_id?: string | null
+        }
+        Update: {
+          brief_id?: string | null
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          called_at?: string
+          cost_micro_usd?: number
+          id?: string
+          input_tokens?: number
+          model?: string
+          organisation?: string | null
+          output_tokens?: number
+          purpose?: string
+          request_id?: string | null
+        }
+        Relationships: []
+      }
+      creative_intake: {
+        Row: {
+          brief_id: string
+          captions: Json
+          check_reasons: string[]
+          checked_at: string | null
+          checked_stage: string | null
+          destinations: string[]
+          event_ids: string[]
+          expires_at: string
+          facts: Json
+          format: string
+          id: string
+          images: Json
+          latest_at: string
+          link: string
+          objective: string
+          piece_id: string | null
+          preferred_at: string
+          received_at: string
+          state: string
+        }
+        Insert: {
+          brief_id: string
+          captions: Json
+          check_reasons?: string[]
+          checked_at?: string | null
+          checked_stage?: string | null
+          destinations: string[]
+          event_ids: string[]
+          expires_at: string
+          facts: Json
+          format?: string
+          id?: string
+          images: Json
+          latest_at: string
+          link: string
+          objective: string
+          piece_id?: string | null
+          preferred_at: string
+          received_at?: string
+          state?: string
+        }
+        Update: {
+          brief_id?: string
+          captions?: Json
+          check_reasons?: string[]
+          checked_at?: string | null
+          checked_stage?: string | null
+          destinations?: string[]
+          event_ids?: string[]
+          expires_at?: string
+          facts?: Json
+          format?: string
+          id?: string
+          images?: Json
+          latest_at?: string
+          link?: string
+          objective?: string
+          piece_id?: string | null
+          preferred_at?: string
+          received_at?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_intake_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: true
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digest_sends: {
         Row: {
           audience_count: number
@@ -13721,6 +13870,7 @@ export type Database = {
         }
         Returns: Json
       }
+      creative_spent_since: { Args: { p_from: string }; Returns: number }
       credit_founding_referral: {
         Args: { p_order_id: string; p_org_id: string }
         Returns: string

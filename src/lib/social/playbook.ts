@@ -5,7 +5,8 @@
  * PM RETURN becomes three things in the same train: the code fix at its cause, a regression test that fails on the old
  * output, and a rule here with its reason.
  *
- * Versioned data only: nothing reads it yet. The creative engine's critic will read these rules when it lands; until then
+ * Versioned data, and beside it the one check of each rule a machine can judge (relativeDateWords below), which the creative
+ * intake's gate reads (src/lib/creative/intake.ts). The creative engine's critic will read the rest when it lands; until then
  * the caption rules are held in code by their own tests (lifecycle-plan.ts feedNightDates, shown-organiser.ts nightMaker).
  * A rule is never edited away: a change is a new rule with its own date, and the one it replaces names it.
  */
@@ -138,3 +139,14 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     date: '2026-11-23',
   },
 ]
+
+/**
+ * THE RULE 'no-relative-date', AS A MACHINE JUDGES IT: the relative day words a feed post never carries, since it stays on
+ * the profile after its day. Read by the creative intake's gate at intake and again before publishing.
+ */
+const RELATIVE_DATE_WORDS = /\b(?:today|tonight|tomorrow|yesterday|this (?:weekend|week|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next (?:week|weekend))\b/gi
+
+/** Every relative day word a text carries, each once, lower case. Pure. */
+export function relativeDateWords(text: string): string[] {
+  return [...new Set((text.match(RELATIVE_DATE_WORDS) ?? []).map((w) => w.toLowerCase()))]
+}

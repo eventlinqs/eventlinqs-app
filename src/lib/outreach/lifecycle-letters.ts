@@ -189,12 +189,22 @@ export interface LifecycleNightClock {
    * they already gave us images for it (a current organiser authorised asset): either way they are never asked again.
    */
   readonly granted: boolean
+  /**
+   * The photo permission request about THIS night already went or is going (law 49: "EVERY EVENT HAS A CLOCK ... T-28 to
+   * T-21: PERM: one photo permission request"), so it is not asked again; its follow ups are perm-follow-up.ts's.
+   * Judged per night (nightsAskedAbout), never for the whole organiser. Read for lifecycle_perm only.
+   */
+  readonly asked?: boolean
 }
 
 export interface LifecycleOrganiserRecord {
   /** Any reply from them: the CRM answers them in their own thread, never with a cold letter (one-first-letter.ts). */
   readonly replied: boolean
-  /** A letter of this kind already went or is going to them (queued, sending or sent, any play), or this play's own is held. */
+  /**
+   * The free promotion offer (lifecycle_acq) already went or is going to them (queued, sending or sent, any play), or this
+   * play's own is held: one offer per organiser. The photo permission request is judged per night instead (each night's
+   * own asked), so this is false for lifecycle_perm.
+   */
   readonly alreadyAsked: boolean
   /** Their public nights ahead, soonest first. */
   readonly nights: readonly LifecycleNightClock[]
@@ -237,16 +247,49 @@ export function lifecycleChoice(key: LifecycleKey, r: LifecycleOrganiserRecord, 
   if (r.alreadyAsked) return { due: false, why: `already asked: a ${subtype} letter went or is going to them, and one goes per organiser` }
   if (r.nights.length === 0) return { due: false, why: 'no public night of theirs is listed ahead' }
   const step = LIFECYCLE_STEP[key]
+  // A night whose own request already went or is going is passed over, as a granted one is: each night is asked once, by
+  // its own clock, and the soonest night still due is the one this letter names (one letter at a time; the contact
+  // policy spaces the next).
+  const perm = key === 'lifecycle_perm'
   for (const n of r.nights) {
+    if (perm && n.asked) continue
     const clock = lifecycleClock(n, r.replied, now)
     if (clock.due.includes(step)) return { due: true, eventId: n.eventId, daysToStart: clock.daysToStart }
   }
   const first = lifecycleClock(r.nights[0], r.replied, now)
-  const from = key === 'lifecycle_perm' ? 'T-28' : 'T-21'
-  if (key === 'lifecycle_perm' && r.nights.every((n) => n.granted || lifecycleClock(n, r.replied, now).daysToStart > 28)) {
-    return { due: false, why: `no night of theirs needs a photo asked for before ${from}: each in reach already shows their own photograph with recorded rights, or has images they gave us` }
+  const from = perm ? 'T-28' : 'T-21'
+  if (perm && r.nights.every((n) => n.granted || n.asked || lifecycleClock(n, r.replied, now).daysToStart > 28)) {
+    return { due: false, why: `no night of theirs needs a photo asked for before ${from}: each in reach already shows their own photograph with recorded rights, has images they gave us, or was asked about already` }
   }
   return { due: false, why: `no night of theirs is due its letter today (from ${from}, never inside T-7); the nearest is ${first.daysToStart} day(s) away` }
+}
+
+/**
+ * WHICH NIGHTS A PHOTO PERMISSION REQUEST ASKED ABOUT (law 49, per night; the master directive of 24 November 2026, A1:
+ * "The unit of image-permission assessment is the event and asset"). A letter naming its night (context_key
+ * 'event:<events.id>', as the law 49 and segment A plays write it) asked about that night. A letter naming none (the 16
+ * PERM-IMAGE letters sent before the context was written, context_key null, or another context) counts as asking about
+ * every night of the organiser that was listed and ahead when it went, so nothing already asked is asked again; a letter
+ * whose moment is not known covers them all. Pure.
+ */
+export function nightsAskedAbout(
+  letters: readonly { readonly contextKey: string | null; readonly wentIso: string | null }[],
+  nights: readonly { readonly eventId: string; readonly startIso: string; readonly listedIso: string | null }[],
+): Set<string> {
+  const asked = new Set<string>()
+  for (const l of letters) {
+    const named = /^event:(.+)$/.exec(l.contextKey ?? '')?.[1]
+    if (named) {
+      asked.add(named)
+      continue
+    }
+    const went = l.wentIso ? Date.parse(l.wentIso) : Number.NaN
+    for (const n of nights) {
+      const listed = n.listedIso ? Date.parse(n.listedIso) : Number.NEGATIVE_INFINITY
+      if (Number.isNaN(went) || (Date.parse(n.startIso) > went && listed <= went)) asked.add(n.eventId)
+    }
+  }
+  return asked
 }
 
 /**
