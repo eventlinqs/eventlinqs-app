@@ -70,9 +70,11 @@ describe("a list caption's 'From ... to ...' line runs in time from each show's 
     expect(out.caption).toContain('From Witness for the Prosecution on Friday to Showtime on Saturday.')
   })
 
-  it('the drill: without its sessions the line reads as production drew it', () => {
+  it('the drill: without its sessions both rows are on Saturday, so no from-to line is said at all', () => {
+    // Production drew 'From Showtime on Saturday to Witness for the Prosecution on Saturday.' here; a list on one day says
+    // no from-to line (the PM's intake read of 23 November 2026, 22:15; playbook.ts caption-no-from-to-on-one-day).
     const out = listCaptions({ ...base, nights: [witnessSat, showtime] })
-    expect(out.caption).toContain('From Showtime on Saturday to Witness for the Prosecution on Saturday.')
+    expect(out.caption).not.toMatch(/^From /m)
   })
 })
 

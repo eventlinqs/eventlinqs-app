@@ -547,20 +547,32 @@ const FEED_RATIO_MIN = 4 / 5
 const FEED_RATIO_MAX = 1.91
 
 /**
- * The photographs a piece may carry, best first, within the policy only (the PM's 14:20 item 1): a photograph (never a
- * flyer, law 37 (b)), looked at and ranked by a person (law 37 (k)), never posted before on either network (law 37 (l)),
+ * The photographs a piece may carry, best first, within the policy only (the PM's 14:20 item 1): a photograph, or an
+ * organiser's poster drawn whole (below; law 37 (b)'s 'never a flyer' as revised at 13:41 of 23 November 2026), looked at and ranked by a person (law 37 (k)), never posted before on either network (law 37 (l)),
  * its size known. First how strongly it shows the event (showsTheEvent), then lead rank, then whole fit to the format,
  * then width; the used set keeps each post of a run on a different photograph.
+ *
+ * AN ORGANISER'S POSTER IS DRAWN WHOLE (the PM's intake read of 23 November 2026, 22:15: A Moment of Sanity's poster,
+ * 9080529b, rightly typed 'artwork', dropped out of the engine, since only a 'photo' was ever drawn; Lawal's 13:41 of
+ * 23 November 2026, the creative policy: "Official organiser posters. Preserve unchanged when required by the organizer's
+ * permission", and the PM's 13:55, item 3: "The only thing kept whole is an organiser's POSTER"). An asset typed
+ * 'artwork', permitted for social as a photograph is (social_asset_usable_row admits both), is drawn as its own slide shown
+ * whole, as law 37's photograph is (law37-photo.tsx: its own shape, never cropped, no focal crop, nothing over it). A
+ * photograph still leads where both are permitted (the policy's default to a clean photograph); a poster stands in only
+ * where it is the night's own image.
  */
+export const DRAWN_WHOLE_TYPES: readonly string[] = ['photo', 'artwork']
+
 export function rankPhotos(assets: readonly PhotoAsset[], format: SocialFormat, used: ReadonlySet<string>): PhotoAsset[] {
   const fits = (a: PhotoAsset): number => {
     const r = (a.width ?? 0) / (a.height ?? 1)
     if (format === 'feed') return r >= FEED_RATIO_MIN && r <= FEED_RATIO_MAX ? 1 : 0
     return (a.height ?? 0) >= (a.width ?? 0) ? 1 : 0
   }
+  const poster = (a: PhotoAsset): number => (a.type === 'artwork' ? 1 : 0)
   return assets
-    .filter((a) => a.type === 'photo' && a.leadRank !== null && !used.has(a.url) && (a.width ?? 0) > 0 && (a.height ?? 0) > 0)
-    .sort((a, b) => showsTheEvent(b.shows) - showsTheEvent(a.shows) || (a.leadRank ?? 99) - (b.leadRank ?? 99) || fits(b) - fits(a) || (b.width ?? 0) - (a.width ?? 0) || a.assetId.localeCompare(b.assetId))
+    .filter((a) => DRAWN_WHOLE_TYPES.includes(a.type) && a.leadRank !== null && !used.has(a.url) && (a.width ?? 0) > 0 && (a.height ?? 0) > 0)
+    .sort((a, b) => poster(a) - poster(b) || showsTheEvent(b.shows) - showsTheEvent(a.shows) || (a.leadRank ?? 99) - (b.leadRank ?? 99) || fits(b) - fits(a) || (b.width ?? 0) - (a.width ?? 0) || a.assetId.localeCompare(b.assetId))
 }
 
 /** An Instagram username as Instagram allows it: letters, numbers, full stops and underscores, at most 30. */

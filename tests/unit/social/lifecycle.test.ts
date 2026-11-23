@@ -145,7 +145,9 @@ describe('the events rule the day: every due moment of every event (Lawal, 22 No
 
 describe('photo ranking within the policy, never a photo twice', () => {
   const a = (over: Partial<PhotoAsset>): PhotoAsset => ({ assetId: 'x', url: 'https://x/1.jpg', type: 'photo', leadRank: 1, width: 1440, height: 1080, ...over })
-  it('ranks by lead rank, then fit, then width; drops flyers, unlooked photos and any used before', () => {
+  // An organiser's poster (artwork) is drawn whole now, after every photograph (the PM's intake read of 23 November 2026,
+  // 22:15; playbook.ts poster-drawn-whole); unlooked photos and any used before are still dropped.
+  it('ranks by lead rank, then fit, then width, a poster after every photograph; drops unlooked photos and any used before', () => {
     const assets = [
       a({ assetId: 'flyer', url: 'u1', type: 'artwork', leadRank: 1 }),
       a({ assetId: 'unlooked', url: 'u2', leadRank: null }),
@@ -154,8 +156,8 @@ describe('photo ranking within the policy, never a photo twice', () => {
       a({ assetId: 'tall', url: 'u5', leadRank: 1, width: 1080, height: 1920 }),
       a({ assetId: 'first', url: 'u6', leadRank: 1, width: 1440, height: 1080 }),
     ]
-    expect(rankPhotos(assets, 'feed', new Set(['u3'])).map((x) => x.assetId)).toEqual(['first', 'tall', 'second'])
-    expect(rankPhotos(assets, 'story', new Set(['u3'])).map((x) => x.assetId)).toEqual(['tall', 'first', 'second'])
+    expect(rankPhotos(assets, 'feed', new Set(['u3'])).map((x) => x.assetId)).toEqual(['first', 'tall', 'second', 'flyer'])
+    expect(rankPhotos(assets, 'story', new Set(['u3'])).map((x) => x.assetId)).toEqual(['tall', 'first', 'second', 'flyer'])
   })
   it('none is posted when none was looked at (law 37 (k))', () => {
     expect(rankPhotos([a({ leadRank: null })], 'feed', new Set())).toEqual([])

@@ -21,6 +21,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import type { Objection } from './objections'
 import { decisionWords, readContactPolicy } from './contact-policy'
+import { firstLetterBlocked } from './one-first-letter'
+import { FIRST_LETTER_WRITTEN, readFirstLetterRecord } from './first-letter-record'
 
 type Admin = SupabaseClient<Database>
 type Tables = Database['public']['Tables']
@@ -227,6 +229,13 @@ export async function draftTouch(
   const decision = await readContactPolicy(db, { contactId: input.contactId, purpose: 'cadence', step: input.step, templateKey: null, moment: 'draft' }, new Date())
   if (decision.state === 'unread') return { state: 'refused', reason: `whether they may be written to now could not be read: ${decision.why}` }
   if (decision.state === 'held') return { state: 'refused', reason: decisionWords(decision) }
+  // One first letter per organisation, as the drafter reads it (./drafts.ts; ./one-first-letter.ts).
+  if (input.step === 1) {
+    const record = await readFirstLetterRecord(db, { contactId: input.contactId }, FIRST_LETTER_WRITTEN)
+    if (record === null) return { state: 'refused', reason: 'whether their organisation was already written to could not be read; not drafted on a guess' }
+    const written = firstLetterBlocked(record)
+    if (written) return { state: 'refused', reason: written }
+  }
   return result(await db.from('outreach_touches').insert({
     contact_id: input.contactId,
     context_key: input.contextKey ?? null,

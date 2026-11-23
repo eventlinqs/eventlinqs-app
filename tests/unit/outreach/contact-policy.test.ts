@@ -33,7 +33,8 @@ const DAY = 86_400_000
 /** The policy's one gap, CONTACT_GAP_DAYS in src/lib/outreach/contact-policy.ts (contact-policy-core.test.ts holds the two equal). */
 const GAP_DAYS = 30
 
-const BODY = `Hi Gallery team,\n\nI hope you're well.\n\nYour night is on EventLinqs: ${ORIGIN}/events/gallery-tots\n\nKind regards,\nLawal Adams\n\n${ORIGIN}/unsubscribe/outreach?t=x`
+// No stock pleasantry: the send time word check refuses one (the communication standard, Lawal 20:45 of 22 November 2026).
+const BODY = `Hi Gallery team,\n\nYour night is on EventLinqs: ${ORIGIN}/events/gallery-tots\n\nKind regards,\nLawal Adams\n\n${ORIGIN}/unsubscribe/outreach?t=x`
 
 function world(extra: Partial<Tables> = {}): Tables {
   return {

@@ -28,7 +28,8 @@ import type { Database } from '@/types/database'
 import { buildOutreachMime, mimeForGraph, newMessageId } from './mime'
 import { graphSendMime, type GraphConfig } from './graph'
 import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
-import { firstLetterBlocked, organisationDomain, type LetterRecord } from './one-first-letter'
+import { firstLetterBlocked } from './one-first-letter'
+import { FIRST_LETTER_SENT, readFirstLetterRecord } from './first-letter-record'
 import { mailboxFor } from './addresses'
 import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
 import { eventSlugOf, letterExpiry } from './event-validity'
@@ -166,37 +167,6 @@ type Queued = {
   outreach_templates: { key: string } | null
 }
 
-/**
- * What the one-first-letter rule reads (./one-first-letter.ts): the candidate's contact and organiser, and every message
- * sent to, and every reply from, a contact of the same organiser or an address at the same organisation domain. A read
- * that fails answers null, and the letter is not sent on a guess.
- */
-async function readFirstLetterRecord(db: Admin, t: Queued): Promise<LetterRecord | null> {
-  const me = await db.from('organiser_contacts').select('id, organiser_id, address').eq('id', t.contact_id).single()
-  if (me.error) return null
-  const organiserId = me.data.organiser_id as string
-  const address = (me.data.address as string | null) ?? ''
-  const theirs = await db.from('organiser_contacts').select('id, organiser_id, address').eq('organiser_id', organiserId)
-  if (theirs.error) return null
-  const domain = organisationDomain(address)
-  const sameDomain = domain ? await db.from('organiser_contacts').select('id, organiser_id, address').ilike('address', `%@${domain}`) : { data: [], error: null }
-  if (sameDomain.error) return null
-  const contacts = new Map<string, { organiserId: string; address: string }>()
-  for (const c of [...(theirs.data ?? []), ...(sameDomain.data ?? [])]) {
-    contacts.set(c.id as string, { organiserId: c.organiser_id as string, address: (c.address as string | null) ?? '' })
-  }
-  const ids = [...contacts.keys()]
-  const sent = await db.from('outreach_touches').select('contact_id, sent_at').in('contact_id', ids).eq('state', 'sent').neq('id', t.id)
-  if (sent.error) return null
-  const replies = await db.from('outreach_replies').select('contact_id, received_at').in('contact_id', ids)
-  if (replies.error) return null
-  const who = (id: string) => contacts.get(id) ?? { organiserId: '', address: '' }
-  return {
-    candidate: { contactId: t.contact_id, organiserId, address },
-    sent: (sent.data ?? []).map((s) => ({ contactId: s.contact_id as string, ...who(s.contact_id as string), sentAt: (s.sent_at as string | null) ?? null })),
-    replies: (replies.data ?? []).map((r) => ({ contactId: r.contact_id as string, ...who(r.contact_id as string), receivedAt: (r.received_at as string | null) ?? null })),
-  }
-}
 
 /**
  * THE TIMING RULE, AGAIN AT THE MOMENT OF SENDING (the communication standard's Part 2 rule 4: no message about an event
@@ -348,7 +318,7 @@ export async function runOutreachSender(
     // organiser, or an organisation domain, already written to on another address or that has replied; a later night
     // rides in that thread. Here, at the one send path, so no planner, play or list can go round it.
     if (t.step === 1) {
-      const record = await readFirstLetterRecord(db, t)
+      const record = await readFirstLetterRecord(db, { contactId: t.contact_id, touchId: t.id }, FIRST_LETTER_SENT)
       const why = record === null ? 'whether their organisation was already written to could not be read; not sent on a guess' : firstLetterBlocked(record)
       if (why) {
         if (record !== null) await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')

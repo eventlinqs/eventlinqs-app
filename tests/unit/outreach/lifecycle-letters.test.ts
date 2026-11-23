@@ -98,7 +98,9 @@ describe("law 49's two letters, filled with a real night", () => {
     const r = renderTemplate(LIFECYCLE_ACQ, lifecycleFields(TOTS), UNSUB)
     expect(r.heldBecause).toEqual([])
     expect(r.subject).toBe("Gallery Tots on Friday 11 December: let's fill it")
-    expect(r.body.startsWith("Hi Geelong Gallery team,\n\nI'm Lawal, founder of EventLinqs, the what's on guide for Geelong. Gallery Tots on Friday 11 December is already listed with us: ")).toBe(true)
+    // Version 2 (the PM's 23:16 of 23 November 2026, item 2): no founder sentence, straight to the night.
+    expect(r.body.startsWith("Hi Geelong Gallery team,\n\nGallery Tots on Friday 11 December is already listed on EventLinqs, the what's on guide for Geelong: https://www.eventlinqs.com.au/events/gallery-tots-geelong-gallery-2026-12-11\n\n")).toBe(true)
+    expect(r.body).not.toMatch(/I'm Lawal|founder of/i)
     expect(r.body).toContain('on the Geelong guide.')
     expect(r.body).not.toContain('/photos/')
     expect(r.body).not.toMatch(/newsletter|Instagram|Facebook/)

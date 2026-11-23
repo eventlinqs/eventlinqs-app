@@ -11,6 +11,7 @@ import { creditLine } from '@/lib/media/photo-credits'
 import { captionMarkFaults, holdsAtPublishing, emojiCount, MAX_EMOJI } from './caption-marks'
 import { NO_STAND_INS, namesAStandIn, STAND_INS, STAND_INS_IN_PLAN, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
 import { goHop } from './go-hop'
+import { nightTimes } from './lifecycle'
 import type { ApprovedSet } from './approved-sets'
 
 /**
@@ -189,7 +190,21 @@ export type Slide =
    * so the destination check measures what is drawn. `line` is a story's one small line of fact beneath the photograph
    * (a story carries no caption); a feed slide's is always null, its words in the caption.
    */
-  | { t: 'photo'; composition: 'photo_whole'; eventId: string; photo: string; credit: null; width: number; height: number; line: string | null }
+  | {
+      t: 'photo'
+      composition: 'photo_whole'
+      eventId: string
+      photo: string
+      credit: null
+      width: number
+      height: number
+      line: string | null
+      /**
+       * The organiser's own poster (an asset typed 'artwork'), drawn whole as the photograph is, with no line of ours on
+       * its story: the poster says its own facts (lifecycle.ts rankPhotos; the PM's intake read of 23 November 2026).
+       */
+      artwork?: true
+    }
   /**
    * AN APPROVED FILE, POSTED AS IT IS (Lawal, 18 November 2026, 11:55: "You can post this. You have my approval now",
    * of the SOCIAL-READY-15NOV posts; the PM's 12:20): a finished image Lawal approved, never drawn again. `url` is its
@@ -1554,11 +1569,19 @@ export function listCaptions(input: {
   const weekday = (n: CampaignNight) => local(n.startDate, n.timezone, { weekday: 'long' })
   const first = sorted.find((n) => n.title === titles[0])
   const last = [...sorted].reverse().find((n) => n.title === titles[titles.length - 1])
-  // One line on the experience, from the rows' own facts only: where the list runs from and to.
+  // ONE DAY (the PM's intake read of 23 November 2026, 22:15, on the live music set): a list whose nights all fall on one
+  // day never says 'From Choir 3006 In Concert on Friday to Michelle Nicolle & David McEvoy on Friday', and its rows under
+  // the '📅 Friday 27 November' line say their times alone, never 'Fri 27 Nov' again on every row.
+  const dayKey = (n: CampaignNight) => local(n.startDate, n.timezone, { year: 'numeric', month: '2-digit', day: '2-digit' })
+  // Every night the rows say, each show's other sessions with it (a show folded into one card runs over its days).
+  const oneDay = sorted.length > 0 && new Set(sorted.flatMap((n) => [n, ...(input.sessionsOf?.(n) ?? [])]).map(dayKey)).size === 1
+  // One line on the experience, from the rows' own facts only: where the list runs from and to, across its days.
   const experience =
-    titles.length >= 2 && first && last && `${titles[0]}${titles[titles.length - 1]}`.length <= 110
+    !oneDay && titles.length >= 2 && first && last && `${titles[0]}${titles[titles.length - 1]}`.length <= 110
       ? `From ${titles[0]} on ${weekday(firstOf(first))} to ${titles[titles.length - 1]} on ${weekday(last)}.`
       : null
+  const dayLabel = sorted[0] ? local(sorted[0].startDate, sorted[0].timezone, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/,/g, '') : ''
+  const rows = !input.place && oneDay ? input.rows.map((r) => (r.startsWith(`${dayLabel}, `) ? r.slice(dayLabel.length + 2) : r)) : input.rows
   const free = sorted.every((n) => n.cta.state === 'free_open' || n.cta.state === 'free_registration')
   const all = input.rows.length >= 2 ? ` for all ${countWord(input.rows.length).toLowerCase()}` : ''
   const lead = input.lead ?? (free ? `Times and details${all}` : `Times and tickets${all}`)
@@ -1570,7 +1593,7 @@ export function listCaptions(input: {
     ...(experience ? [experience] : []),
     ...(input.pictured ? [input.pictured] : []),
     ...(input.place ? [] : [`\u{1F4C5} ${spanLine(sorted)}`]),
-    ...input.rows,
+    ...rows,
     ...(input.place ? [`\u{1F4CD} ${input.place}`] : []),
   ]
   const tail = [input.share, ...(credits ? [credits] : []), input.tags]
@@ -1586,13 +1609,44 @@ export function listCaptions(input: {
   }
 }
 
-/** The hook's emoji for a list: the rows' one kind where they share it; otherwise a venue's 🎭 or a city's 🎉 (version 2). */
+/**
+ * A NIGHT'S KIND FOR ITS CAPTION'S EMOJI, FROM ITS OWN CATEGORY FIRST (the PM's intake read of 23 November 2026, 22:15:
+ * Kyivska Perepichka, a theatre show, carried '🎶', since its words name live music and nightKind reads words before the
+ * category). The category the organiser or the listing filed it under (events.category_id, read as categorySlug) names
+ * the kind where it names one; a music night keeps its own music kind (jazz, classical, a gig, dance); any other night
+ * is read from its words, as nightKind reads it. Pure.
+ */
+const CATEGORY_KIND: Readonly<Record<string, NightKind>> = {
+  theatre: 'theatre',
+  'arts-community': 'theatre',
+  comedy: 'comedy',
+  festival: 'festival',
+  family: 'family',
+  sports: 'sport',
+  markets: 'market',
+}
+const SOUND_KINDS: ReadonlySet<NightKind> = new Set(['gig', 'jazz', 'classical', 'dance'])
+
+export function captionKindOf(n: Parameters<typeof nightKind>[0]): NightKind | null {
+  const slug = (n.categorySlug ?? '').trim().toLowerCase()
+  const filed = CATEGORY_KIND[slug]
+  if (filed) return filed
+  const own = nightKind(n)
+  if (slug === 'music') return own && SOUND_KINDS.has(own) ? own : 'gig'
+  return own
+}
+
+/**
+ * The hook's emoji for a list: the rows' one kind where they share it (each from its own category first, captionKindOf);
+ * nights of music of several kinds take the music note; otherwise a venue's 🎭 or a city's 🎉 (version 2).
+ */
 export function listEmoji(nights: readonly CampaignNight[], oneVenue: boolean): string {
-  const kinds = new Set(nights.map((n) => nightKind(n) ?? 'other'))
+  const kinds = new Set(nights.map((n) => captionKindOf(n) ?? 'other'))
   if (kinds.size === 1) {
     const [k] = [...kinds]
     if (k !== 'other') return KIND_EMOJI[k]
   }
+  if (kinds.size > 1 && [...kinds].every((k) => k !== 'other' && SOUND_KINDS.has(k))) return KIND_EMOJI.gig
   return oneVenue ? KIND_EMOJI.theatre : KIND_EMOJI.festival
 }
 
@@ -1615,6 +1669,26 @@ export function offerCaptions(hook: string, body: readonly string[], origin: str
     instagram: { hook: head[0], caption: join([...head, '\u{1F39F} List your event: link in our bio', ...tail]), crop: FEED_CROP, cta: 'link in our bio' },
     facebook: { hook: head[0], caption: join([...head, '\u{1F39F} List your event:', link, ...tail]), crop: FEED_CROP, cta: link },
   }
+}
+
+/**
+ * ONE NIGHT'S DATE LINE FROM ITS OWN RECORD, THE FEED FORMAT (Lawal's 16:04 of 23 November 2026: '📅 Tuesday 24 November,
+ * 7pm to 9pm', the weekday once, the month in full, the end time when the record holds one): a night shorter than a day
+ * is dated by the day it starts; a night over several days reads as its run. Pure.
+ */
+export function feedDayLine(n: Pick<CampaignNight, 'startDate' | 'endDate' | 'timezone'>): string {
+  const zone = n.timezone ?? ZONE
+  const long = (iso: string) => local(iso, zone, { weekday: 'long', day: 'numeric', month: 'long' }).replace(/,/g, '')
+  const start = Date.parse(n.startDate)
+  const end = n.endDate ? Date.parse(n.endDate) : NaN
+  let date = long(n.startDate)
+  if (Number.isFinite(end) && end - start >= 86_400_000) {
+    const last = new Date(end - 1).toISOString()
+    const sameMonth = local(n.startDate, zone, { month: 'long' }) === local(last, zone, { month: 'long' })
+    date = sameMonth ? `${local(n.startDate, zone, { weekday: 'long' })} ${local(n.startDate, zone, { day: 'numeric' })} to ${long(last)}` : `${long(n.startDate)} to ${long(last)}`
+  }
+  const times = nightTimes(n.startDate, n.endDate ?? null, zone)
+  return `\u{1F4C5} ${date}${times ? `, ${times}` : ''}`
 }
 
 /**
@@ -1646,15 +1720,19 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
   const placeNamed = (n: CampaignNight) => placeOf(n) ?? (n.venueName ? notAStreet(n.venueName) || null : null)
   const places = [...new Set(sorted.map((n) => placeNamed(n) ?? ''))]
   const place = places.length === 1 && places[0] !== '' ? places[0] : null
-  const days = new Set(sorted.map((n) => local(n.startDate, n.timezone, { year: 'numeric', month: '2-digit', day: '2-digit' })))
-  // The hook, from the rows' own facts, with no relative day word: one show names itself, one venue names its place and
-  // its days (its caption carries no days line), several venues name the city and, on one day, its weekday.
-  const hook =
-    shows.length === 1 && place
-      ? `${KIND_EMOJI[nightKind(first) ?? 'other']} ${first.title} at ${place}, ${spanLine(sorted)}.`
-      : place
-        ? `${listEmoji(sorted, true)} ${countPhrase(sorted)} at ${place}, ${spanLine(sorted)}.`
-        : `${listEmoji(sorted, false)} ${countPhrase(sorted)} in ${city.name}${days.size === 1 ? ` on ${local(first.startDate, first.timezone, { weekday: 'long' })}` : ''}.`
+  // The hook, from the rows' own facts, with no relative day word, each fact said once (the PM's intake read of 23 November
+  // 2026, 22:15: Kyivska's caption said its title twice and its date twice): one show names itself and its kind (its
+  // category first, captionKindOf), and its date line follows; one venue names its place and its days (its caption carries
+  // no days line); several venues name the city, and the date line below says the day.
+  const oneShow = shows.length === 1
+  const hook = oneShow
+    ? `${KIND_EMOJI[captionKindOf(first) ?? 'other']} ${first.title}.`
+    : place
+      ? `${listEmoji(sorted, true)} ${countPhrase(sorted)} at ${place}, ${spanLine(sorted)}.`
+      : `${listEmoji(sorted, false)} ${countPhrase(sorted)} in ${city.name}.`
+  // One show's date line: one night from its own record in the feed format (Lawal's 16:04 of 23 November 2026), several
+  // sessions as their row says them, the title not said again.
+  const oneShowDate = sorted.length === 1 ? feedDayLine(first) : `\u{1F4C5} ${rowLine(first, sorted, false).slice(0, -(`: ${first.title}`.length))}`
   const page = shows.length === 1 ? `/events/${first.slug}` : destinationOf(sorted, city).path
   const own = shows.length === 1 ? tagWord(first.title) : place ? tagWord(place) : tagWord(city.name)
   // THE SELLER IN THE CAPTION, NEVER ON OUR ARTWORK (playbook.ts design-seller-in-the-caption; Lawal's 12:47 of 23 November
@@ -1667,14 +1745,14 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
   const words = listCaptions({
     hook,
     nights: sorted,
-    rows: shows.map((n) => rowLine(n, sorted, place === null)),
+    rows: oneShow ? [oneShowDate] : shows.map((n) => rowLine(n, sorted, place === null)),
     pictured: null,
-    place: place ? metaOf({ venueName: place, cityName: city.name }) : null,
+    place: place || oneShow ? metaOf({ venueName: place, cityName: city.name }) : null,
     link: goHop(origin, 'facebook'),
     share: 'Tag who you are going with.',
     tags: standardTags(city, own),
     crop: FEED_CROP,
-    ...(place ? { lead: `Event details and tickets${seller}` } : seller ? { lead: `Times and tickets${all}${seller}` } : {}),
+    ...(place || oneShow ? { lead: `Event details and tickets${seller}` } : seller ? { lead: `Times and tickets${all}${seller}` } : {}),
   })
   const slides = set.files.map((file): Slide => ({ t: 'file', composition: 'close', url: `${APPROVED_FILE_PREFIX}${file}`, format: 'feed', eventId: first.eventId, startDate: first.startDate }))
   const cardNames = (n: CampaignNight) => [CARD_TITLE_MAX, ASK_TITLE_MAX, DRAW_TITLE_MAX, 40].map((max) => cardTitle(n.title, max))

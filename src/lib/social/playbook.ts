@@ -29,6 +29,7 @@ export const PLAYBOOK_VERSION = '2026-11-23'
 const RETURN_1530 = "the PM's RETURN of 15:30 on piece da22e104 (A Moment of Sanity), 23 November 2026; Lawal's 16:04"
 const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:34 (DESIGN-REVIEW-SEVEN-23NOV.md)"
 const DECISION_1247 = "Lawal's final creative decision, 23 November 2026, 12:47 (FINAL-CREATIVE-DECISION-23NOV.md)"
+const INTAKE_2215 = "the PM's intake read of 23 November 2026, 22:15"
 
 export const PLAYBOOK: readonly PlaybookRule[] = [
   {
@@ -92,6 +93,48 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     rule: "No relative date ('today', 'tonight', 'tomorrow', 'this weekend') in any feed caption or artwork: a feed post names its day and date.",
     reason: "The design said 'Tomorrow night', wording that must be checked against the actual publication date, not the design date; a feed post stays on the profile after its day.",
     source: `${REVIEW_1234}; the PM's 13:32 of 23 November 2026 ('no relative date')`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'database-caption-marks-one-rule',
+    rule: "The database refuses a caption's marks by the code's one rule: a long dash always, and an exclamation mark unless it is a letter written inside a word ('Holy Sh!t Improv'); every check written the same way on our social words takes the same rule.",
+    reason: "The comedy weekend set was refused on production: 'new row for relation \"social_piece_revisions\" violates check constraint \"social_piece_revisions_caption_check\"', which refused every '!' while the code kept the show's own name; the code drew a caption the database would never keep.",
+    source: INTAKE_2215,
+    date: '2026-11-23',
+  },
+  {
+    id: 'poster-drawn-whole',
+    rule: "An organiser's poster (an asset typed artwork) is drawn as its own slide, whole: never cropped, no focal crop, nothing of ours over it or on its story; a photograph leads where both are permitted.",
+    reason: "The lifecycle planner drew only assets typed 'photo', so A Moment of Sanity's poster (9080529b), rightly typed artwork, dropped out of the engine; Lawal's 13:41 and the PM's 13:55 item 3: 'The only thing kept whole is an organiser's POSTER'.",
+    source: INTAKE_2215,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-emoji-from-category',
+    rule: "A caption's emoji comes from the night's own category first (a theatre night takes the theatre mask), then from its words; nights of music of several kinds take the music note.",
+    reason: "Kyivska Perepichka, a theatre show, carried the music note, because its words name live music and the kind was read from its words before its category.",
+    source: `${INTAKE_2215} (Kyivska, piece 23f34b07)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-one-show-says-each-fact-once',
+    rule: "A one-show caption says its title once (the hook) and its date once (the date line from its own record, '📅 Saturday 5 December, 6:30pm to 8:30pm').",
+    reason: "Kyivska read '🎶 Kyivska Perepichka: Ukrainian Theatre in Melbourne at The Wheeler Centre, Saturday 5 December.' and then 'Sat 5 Dec, 6.30 pm: Kyivska Perepichka: Ukrainian Theatre in Melbourne': its title twice and its date twice.",
+    source: `${INTAKE_2215} (Kyivska, piece 23f34b07)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-no-from-to-on-one-day',
+    rule: "A list whose nights all fall on one day carries no 'From ... on <day> to ... on <day>' line; the line runs only across different days.",
+    reason: "The live music caption read 'From Choir 3006 In Concert on Friday to Michelle Nicolle & David McEvoy on Friday.', which is neither true as a journey nor natural.",
+    source: `${INTAKE_2215} (live music, piece 8d252108)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-rows-time-alone-on-one-day',
+    rule: "Rows under a one-day date line ('📅 Friday 27 November') say their times alone, never the day again on every row; rows over several days keep their days.",
+    reason: "Each row of the live music caption repeated 'Fri 27 Nov' under the line that already says Friday 27 November.",
+    source: `${INTAKE_2215} (live music, piece 8d252108)`,
     date: '2026-11-23',
   },
 ]
