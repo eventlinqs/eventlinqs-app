@@ -28,7 +28,7 @@ describe('an approved file slide', () => {
     expect(inLockedLook([file(`${APPROVED_FILE_PREFIX}16-lany-story.jpg`, 'story')])).toBe(true)
   })
 
-  it('the ten approved files and their four Instagram feed fits are in the site, each at an approved address', () => {
+  it('the ten approved files, their four Instagram feed fits and the six approved designs of 23 November are in the site, each at an approved address', () => {
     const dir = join(root, 'public/social/approved')
     const names = readdirSync(dir).filter((n) => n.endsWith('.jpg')).sort()
     // The four -ig45 files are the approved 3:4 feed files scaled whole onto 4:5 for Instagram's feed (the PM's 13:42 of
@@ -36,7 +36,14 @@ describe('an approved file slide', () => {
     expect(names).toEqual([
       '11-lany-feed.jpg', '13-organisers-feed.jpg', '14-organisers-story.jpg', '15-organisers-square.jpg', '16-lany-story.jpg',
       '17-groovytown-feed.jpg', '18-groovytown-story.jpg', '20-amcf-feed.jpg', '21-amcf-square.jpg', '22-amcf-story-clean.jpg', '22-amcf-story-nolink.jpg', '22-amcf-story.jpg',
-      'amcf-feed-ig45-clean.jpg', 'amcf-feed-ig45.jpg', 'groovytown-feed-ig45.jpg', 'lany-feed-ig45.jpg', 'organisers-feed-ig45.jpg',
+      'amcf-feed-ig45-clean.jpg', 'amcf-feed-ig45.jpg',
+      // Lawal's approved designs of 23 November 2026 (src/lib/social/approved-sets.ts), 1080 by 1350, converted to JPEG unchanged.
+      'comedy-weekend-cover-2026-11-27.jpg', 'comedy-weekend-shows-2026-11-27.jpg',
+      'groovytown-feed-ig45.jpg',
+      'kyivska-perepichka-poster-2026-12-05.jpg', 'kyivska-perepichka-why-go-2026-12-05.jpg',
+      'lany-feed-ig45.jpg',
+      'live-music-choices-2026-11-27.jpg', 'live-music-cover-2026-11-27.jpg',
+      'organisers-feed-ig45.jpg',
     ])
     for (const n of names) {
       expect(isApprovedFileUrl(`${APPROVED_FILE_PREFIX}${n}`), n).toBe(true)
