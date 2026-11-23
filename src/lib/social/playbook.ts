@@ -109,4 +109,32 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: INTAKE_2215,
     date: '2026-11-23',
   },
+  {
+    id: 'caption-emoji-from-category',
+    rule: "A caption's emoji comes from the night's own category first (a theatre night takes the theatre mask), then from its words; nights of music of several kinds take the music note.",
+    reason: "Kyivska Perepichka, a theatre show, carried the music note, because its words name live music and the kind was read from its words before its category.",
+    source: `${INTAKE_2215} (Kyivska, piece 23f34b07)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-one-show-says-each-fact-once',
+    rule: "A one-show caption says its title once (the hook) and its date once (the date line from its own record, '📅 Saturday 5 December, 6:30pm to 8:30pm').",
+    reason: "Kyivska read '🎶 Kyivska Perepichka: Ukrainian Theatre in Melbourne at The Wheeler Centre, Saturday 5 December.' and then 'Sat 5 Dec, 6.30 pm: Kyivska Perepichka: Ukrainian Theatre in Melbourne': its title twice and its date twice.",
+    source: `${INTAKE_2215} (Kyivska, piece 23f34b07)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-no-from-to-on-one-day',
+    rule: "A list whose nights all fall on one day carries no 'From ... on <day> to ... on <day>' line; the line runs only across different days.",
+    reason: "The live music caption read 'From Choir 3006 In Concert on Friday to Michelle Nicolle & David McEvoy on Friday.', which is neither true as a journey nor natural.",
+    source: `${INTAKE_2215} (live music, piece 8d252108)`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'caption-rows-time-alone-on-one-day',
+    rule: "Rows under a one-day date line ('📅 Friday 27 November') say their times alone, never the day again on every row; rows over several days keep their days.",
+    reason: "Each row of the live music caption repeated 'Fri 27 Nov' under the line that already says Friday 27 November.",
+    source: `${INTAKE_2215} (live music, piece 8d252108)`,
+    date: '2026-11-23',
+  },
 ]

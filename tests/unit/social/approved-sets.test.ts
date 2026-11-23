@@ -245,13 +245,13 @@ describe('an approved set, planned by the engine', () => {
     expect(music.versions.instagram.caption).toBe(
       [
         // 'events', by the engine's own count noun (countNoun): these fixture nights' words name no one kind of performance.
-        '\u{1F389} Four events in Melbourne on Friday.',
-        'From Choir 3006 In Concert on Friday to Michelle Nicolle & David McEvoy on Friday.',
+        // Music of several kinds takes the music note; one day says its day once, on the date line, and its rows their times.
+        '\u{1F3B6} Four events in Melbourne.',
         '\u{1F4C5} Friday 27 November',
-        'Fri 27 Nov, 6 pm: Choir 3006 In Concert, Melbourne Recital Centre',
-        'Fri 27 Nov, 7 pm and 9.30 pm: Joel Ross (NYC), The JazzLab',
-        "Fri 27 Nov, 7.30 pm: Jack Jones: Hits & Stories, Bird's Basement",
-        'Fri 27 Nov, 8.30 pm: Michelle Nicolle & David McEvoy, Melbourne Recital Centre',
+        '6 pm: Choir 3006 In Concert, Melbourne Recital Centre',
+        '7 pm and 9.30 pm: Joel Ross (NYC), The JazzLab',
+        "7.30 pm: Jack Jones: Hits & Stories, Bird's Basement",
+        '8.30 pm: Michelle Nicolle & David McEvoy, Melbourne Recital Centre',
         '\u{1F39F} Times and tickets for all four: link in our bio',
         'Tag who you are going with.',
         '#MelbourneEvents #Melbourne #EventLinqs',
@@ -263,8 +263,9 @@ describe('an approved set, planned by the engine', () => {
     const kyivska = await planOf('kyivska-perepichka')
     expect(kyivska.versions.instagram.caption).toBe(
       [
-        '\u{1F3AD} Kyivska Perepichka at The Wheeler Centre, Saturday 5 December.',
-        'Sat 5 Dec, 6.30 pm: Kyivska Perepichka',
+        // One show: its title once in the hook, its date once on its own record's line.
+        '\u{1F3AD} Kyivska Perepichka.',
+        '\u{1F4C5} Saturday 5 December, 6:30pm to 8:30pm',
         '\u{1F4CD} The Wheeler Centre, Melbourne',
         '\u{1F39F} Event details and tickets: link in our bio',
         'Tag who you are going with.',
