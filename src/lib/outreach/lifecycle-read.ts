@@ -15,7 +15,8 @@ import type { VoiceConsent } from './voice-gate'
  *                        sender's one-first-letter rule), else the contact the play reached;
  *   whether to write    a reply from them, or a letter of this kind already gone or going, means no letter;
  *   their nights        ./their-nights.ts, the one reader of an organiser's own public nights, soonest first;
- *   granted             a night whose cover is the organiser's own photograph with recorded rights needs no PERM;
+ *   granted             a night whose cover is the organiser's own photograph with recorded rights, or one they already
+ *                        gave us images for (a current organiser authorised asset), needs no PERM;
  *   the clock           ./lifecycle-letters.ts lifecycleChoice: is the letter due today, and on which night;
  *   the night's words   its title, day, city and booking page; their secure photo link; the consent basis.
  * A fact that cannot be read is a reason, never a guess: the letter is not drafted and the run says why.
@@ -96,11 +97,25 @@ export async function readLifecycleFacts(
   if (rights.error) return { state: 'not read', why: `their nights' photo rights could not be read: ${rights.error.message}` }
   const links = await db.from('event_booking_links').select('event_id, url').in('event_id', nightIds)
   if (links.error) return { state: 'not read', why: `their booking links could not be read: ${links.error.message}` }
+  // NEVER ASKED AGAIN FOR WHAT THEY GAVE (Lawal, 13:49 of 23 November 2026: "Let EventLinqs be the most easiest platform
+  // organizers ever know"): a night they already gave us images for (organiser authorised, current, not refused, any
+  // scope, whether or not it became the cover) needs no permission request.
+  const given = await db
+    .from('social_assets')
+    .select('event_id')
+    .in('event_id', nightIds)
+    .eq('asset_state', 'organiser_authorised')
+    .eq('withdrawal_status', 'current')
+    .neq('approval_status', 'refused')
+    .limit(500)
+  if (given.error) return { state: 'not read', why: `the images they gave could not be read: ${given.error.message}` }
+  const gaveFor = new Set((given.data ?? []).map((a) => a.event_id as string))
   const byId = new Map((rows.data ?? []).map((r) => [r.id as string, r]))
   const clocks: LifecycleNightClock[] = nights.map((n) => {
     const row = byId.get(n.eventId)
     const cover = (row?.cover_image_url as string | null) ?? null
-    const granted = cover !== null && (rights.data ?? []).some((r) => r.event_id === n.eventId && r.image_url === cover && GRANTED.includes(r.rights_state as string))
+    const ownCover = cover !== null && (rights.data ?? []).some((r) => r.event_id === n.eventId && r.image_url === cover && GRANTED.includes(r.rights_state as string))
+    const granted = ownCover || gaveFor.has(n.eventId)
     return { eventId: n.eventId, startIso: n.startDate, endIso: (row?.end_date as string | null) ?? null, zone: n.timezone || 'Australia/Melbourne', granted }
   })
   const choice = lifecycleChoice(input.key, { replied, alreadyAsked, nights: clocks }, input.now)
@@ -110,6 +125,10 @@ export async function readLifecycleFacts(
   const row = byId.get(choice.eventId)
   const bookingUrl = ((row?.external_ticket_url as string | null) ?? '').trim() || ((links.data ?? []).find((l) => l.event_id === choice.eventId)?.url as string | undefined) || null
   const token = recipient.unsubscribe_token as string | null
+  // THEIR OWN PHOTO PAGE IS THE APPROVAL LINK (Lawal, 13:49 of 23 November 2026: "One tick ... We are just promoting the
+  // event"): /photos/<contact>/<proof>, the proof derived from the token of the contact written to (./photo-link.ts). No
+  // token, no link: the PERM draft is then held for [approval link], never sent with a stand in.
+  const photoLink = token ? `${input.origin.replace(/\/+$/, '')}${photoPath(recipient.id as string, token)}` : null
   return {
     state: 'read',
     recipientId: recipient.id as string,
@@ -133,7 +152,8 @@ export async function readLifecycleFacts(
         citySlug: (row?.city_primary as string | null) ?? null,
         bookingUrl,
       },
-      photoLink: token ? `${input.origin.replace(/\/+$/, '')}${photoPath(recipient.id as string, token)}` : null,
+      photoLink,
+      approvalLink: photoLink,
       origin: input.origin,
     },
   }

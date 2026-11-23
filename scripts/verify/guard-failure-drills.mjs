@@ -11919,8 +11919,8 @@ const DRILLS = [
     name: "no founder name in public: the photo page names Lawal again",
     guard: `${GUARDS}/no-founder-name-public.mjs`,
     file: 'src/app/photos/[contact]/[proof]/page.tsx',
-    find: 'subtitle="You choose where EventLinqs may use them."',
-    replace: 'subtitle="You choose where EventLinqs may use them. Nothing is used until Lawal has looked at it."',
+    find: 'subtitle="One tick and EventLinqs can promote your night with them."',
+    replace: 'subtitle="One tick and EventLinqs can promote your night with them. Nothing is used until Lawal has looked at it."',
     expect: "founder's name(s) in words a customer, an organiser or the public reads",
   },
   /*

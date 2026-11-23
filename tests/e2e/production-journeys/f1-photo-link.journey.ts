@@ -34,8 +34,8 @@ async function sendPhotos(journey: Journey, files: string[], label: string) {
     await expect(page.getByText('These are too large to send together')).toHaveCount(0)
   })
   await journey.step(`fill and send (${label})`, async () => {
-    await expect(page.locator('input[name="on_page"]')).toBeChecked()
-    await expect(page.locator('input[name="in_posts"]')).not.toBeChecked()
+    // One tick, one checkbox (Lawal, 13:49 of 23 November 2026): the form carries exactly one.
+    await expect(page.locator('form[data-photo-permission] input[type="checkbox"]')).toHaveCount(1)
     await page.fill('#ph-name', 'EventLinqs QA journey')
     await page.check('input[name="rights"]')
     await Promise.all([page.waitForURL(/[?&](sent|problem)=/, { timeout: 120_000 }), page.locator('button[type="submit"]').click()])
