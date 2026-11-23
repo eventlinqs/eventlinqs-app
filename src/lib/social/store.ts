@@ -1422,8 +1422,18 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
 
 /** An approved set at intake: drawn (now, or already), or refused with its reason. */
 export type SetDrawn =
-  | { readonly state: 'drawn'; readonly set: string; readonly pieceId: string; readonly already: boolean; readonly lines: readonly string[] }
+  | { readonly state: 'drawn'; readonly set: string; readonly pieceId: string; readonly already: boolean; readonly redrawn?: boolean; readonly lines: readonly string[] }
   | { readonly state: 'refused'; readonly set: string; readonly reason: string }
+
+/** Whether a piece has begun its life (approved, scheduled or posted), said in words; null while it has none. */
+async function pieceLifeOf(db: Db, pieceId: string): Promise<string | null> {
+  for (const [table, words] of [['social_piece_approvals', 'approved'], ['social_piece_schedules', 'scheduled'], ['social_piece_postings', 'posted']] as const) {
+    const { data, error } = await db.from(table).select('piece_id').eq('piece_id', pieceId).limit(1)
+    if (error) return `unread (its ${table} could not be read: ${error.message}), so left as it is`
+    if ((data ?? []).length > 0) return words
+  }
+  return null
+}
 
 /** Why each of a set's nights the public read left out was left out, from its own row: gone, ended, not public, or neither. */
 async function setNightsLeftOut(db: Db, ids: readonly string[], now: Date): Promise<string[]> {
@@ -1449,7 +1459,10 @@ async function setNightsLeftOut(db: Db, ids: readonly string[], now: Date): Prom
  * UNAPPROVED and unscheduled: no approval, no schedule, nothing published. It waits for the PM's review; stage=approve
  * (approveApprovedSet) records the checked approval, and the ordinary scheduler gives it its band inside its window.
  * Refused, saying which, when any night has ended, is not public or cannot be read. A set already drawn is never drawn
- * twice: its piece is found by its first file in any revision, in any week's campaign, and returned.
+ * as a second piece: its piece is found by its first file in any revision, in any week's campaign. While nobody has
+ * approved, scheduled or posted it, it is drawn again as a new revision with today's nights and words ('sweep', the
+ * engine's own redraw), the piece id kept; otherwise it is returned untouched. The piece and its first revision are
+ * written together (writePieceWithFirstRevision).
  */
 export async function drawApprovedSet(db: Db, input: { readonly set: string; readonly now: Date }): Promise<SetDrawn> {
   const set = approvedSetNamed(input.set)
@@ -1458,7 +1471,14 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
   const { data: had, error: herr } = await db.from('social_piece_revisions').select('piece_id').contains('slides', JSON.stringify([{ url: firstFile }])).order('made_at', { ascending: true }).limit(1)
   if (herr) return { state: 'refused', set: set.name, reason: `Whether it was drawn already could not be read (${herr.message}); nothing was drawn.` }
   const drawn = ((had ?? []) as { piece_id: string }[])[0]?.piece_id
-  if (drawn) return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}; it is not drawn twice.`] }
+  // AN UNAPPROVED SET PIECE IS DRAWN AGAIN WITH TODAY'S RULES (the PM's intake of 23 and 24 November 2026: the live music
+  // and Kyivska pieces drawn at 22:15 kept the captions train seven fixed). A set is never drawn twice as a second piece;
+  // its piece, while nobody has approved, scheduled or posted it, takes a new revision from today's nights and today's
+  // words, the piece id kept. One with any of those is returned untouched.
+  if (drawn) {
+    const life = await pieceLifeOf(db, drawn)
+    if (life !== null) return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}, and it is ${life}; it is not drawn again.`] }
+  }
 
   const weekStart = weekStartOf(input.now)
   const nights = await readCampaignNights(db, await readCampaignCities(db), weekStart, input.now, { ids: set.eventIds })
@@ -1470,6 +1490,29 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
   const p = planned.plan
   const refused = pieceRefusal(p) ?? law37Refusal(p.slides)
   if (refused) return { state: 'refused', set: set.name, reason: `Not drawn: ${refused}` }
+
+  if (drawn) {
+    const rev = await newestRevision(db, drawn)
+    if (rev === null) return { state: 'refused', set: set.name, reason: `Not drawn again: piece ${drawn}'s newest words could not be read.` }
+    const fresh = revisionRow(drawn, rev.version + 1, p, null, 'sweep', null, input.now)
+    // Drawn again only where today's drawing differs: an identical one is never written twice (sameDrawing, the sweep's rule).
+    if (sameDrawing({ eventIds: fresh.event_ids, slides: fresh.slides, versions: fresh.versions, caption: fresh.caption }, rev)) {
+      return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}, and today's rules draw it the same; it is not written again.`] }
+    }
+    const { error: werr } = await db.from('social_piece_revisions').insert(fresh)
+    if (werr) {
+      const why = werr.code === '23505' ? 'another run drew it again first' : (refusalOf(werr.message) ?? werr.message)
+      return { state: 'refused', set: set.name, reason: `Not drawn again: ${why}.` }
+    }
+    return {
+      state: 'drawn',
+      set: set.name,
+      pieceId: drawn,
+      already: true,
+      redrawn: true,
+      lines: [`The ${set.label}: piece ${drawn} drawn again as version ${rev.version + 1} with today's nights and words, still UNAPPROVED and unscheduled, ready for the PM's review.`],
+    }
+  }
 
   const { error: cerr } = await db.from('social_campaigns').upsert({ week_start: weekStart, planned_by: null, planned_at: input.now.toISOString() }, { onConflict: 'week_start', ignoreDuplicates: true })
   if (cerr) return { state: 'refused', set: set.name, reason: `Not drawn: the week's campaign could not be kept (${cerr.message}).` }

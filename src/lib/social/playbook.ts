@@ -146,6 +146,13 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: INTAKE_2324,
     date: '2026-11-24',
   },
+  {
+    id: 'unapproved-set-redrawn-with-todays-rules',
+    rule: "An approved set's piece that nobody has approved, scheduled or posted is drawn again with today's nights and words as a new revision, its piece id kept; an approved, scheduled or posted piece is never redrawn.",
+    reason: "The live music (8d252108) and Kyivska (23f34b07) pieces were drawn at 22:15 with the captions train seven fixed, and intake, finding each by its first file, only ever answered 'drawn already'.",
+    source: INTAKE_2324,
+    date: '2026-11-24',
+  },
 ]
 
 /**

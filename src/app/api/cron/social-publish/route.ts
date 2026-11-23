@@ -116,10 +116,10 @@ export async function GET(request: NextRequest) {
       await recordAnonAuditEvent({
         action: 'system.social.approved_set_intake',
         actorEmail: 'cron/social-publish?post=now&stage=intake',
-        metadata: drawn.state === 'drawn' ? { set, piece: drawn.pieceId, already: drawn.already, lines: drawn.lines } : { set, refused: drawn.reason },
+        metadata: drawn.state === 'drawn' ? { set, piece: drawn.pieceId, already: drawn.already, redrawn: drawn.redrawn ?? false, lines: drawn.lines } : { set, refused: drawn.reason },
       })
       return drawn.state === 'drawn'
-        ? NextResponse.json({ drawn: true, approved: false, scheduled: false, ready: "for the PM's review", set: drawn.set, piece: drawn.pieceId, already: drawn.already, lines: drawn.lines })
+        ? NextResponse.json({ drawn: true, approved: false, scheduled: false, ready: "for the PM's review", set: drawn.set, piece: drawn.pieceId, already: drawn.already, redrawn: drawn.redrawn ?? false, lines: drawn.lines })
         : NextResponse.json({ drawn: false, set: drawn.set, why: drawn.reason }, { status: 409 })
     }
     const piece = asked.get('piece') ?? ''

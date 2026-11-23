@@ -454,3 +454,52 @@ describe('a piece and its first revision are written together', () => {
     expect(PLAYBOOK.find((r) => r.id === 'piece-and-first-revision-together')?.source).toBe("the PM's intake of 23 and 24 November 2026")
   })
 })
+/*
+ * AN UNAPPROVED SET PIECE IS DRAWN AGAIN WITH TODAY'S RULES (the PM's intake of 23 and 24 November 2026): live music
+ * 8d252108 and Kyivska 23f34b07 were drawn at 22:15 with the captions train seven fixed. Intake found each by its first
+ * file and returned it, "drawn already".
+ */
+describe("an unapproved set piece is drawn again with today's rules", () => {
+  const OLD = '\u{1F3B6} Kyivska Perepichka at The Wheeler Centre, Saturday 5 December.\nSat 5 Dec, 6.30 pm: Kyivska Perepichka'
+  const drawnLastNight = (extra: Record<string, Row[]> = {}) => {
+    const set = approvedSetNamed('kyivska-perepichka') as ApprovedSet
+    const slides = set.files.map((f) => ({ t: 'file', composition: 'close', url: `${APPROVED_FILE_PREFIX}${f}`, format: 'feed', eventId: KYIVSKA, startDate: '2026-12-05T07:30:00.000Z' }))
+    return fakeDb({
+      tables: {
+        social_pieces: [{ id: '0000c0de-0000-4000-8000-00000000c0de', campaign_id: 'c1', kind: 'coming_up', city: 'melbourne', moment_key: null, link: 'https://www.eventlinqs.com.au/events/kyivska-perepichka' }],
+        social_piece_revisions: [{ piece_id: '0000c0de-0000-4000-8000-00000000c0de', version: 1, event_ids: [KYIVSKA], picks: [], mode: 'graphic_led', slides, caption: OLD, versions: { instagram: { caption: OLD }, facebook: { caption: OLD } }, message: null, made_by: 'planner', made_at: '2026-11-23T11:15:00.000Z' }],
+        ...extra,
+      },
+    })
+  }
+
+  it('a drawn piece nobody approved takes a new revision with today\'s words, the piece id kept', async () => {
+    const { db, tables, writes } = drawnLastNight()
+    const out = await drawApprovedSet(db, { set: 'kyivska-perepichka', now: NOW })
+    expect(out).toMatchObject({ state: 'drawn', pieceId: '0000c0de-0000-4000-8000-00000000c0de', already: true, redrawn: true })
+    expect(writes.map((w) => `${w.op} ${w.table}`)).toEqual(['insert social_piece_revisions'])
+    const fresh = (tables.social_piece_revisions ?? []).find((r) => r.version === 2) as { made_by: string; caption: string; piece_id: string }
+    expect(fresh).toMatchObject({ piece_id: '0000c0de-0000-4000-8000-00000000c0de', made_by: 'sweep' })
+    expect(fresh.caption).not.toBe(OLD)
+    expect(fresh.caption.split('\n')[0]).toBe('\u{1F3AD} Kyivska Perepichka.')
+    expect(tables.social_pieces?.length).toBe(1)
+    // Drawn again with nothing changed since, it is never written twice.
+    const again = await drawApprovedSet(db, { set: 'kyivska-perepichka', now: NOW })
+    expect(again).toMatchObject({ state: 'drawn', pieceId: '0000c0de-0000-4000-8000-00000000c0de', already: true })
+    expect(writes.length).toBe(1)
+  })
+
+  for (const [table, words] of [['social_piece_approvals', 'approved'], ['social_piece_schedules', 'scheduled'], ['social_piece_postings', 'posted']] as const) {
+    it(`a piece ${words} is returned untouched`, async () => {
+      const { db, writes } = drawnLastNight({ [table]: [{ piece_id: '0000c0de-0000-4000-8000-00000000c0de' }] })
+      const out = await drawApprovedSet(db, { set: 'kyivska-perepichka', now: NOW })
+      expect(out).toMatchObject({ state: 'drawn', pieceId: '0000c0de-0000-4000-8000-00000000c0de', already: true })
+      expect(out.state === 'drawn' && out.lines[0]).toContain(`it is ${words}; it is not drawn again`)
+      expect(writes).toEqual([])
+    })
+  }
+
+  it('is a playbook rule, with its reason and its source', () => {
+    expect(PLAYBOOK.find((r) => r.id === 'unapproved-set-redrawn-with-todays-rules')?.source).toBe("the PM's intake of 23 and 24 November 2026")
+  })
+})
