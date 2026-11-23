@@ -12,8 +12,9 @@ import { posterCaption } from '@/lib/social/daily-posters'
  * and why, and holds the engine's own line instead:
  *   - a pronoun is never guessed from a name ('her Closer Tour' is written 'the Closer Tour');
  *   - a seller's fee the row does not hold is not printed ('plus the venue's $6.95 transaction fee');
- *   - a sentence a person wrote about the week ('all under one roof', 'with a full orchestra') is the engine's own line
- *     from the rows' facts;
+ *   - a sentence a person wrote about the week ('all under one roof', 'with a full orchestra') is not written: the engine's
+ *     own from-to line stood in its place until the PM's RETURN of 04:05 on 24 November 2026 took that line out of every
+ *     list caption (playbook.ts caption-no-from-to-line), so the caption runs from its hook to its rows;
  *   - a venue whose name holds its city is named alone on its place line (the PM's 23:45 of 17 November, fix (d)), so
  *     'Melbourne Recital Centre, Melbourne' is written 'Melbourne Recital Centre';
  *   - Facebook's link is written whole, https://www. and all, so it is always a link (the PM's 20:50: Facebook keeps the
@@ -138,12 +139,13 @@ describe("Version 2's first sample: four events at Melbourne Recital Centre (a v
     crop: '4:5',
     lead: 'Event details and tickets',
   })
-  it('Instagram: every line the rows decide is the sample word for word; the second line is the engine’s own', () => {
+  it('Instagram: every line the rows decide is the sample word for word; the sample’s second line, a person’s sentence, is not written', () => {
     const ig = lines(words.versions.instagram.caption)
-    expect(ig).toHaveLength(SAMPLE.length)
-    SAMPLE.forEach((line, i) => {
-      if (i === 1) expect(ig[1]).toBe('From Eternity on Thursday to An Evening with Alastair Campbell on Sunday.')
-      else if (i === 6) expect(ig[6]).toBe('📍 Melbourne Recital Centre')
+    const decided = SAMPLE.filter((_, i) => i !== 1)
+    expect(ig).toHaveLength(decided.length)
+    expect(ig.some((l) => l.startsWith('From '))).toBe(false)
+    decided.forEach((line, i) => {
+      if (line.startsWith('📍')) expect(ig[i]).toBe('📍 Melbourne Recital Centre')
       else expect(ig[i]).toBe(line)
     })
     expect(captionMarkFaults(words.versions.instagram.caption)).toEqual([])
@@ -190,12 +192,13 @@ describe("Version 2's second sample: five events in Geelong this week (a city's 
     tags: standardTags(geelong, tagWord('Geelong')),
     crop: '9:16',
   })
-  it('Instagram: every line the rows decide is the sample word for word; the hook’s close and the second line are the engine’s own', () => {
+  it('Instagram: every line the rows decide is the sample word for word; the hook’s close is the engine’s own, and the sample’s second line, a person’s sentence, is not written', () => {
     const ig = lines(words.versions.instagram.caption)
-    expect(ig).toHaveLength(SAMPLE.length)
-    SAMPLE.forEach((line, i) => {
+    const decided = SAMPLE.filter((_, i) => i !== 1)
+    expect(ig).toHaveLength(decided.length)
+    expect(ig.some((l) => l.startsWith('From '))).toBe(false)
+    decided.forEach((line, i) => {
       if (i === 0) expect(ig[0]).toBe('🎉 Five events in Geelong this week.')
-      else if (i === 1) expect(ig[1]).toBe('From Geelong Dance Movement: A Passage Through Time on Thursday to The Kim Wilde: Closer Tour on Sunday.')
       else expect(ig[i]).toBe(line)
     })
     expect(captionMarkFaults(words.versions.instagram.caption)).toEqual([])
