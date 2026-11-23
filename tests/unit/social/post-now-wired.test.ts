@@ -41,3 +41,50 @@ describe('the post now, wired from our side', () => {
     expect(read('src/lib/admin/rbac.ts')).not.toContain('admin.social.post_now')
   })
 })
+
+/*
+ * LAWAL'S APPROVED SETS (the founder, 23 November 2026, 14:34): stage intake draws a set unapproved for the PM's review, and
+ * stage approve records only the checked approval of a drawn set; neither schedules nor publishes.
+ */
+const setAt = route.indexOf("if (asked.get('post') === 'now' && (setStage === 'intake' || setStage === 'approve'))")
+// The set stages' branch: from its condition to the post now's own comment, which follows it.
+const setBranch = route.slice(setAt, route.indexOf('// POST ONE NIGHT NOW, FROM OUR SIDE', setAt))
+
+describe("the approved sets' two stages, wired from our side", () => {
+  it('run only after the cron secret, before the night posted now, each through its one engine function', () => {
+    expect(setAt).toBeGreaterThan(route.indexOf('requireCronAuth(request)'))
+    expect(setAt).toBeLessThan(at)
+    expect(setBranch).toContain('drawApprovedSet(db, { set, now })')
+    expect(setBranch).toContain('approveApprovedSet(db, { pieceId: piece, by: founder.id, now, siteOrigin: getSiteUrl() })')
+    expect(setBranch).toMatch(/\[0-9a-f\]\{8\}-/)
+    expect(setBranch).toContain("action: 'system.social.approved_set_intake'")
+    expect(setBranch).toContain("action: 'system.social.approved_set_approve'")
+  })
+
+  it('stage approve records only an approval: neither stage draws a night, schedules or publishes', () => {
+    for (const never of ['scheduleApprovedPieces', 'publishDuePieces', 'postNightNow', 'planCampaignWeek', 'approveUnderStandingPolicy', 'approvePieceChecked', 'socialPublisherFromEnv']) {
+      expect(setBranch, never).not.toContain(never)
+    }
+    expect(setBranch).toContain('scheduled: false')
+  })
+
+  it('the workflow carries both stages, with the set and the piece, by hand only', () => {
+    expect(workflow).toMatch(/^ {8}options: \[[^\]\n]*\bintake, approve\]$/m)
+    expect(workflow).toMatch(/^ {6}set:$/m)
+    expect(workflow).toMatch(/^ {6}piece:$/m)
+    expect(workflow).toContain('social-publish?post=now&stage=intake&set=${SET}')
+    expect(workflow).toContain('social-publish?post=now&stage=approve&piece=${PIECE}')
+    expect(workflow).toContain(`intake) grep -q '"drawn":true' answer.json`)
+    expect(workflow).toContain(`approve) grep -q '"approved":true' answer.json`)
+    expect(workflow).not.toMatch(/^\s*schedule:/m)
+  })
+
+  // Two cars adding a stage each merge their inputs WITHOUT a conflict marker, into two 'stage:' keys (git merge-tree of this
+  // car with feat/amos-now, 23 November 2026): a workflow with a key twice is never shipped.
+  it('names each of its inputs once', () => {
+    const inputs = workflow.slice(workflow.indexOf('    inputs:\n'), workflow.indexOf('\npermissions:'))
+    const names = [...inputs.matchAll(/^ {6}([a-z_]+):$/gm)].map((m) => m[1])
+    expect(names.length).toBeGreaterThan(0)
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([])
+  })
+})

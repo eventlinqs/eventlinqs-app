@@ -10,6 +10,8 @@ import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
 import { captionMarkFaults, holdsAtPublishing, emojiCount, MAX_EMOJI } from './caption-marks'
 import { NO_STAND_INS, namesAStandIn, STAND_INS, STAND_INS_IN_PLAN, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
+import { goHop } from './go-hop'
+import type { ApprovedSet } from './approved-sets'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -1606,6 +1608,87 @@ export function offerCaptions(hook: string, body: readonly string[], origin: str
   return {
     instagram: { hook: head[0], caption: join([...head, '\u{1F39F} List your event: link in our bio', ...tail]), crop: FEED_CROP, cta: 'link in our bio' },
     facebook: { hook: head[0], caption: join([...head, '\u{1F39F} List your event:', link, ...tail]), crop: FEED_CROP, cta: link },
+  }
+}
+
+/**
+ * AN APPROVED SET, PLANNED (the founder, 23 November 2026, 14:34: the engine posts Lawal's approved designs "with the
+ * engine's own captions, windows and Facebook links"; the creative policy of 13:41, law37.ts; the sets in approved-sets.ts).
+ * Beside the organiser offer, the other piece made from approved files. Its slides are the set's files, each posted as it
+ * is, in the set's order, and each carries the set's first night (a cover or a list shows the whole set; a poster and its
+ * why go show the one night), so the gate reads that night again at approval and publishing and holds the piece once it
+ * has started. Its words are the engine's own list caption (listCaptions, caption standard version 2): the hook with its
+ * emoji and the count from the rows, the rows, the place or the days, the link line, the share line and the tags, and no
+ * relative day word, since a feed post stays on the profile after its day (the PM's 13:32 of 23 November 2026). Instagram
+ * points to the link in our bio; Facebook carries the counted /go hop (go-hop.ts), which lands on the piece's own page:
+ * the night's page for one show, otherwise the page that lists every night (destinationOf). Every night of the set must
+ * be read (public, still to come, in one guide city), or nothing is planned and the missing are named. Pure.
+ */
+export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[], origin: string): { readonly plan: PiecePlan } | { readonly refused: string } {
+  const byId = new Map(read.map((n) => [n.eventId, n]))
+  const missing = set.eventIds.filter((id) => !byId.has(id))
+  if (missing.length > 0) return { refused: `The ${set.label}: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not read as a public night still to come in a guide city.` }
+  const nights = set.eventIds.map((id) => byId.get(id) as CampaignNight).map((n) => ({ ...n, sourceTitle: n.sourceTitle ?? n.title, title: postTitle(n.title, n.venueName) }))
+  const sorted = [...nights].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const first = sorted[0]
+  if (!first) return { refused: `The ${set.label} names no night.` }
+  const citySlugs = [...new Set(sorted.map((n) => n.citySlug))]
+  if (citySlugs.length !== 1) return { refused: `The ${set.label}: its nights are in ${citySlugs.join(' and ')}; a set's page is one city's.` }
+  const city: CampaignCity = { slug: first.citySlug, name: first.cityName }
+  const shows = oncePerTitle(sorted)
+  // The place each night names: its venue row's own name, else the listing's own venue (never a bare street).
+  const placeNamed = (n: CampaignNight) => placeOf(n) ?? (n.venueName ? notAStreet(n.venueName) || null : null)
+  const places = [...new Set(sorted.map((n) => placeNamed(n) ?? ''))]
+  const place = places.length === 1 && places[0] !== '' ? places[0] : null
+  const days = new Set(sorted.map((n) => local(n.startDate, n.timezone, { year: 'numeric', month: '2-digit', day: '2-digit' })))
+  // The hook, from the rows' own facts, with no relative day word: one show names itself, one venue names its place and
+  // its days (its caption carries no days line), several venues name the city and, on one day, its weekday.
+  const hook =
+    shows.length === 1 && place
+      ? `${KIND_EMOJI[nightKind(first) ?? 'other']} ${first.title} at ${place}, ${spanLine(sorted)}.`
+      : place
+        ? `${listEmoji(sorted, true)} ${countPhrase(sorted)} at ${place}, ${spanLine(sorted)}.`
+        : `${listEmoji(sorted, false)} ${countPhrase(sorted)} in ${city.name}${days.size === 1 ? ` on ${local(first.startDate, first.timezone, { weekday: 'long' })}` : ''}.`
+  const page = shows.length === 1 ? `/events/${first.slug}` : destinationOf(sorted, city).path
+  const own = shows.length === 1 ? tagWord(first.title) : place ? tagWord(place) : tagWord(city.name)
+  const words = listCaptions({
+    hook,
+    nights: sorted,
+    rows: shows.map((n) => rowLine(n, sorted, place === null)),
+    pictured: null,
+    place: place ? metaOf({ venueName: place, cityName: city.name }) : null,
+    link: goHop(origin, 'facebook'),
+    share: 'Tag who you are going with.',
+    tags: standardTags(city, own),
+    crop: FEED_CROP,
+    ...(place ? { lead: 'Event details and tickets' } : {}),
+  })
+  const slides = set.files.map((file): Slide => ({ t: 'file', composition: 'close', url: `${APPROVED_FILE_PREFIX}${file}`, format: 'feed', eventId: first.eventId, startDate: first.startDate }))
+  const cardNames = (n: CampaignNight) => [CARD_TITLE_MAX, ASK_TITLE_MAX, DRAW_TITLE_MAX, 40].map((max) => cardTitle(n.title, max))
+  return {
+    plan: {
+      kind: set.kind,
+      city: city.slug,
+      audience: 'attendees',
+      objective: 'audience_growth',
+      purpose: `Post Lawal's approved designs for the ${set.label}, as he approved them`.slice(0, 200),
+      nextStep: `Open ${siteOf(origin)}${page}`,
+      outcome: "Visits through this post's own link, then presses out and tickets from there",
+      link: `${origin}${page}`,
+      format: 'feed',
+      eventIds: sorted.map((n) => n.eventId),
+      picks: sorted.map((n) => ({ eventId: n.eventId, reason: `Picked: a night of Lawal's approved ${set.name} set (23 November 2026), on ${whenOf(n)}.` })),
+      mode: 'graphic_led',
+      slides,
+      caption: words.caption,
+      versions: words.versions,
+      partnerName: null,
+      partnerEventId: null,
+      message: null,
+      posterDay: null,
+      momentKey: null,
+      names: [...new Set(nights.flatMap((n) => [n.title, n.sourceTitle ?? n.title, n.host ?? '', ...cardNames(n)]).filter((s) => s.trim() !== ''))],
+    },
   }
 }
 

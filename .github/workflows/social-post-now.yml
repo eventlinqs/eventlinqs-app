@@ -5,22 +5,29 @@
 # photograph, approves it checked, gives it a slot at this minute (the posting hours waived for that night by the owner's
 # word, and nothing else), publishes it through the publisher and reads it back (src/lib/social/store.ts postNightNow).
 # No cron is added or quickened. The answer names the piece and each network's answer, never a person's address.
+# LAWAL'S APPROVED SETS (the founder, 23 November 2026, 14:34; src/lib/social/approved-sets.ts): stage intake draws a set
+# (set: its name) as an unapproved feed carousel for the PM's review; stage approve records only the checked approval of a
+# drawn set's piece (piece: its id), and the ordinary scheduler gives it its band inside its window. Neither posts.
 name: social post now
 
 on:
   workflow_dispatch:
     inputs:
-      event:
-        description: the night's event id (a uuid), the night the owner's word names
-        required: true
-        type: string
       stage:
-        description: draw (draw the night's piece and stop for the PM's VERIFY) or publish (the piece the PM passed)
+        description: draw (draw the night's piece and stop for the PM's VERIFY), publish (the piece the PM passed), intake (draw an approved set, unapproved, for the PM's review) or approve (the checked approval of a drawn set's piece; nothing posts)
         required: true
         type: choice
-        options: [draw, publish]
+        options: [draw, publish, intake, approve]
+      set:
+        description: for intake, the approved set's name (comedy-weekend, live-music, kyivska-perepichka)
+        required: false
+        type: string
       piece:
-        description: for publish, the piece id the PM passed
+        description: for publish, the piece id the PM passed; for approve, the drawn set's piece id (a uuid)
+        required: false
+        type: string
+      event:
+        description: for draw and publish, the night's event id (a uuid), the night the owner's word names
         required: false
         type: string
 
@@ -33,24 +40,40 @@ concurrency:
 
 jobs:
   post:
-    name: one night, posted now through the engine
+    name: one night drawn or posted, or an approved set drawn or approved, through the engine
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Ask production's social run to post the night now
+      - name: Ask production's social run for the stage named
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          EVENT: ${{ inputs.event }}
           STAGE: ${{ inputs.stage }}
+          EVENT: ${{ inputs.event }}
+          SET: ${{ inputs.set }}
           PIECE: ${{ inputs.piece }}
         run: |
           set -euo pipefail
-          [[ "$EVENT" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "REFUSED: event $EVENT is not an id"; exit 2; }
-          [[ "$STAGE" == draw || "$STAGE" == publish ]] || { echo "REFUSED: stage $STAGE is not draw or publish"; exit 2; }
-          if [[ "$STAGE" == publish ]]; then [[ "$PIECE" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "REFUSED: piece $PIECE is not an id"; exit 2; }; fi
-          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "https://www.eventlinqs.com.au/api/cron/social-publish?post=now&event=${EVENT}&stage=${STAGE}&piece=${PIECE}" \
-            -H "Authorization: Bearer $CRON_SECRET")
+          id='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          case "$STAGE" in
+            draw|publish)
+              [[ "$EVENT" =~ $id ]] || { echo "REFUSED: event $EVENT is not an id"; exit 2; }
+              if [[ "$STAGE" == publish ]]; then [[ "$PIECE" =~ $id ]] || { echo "REFUSED: piece $PIECE is not an id"; exit 2; }; fi
+              url="https://www.eventlinqs.com.au/api/cron/social-publish?post=now&event=${EVENT}&stage=${STAGE}&piece=${PIECE}" ;;
+            intake)
+              [[ "$SET" =~ ^[a-z0-9-]{3,60}$ ]] || { echo "REFUSED: set $SET is not a set name"; exit 2; }
+              url="https://www.eventlinqs.com.au/api/cron/social-publish?post=now&stage=intake&set=${SET}" ;;
+            approve)
+              [[ "$PIECE" =~ $id ]] || { echo "REFUSED: piece $PIECE is not an id"; exit 2; }
+              url="https://www.eventlinqs.com.au/api/cron/social-publish?post=now&stage=approve&piece=${PIECE}" ;;
+            *) echo "REFUSED: stage $STAGE is not draw, publish, intake or approve"; exit 2 ;;
+          esac
+          code=$(curl -sS -o answer.json -w '%{http_code}' --max-time 280 "$url" -H "Authorization: Bearer $CRON_SECRET")
           echo "HTTP $code"
           cat answer.json; echo
           [ "$code" = 200 ]
-          if [[ "$STAGE" == draw ]]; then grep -q '"drawn":true' answer.json; else grep -q '"posted":true' answer.json; fi
+          case "$STAGE" in
+            draw) grep -q '"drawn":true' answer.json ;;
+            publish) grep -q '"posted":true' answer.json ;;
+            intake) grep -q '"drawn":true' answer.json ;;
+            approve) grep -q '"approved":true' answer.json ;;
+          esac

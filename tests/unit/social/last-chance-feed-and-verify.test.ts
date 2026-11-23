@@ -94,7 +94,8 @@ describe("post this night now stops for the PM's VERIFY", () => {
     const route = readFileSync('src/app/api/cron/social-publish/route.ts', 'utf8')
     expect(route).toMatch(/if \(stage !== 'draw' && stage !== 'publish'\) return NextResponse\.json/)
     const wf = readFileSync('.github/workflows/social-post-now.yml', 'utf8')
-    expect(wf).toMatch(/options: \[draw, publish\]/)
+    // The approved sets' intake and approve stages (feat/approved-six) follow the night's two; neither posts.
+    expect(wf).toMatch(/options: \[draw, publish(, [a-z]+)*\]/)
     expect(wf).toMatch(/stage=\$\{STAGE\}&piece=\$\{PIECE\}/)
   })
 })

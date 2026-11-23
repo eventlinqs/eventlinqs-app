@@ -34,7 +34,8 @@ import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-d
 import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
 import type { BlotatoPostReader } from './blotato-publisher'
-import { creativeRefusals, hostOf, lockRefusal, nightWords, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
+import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -1145,15 +1146,18 @@ export async function readCampaignNights(
   cities: readonly CampaignCity[],
   weekStart: string,
   now: Date,
-  opts: { readonly aheadDays?: number } = {},
+  /**
+   * ids: only these nights, by the same public rule and the same shape, however far ahead (an approved set's nights,
+   * drawApprovedSet); a night's city is then also found as the city guide finds it, its venue_city holding the city's name.
+   */
+  opts: { readonly aheadDays?: number; readonly ids?: readonly string[] } = {},
 ): Promise<CampaignNight[]> {
   // Three weeks on, for Coming Up's consideration stage; every piece of the week keeps to its week by dayInWeek. The
   // rows come soonest first, so if the limit below ever cuts, it cuts only the furthest nights. The lifecycle planner
   // reads further (LIFECYCLE_AHEAD_DAYS) for its announce and build posts.
   const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + (opts.aheadDays ?? 21) * DAY_MS)
-  const { data, error } = await applyPublicEventVisibility(db.from('events').select(NIGHT_COLUMNS), { now, includeExternal: true })
-    .gt('end_date', now.toISOString())
-    .lte('start_date', weekEnd.toISOString())
+  const read = applyPublicEventVisibility(db.from('events').select(NIGHT_COLUMNS), { now, includeExternal: true }).gt('end_date', now.toISOString())
+  const { data, error } = await (opts.ids ? read.in('id', [...opts.ids]) : read.lte('start_date', weekEnd.toISOString()))
     .order('start_date', { ascending: true })
     .limit(400)
   if (error) throw new Error(`the week's nights could not be read: ${error.message}`)
@@ -1162,7 +1166,8 @@ export async function readCampaignNights(
   const images = await usableImages(db, rows.map((e) => e.id as string), now)
   const nights: CampaignNight[] = []
   for (const e of rows) {
-    const city = byName.get(String(e.venue_city ?? '').trim().toLowerCase())
+    const venueCity = String(e.venue_city ?? '').trim().toLowerCase()
+    const city = byName.get(venueCity) ?? (opts.ids ? cities.find((c) => venueCity.includes(c.name.toLowerCase())) : undefined)
     if (!city) continue
     if (soldOut((e.ticket_tiers as TierRow[] | null) ?? [], (e.event_booking_links as { availability: string }[] | null) ?? [])) continue
     const { cta, priceLine } = await admissionOf(e, now)
@@ -1383,6 +1388,109 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
   }
   const momentKeys = lifecycle.map((p) => p.momentKey).filter((k): k is string => typeof k === 'string' && k !== '')
   return { campaignId, weekStart, created, existing, kept: kept.size + created, held, requests, momentKeys }
+}
+
+/** An approved set at intake: drawn (now, or already), or refused with its reason. */
+export type SetDrawn =
+  | { readonly state: 'drawn'; readonly set: string; readonly pieceId: string; readonly already: boolean; readonly lines: readonly string[] }
+  | { readonly state: 'refused'; readonly set: string; readonly reason: string }
+
+/** Why each of a set's nights the public read left out was left out, from its own row: gone, ended, not public, or neither. */
+async function setNightsLeftOut(db: Db, ids: readonly string[], now: Date): Promise<string[]> {
+  const { data, error } = await db.from('events').select('id, title, status, visibility, end_date, venue_city').in('id', [...ids])
+  if (error) return [`${ids.join(', ')}: not read as public nights still to come, and why could not be read (${error.message})`]
+  const byId = new Map(((data ?? []) as Record<string, unknown>[]).map((e) => [e.id as string, e]))
+  return ids.map((id) => {
+    const e = byId.get(id)
+    if (!e) return `${id}: the night no longer exists`
+    const name = `${String(e.title)} (${id})`
+    if (e.end_date && Date.parse(String(e.end_date)) <= now.getTime()) return `${name}: it has ended`
+    if (String(e.status) !== 'published' || String(e.visibility) !== 'public') return `${name}: it is not published and public (${String(e.status)}, ${String(e.visibility)})`
+    return `${name}: it is outside the public listing window, sold out, or in no guide city (its city reads '${String(e.venue_city ?? '')}')`
+  })
+}
+
+/**
+ * THE ENGINE'S INTAKE OF AN APPROVED SET (the founder, 23 November 2026, 14:34: the engine publishes Lawal's approved designs
+ * "with the engine's own captions, windows and Facebook links ... Each marked ready for the PM's review as soon as it is
+ * queued"; approved-sets.ts). Beside the week's planner, which draws the organiser offer from its approved file: the set's
+ * nights are read through the engine's own night reader (readCampaignNights, by id), the piece is planned by
+ * campaign.ts planApprovedSet, judged whole (pieceRefusal), and written into this week's campaign with its first revision,
+ * UNAPPROVED and unscheduled: no approval, no schedule, nothing published. It waits for the PM's review; stage=approve
+ * (approveApprovedSet) records the checked approval, and the ordinary scheduler gives it its band inside its window.
+ * Refused, saying which, when any night has ended, is not public or cannot be read. A set already drawn is never drawn
+ * twice: its piece is found by its first file in any revision, in any week's campaign, and returned.
+ */
+export async function drawApprovedSet(db: Db, input: { readonly set: string; readonly now: Date }): Promise<SetDrawn> {
+  const set = approvedSetNamed(input.set)
+  if (set === null) return { state: 'refused', set: input.set, reason: `No approved set is named '${input.set}'; the sets are ${APPROVED_SETS.map((s) => s.name).join(', ')}.` }
+  const firstFile = approvedSetFileUrl(set.files[0])
+  const { data: had, error: herr } = await db.from('social_piece_revisions').select('piece_id').contains('slides', JSON.stringify([{ url: firstFile }])).order('made_at', { ascending: true }).limit(1)
+  if (herr) return { state: 'refused', set: set.name, reason: `Whether it was drawn already could not be read (${herr.message}); nothing was drawn.` }
+  const drawn = ((had ?? []) as { piece_id: string }[])[0]?.piece_id
+  if (drawn) return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}; it is not drawn twice.`] }
+
+  const weekStart = weekStartOf(input.now)
+  const nights = await readCampaignNights(db, await readCampaignCities(db), weekStart, input.now, { ids: set.eventIds })
+  const read = new Set(nights.map((n) => n.eventId))
+  const left = set.eventIds.filter((id) => !read.has(id))
+  if (left.length > 0) return { state: 'refused', set: set.name, reason: `Not drawn: ${(await setNightsLeftOut(db, left, input.now)).join('; ')}.` }
+  const planned = planApprovedSet(set, nights, ORIGIN)
+  if ('refused' in planned) return { state: 'refused', set: set.name, reason: `Not drawn: ${planned.refused}` }
+  const p = planned.plan
+  const refused = pieceRefusal(p) ?? law37Refusal(p.slides)
+  if (refused) return { state: 'refused', set: set.name, reason: `Not drawn: ${refused}` }
+
+  const { error: cerr } = await db.from('social_campaigns').upsert({ week_start: weekStart, planned_by: null, planned_at: input.now.toISOString() }, { onConflict: 'week_start', ignoreDuplicates: true })
+  if (cerr) return { state: 'refused', set: set.name, reason: `Not drawn: the week's campaign could not be kept (${cerr.message}).` }
+  const campaignId = await campaignIdFor(db, weekStart)
+  if (campaignId === null) return { state: 'refused', set: set.name, reason: "Not drawn: the week's campaign could not be read." }
+  const { data: piece, error: perr } = await db
+    .from('social_pieces')
+    .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() })
+    .select('id')
+    .single()
+  if (perr || !piece) {
+    const why = perr?.code === '23505' ? `this week's campaign already holds a ${p.kind.replace(/_/g, ' ')} piece for ${p.city}` : (refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row')
+    return { state: 'refused', set: set.name, reason: `Not drawn: ${why}.` }
+  }
+  const pieceId = piece.id as string
+  const { error: rerr } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, 1, p, null, 'planner', null, input.now))
+  if (rerr) {
+    // A piece with no words is never left behind: it would hold the week's place for its kind and never post.
+    await db.from('social_pieces').delete().eq('id', pieceId)
+    return { state: 'refused', set: set.name, reason: `Not drawn: its words were not kept (${refusalOf(rerr.message) ?? rerr.message}).` }
+  }
+  return {
+    state: 'drawn',
+    set: set.name,
+    pieceId,
+    already: false,
+    lines: [
+      `The ${set.label}: drawn as piece ${pieceId}, ${p.slides.length} approved files and the engine's own words, UNAPPROVED and unscheduled, ready for the PM's review.`,
+      `Its window: ${set.window} (the order); the timing engine reads it from its nights, until two hours before ${nights.slice().sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))[0]?.title ?? 'its first night'} begins.`,
+      `Approve it with stage=approve&piece=${pieceId}; the scheduler then gives it its band.`,
+    ],
+  }
+}
+
+/** An approved set's piece, approved: the checked approval only, or refused with its reason. */
+export type SetApproved = { readonly state: 'approved' | 'refused'; readonly pieceId: string; readonly set: string | null; readonly reason: string | null }
+
+/**
+ * THE PM'S APPROVAL OF A DRAWN SET (stage=approve): only for a piece whose newest revision is exactly an approved set's
+ * files, it records the checked approval (approvePieceChecked: the publish gate, the nights read again, the page, the
+ * words), in the standing approval's name. Nothing is scheduled or published here; the ordinary scheduler gives it its band
+ * inside its own window at its next run.
+ */
+export async function approveApprovedSet(db: Db, input: { readonly pieceId: string; readonly by: string; readonly now: Date; readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<SetApproved> {
+  const rev = await newestRevision(db, input.pieceId)
+  if (rev === null) return { state: 'refused', pieceId: input.pieceId, set: null, reason: 'The piece has no version to approve, or it does not exist.' }
+  const set = approvedSetOfSlides(rev.slides)
+  if (set === null) return { state: 'refused', pieceId: input.pieceId, set: null, reason: "It is not an approved set's piece; this stage approves only those." }
+  const done = await approvePieceChecked(db, input)
+  if (done.state === 'refused') return { state: 'refused', pieceId: input.pieceId, set: set.name, reason: done.reason }
+  return { state: 'approved', pieceId: input.pieceId, set: set.name, reason: null }
 }
 
 export type PieceState = 'drafted' | 'rejected' | 'approved' | 'gone'
