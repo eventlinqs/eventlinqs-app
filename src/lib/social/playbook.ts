@@ -75,14 +75,14 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
   },
   {
     id: 'design-one-clear-action',
-    rule: "Artwork carries one clear action ('Get tickets, link in bio'), never more.",
+    rule: "Artwork carries one clear action, tickets through the 'link in bio', never more.",
     reason: 'Make the next step more prominent; the customer journey must be consistent, so the artwork never offers two ways to book.',
     source: `${REVIEW_1234}; ${DECISION_1247}`,
     date: '2026-11-23',
   },
   {
     id: 'design-seller-in-the-caption',
-    rule: 'The ticket seller is named in the caption, never on our artwork; an organiser poster that names its own seller stays whole.',
+    rule: "The organiser's ticketing provider is named in the caption, never on our artwork; an organiser poster that names its own provider stays whole.",
     reason: 'EventLinqs must not imply that tickets are sold directly through EventLinqs unless that is true; the caption explains that EventLinqs helps people discover the event and that booking is completed through the organiser\'s ticketing provider.',
     source: `${REVIEW_1234}; ${DECISION_1247}`,
     date: '2026-11-23',
