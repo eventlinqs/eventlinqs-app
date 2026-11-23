@@ -7,7 +7,8 @@ import { PLAYBOOK, PLAYBOOK_VERSION } from '@/lib/social/playbook'
  */
 describe('the playbook', () => {
   it('every rule has all five fields, each said', () => {
-    expect(PLAYBOOK.length).toBe(9)
+    // Rules are only ever added (a change is a new rule): nine on the first day, each return adding its own.
+    expect(PLAYBOOK.length).toBeGreaterThanOrEqual(9)
     for (const r of PLAYBOOK) {
       expect(Object.keys(r).sort(), r.id).toEqual(['date', 'id', 'reason', 'rule', 'source'])
       for (const field of ['id', 'rule', 'reason', 'source', 'date'] as const) {
@@ -17,7 +18,7 @@ describe('the playbook', () => {
       expect(r.date, r.id).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(r.id, r.id).toMatch(/^[a-z0-9-]+$/)
       // The house rule on words: no long dash anywhere (law 6).
-      expect(`${r.rule} ${r.reason} ${r.source}`, r.id).not.toMatch(/[–—]/)
+      expect(`${r.rule} ${r.reason} ${r.source}`, r.id).not.toMatch(/[\u2013\u2014]/)
     }
   })
 
@@ -27,7 +28,7 @@ describe('the playbook', () => {
   })
 
   it("holds today's two caption returns and seven design corrections", () => {
-    expect(PLAYBOOK.map((r) => r.id)).toEqual([
+    expect(PLAYBOOK.map((r) => r.id).slice(0, 9)).toEqual([
       'caption-feed-date-line',
       'caption-credit-names-the-organiser',
       'design-no-repeat-of-the-poster',

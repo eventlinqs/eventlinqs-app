@@ -29,6 +29,7 @@ export const PLAYBOOK_VERSION = '2026-11-23'
 const RETURN_1530 = "the PM's RETURN of 15:30 on piece da22e104 (A Moment of Sanity), 23 November 2026; Lawal's 16:04"
 const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:34 (DESIGN-REVIEW-SEVEN-23NOV.md)"
 const DECISION_1247 = "Lawal's final creative decision, 23 November 2026, 12:47 (FINAL-CREATIVE-DECISION-23NOV.md)"
+const INTAKE_2215 = "the PM's intake read of 23 November 2026, 22:15"
 
 export const PLAYBOOK: readonly PlaybookRule[] = [
   {
@@ -92,6 +93,13 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     rule: "No relative date ('today', 'tonight', 'tomorrow', 'this weekend') in any feed caption or artwork: a feed post names its day and date.",
     reason: "The design said 'Tomorrow night', wording that must be checked against the actual publication date, not the design date; a feed post stays on the profile after its day.",
     source: `${REVIEW_1234}; the PM's 13:32 of 23 November 2026 ('no relative date')`,
+    date: '2026-11-23',
+  },
+  {
+    id: 'database-caption-marks-one-rule',
+    rule: "The database refuses a caption's marks by the code's one rule: a long dash always, and an exclamation mark unless it is a letter written inside a word ('Holy Sh!t Improv'); every check written the same way on our social words takes the same rule.",
+    reason: "The comedy weekend set was refused on production: 'new row for relation \"social_piece_revisions\" violates check constraint \"social_piece_revisions_caption_check\"', which refused every '!' while the code kept the show's own name; the code drew a caption the database would never keep.",
+    source: INTAKE_2215,
     date: '2026-11-23',
   },
 ]
