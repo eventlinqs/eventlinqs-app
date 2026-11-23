@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SOURCE_ASK_SUBTYPE,
   approvalProblems,
   readVoicePolicy,
   voiceContentHash,
@@ -244,5 +245,70 @@ describe("the founder sentence is out of every message (Lawal, 18 November 2026,
   it('the drill: the same letter without it passes', () => {
     expect(has(voiceProblems(EMAIL, POLICY), 'founder sentence')).toBe(false)
     expect(voiceProblems(ACQ, POLICY)).toEqual([])
+  })
+})
+
+// THE SOURCE ASK (the founder, 12:14 of 23 November 2026: "Apply the already-approved communication workflow to routine
+// source requests."; standard.json source_ask), as the gateway's tests 47 to 51: a PERM-SOURCE first letter takes its own
+// subject, '<listings> events on EventLinqs', and no other; that subject opens no other letter; it names no night, so
+// the timing rule has nothing to judge; every other check of law and fact stays. The first of WINDOW 5C's set of 07:30.
+const SOURCE_BODY = [
+  'Hi City of Ballarat team,',
+  'EventLinqs is an Australian event discovery platform. We list upcoming Ballarat events so more people can find them, and we would like to include the events on Ballarat In The Know.',
+  'For each event we would show its title, date, venue and organiser, with a link back to its own page on Ballarat In The Know.',
+  'As we could not find terms covering the reuse of these listings, we wanted to ask first. Could you let us know whether the City is happy for us to show the Ballarat In The Know listings this way?',
+  'Thanks for your time.',
+  'Kind regards,\n' + SIG.join('\n'),
+  OPT,
+].join('\n\n')
+const SOURCE_CONSENT = { basis: 'conspicuous_publication', publishedOnUrl: 'https://ballaratintheknow.com.au/list-your-event', noMarketingStatementChecked: true } as const
+const SOURCE: VoiceMessage = {
+  channel: 'email', category: 'first_contact', from: 'hello@eventlinqs.com', to: ['marketing@ballarat.vic.gov.au'], subject: 'Ballarat In The Know events on EventLinqs',
+  greetingName: 'City of Ballarat team', body: SOURCE_BODY, subtype: 'PERM-SOURCE', consent: SOURCE_CONSENT,
+}
+
+describe('the source ask (PERM-SOURCE; the founder, 12:14 of 23 November 2026)', () => {
+  it('the policy carries its subjects from standard.json, and that it names no night; a broken entry is refused', () => {
+    expect(SOURCE_ASK_SUBTYPE).toBe('PERM-SOURCE')
+    expect(POLICY.standard.sourceAsk).toEqual({ subjects: ['^.+ events on EventLinqs$'], needsEventDate: false })
+    expect(() => readVoicePolicy({ ...POLICY, standard: { ...POLICY.standard, sourceAsk: { subjects: [], needsEventDate: false } } })).toThrow(/POLICY_UNAVAILABLE/)
+    expect(() => readVoicePolicy({ ...POLICY, standard: { ...POLICY.standard, sourceAsk: { subjects: ['^.+ events on EventLinqs$'] } } })).toThrow(/POLICY_UNAVAILABLE/)
+  })
+  it('47: a source ask with its subject passes, naming no night', () => {
+    expect(SOURCE.eventDate).toBeUndefined()
+    expect(voiceProblems(SOURCE, POLICY)).toEqual([])
+    expect(voiceProblems({ ...SOURCE, subject: 'City of Greater Bendigo events on EventLinqs' }, POLICY)).toEqual([])
+  })
+  it('48: a source ask takes no other subject, an offer subject included', () => {
+    for (const subject of ['Promoting Ballarat In The Know on EventLinqs', 'Ballarat In The Know events', 'Ballarat In The Know events on EventLinqs today', 'Complimentary listing in our Ballarat events guide']) {
+      expect(has(voiceProblems({ ...SOURCE, subject }, POLICY), 'a source ask (PERM-SOURCE) takes one of its approved subjects'), subject).toBe(true)
+    }
+  })
+  it('49: its subject opens no other letter: an ordinary first letter, a photo request and an ACQ letter are refused it', () => {
+    expect(has(voiceProblems({ ...EMAIL, subject: 'Ballarat In The Know events on EventLinqs' }, POLICY), 'offer led subject')).toBe(true)
+    expect(has(voiceProblems({ ...EMAIL, subject: 'Ballarat In The Know events on EventLinqs', subtype: 'PERM-IMAGE' }, POLICY), 'offer led subject')).toBe(true)
+    expect(has(voiceProblems({ ...ACQ, subject: 'Hop Temple events on EventLinqs' }, POLICY), 'offer led subject')).toBe(true)
+    // The same letter under any other subtype is an ordinary first letter: its subject refused, and its timing asked.
+    const asImage = voiceProblems({ ...SOURCE, subtype: 'PERM-IMAGE' }, POLICY)
+    expect(has(asImage, 'offer led subject')).toBe(true)
+    expect(has(asImage, 'timing')).toBe(true)
+  })
+  it('50: every check of law and fact stays', () => {
+    expect(has(voiceProblems({ ...SOURCE, consent: undefined }, POLICY), 'consent')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, consent: { ...SOURCE_CONSENT, noMarketingStatementChecked: false } }, POLICY), 'consent')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('For each event', 'We would read your feed. For each event') }, POLICY), 'internal word')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('For each event', "We'll feature it in our guides. For each event") }, POLICY), 'unproved claim')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, greetingName: 'Visit Ballarat team' }, POLICY), 'verified recipient')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('Founder, EventLinqs', 'CEO') }, POLICY), 'signature')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace(OPT, '') }, POLICY), 'opt out')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('platform. We list', 'platform \u2014 we list') }, POLICY), 'dash')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('EventLinqs is an Australian', "I'm building EventLinqs. EventLinqs is an Australian") }, POLICY), 'founder sentence')).toBe(true)
+  })
+  it('51: without its entry in the policy a source ask is refused, its subject and its timing', () => {
+    const { sourceAsk: _absent, ...standard } = POLICY.standard
+    void _absent
+    const r = voiceProblems(SOURCE, { ...POLICY, standard })
+    expect(has(r, 'a source ask (PERM-SOURCE) takes one of its approved subjects')).toBe(true)
+    expect(has(r, 'timing')).toBe(true)
   })
 })

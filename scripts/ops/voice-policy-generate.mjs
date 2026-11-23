@@ -63,7 +63,14 @@ try {
   // 'actions' is no longer read: the one call to action count was removed with the other numerical rules (Lawal, 20:45 of
   // 22 November 2026; COMMS-STANDARD-REVIEW-22NOV.md). standard.json keeps the list only for older trees' generators.
   if (!list(s.outreach_categories) || !list(s.offer_subjects) || !list(s.internal_words) || !list(s.unproved_claims) || !list(s.consent_bases) || !Number.isInteger(s.min_days_ahead)) throw new Error('missing fields')
-  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}) }
+  // THE SOURCE ASK (the founder, 12:14 of 23 November 2026: "Apply the already-approved communication workflow to routine
+  // source requests."; standard.json source_ask, as gateway.py reads it): a PERM-SOURCE first letter takes its own
+  // subjects and no offer subject, and names no night. gateway.py and voice-gate.ts both know it by the subtype
+  // PERM-SOURCE, so an entry naming any other subtype, or carrying no subjects, is refused here, never followed silently.
+  if (s.source_ask !== undefined && (!s.source_ask || s.source_ask.subtype !== 'PERM-SOURCE' || !list(s.source_ask.subjects) || typeof s.source_ask.needs_event_date !== 'boolean')) {
+    throw new Error('source_ask is not whole: subtype PERM-SOURCE, its subjects and needs_event_date')
+  }
+  standard = { outreachCategories: s.outreach_categories, offerSubjects: s.offer_subjects, internalWords: s.internal_words, unprovedClaims: s.unproved_claims, ...(list(s.founder_sentence) ? { founderSentence: s.founder_sentence } : {}), consentBases: s.consent_bases, minDaysAhead: s.min_days_ahead, ...(list(s.acq_first_subjects) ? { acqFirstSubjects: s.acq_first_subjects } : acqTypeSubjects(s.acq_types).length > 0 ? { acqFirstSubjects: acqTypeSubjects(s.acq_types) } : {}), ...(typeof s.acq_first_no_event_subject === 'string' && s.acq_first_no_event_subject ? { acqFirstNoEventSubject: s.acq_first_no_event_subject } : {}), ...(acqTypeSubjects(s.acq_types, false).length > 0 ? { acqFirstNoEventSubjects: acqTypeSubjects(s.acq_types, false) } : {}), ...(s.source_ask !== undefined ? { sourceAsk: { subjects: s.source_ask.subjects, needsEventDate: s.source_ask.needs_event_date } } : {}) }
 } catch (e) {
   unavailable(`cannot read ${STANDARD}: ${e instanceof Error ? e.message : e}`)
 }
