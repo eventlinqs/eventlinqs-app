@@ -1281,7 +1281,7 @@ export type PieceWritten = { readonly pieceId: string } | { readonly refused: st
  * 28e4096c was kept at 22:14 on 23 November while the database refused its words, and the empty piece held the week's one
  * Melbourne weekend carousel place, so the next intake was refused). The two rows are two writes, so when the revision is
  * refused the piece is removed at once, and the answer to that removal is read: the database allows it only for a piece
- * with nothing written under it (migration 20261124030001). The one writer of every piece and its first revision: the
+ * with nothing written under it (migration 20261124040001). The one writer of every piece and its first revision: the
  * week's planner (with the lifecycle's moments, the partner kits and the owner's Post now it draws through) and the
  * approved sets' intake. Never a piece without words, and a removal refused is said, never silent.
  */
