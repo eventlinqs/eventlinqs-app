@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { contactDecision } from '@/lib/outreach/contact-policy'
 
 /**
  * THE OUTREACH UNSUBSCRIBE, /unsubscribe/outreach.
@@ -19,6 +21,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const insertResult = vi.fn()
 const insertedRows: unknown[] = []
+const rpcResult = vi.fn()
+const rpcCalls: { name: string; args: unknown }[] = []
 const sent: { to: string; subject: string; html: string; messageType: string; recipientRole: string }[] = []
 let sendFails: Error | null = null
 let rateLimitOk = true
@@ -32,6 +36,10 @@ vi.mock('@/lib/supabase/admin', () => ({
         return { select: () => ({ single: () => insertResult() }) }
       },
     }),
+    rpc: (name: string, args: unknown) => {
+      rpcCalls.push({ name, args })
+      return rpcResult(name, args)
+    },
   }),
 }))
 vi.mock('@/lib/email/send', () => ({
@@ -75,6 +83,8 @@ const RECORDED = { id: '6f1c2b8e-1d2a-4c3b-9e4f-0a1b2c3d4e5f', created_at: '2026
 beforeEach(() => {
   insertResult.mockReset()
   insertedRows.length = 0
+  rpcResult.mockReset()
+  rpcCalls.length = 0
   sent.length = 0
   sendFails = null
   rateLimitOk = true
@@ -293,5 +303,55 @@ describe('unsubscribeFromOutreachAction', () => {
     const policy = POLICIES['outreach-unsubscribe']
     expect(policy).toBeDefined()
     expect(policy.failClosed).toBeFalsy()
+  })
+})
+
+/*
+ * THE PERSON'S PRESS FROM A LINK THAT NAMES THE CONTACT (the PM's 08:13 of 24 November 2026: "a person's click must
+ * always record the opt out"). The CRM's own emails link to /unsubscribe/outreach?t=<the contact's token>, and the form
+ * carries it, so the press records the opt out against that contact's own address through the database's function, and
+ * that row is the suppression list every send reads. Held here because the tests above drive the HubSpot id and the
+ * address only.
+ */
+describe('the press with the contact token records the opt out and suppresses that contact', () => {
+  const IDLE = { status: 'idle' } as const
+  const TOKEN = '3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b'
+
+  test('records against the contact by its token, with the reason given, and only then says done', async () => {
+    rpcResult.mockResolvedValue({ data: 'done', error: null })
+    const state = await unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN, reason: 'too_many_emails' }))
+    expect(state).toEqual({ status: 'done' })
+    expect(rpcCalls).toEqual([{ name: 'outreach_unsubscribe_by_token', args: { p_token: TOKEN, p_reason: 'too_many_emails' } }])
+    // The database writes the row with the contact's own address; the action writes none of its own.
+    expect(insertedRows).toHaveLength(0)
+  })
+
+  test('a second press is done again, and records nothing more', async () => {
+    rpcResult.mockResolvedValue({ data: 'already', error: null })
+    expect(await unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))).toEqual({ status: 'done' })
+  })
+
+  test('a token that matches nobody asks for the address, and never says done', async () => {
+    rpcResult.mockResolvedValue({ data: 'unknown', error: null })
+    expect(await unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))).toMatchObject({ status: 'invalid', field: 'email' })
+  })
+
+  test('a failed record THROWS to the error boundary, so the person is never told they are unsubscribed', async () => {
+    rpcResult.mockResolvedValue({ data: null, error: { message: 'connection failure' } })
+    await expect(unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))).rejects.toThrow(/could not be recorded: connection failure/)
+  })
+
+  test("the row is the contact's own address on the suppression list every send reads", () => {
+    const sql = readFileSync('supabase/migrations/20261028221001_outreach_unsubscribe_token.sql', 'utf8').replace(/\r\n/g, '\n')
+    expect(sql).toMatch(/insert into public\.outreach_unsubscribes \(hubspot_contact_id, email, reason, comment\)\n\s+values \(c\.hubspot_contact_id, case when c\.channel = 'email' then c\.address end, p_reason, p_comment\)/)
+    const policy = readFileSync('src/lib/outreach/contact-policy.ts', 'utf8')
+    expect(policy).toContain(".from('outreach_unsubscribes').select('email, created_at').in('email', addresses)")
+    // And an address on that list holds every category to every contact of the organiser.
+    const decision = contactDecision(
+      { contactId: 'c1', purpose: 'cadence', step: 1, templateKey: 'lifecycle_acq', moment: 'draft' },
+      { organiserId: 'o1', contacts: [{ id: 'c1', address: 'info@gallery.example', basis: 'conspicuous_publication' }], touches: [], replies: [], suppressed: [{ address: 'info@gallery.example', at: '2026-11-24T06:00:00Z' }], bounced: [], claimed: false },
+      new Date('2026-11-24T07:00:00Z'),
+    )
+    expect(decision).toMatchObject({ state: 'held', rule: 'suppressed' })
   })
 })
