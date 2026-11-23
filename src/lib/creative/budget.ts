@@ -6,7 +6,7 @@ import { anthropicOrganisation, getAnthropicClient } from '@/lib/ai/client'
 import { recordLesson } from '@/lib/ops/lessons'
 
 /**
- * THE CREATIVE BUDGET (the PM's 13:20 and 13:21 of 23 November 2026; migration 20261123223002). Every generation or review
+ * THE CREATIVE BUDGET (the PM's 13:20 and 13:21 of 23 November 2026; migration 20261124030002). Every generation or review
  * call the creative engine makes goes through creativeCall, which:
  *   1. reads the newest creative_budget row: the cap (US$ a credit month), the one switch and the day the credit renews.
  *      With no row the cap is zero and the switch is off, so nothing is generated. The service role can only read that

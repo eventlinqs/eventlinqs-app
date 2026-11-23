@@ -155,7 +155,7 @@ describe('what no code may do', () => {
   it('writes the cap or the switch: only a logged production write does, and the service role may only read it', () => {
     const writes = src.filter((s) => /from\(\s*'creative_budget'\s*\)\s*\.\s*(insert|update|upsert|delete)/.test(s.code))
     expect(writes.map((s) => s.file)).toEqual([])
-    const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', '20261123223002_creative_budget.sql'), 'utf8')
+    const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', '20261124030002_creative_budget.sql'), 'utf8')
     expect(sql).toContain('grant select on public.creative_budget to service_role;')
     expect(sql).not.toMatch(/insert into public\.creative_budget/i)
   })
