@@ -43,7 +43,7 @@ const TOTS: LifecycleFacts = {
     bookingUrl: 'https://events.humanitix.com/gallery-tots-december',
   },
   photoLink: PHOTO,
-  // The approval page the approved permission request names; the caller supplies it (lifecycle-letters.ts).
+  // The approval page the approved permission request names: their own photo page (lifecycle-read.ts fills it).
   approvalLink: APPROVAL,
   origin: ORIGIN,
 }
@@ -109,7 +109,7 @@ describe("law 49's two letters, filled with a real night", () => {
     const noPage = lifecycleFields({ ...TOTS, night: { ...TOTS.night, bookingUrl: 'https://tickets.example-seller.net/x' } })
     expect(noPage['photo source']).toBeNull()
     expect(renderTemplate(LIFECYCLE_PERM, noPage, UNSUB).heldBecause.join(' ')).toContain('[photo source]')
-    // The approval link is the caller's to supply: without it the request is held, never sent with the upload page in its place.
+    // No approval link (a contact with no token): the request is held, never sent with a stand in.
     for (const approvalLink of [null, undefined, ' ']) {
       expect(renderTemplate(LIFECYCLE_PERM, lifecycleFields({ ...TOTS, approvalLink }), UNSUB).heldBecause.join(' ')).toContain('[approval link]')
     }

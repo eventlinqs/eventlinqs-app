@@ -5,6 +5,7 @@ import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { MAX_PHOTOS, readPhotoPage } from '@/lib/listings/photo-permission'
+import { ONE_TICK_WORDS } from '@/lib/listings/photo-permission-math'
 import { dayWords } from '@/lib/outreach/twenty-letters'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { givePhotosAction } from './actions'
@@ -26,9 +27,10 @@ const CHECK = 'flex min-h-[44px] items-start gap-3 text-sm text-[var(--text-prim
 /**
  * AN ORGANISER'S PHOTO PAGE (Lawal, 12 November 2026, 12:01, item 2; the Growth OS order's Release 2, item 6: media
  * permissions). Reached by the secure link in Lawal's message to them (src/lib/outreach/photo-link.ts); any other address
- * is a 404. They choose one of their nights, add photos or artwork, choose where EventLinqs may use them, and say they
- * took them or may share them; src/lib/listings/photo-permission.ts records the yes and each image, pending Lawal's
- * look. A plain form post; it works with no script.
+ * is a 404. They choose one of their nights, add photos or artwork, and give one tick, read once (Lawal, 13:49 of
+ * 23 November 2026: "One tick, they read through everything ... One tick, one checkbox"); its words are ONE_TICK_WORDS,
+ * and src/lib/listings/photo-permission.ts records the yes in the same words and applies each image. A plain form post;
+ * it works with no script.
  */
 export default async function PhotoPage({
   params,
@@ -43,11 +45,11 @@ export default async function PhotoPage({
   if (page.state !== 'found') notFound()
   return (
     <PageShell>
-      <PageHero eyebrow="YOUR PHOTOS" title="Add photos of your night" subtitle="You choose where EventLinqs may use them." />
+      <PageHero eyebrow="YOUR PHOTOS" title="Add photos of your night" subtitle="One tick and EventLinqs can promote your night with them." />
       <ContentSection surface="base" width="wide" id="photos">
         <div className="max-w-xl">
           <p className="text-sm text-[var(--text-secondary)]">
-            Hi {page.greeting}. Add photos or artwork from one of your nights, up to {MAX_PHOTOS} at a time. They stay yours: EventLinqs uses them only where you tick below, and only for that night.
+            Hi {page.greeting}. Add photos or artwork from one of your nights, up to {MAX_PHOTOS} at a time. They stay yours.
           </p>
           {sent ? (
             <div role="status" data-said="sent" className="mt-6 rounded-xl border border-[var(--surface-2)] bg-[var(--surface-1)] p-5 text-[var(--text-primary)]">
@@ -82,7 +84,7 @@ export default async function PhotoPage({
               </div>
               <div>
                 <PhotoFilesInput labelClassName={LABEL} className="mt-1 block min-h-[44px] w-full text-sm text-[var(--text-primary)] file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-[var(--surface-2)] file:px-4 file:text-sm file:font-medium" />
-                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP. Shown whole, never cropped.</p>
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">JPEG, PNG or WebP. A flyer is always shown whole.</p>
               </div>
               {/* The PM's 23:38 of 18 November 2026: a flyer is shown whole in an organiser spotlight, a photograph in an event poster. */}
               <fieldset className="space-y-2">
@@ -96,26 +98,16 @@ export default async function PhotoPage({
                   <span>Our event&apos;s flyer</span>
                 </label>
               </fieldset>
-              <fieldset className="space-y-2">
-                <legend className={LABEL}>Where EventLinqs may use them</legend>
-                <label className={CHECK}>
-                  <input type="checkbox" name="on_page" value="yes" defaultChecked className="mt-0.5 h-5 w-5 shrink-0" />
-                  <span>On this night&apos;s own page and cards on EventLinqs</span>
-                </label>
-                <label className={CHECK}>
-                  <input type="checkbox" name="in_posts" value="yes" className="mt-0.5 h-5 w-5 shrink-0" />
-                  <span>In EventLinqs&apos; social posts about this night</span>
-                </label>
-              </fieldset>
               <div>
                 <label htmlFor="ph-name" className={LABEL}>
                   Your name
                 </label>
                 <input id="ph-name" name="given_by" type="text" required minLength={2} maxLength={120} autoComplete="name" className={SELECT} />
               </div>
+              {/* ONE TICK, ONE CHECKBOX (Lawal, 13:49 of 23 November 2026): the whole grant, read once. */}
               <label className={CHECK}>
                 <input type="checkbox" name="rights" value="yes" required className="mt-0.5 h-5 w-5 shrink-0" />
-                <span>I took these or have the right to share them, anyone identifiable in them has agreed, and EventLinqs may use them where I ticked above, for this night only.</span>
+                <span data-one-tick>{ONE_TICK_WORDS}</span>
               </label>
               <Button type="submit" variant="primary" size="lg" className="w-full sm:w-auto">
                 Add my photos

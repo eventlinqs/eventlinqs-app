@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveUnderStandingPolicy, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
+import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -97,6 +97,44 @@ export async function GET(request: NextRequest) {
       await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
     }
     return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+  }
+
+  // LAWAL'S APPROVED SETS, DRAWN, THEN APPROVED BY THE PM, NEVER POSTED HERE (the founder, 23 November 2026, 14:34; the
+  // creative policy of 13:41 of 23 November 2026; approved-sets.ts). ?post=now&stage=intake&set=<name> draws the set as an
+  // unapproved feed carousel for the PM's review (store.ts drawApprovedSet); ?post=now&stage=approve&piece=<id> records only
+  // the checked approval of a drawn set (approveApprovedSet), and the ordinary scheduler gives it its band inside its
+  // window. Neither stage schedules or publishes. Started only by .github/workflows/social-post-now.yml.
+  const asked = request.nextUrl.searchParams
+  const setStage = asked.get('stage')
+  if (asked.get('post') === 'now' && (setStage === 'intake' || setStage === 'approve')) {
+    const db = createAdminClient()
+    const now = new Date()
+    if (setStage === 'intake') {
+      const set = asked.get('set') ?? ''
+      if (!/^[a-z0-9-]{3,60}$/.test(set)) return NextResponse.json({ drawn: false, why: 'the set is not a set name' }, { status: 400 })
+      const drawn = await drawApprovedSet(db, { set, now })
+      await recordAnonAuditEvent({
+        action: 'system.social.approved_set_intake',
+        actorEmail: 'cron/social-publish?post=now&stage=intake',
+        metadata: drawn.state === 'drawn' ? { set, piece: drawn.pieceId, already: drawn.already, lines: drawn.lines } : { set, refused: drawn.reason },
+      })
+      return drawn.state === 'drawn'
+        ? NextResponse.json({ drawn: true, approved: false, scheduled: false, ready: "for the PM's review", set: drawn.set, piece: drawn.pieceId, already: drawn.already, lines: drawn.lines })
+        : NextResponse.json({ drawn: false, set: drawn.set, why: drawn.reason }, { status: 409 })
+    }
+    const piece = asked.get('piece') ?? ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(piece)) return NextResponse.json({ approved: false, why: 'the piece is not an id' }, { status: 400 })
+    const founder = await founderAccount(db)
+    if (!founder.id) return NextResponse.json({ approved: false, why: "no founder account to approve in the standing approval's name" }, { status: 409 })
+    const approved = await approveApprovedSet(db, { pieceId: piece, by: founder.id, now, siteOrigin: getSiteUrl() })
+    await recordAnonAuditEvent({
+      action: 'system.social.approved_set_approve',
+      actorEmail: 'cron/social-publish?post=now&stage=approve',
+      metadata: { piece, set: approved.set, state: approved.state, reason: approved.reason },
+    })
+    return approved.state === 'approved'
+      ? NextResponse.json({ approved: true, scheduled: false, set: approved.set, piece, next: 'the ordinary scheduler gives it its band inside its window at its next run' })
+      : NextResponse.json({ approved: false, set: approved.set, piece, why: approved.reason }, { status: 409 })
   }
 
   // POST ONE NIGHT NOW, FROM OUR SIDE (Lawal, 22 November 2026, 00:32: "her post goes to Facebook and Instagram now ... I

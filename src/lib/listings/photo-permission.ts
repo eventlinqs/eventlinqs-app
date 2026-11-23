@@ -8,7 +8,7 @@ import { addAsset, decideAsset, pendingAssetId } from '@/lib/social/store'
 import { EVENT_PHOTO_BOX, fitsEventPhotoBox } from '@/lib/media/limits'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { storeImage, type MediaDeps } from './organiser-media'
-import { grantWording, mediaDecision, nightNamedBy, permittedUsesWords, type PhotoUses } from './photo-permission-math'
+import { ONE_TICK_USES, grantWording, mediaDecision, nightNamedBy, permittedUsesWords, restrictionFor } from './photo-permission-math'
 
 /**
  * AN ORGANISER'S PHOTOS, GIVEN THROUGH THEIR SECURE LINK (Lawal, 12 November 2026, 12:01, item 2; the Growth OS order's
@@ -17,8 +17,10 @@ import { grantWording, mediaDecision, nightNamedBy, permittedUsesWords, type Pho
  * listing permission kept separate from image permission").
  *
  * The page /photos/<contact>/<proof> (src/lib/outreach/photo-link.ts) shows the organiser their own public nights. They
- * choose one night, add up to five photos or artwork, choose where EventLinqs may use them (that night's page and cards,
- * EventLinqs' social posts about it, or both), and say they took them or may share them. Then, in this order:
+ * choose one night, add up to five photos or artwork, and give ONE tick (Lawal, 13:49 of 23 November 2026: "One tick, one
+ * checkbox ... We are just promoting the event"): they took them or may share them, anyone identifiable agreed, and
+ * EventLinqs may use them to promote the event and their future events, on EventLinqs, in its social posts and in its
+ * emails (photo-permission-math.ts ONE_TICK_WORDS). Then, in this order:
  *   1. their yes is logged for THAT night through the database's one way of logging a yes (social_log_organiser_yes,
  *      20261028153001): their own words as the page put them, the date, channel 'website', scope this event. Only ever
  *      this event: a yes for future nights is keyed to the night's host, and an organiser who hires a public venue would
@@ -26,11 +28,11 @@ import { grantWording, mediaDecision, nightNamedBy, permittedUsesWords, type Pho
  *   2. each image is re-encoded and stored by the organiser media pipeline (organiser-media.ts storeImage: magic bytes,
  *      orientation and metadata stripped, never a photo already locked to another night);
  *   3. each is entered in the asset register through its one writer (social/store.ts addAsset) as organiser authorised,
- *      carrying the yes (the register's trigger takes it), the uses chosen and the day it came. A refusal removes the
- *      stored file;
+ *      carrying the yes (the register's trigger takes it), the one tick's uses (scope 'both', the words naming emails
+ *      too) and the day it came. A refusal removes the stored file;
  *   4. each is then APPLIED AUTOMATICALLY (18 November 2026, 13:46): approved by the register's one decider
- *      (decideAsset), scoped to the ticked uses and that night only, and, where the event page was ticked and the night
- *      shows no photo of the organiser's own, the first becomes its cover. An admin can still withdraw any of them.
+ *      (decideAsset), for that night, and, where the night shows no photo of the organiser's own, the first becomes its
+ *      cover. An admin can still withdraw any of them.
  * The founder account is named as the one who logged it (the yes's logged_by), as it is for every drafted message.
  */
 
@@ -87,7 +89,6 @@ export async function givePhotos(
     readonly page: Extract<PhotoPage, { state: 'found' }>
     readonly eventId: string
     readonly files: readonly File[]
-    readonly uses: PhotoUses
     readonly givenBy: string
     readonly now: Date
     /** The organiser's own answer: a photograph, or their event's flyer (kept as artwork; the PM's 23:38 of 18 November 2026). */
@@ -118,7 +119,7 @@ export async function givePhotos(
     // THE DESTINATION FIT (the PM's 13:42 class, law 4): a photo for our posts is at least Meta's minimum width
     // (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media:
     // "Minimum width: 320"); the event page shows any photo whole (law 15), so it asks nothing more.
-    if (input.uses !== 'site' && stored.width !== undefined && stored.width < POSTS_MIN_WIDTH) {
+    if (stored.width !== undefined && stored.width < POSTS_MIN_WIDTH) {
       await deps.remove([stored.path])
       refused.push(`${file.name || 'An image'}: it is ${stored.width} pixels wide; a photo for posts needs at least ${POSTS_MIN_WIDTH}.`)
       continue
@@ -126,7 +127,7 @@ export async function givePhotos(
     // THE EVENT PAGE'S OWN BOX (the PM's 09:45 of 19 November 2026, item 1 (c); src/lib/media/limits.ts): a photo for the
     // page is kept when the page draws it whole without enlarging it, so a good 973 x 695 festival photo is never refused
     // as it was on 18 November at 23:50; one too small for that is refused in words that say what would fit.
-    if (input.uses !== 'social' && stored.width !== undefined && stored.height !== undefined && !fitsEventPhotoBox(stored.width, stored.height)) {
+    if (stored.width !== undefined && stored.height !== undefined && !fitsEventPhotoBox(stored.width, stored.height)) {
       await deps.remove([stored.path])
       refused.push(
         `${file.name || 'An image'}: it is ${stored.width} x ${stored.height} pixels, so your event page would have to enlarge it; a photo at least ${EVENT_PHOTO_BOX.height} pixels tall, or ${EVENT_PHOTO_BOX.width} wide, shows sharp.`,
@@ -141,7 +142,7 @@ export async function givePhotos(
   const yes = await db.rpc('social_log_organiser_yes', {
     p_host: night.venueName,
     p_granted_at: input.now.toISOString(),
-    p_wording: grantWording({ givenBy: input.givenBy, organiserName: input.page.organiserName, nightTitle: night.title, uses: input.uses, count: kept.length }),
+    p_wording: grantWording({ givenBy: input.givenBy, organiserName: input.page.organiserName, nightTitle: night.title, count: kept.length }),
     p_scope: 'this_event',
     p_channel: 'website',
     p_event: night.eventId,
@@ -158,9 +159,10 @@ export async function givePhotos(
   let added = 0
   const applied: string[] = []
   for (const { file, stored } of kept) {
+    const assetType = input.kind === 'flyer' ? 'artwork' : 'photo'
     const done = await addAsset(db, {
       assetState: 'organiser_authorised',
-      assetType: input.kind === 'flyer' ? 'artwork' : 'photo',
+      assetType,
       assetUrl: stored.url,
       sourceUrl: `${ORIGIN}/photos`,
       rightsHolder: input.page.organiserName,
@@ -168,13 +170,14 @@ export async function givePhotos(
       evidenceFile: null,
       eventSlug: night.slug,
       attributionText: input.page.organiserName,
-      scope: input.uses,
+      scope: ONE_TICK_USES,
       archival: false,
       expiresAt: null,
-      restrictions: null,
+      // A photograph carries no restriction; only their finished design (a flyer) is kept whole (restrictionFor).
+      restrictions: restrictionFor(assetType),
       originalFile: stored.path,
       receivedOn,
-      permittedUses: permittedUsesWords(input.uses),
+      permittedUses: permittedUsesWords(),
       focal: null,
       sourceWidth: null,
       sourceHeight: null,
@@ -188,23 +191,23 @@ export async function givePhotos(
     }
     added += 1
     // APPLIED AUTOMATICALLY (Lawal, 18 November 2026, 13:46: "If they ticked it, if they approve it, good"; the PM's
-    // 13:50 item 1 (c)): the organiser's own photo, through their own private link, for their own night, with the
-    // permission ticked and the uses chosen, has passed every check above, so it is approved now, scoped exactly to the
-    // ticked uses and that night (the register row carries both). No founder review. An admin can still withdraw it.
+    // 13:50 item 1 (c)): the organiser's own photo, through their own private link, for their own night, with the one
+    // tick given, has passed every check above, so it is approved now, for that night (the register row carries its
+    // scope and its words). No founder review. An admin can still withdraw it.
     const assetId = await pendingAssetId(db as never, night.eventId, stored.url)
-    // The one decision (law 32): their declaration on this page is the grant, for the uses they ticked.
-    const decided = mediaDecision({ grant: { uses: input.uses }, placement: input.uses === 'social' ? 'social' : 'site' })
+    // The one decision (law 32): their declaration on this page is the grant, the one tick's uses.
+    const decided = mediaDecision({ grant: { uses: ONE_TICK_USES }, placement: 'site' })
     if (assetId && decided.state === 'approved') {
       const ok = await decideAsset(db as never, { id: assetId, decision: 'approved', by: founder.id, now: input.now })
       if (ok.state === 'done') applied.push(stored.url)
     }
   }
 
-  // ON THE EVENT PAGE, when the organiser ticked it: the first applied photo becomes the night's cover unless the night
+  // ON THE EVENT PAGE (the one tick covers it): the first applied photo becomes the night's cover unless the night
   // already shows a photo of the organiser's own (event_image_rights reads organiser_authorised or separately_licensed
   // for its cover); the database records its rights from the approved register row (event_image_right).
   let coverSet = false
-  if (input.uses !== 'social' && applied.length > 0) {
+  if (applied.length > 0) {
     const { data: rights } = await db.from('event_image_rights').select('rights_state').eq('event_id', night.eventId).eq('image_role', 'cover').maybeSingle()
     if (!OWN_PHOTO_RIGHTS.has(String(rights?.rights_state ?? ''))) {
       const { error } = await db.from('events').update({ cover_image_url: applied[0] }).eq('id', night.eventId)

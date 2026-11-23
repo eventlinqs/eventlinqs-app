@@ -183,6 +183,12 @@
       "^Free listings for .+ in our (Melbourne|Geelong|Ballarat|Bendigo) guide$",
       "^Complimentary EventLinqs listing for .+$",
       "^Complimentary listing in our (Melbourne|Geelong|Ballarat|Bendigo) events guide$"
-    ]
+    ],
+    "sourceAsk": {
+      "subjects": [
+        "^.+ events on EventLinqs$"
+      ],
+      "needsEventDate": false
+    }
   }
 }

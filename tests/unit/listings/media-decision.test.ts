@@ -26,7 +26,7 @@ describe('a family photograph is decided by its grant, never by who is in it', (
 
 describe('the declaration carries the consent of anyone identifiable, dated', () => {
   it('in the words the organiser gives on their photo page', () => {
-    const words = grantWording({ givenBy: 'Fred Alale', organiserName: 'AMCF', nightTitle: 'African Music and Cultural Festival 2026', uses: 'both', count: 1 })
+    const words = grantWording({ givenBy: 'Fred Alale', organiserName: 'AMCF', nightTitle: 'African Music and Cultural Festival 2026', count: 1 })
     expect(words).toContain('anyone identifiable in it has agreed')
     expect(words).toContain(`(declaration of ${DECLARATION_VERSION})`)
   })

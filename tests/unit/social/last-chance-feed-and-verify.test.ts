@@ -57,7 +57,9 @@ describe('no relative words in a feed post', () => {
   it("a feed post's day word is the weekday, never Today or Tomorrow", () => {
     expect(feedDayWordOf('2026-11-24')).toBe('Tuesday')
     const plan = readFileSync('src/lib/social/lifecycle-plan.ts', 'utf8')
-    expect(plan).toMatch(/dayWord: c\.moment\.format === 'feed' \? feedDayWordOf\(/)
+    // The feed's day line now says its weekday once, in full, with no day word beside it (the PM's verify of 23 November 2026).
+    expect(plan).toMatch(/dayWord: c\.moment\.format === 'feed' \? null : dayWordOf\(/)
+    expect(plan).toMatch(/dateLabel: c\.moment\.format === 'feed' \? feedNightDates\(/)
   })
 })
 
@@ -94,7 +96,8 @@ describe("post this night now stops for the PM's VERIFY", () => {
     const route = readFileSync('src/app/api/cron/social-publish/route.ts', 'utf8')
     expect(route).toMatch(/if \(stage !== 'draw' && stage !== 'publish'\) return NextResponse\.json/)
     const wf = readFileSync('.github/workflows/social-post-now.yml', 'utf8')
-    expect(wf).toMatch(/options: \[draw, publish\]/)
+    // The approved sets' intake and approve stages (feat/approved-six) follow the night's two; neither posts.
+    expect(wf).toMatch(/options: \[draw, publish(, [a-z]+)*\]/)
     expect(wf).toMatch(/stage=\$\{STAGE\}&piece=\$\{PIECE\}/)
   })
 })

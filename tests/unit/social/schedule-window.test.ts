@@ -7,7 +7,7 @@ import { planMoments, scheduleWindowOf, withStartingCalendar, type CadenceRule }
  * A PIECE GOES BEFORE ITS NIGHT STARTS (the PM's 22:08 of 17 November 2026, class 2: "a daily poster takes 22:25 local on
  * its own night's day, AFTER the night has started: Fine Lines & Wine (6 pm Wed 18) is set for 21:25 Wed; The Roy
  * Orbison Story (7:30 pm Thu 19) for 21:25 Thu; Caravanning (9 am Fri 20) for 09:25 Fri ... No piece posts in a slot after
- * its night starts"). The scheduler gave each piece the deadline of its soonest night's END; it is now its earliest
+ * its night starts"). The scheduler gave each piece the latest useful time of its soonest night's END; it is now its earliest
  * night's START.
  */
 const rule = (format: 'feed' | 'story'): CadenceRule =>
@@ -17,9 +17,9 @@ const rule = (format: 'feed' | 'story'): CadenceRule =>
 const fineLines = { title: 'Fine Lines & Wine', start: Date.parse('2026-11-18T07:00:00Z'), end: Date.parse('2026-11-18T13:00:00Z') }
 
 describe('scheduleWindowOf', () => {
-  it("a piece's deadline is its earliest night's start, not its end", () => {
+  it("a piece's latest useful time is its earliest night's start, not its end", () => {
     const w = scheduleWindowOf('feed', [fineLines])
-    expect(w.deadline?.toISOString()).toBe('2026-11-18T07:00:00.000Z')
+    expect(w.latestUseful?.toISOString()).toBe('2026-11-18T07:00:00.000Z')
     expect(w.first?.title).toBe('Fine Lines & Wine')
     expect(w.notBefore).toBeNull()
   })
@@ -27,17 +27,17 @@ describe('scheduleWindowOf', () => {
   it('a story waits for its first night\'s day and still goes before the night starts', () => {
     const w = scheduleWindowOf('story', [fineLines])
     expect(w.notBefore?.toISOString()).toBe('2026-11-17T13:00:00.000Z') // midnight starting Wednesday in Melbourne
-    expect(w.deadline?.toISOString()).toBe('2026-11-18T07:00:00.000Z')
+    expect(w.latestUseful?.toISOString()).toBe('2026-11-18T07:00:00.000Z')
   })
 
   it('no night with a start: no window', () => {
-    expect(scheduleWindowOf('feed', [])).toEqual({ deadline: null, notBefore: null, first: null })
+    expect(scheduleWindowOf('feed', [])).toEqual({ latestUseful: null, notBefore: null, first: null })
   })
 
   it("Fine Lines & Wine's poster, approved Wednesday morning, is never placed after 6 pm Wednesday", () => {
     const approvedAt = new Date('2026-11-17T22:00:00Z') // 9 am Wednesday
     const w = scheduleWindowOf('feed', [fineLines])
-    const plan = planMoments([{ id: 'poster', format: 'feed', approvedAt, deadline: w.deadline, notBefore: w.notBefore }], { feed: rule('feed'), story: rule('story') }, { feed: [], story: [] }, approvedAt)
+    const plan = planMoments([{ id: 'poster', format: 'feed', approvedAt, latestUseful: w.latestUseful, notBefore: w.notBefore }], { feed: rule('feed'), story: rule('story') }, { feed: [], story: [] }, approvedAt)
     const at = plan.moments.get('poster')
     expect(at).toBeDefined()
     expect(at!.getTime()).toBeLessThan(fineLines.start)
@@ -47,7 +47,7 @@ describe('scheduleWindowOf', () => {
     const src = readFileSync(join(process.cwd(), 'src/lib/social/store.ts'), 'utf8')
     const body = src.slice(src.indexOf('export async function scheduleApprovedPieces'), src.indexOf('/** What publishes a piece on a network'))
     expect(body).toMatch(/scheduleWindowOf\(/)
-    expect(body).not.toMatch(/deadline: new Date\(soonest\.end\)/)
+    expect(body).not.toMatch(/latestUseful: new Date\(soonest\.end\)/)
   })
 })
 
@@ -66,14 +66,14 @@ describe('momentWindowOf', () => {
     const { momentWindowOf } = await import('@/lib/social/cadence')
     const w = momentWindowOf('2026-11-21', scheduleWindowOf('story', [colours]))
     expect(w.notBefore.toISOString()).toBe('2026-11-20T13:00:00.000Z') // midnight starting Saturday in Melbourne
-    expect(w.deadline.toISOString()).toBe('2026-11-21T13:00:00.000Z') // the night's start
+    expect(w.latestUseful.toISOString()).toBe('2026-11-21T13:00:00.000Z') // the night's start
   })
 
   it("its story band that Saturday evening is inside the window, so it is placed, not held", async () => {
     const { momentWindowOf } = await import('@/lib/social/cadence')
     const w = momentWindowOf('2026-11-21', scheduleWindowOf('story', [colours]))
     const placed = planMoments(
-      [{ id: 'a3', format: 'story', approvedAt: new Date('2026-11-21T01:04:00Z'), deadline: w.deadline, notBefore: w.notBefore, days: null }],
+      [{ id: 'a3', format: 'story', approvedAt: new Date('2026-11-21T01:04:00Z'), latestUseful: w.latestUseful, notBefore: w.notBefore, days: null }],
       { feed: rule('feed'), story: rule('story') },
       { feed: [], story: [] },
       new Date('2026-11-21T04:40:00Z'),
@@ -86,6 +86,6 @@ describe('momentWindowOf', () => {
     const { momentWindowOf } = await import('@/lib/social/cadence')
     const w = momentWindowOf('2026-11-18', scheduleWindowOf('story', [fineLines]))
     expect(w.notBefore.toISOString()).toBe('2026-11-17T13:00:00.000Z')
-    expect(w.deadline.toISOString()).toBe('2026-11-18T07:00:00.000Z')
+    expect(w.latestUseful.toISOString()).toBe('2026-11-18T07:00:00.000Z')
   })
 })

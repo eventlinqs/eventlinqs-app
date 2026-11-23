@@ -3,34 +3,37 @@
  * them, with who gave it and for which night, so the register's evidence reads as what they agreed to. Pure.
  */
 
-/** Where EventLinqs may use the images: that night's own page and cards, its social posts about the night, or both. */
+/**
+ * The register's scope for an organiser's images: that night's own page and cards ('site'), EventLinqs' social posts
+ * ('social'), or both. Every yes is promotion of the night: a yes given before the one tick (a 'site' or 'social' box on
+ * the old page) keeps working exactly where it was given, and the one tick gives 'both'.
+ */
 export type PhotoUses = 'site' | 'social' | 'both'
 
-/** The page's two boxes as the register's scope; neither ticked is no permission at all. */
-export function usesFrom(onPage: boolean, inPosts: boolean): PhotoUses | null {
-  if (onPage && inPosts) return 'both'
-  if (onPage) return 'site'
-  if (inPosts) return 'social'
-  return null
-}
+/**
+ * ONE TICK, ONE CHECKBOX (Lawal, 13:49 of 23 November 2026: "One tick, they read through everything ... One tick, one
+ * checkbox ... We are just promoting the event ... Let EventLinqs be the most easiest platform organizers ever know").
+ * The page asks once, in these words, and the tick is the whole grant: the site, the event cards and social posts as
+ * before ('both'), and EventLinqs' emails, which the words name.
+ */
+export const ONE_TICK_USES: PhotoUses = 'both'
 
-const USE_WORDS: Record<PhotoUses, string> = {
-  site: "on this night's own page and cards on EventLinqs",
-  social: "in EventLinqs' social posts about this night",
-  both: "on this night's own page and cards on EventLinqs and in EventLinqs' social posts about it",
-}
+/** The one checkbox, in the organiser's voice as the page shows it; the recorded yes (grantWording) says the same. */
+export const ONE_TICK_WORDS =
+  'I took these or have the right to share them, and anyone identifiable in them has agreed. EventLinqs may use them to promote this event and our future events on EventLinqs, in its social posts and in its emails, resized, cropped or placed inside EventLinqs designs. Not paid advertising, and never sold.'
 
-/** The register's permitted uses, in plain words. */
-export function permittedUsesWords(uses: PhotoUses): string {
-  return `${USE_WORDS[uses].charAt(0).toUpperCase()}${USE_WORDS[uses].slice(1)}, as the organiser chose on their EventLinqs photo page; this night only, not paid advertising.`
+/** The register's permitted uses for a one tick yes, in plain words. */
+export function permittedUsesWords(): string {
+  return "To promote this night and the organiser's future events on EventLinqs (its pages and event cards), in EventLinqs' social posts and in its emails, resized, cropped or placed inside EventLinqs designs, as the organiser agreed with one tick on their EventLinqs photo page; not paid advertising, and never sold."
 }
 
 /**
- * THE ORGANISER MEDIA DECLARATION, version of 19 November 2026 (law 32, the PM's 13:30, on Lawal's 13:20): the organiser
- * confirms they own the images or hold the rights EventLinqs needs, INCLUDING the agreement of anyone identifiable in
- * them, for the uses they tick and that night only. A yes given before this date keeps the words it was given in.
+ * THE ORGANISER MEDIA DECLARATION, version of 23 November 2026 (the one tick, Lawal's 13:49), after that of 19 November
+ * 2026 (law 32, the PM's 13:30, on Lawal's 13:20): the organiser confirms they took the images or may share them,
+ * INCLUDING the agreement of anyone identifiable in them, and EventLinqs may use them to promote the event and their
+ * future events. A yes given before this date keeps the words it was given in (the database holds each yes's own words).
  */
-export const DECLARATION_VERSION = '19 November 2026'
+export const DECLARATION_VERSION = '23 November 2026'
 
 /**
  * THE ONE DECISION FOR AN ORGANISER'S IMAGE (law 32 (c) and (e)): approved when the organiser's grant covers where it
@@ -51,10 +54,23 @@ export function mediaDecision(input: { readonly grant: { readonly uses: PhotoUse
   return { state: 'approved' }
 }
 
-/** Their yes, as the page put it to them and as they gave it. */
-export function grantWording(input: { readonly givenBy: string; readonly organiserName: string; readonly nightTitle: string; readonly uses: PhotoUses; readonly count: number }): string {
+/** Their yes, as the page put it to them (ONE_TICK_WORDS) and as they gave it, for the night and the images kept. */
+export function grantWording(input: { readonly givenBy: string; readonly organiserName: string; readonly nightTitle: string; readonly count: number }): string {
   const images = input.count === 1 ? 'the image' : `the ${input.count} images`
-  return `${input.givenBy.trim()}, for ${input.organiserName.trim()}: I took ${images} I added for ${input.nightTitle.trim()}, or have the right to share ${input.count === 1 ? 'it' : 'them'}, anyone identifiable in ${input.count === 1 ? 'it' : 'them'} has agreed, and EventLinqs may use ${input.count === 1 ? 'it' : 'them'} ${USE_WORDS[input.uses]} (declaration of ${DECLARATION_VERSION}).`
+  const them = input.count === 1 ? 'it' : 'them'
+  const night = input.nightTitle.trim()
+  return `${input.givenBy.trim()}, for ${input.organiserName.trim()}: I took ${images} I added for ${night}, or have the right to share ${them}, and anyone identifiable in ${them} has agreed. EventLinqs may use ${them} to promote ${night} and our future events on EventLinqs, in its social posts and in its emails, resized, cropped or placed inside EventLinqs designs. Not paid advertising, and never sold (declaration of ${DECLARATION_VERSION}).`
+}
+
+/**
+ * WHAT AN ORGANISER'S IMAGE MAY NOT HAVE DONE TO IT, the register's restrictions (Lawal, 13:49 of 23 November 2026: no
+ * invented restriction). A photograph carries none: it may be resized, cropped or placed inside an EventLinqs design, as
+ * the one tick says. Only their finished design (a flyer or poster, the register's 'artwork') is kept whole, because
+ * cropping it would cut their own words and layout. Pure.
+ */
+export const POSTER_KEPT_WHOLE = "Kept whole: the organiser's own finished design, shown as they made it, never cropped or changed."
+export function restrictionFor(assetType: 'photo' | 'artwork'): string | null {
+  return assetType === 'artwork' ? POSTER_KEPT_WHOLE : null
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']

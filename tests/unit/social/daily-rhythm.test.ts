@@ -21,30 +21,30 @@ const MONDAY_10PM = new Date('2026-11-23T11:00:00Z')
 
 describe('A2, the weekly rhythm: a lean, never a fixed calendar', () => {
   it('each family leans to its day when that day falls inside its own window', () => {
-    expect(rhythmDays('week_ahead', { deadline: SUNDAY_10AM }, NOW)).toEqual([1])
-    expect(rhythmDays('weekend_carousel', { deadline: SUNDAY_10AM }, NOW)).toEqual([4])
-    expect(rhythmDays('free_week', { deadline: SUNDAY_10AM }, NOW)).toEqual([3, 0])
+    expect(rhythmDays('week_ahead', { latestUseful: SUNDAY_10AM }, NOW)).toEqual([1])
+    expect(rhythmDays('weekend_carousel', { latestUseful: SUNDAY_10AM }, NOW)).toEqual([4])
+    expect(rhythmDays('free_week', { latestUseful: SUNDAY_10AM }, NOW)).toEqual([3, 0])
     // G, the organiser offer: business days only.
     expect(rhythmDays('organiser_campaign', {}, NOW)).toEqual([1, 2, 3, 4, 5])
   })
 
   it('law 18 wins: no lean that would hold a piece past its night, and Tonight and a night poster keep their own day', () => {
     // The weekend piece whose earliest night is Tuesday evening cannot wait for Thursday.
-    expect(rhythmDays('weekend_carousel', { deadline: new Date('2026-11-24T08:00:00Z') }, NOW)).toBeNull()
-    expect(rhythmDays('tonight', { deadline: SUNDAY_10AM }, NOW)).toBeNull()
-    expect(rhythmDays('daily_poster', { deadline: SUNDAY_10AM }, NOW)).toBeNull()
+    expect(rhythmDays('weekend_carousel', { latestUseful: new Date('2026-11-24T08:00:00Z') }, NOW)).toBeNull()
+    expect(rhythmDays('tonight', { latestUseful: SUNDAY_10AM }, NOW)).toBeNull()
+    expect(rhythmDays('daily_poster', { latestUseful: SUNDAY_10AM }, NOW)).toBeNull()
   })
 
   it("car C's learning, once it gives days, replaces the rhythm's", () => {
-    expect(rhythmDays('week_ahead', { deadline: SUNDAY_10AM }, NOW, { learned: [3] })).toEqual([3])
+    expect(rhythmDays('week_ahead', { latestUseful: SUNDAY_10AM }, NOW, { learned: [3] })).toEqual([3])
   })
 })
 
 describe('A1, the daily floor and the ceiling', () => {
   it('a thin day takes one discovery family post from a day with two, inside its own window; nothing is made', () => {
     const pieces: FloorPiece[] = [
-      { id: 'week-ahead', kind: 'week_ahead', format: 'feed', approvedAt: NOW, deadline: SUNDAY_10AM },
-      { id: 'free-week', kind: 'free_week', format: 'feed', approvedAt: NOW, deadline: SUNDAY_10AM },
+      { id: 'week-ahead', kind: 'week_ahead', format: 'feed', approvedAt: NOW, latestUseful: SUNDAY_10AM },
+      { id: 'free-week', kind: 'free_week', format: 'feed', approvedAt: NOW, latestUseful: SUNDAY_10AM },
     ]
     const plan = planMoments(pieces, rules, none, NOW)
     // Both on Monday, at 9 am and 9 pm: Tuesday is thin.
@@ -65,8 +65,8 @@ describe('A1, the daily floor and the ceiling', () => {
   it('a day no piece can reach posts nothing and is named in the report', () => {
     // Both pieces' nights start on Monday evening: neither may go on Tuesday.
     const pieces: FloorPiece[] = [
-      { id: 'week-ahead', kind: 'week_ahead', format: 'feed', approvedAt: NOW, deadline: MONDAY_10PM },
-      { id: 'free-week', kind: 'free_week', format: 'feed', approvedAt: NOW, deadline: MONDAY_10PM },
+      { id: 'week-ahead', kind: 'week_ahead', format: 'feed', approvedAt: NOW, latestUseful: MONDAY_10PM },
+      { id: 'free-week', kind: 'free_week', format: 'feed', approvedAt: NOW, latestUseful: MONDAY_10PM },
     ]
     const floor = applyDailyFloor({ pieces, plan: planMoments(pieces, rules, none, NOW), rules, taken: none, now: NOW })
     expect([...floor.moments.values()].filter((d) => dayKey(d) === '2026-11-24')).toHaveLength(0)
@@ -78,8 +78,8 @@ describe('A1, the daily floor and the ceiling', () => {
 
   it('a piece that is not discovery (a night poster) is never moved to fill a day', () => {
     const pieces: FloorPiece[] = [
-      { id: 'poster-a', kind: 'daily_poster', format: 'feed', approvedAt: NOW, deadline: SUNDAY_10AM },
-      { id: 'poster-b', kind: 'daily_poster', format: 'feed', approvedAt: NOW, deadline: SUNDAY_10AM },
+      { id: 'poster-a', kind: 'daily_poster', format: 'feed', approvedAt: NOW, latestUseful: SUNDAY_10AM },
+      { id: 'poster-b', kind: 'daily_poster', format: 'feed', approvedAt: NOW, latestUseful: SUNDAY_10AM },
     ]
     const floor = applyDailyFloor({ pieces, plan: planMoments(pieces, rules, none, NOW), rules, taken: none, now: NOW })
     expect(floor.moved).toEqual([])
@@ -87,7 +87,7 @@ describe('A1, the daily floor and the ceiling', () => {
   })
 
   it('the ceiling holds: never two feed posts inside the gap, never more than the day has bands', () => {
-    const pieces: FloorPiece[] = ['week_ahead', 'free_week', 'venue_spotlight', 'week_ahead', 'free_week'].map((kind, i) => ({ id: `p${i}`, kind, format: 'feed', approvedAt: NOW, deadline: SUNDAY_10AM }))
+    const pieces: FloorPiece[] = ['week_ahead', 'free_week', 'venue_spotlight', 'week_ahead', 'free_week'].map((kind, i) => ({ id: `p${i}`, kind, format: 'feed', approvedAt: NOW, latestUseful: SUNDAY_10AM }))
     const floor = applyDailyFloor({ pieces, plan: planMoments(pieces, rules, none, NOW), rules, taken: none, now: NOW })
     const times = [...floor.moments.values()].map((d) => d.getTime()).sort((a, b) => a - b)
     for (let i = 1; i < times.length; i += 1) expect(times[i] - times[i - 1]).toBeGreaterThanOrEqual(12 * 3_600_000)

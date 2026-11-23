@@ -24,10 +24,19 @@ const MAP_MIGRATION = readdirSync(MIGRATIONS)
   .sort()
   .at(-1) as string
 const MAP = readFileSync(join(MIGRATIONS, MAP_MIGRATION), 'utf8').replace(/\r\n/g, '\n')
+// The rows later migrations add IN PLACE, from the function in force (law 14 (z)), each its v_row constant: the source
+// ask's ('source_ask', 'PERM-SOURCE') in 20261123130001.
+const IN_PLACE_MIGRATIONS = readdirSync(MIGRATIONS)
+  .filter((f) => f.endsWith('.sql') && f > MAP_MIGRATION && readFileSync(join(MIGRATIONS, f), 'utf8').includes("pg_get_functiondef('public.comms_subtype_of_template_key(text)'::regprocedure)"))
+  .sort()
 
 function migrationTemplateMap(): Record<string, string> {
   const block = MAP.slice(MAP.indexOf('select m.subtype from (values'), MAP.indexOf(') as m(key, subtype)'))
-  return Object.fromEntries([...block.matchAll(/\('([a-z0-9_]+)', '([A-Z0-9-]+)'\)/g)].map((m) => [m[1], m[2]]))
+  const full = Object.fromEntries([...block.matchAll(/\('([a-z0-9_]+)', '([A-Z0-9-]+)'\)/g)].map((m) => [m[1], m[2]]))
+  const added = IN_PLACE_MIGRATIONS.flatMap((f) =>
+    [...readFileSync(join(MIGRATIONS, f), 'utf8').matchAll(/v_row constant text := '\(''([a-z0-9_]+)'', ''([A-Z0-9-]+)''\),';/g)].map((m) => [m[1], m[2]] as const),
+  )
+  return { ...full, ...Object.fromEntries(added) }
 }
 
 /** Every template key on production, read at 10:33 on 18 November 2026 (C:/dev/EVIDENCE/EL-16NOV/market-ready/q/law24-purposes.json). */
@@ -40,6 +49,8 @@ const PRODUCTION_KEYS = [
   'twenty_day4', 'twenty_offer', 'twenty_own_page', 'who_looks_after_events', 'withdrawal_confirmed',
   // Law 49's two letters (21 November 2026): written to production with their plays (C:/dev/EVIDENCE/EL-21NOV/train-at).
   'lifecycle_perm', 'lifecycle_acq',
+  // The source ask (the founder, 12:14 of 23 November 2026): written with its play by C:/dev/EVIDENCE/EL-23NOV/source-asks/load-APPLY.sql.
+  'source_ask',
 ]
 
 describe('the seven communication categories (Law 24)', () => {
@@ -71,8 +82,15 @@ describe('the seven communication categories (Law 24)', () => {
     for (const [key, c] of Object.entries(TEMPLATE_CLASS)) expect(sql[key], key).toBe(c.subtype)
   })
 
-  it('the template map is read from the latest migration that writes it', () => {
+  it('the template map is read from the latest migration that writes it, with the rows added to it in place since', () => {
     expect(MAP_MIGRATION).toBe('20261121150001_lifecycle_letters_take_their_class.sql')
+    expect(IN_PLACE_MIGRATIONS).toEqual(['20261123130001_source_ask_takes_its_class.sql'])
+  })
+
+  it('the source ask is PERM-SOURCE: a permission request, from hello@, never toward the 20', () => {
+    expect(TEMPLATE_CLASS.source_ask).toEqual({ category: 'PERM', subtype: 'PERM-SOURCE' })
+    expect(migrationTemplateMap().source_ask).toBe('PERM-SOURCE')
+    expect(countsTowardTheTwenty(TEMPLATE_CLASS.source_ask)).toBe(false)
   })
 
   it("law 49's photo request is PERM and its offer an acquisition first letter", () => {

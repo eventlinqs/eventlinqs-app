@@ -106,7 +106,7 @@ describe('the photo page keeps a real organiser photo', () => {
     const stored: string[] = []
     const { client, writes } = db()
     const files = [await jpeg('IMG_6082.jpg', 973, 695), await jpeg('IMG_6081.jpg', 1000, 714), await jpeg('IMG_6085.jpg', 916, 654)]
-    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files, uses: 'both', givenBy: 'Aria', now: NOW }, deps('gallery', stored))
+    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files, givenBy: 'Aria', now: NOW }, deps('gallery', stored))
     expect(done).toMatchObject({ state: 'done', added: 3, refused: [], applied: 3, coverSet: true })
     expect(stored).toHaveLength(3)
     expect(writes.filter((w) => w.table === 'social_assets' && w.op === 'insert')).toHaveLength(3)
@@ -114,20 +114,20 @@ describe('the photo page keeps a real organiser photo', () => {
 
   it("a phone's full size photograph (4032 x 3024) is kept", async () => {
     const { client } = db()
-    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_0001.jpg', 4032, 3024)], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_0001.jpg', 4032, 3024)], givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(done).toMatchObject({ state: 'done', added: 1, refused: [] })
   }, 30000)
 
   it('AN UPLOAD THAT KEEPS NOTHING LOGS NO YES (the PM\'s 15:02 of 20 November 2026: on 18 November at 23:50 a yes was logged and 0 images kept)', async () => {
     const refusedOnly = db()
     const small = await jpeg('small.jpg', 600, 400)
-    const nothing = await givePhotos(refusedOnly.client, { page: PAGE, eventId: 'night-20', files: [small], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    const nothing = await givePhotos(refusedOnly.client, { page: PAGE, eventId: 'night-20', files: [small], givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(nothing).toMatchObject({ state: 'done', added: 0 })
     expect(refusedOnly.writes.filter((w) => w.table === 'rpc:social_log_organiser_yes')).toHaveLength(0)
     expect(refusedOnly.writes.filter((w) => w.table === 'social_assets')).toHaveLength(0)
     // One kept beside one refused: the yes is logged once, for the one kept, and the refused one is named with its reason.
     const mixed = db()
-    const done = await givePhotos(mixed.client, { page: PAGE, eventId: 'night-20', files: [small, await jpeg('IMG_6082.jpg', 973, 695)], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    const done = await givePhotos(mixed.client, { page: PAGE, eventId: 'night-20', files: [small, await jpeg('IMG_6082.jpg', 973, 695)], givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(done).toMatchObject({ state: 'done', added: 1 })
     expect(mixed.writes.filter((w) => w.table === 'rpc:social_log_organiser_yes')).toHaveLength(1)
     expect((done as { refused: readonly string[] }).refused[0]).toMatch(/^small\.jpg: it is 600 x 400 pixels/)
@@ -137,7 +137,7 @@ describe('the photo page keeps a real organiser photo', () => {
     const { client } = db()
     const small = await jpeg('small.jpg', 600, 400)
     const broken = new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], 'broken.jpg', { type: 'image/jpeg' })
-    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [small, broken], uses: 'site', givenBy: 'Aria', now: NOW }, deps('gallery', []))
+    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [small, broken], givenBy: 'Aria', now: NOW }, deps('gallery', []))
     expect(done).toMatchObject({ state: 'done', added: 0 })
     const refused = (done as { refused: readonly string[] }).refused
     expect(refused[0]).toBe(`small.jpg: it is 600 x 400 pixels, so your event page would have to enlarge it; a photo at least ${EVENT_PHOTO_BOX.height} pixels tall, or ${EVENT_PHOTO_BOX.width} wide, shows sharp.`)
@@ -147,7 +147,7 @@ describe('the photo page keeps a real organiser photo', () => {
 
   it("DRILL: the old processing (role 'cover') refuses her 973 x 695 photo; the reason it gives is now the pipeline's own, never 'could not be read'", async () => {
     const { client } = db()
-    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_6082.jpg', 973, 695)], uses: 'both', givenBy: 'Aria', now: NOW }, deps('cover', []))
+    const done = await givePhotos(client, { page: PAGE, eventId: 'night-20', files: [await jpeg('IMG_6082.jpg', 973, 695)], givenBy: 'Aria', now: NOW }, deps('cover', []))
     expect(done).toMatchObject({ state: 'done', added: 0 })
     const said = (done as { refused: readonly string[] }).refused[0]
     expect(said).toMatch(/too small for a cover \(973px wide\)/)

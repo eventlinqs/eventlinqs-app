@@ -1,5 +1,5 @@
 /**
- * THE DEADLINE-AWARE STAGES (D2 of Lawal's final directive; the blueprint's section 4, 30 October 2026). Every night has
+ * THE STAGES BY THE NIGHT'S DATE (D2 of Lawal's final directive; the blueprint's section 4, 30 October 2026). Every night has
  * a closing date, so its stage comes from the days left alone: a night found three days out starts at the final week and
  * skips what came before. The blueprint: 'These windows are an initial operating design, not proven universal booking
  * patterns.' Pure.

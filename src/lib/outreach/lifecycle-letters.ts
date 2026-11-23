@@ -31,10 +31,11 @@ import { greetingOf, letterTitle } from './segment-a-letter'
  * letter, and no countdown: ACQ's subject names the night's day and date as the record holds it ("on Saturday 12
  * December"), never "[days] days to". Its one follow up is ./perm-follow-up.ts. Version 1 stays stored, retired.
  *
- * THE APPROVAL LINK IS THE CALLER'S. The approved words say "You can review the image and approve its use here"; the
- * photo page that exists today (/photos/<contact>/<proof>, ./photo-link.ts) is an upload form that does not show the
- * image, so it is not used in its place. Until the caller supplies LifecycleFacts.approvalLink (the approval page of the
- * PM's 20:47 item 5), [approval link] stays unfilled and every PERM draft is held for it, never sent with a stand in.
+ * THE APPROVAL LINK IS THE ORGANISER'S OWN PHOTO PAGE (Lawal, 13:49 of 23 November 2026: "One tick, they read through
+ * everything ... One tick, one checkbox ... We are just promoting the event"): /photos/<contact>/<proof>, the proof derived
+ * from the unsubscribe token of the contact written to (./photo-link.ts photoProof), filled by the reader
+ * (./lifecycle-read.ts) into LifecycleFacts.approvalLink. A contact with no token has no link: [approval link] stays
+ * unfilled and the PERM draft is held for it, never sent with a stand in.
  *
  * THE CLOCK DECIDES. lifecycleChoice asks the event clock (src/lib/events/event-clock.ts) whether the play's step is due
  * on one of the organiser's nights today: never inside T-7, never on or after the night. Pure.
@@ -140,8 +141,9 @@ export interface LifecycleFacts {
   readonly photoLink: string | null
   /**
    * THE APPROVAL LINK the approved permission request names ("You can review the image and approve its use here"): the
-   * page that shows the exact image and its uses and records the grant (the PM's 20:47, item 5). The caller must supply
-   * it; absent or null, [approval link] stays unfilled and the PERM draft is held.
+   * organiser's own photo page, where one tick records the grant (Lawal, 13:49 of 23 November 2026), built from the
+   * contact's token by ./photo-link.ts. Absent or null (a contact with no token), [approval link] stays unfilled and the
+   * PERM draft is held.
    */
   readonly approvalLink?: string | null
   readonly origin: string
@@ -182,7 +184,10 @@ export interface LifecycleNightClock {
   readonly startIso: string
   readonly endIso: string | null
   readonly zone: string
-  /** Its cover is the organiser's own photograph with recorded rights (organiser_authorised or separately_licensed). */
+  /**
+   * Its cover is the organiser's own photograph with recorded rights (organiser_authorised or separately_licensed), or
+   * they already gave us images for it (a current organiser authorised asset): either way they are never asked again.
+   */
   readonly granted: boolean
 }
 
@@ -239,7 +244,7 @@ export function lifecycleChoice(key: LifecycleKey, r: LifecycleOrganiserRecord, 
   const first = lifecycleClock(r.nights[0], r.replied, now)
   const from = key === 'lifecycle_perm' ? 'T-28' : 'T-21'
   if (key === 'lifecycle_perm' && r.nights.every((n) => n.granted || lifecycleClock(n, r.replied, now).daysToStart > 28)) {
-    return { due: false, why: `no night of theirs needs a photo asked for before ${from}: each in reach already shows their own photograph with recorded rights` }
+    return { due: false, why: `no night of theirs needs a photo asked for before ${from}: each in reach already shows their own photograph with recorded rights, or has images they gave us` }
   }
   return { due: false, why: `no night of theirs is due its letter today (from ${from}, never inside T-7); the nearest is ${first.daysToStart} day(s) away` }
 }

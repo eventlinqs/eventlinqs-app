@@ -1736,6 +1736,27 @@ const DRILLS = [
     expect: "no longer refuses a piece outside law 37's format",
   },
   /*
+   * law37-only, as law 37 was revised (Lawal, 23 November 2026, 13:41: original EventLinqs artwork is a first class format,
+   * and in the one pipeline it is only ever an approved file), two drills: an older drawn family let back in beside the
+   * photograph and the approved file, and designed artwork passing without being an approved file at its own address.
+   */
+  {
+    name: 'an older drawn family is let back in beside the photograph and the approved file',
+    guard: `${GUARDS}/law37-only.mjs`,
+    file: 'src/lib/social/law37.ts',
+    find: '  if (s.t === LAW37_SLIDE) return true',
+    replace: "  if (s.t === LAW37_SLIDE || s.t === 'ask') return true",
+    expect: 'admits an earlier drawn family (ask)',
+  },
+  {
+    name: 'designed artwork passes without being an approved file at its own address',
+    guard: `${GUARDS}/law37-only.mjs`,
+    file: 'src/lib/social/law37.ts',
+    find: "  return s.t === DESIGNED_ARTWORK_SLIDE && typeof s.url === 'string' && isApprovedFileUrl(s.url)",
+    replace: '  return s.t === DESIGNED_ARTWORK_SLIDE',
+    expect: 'without being an approved file at its own address',
+  },
+  /*
    * The piece's own format (WINDOW 5A's look of 20 November 2026 at 10:49, on the PM's 10:42 item 1), two drills: the
    * fault as it was found (the publisher guessing the format from its slides, so a tonight story posts as a feed), and
    * the publishing run calling the publisher with a fixed format instead of the piece's own.
@@ -11919,8 +11940,8 @@ const DRILLS = [
     name: "no founder name in public: the photo page names Lawal again",
     guard: `${GUARDS}/no-founder-name-public.mjs`,
     file: 'src/app/photos/[contact]/[proof]/page.tsx',
-    find: 'subtitle="You choose where EventLinqs may use them."',
-    replace: 'subtitle="You choose where EventLinqs may use them. Nothing is used until Lawal has looked at it."',
+    find: 'subtitle="One tick and EventLinqs can promote your night with them."',
+    replace: 'subtitle="One tick and EventLinqs can promote your night with them. Nothing is used until Lawal has looked at it."',
     expect: "founder's name(s) in words a customer, an organiser or the public reads",
   },
   /*

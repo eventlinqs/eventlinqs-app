@@ -54,7 +54,17 @@ export interface VoiceStandard {
   readonly acqFirstNoEventSubject?: string
   /** Every subject of an acquisition type that names no night (standard.json acq_types, needs_event_date false). */
   readonly acqFirstNoEventSubjects?: readonly string[]
+  /**
+   * THE SOURCE ASK (the founder, 12:14 of 23 November 2026: "Apply the already-approved communication workflow to routine
+   * source requests."; standard.json source_ask): a letter asking an event listing website for permission to show its
+   * event facts, subtype PERM-SOURCE. Its first letter takes these subjects and no offer subject; it names no night, so
+   * with needsEventDate false the timing rule has nothing to judge. Absent, a PERM-SOURCE letter is judged as any other.
+   */
+  readonly sourceAsk?: { readonly subjects: readonly string[]; readonly needsEventDate: boolean }
 }
+
+/** The source ask's subtype (law 24 PERM; standard.json source_ask), as gateway.py's is_source_ask reads it. */
+export const SOURCE_ASK_SUBTYPE = 'PERM-SOURCE'
 
 /** The lawful basis to write to this address (the standard's Part 2 rule 5, the Spam Act's conspicuous publication test). */
 export interface VoiceConsent {
@@ -80,7 +90,10 @@ export interface VoiceMessage {
   /** The local day of the night the letter is about, and the local day it would land (YYYY-MM-DD), for the timing rule. */
   readonly eventDate?: string
   readonly landsOn?: string
-  /** The message's communication subtype (Law 24), as its record carries it: ACQ-FIRST has its own subjects and no event form. */
+  /**
+   * The message's communication subtype (Law 24), as its record carries it: ACQ-FIRST has its own subjects and no event
+   * form; PERM-SOURCE, the source ask, has its own subjects and names no night.
+   */
   readonly subtype?: string | null
 }
 
@@ -97,6 +110,10 @@ export function readVoicePolicy(raw: unknown = generated): VoicePolicy {
   const standardWhole =
     Boolean(s) && strings(s?.outreachCategories) && strings(s?.offerSubjects) && strings(s?.internalWords) && strings(s?.unprovedClaims) && strings(s?.consentBases) && Number.isInteger(s?.minDaysAhead)
   if (!standardWhole) throw new Error('POLICY_UNAVAILABLE: the communication standard is missing from the voice policy; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
+  const sa = s?.sourceAsk
+  if (sa !== undefined && !(Boolean(sa) && strings(sa?.subjects) && typeof sa?.needsEventDate === 'boolean')) {
+    throw new Error('POLICY_UNAVAILABLE: the source ask in the voice policy is not whole; generate it from the policy files (scripts/ops/voice-policy-generate.mjs)')
+  }
   return p as VoicePolicy
 }
 
@@ -180,9 +197,17 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
     if (!subj) r.push('no subject line')
     if (isEmail && (cat === 'reply' || cat === 'follow_up') && !/^re:\s/i.test(subj)) r.push('a reply must keep the thread subject, starting "Re:"')
     // The advice subject is replaced by an offer led one, from the standard's own list (the PM's 02:00 of 18 November 2026).
-    const subjects = [...policy.standard.offerSubjects, ...(msg.subtype === 'ACQ-FIRST' ? policy.standard.acqFirstSubjects ?? [] : [])]
+    // A source ask (PERM-SOURCE) takes its own subjects and is not judged against the offer subjects (gateway.py the same).
+    const sourceAsk = msg.subtype === SOURCE_ASK_SUBTYPE
+    const subjects = sourceAsk
+      ? [...(policy.standard.sourceAsk?.subjects ?? [])]
+      : [...policy.standard.offerSubjects, ...(msg.subtype === 'ACQ-FIRST' ? policy.standard.acqFirstSubjects ?? [] : [])]
     if (cat === 'first_contact' && (/could I ask your advice/i.test(subj) || !subjects.some((pat) => new RegExp(pat).test(subj)))) {
-      r.push(`a first message takes an offer led subject (standard Part 2 rule 7); found ${JSON.stringify(subj.slice(0, 80))}`)
+      r.push(
+        sourceAsk
+          ? `a source ask (PERM-SOURCE) takes one of its approved subjects (standard.json source_ask); found ${JSON.stringify(subj.slice(0, 80))}`
+          : `a first message takes an offer led subject (standard Part 2 rule 7); found ${JSON.stringify(subj.slice(0, 80))}`,
+      )
     }
   }
   if (isEmail && (cat === 'reply' || cat === 'follow_up') && !msg.threadRef) r.push('a reply must name the thread it answers (thread_ref)')
@@ -291,6 +316,9 @@ function standardProblems(msg: VoiceMessage, std: VoiceStandard, bodyBefore: str
   const noEventSubjects = [...(std.acqFirstNoEventSubject ? [std.acqFirstNoEventSubject] : []), ...(std.acqFirstNoEventSubjects ?? [])]
   const noEvent = msg.subtype === 'ACQ-FIRST' && msg.eventDate === undefined && noEventSubjects.some((pat) => new RegExp(pat).test((msg.subject ?? '').trim()))
   if (noEvent) return r
+  // The source ask names no night (standard.json source_ask, needs_event_date false; the founder's 12:14 of 23 November
+  // 2026), so the timing rule has nothing to judge, as gateway.py reads it. Without that entry the rule stands.
+  if (msg.subtype === SOURCE_ASK_SUBTYPE && std.sourceAsk !== undefined && !std.sourceAsk.needsEventDate) return r
   const ev = dayOf(msg.eventDate)
   const lands = dayOf(msg.landsOn)
   if (Number.isNaN(ev) || Number.isNaN(lands)) r.push('timing: event_date and lands_on (YYYY-MM-DD) are needed so no letter lands on or after its night (standard Part 2 rule 4)')
