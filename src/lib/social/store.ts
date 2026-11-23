@@ -1,6 +1,7 @@
 import { SOCIAL_SLOT_ZONE, slotDay, slotFromEarlierDay } from '@/lib/ops/stale-slot'
 import { LOST_ID } from './post-state'
 import { withPieceId } from './go-hop'
+import { randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
 import { generateShareCode, getOrCreateShareLink } from '@/lib/broadcast/share-links'
@@ -1117,8 +1118,10 @@ export async function pieceDependencies(
     ),
   )
 
-  /* The piece's own page answers on this deployment and lists every night it advertises. */
-  const path = new URL(String(piece.link)).pathname
+  /* The piece's own page answers on this deployment and lists every night it advertises. Its query is part of the page:
+     a set piece's own page is /ig?piece=<its id> (the PM's RETURN of 04:05 on 24 November 2026). */
+  const target = new URL(String(piece.link))
+  const path = `${target.pathname}${target.search}`
   const page = await answers(fetcher, `${opts.siteOrigin.replace(/\/$/, '')}${path}`)
   if (!page.ok) issues.push(`Its page ${path} answers ${page.status ?? 'nothing'}.`)
   // A partner kit's and a daily poster's link is the night's own /e/ link, which opens that night's page itself.
@@ -1494,10 +1497,20 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
   if (drawn) {
     const rev = await newestRevision(db, drawn)
     if (rev === null) return { state: 'refused', set: set.name, reason: `Not drawn again: piece ${drawn}'s newest words could not be read.` }
+    // ITS LINK LANDS ON ITS OWN PAGE (the PM's RETURN of 04:05 on 24 November 2026): a piece drawn before that rule is given
+    // its own page here, its link the one the planner writes, with its own id; the answer is read and said.
+    const ownLink = withPieceId(p.link, drawn)
+    const { data: held, error: lerr } = await db.from('social_pieces').select('link').eq('id', drawn).maybeSingle()
+    const linkLines: string[] = []
+    if (lerr) linkLines.push(`Its link could not be read (${lerr.message}), so it is left as it is.`)
+    else if ((held as { link?: string | null } | null)?.link !== ownLink) {
+      const { error: uerr } = await db.from('social_pieces').update({ link: ownLink }).eq('id', drawn)
+      linkLines.push(uerr ? `Its link could not be set to its own page (${uerr.message}).` : `Its link now lands on its own page: ${ownLink}.`)
+    }
     const fresh = revisionRow(drawn, rev.version + 1, p, null, 'sweep', null, input.now)
     // Drawn again only where today's drawing differs: an identical one is never written twice (sameDrawing, the sweep's rule).
     if (sameDrawing({ eventIds: fresh.event_ids, slides: fresh.slides, versions: fresh.versions, caption: fresh.caption }, rev)) {
-      return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}, and today's rules draw it the same; it is not written again.`] }
+      return { state: 'drawn', set: set.name, pieceId: drawn, already: true, lines: [`The ${set.label} was drawn already, as piece ${drawn}, and today's rules draw it the same; it is not written again.`, ...linkLines] }
     }
     const { error: werr } = await db.from('social_piece_revisions').insert(fresh)
     if (werr) {
@@ -1510,7 +1523,7 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
       pieceId: drawn,
       already: true,
       redrawn: true,
-      lines: [`The ${set.label}: piece ${drawn} drawn again as version ${rev.version + 1} with today's nights and words, still UNAPPROVED and unscheduled, ready for the PM's review.`],
+      lines: [`The ${set.label}: piece ${drawn} drawn again as version ${rev.version + 1} with today's nights and words, still UNAPPROVED and unscheduled, ready for the PM's review.`, ...linkLines],
     }
   }
 
@@ -1518,9 +1531,11 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
   if (cerr) return { state: 'refused', set: set.name, reason: `Not drawn: the week's campaign could not be kept (${cerr.message}).` }
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) return { state: 'refused', set: set.name, reason: "Not drawn: the week's campaign could not be read." }
+  // The piece's id is made here, so its link carries it from the first write: /ig?piece=<its id>, its own page.
+  const ownId = randomUUID()
   const written = await writePieceWithFirstRevision(
     db,
-    { campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
+    { id: ownId, campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: withPieceId(p.link, ownId), format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
     (id) => revisionRow(id, 1, p, null, 'planner', null, input.now),
   )
   if ('refused' in written) {

@@ -90,10 +90,44 @@ export function igPicks(posts: readonly IgPost[], nights: ReadonlyMap<string, Ig
   })
 }
 
-/** The listing's path tagged for the visit ledger: source instagram, medium social, campaign ig, content the post's id. */
-export function igHref(listingPath: string, postId: string): string {
+/**
+ * ONE PIECE'S OWN PAGE, /ig?piece=<id> (the PM's RETURN of 04:05 on 24 November 2026: a set piece's link landed on
+ * /city/melbourne, every Melbourne night, where its three shows had to be hunted for; Lawal's 13:12 item 3, the whole
+ * booking journey to the right event). Exactly the nights the piece's newest revision names, still public and still
+ * listed, each listing once (its soonest night still ahead, with how many more of its nights the piece names), in date
+ * order. Nothing else is listed: never another post's night. Pure.
+ */
+export function igPiecePicks(pieceId: string, eventIds: readonly string[], nights: ReadonlyMap<string, IgNight>, now: Date): IgPick[] {
+  const listings = new Map<string, Map<string, IgNight>>()
+  for (const id of eventIds) {
+    const night = nights.get(id)
+    if (!night || !isStillListed(night, now)) continue
+    const held = listings.get(night.listing) ?? new Map<string, IgNight>()
+    held.set(night.id, night)
+    listings.set(night.listing, held)
+  }
+  const soonest = (l: Map<string, IgNight>) => [...l.values()].sort((a, b) => Date.parse(a.start_date) - Date.parse(b.start_date) || a.id.localeCompare(b.id))[0]
+  return [...listings.values()]
+    .map((l) => ({ night: soonest(l), more: l.size - 1 }))
+    .sort((a, b) => Date.parse(a.night.start_date) - Date.parse(b.night.start_date) || a.night.id.localeCompare(b.night.id))
+    .map(({ night, more }) => ({ eventId: night.id, postId: pieceId, postedAt: '', more }))
+}
+
+/** A piece's heading on its own page, from its own hook: the words, without the emoji that leads them or the full stop. */
+export function igPieceHeading(hook: string | null | undefined): string | null {
+  const words = (hook ?? '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/\.\s*$/, '').trim()
+  return words.length >= 3 ? words : null
+}
+
+/** The network a visitor came from, as the /go hop tagged their landing; instagram where none is named. */
+export function igSource(arrivedFrom: string | null | undefined): 'instagram' | 'facebook' {
+  return arrivedFrom === 'facebook' ? 'facebook' : 'instagram'
+}
+
+/** The listing's path tagged for the visit ledger: source instagram (or the network a piece's visitor came from), medium social, campaign ig, content the post's id. */
+export function igHref(listingPath: string, postId: string, source: 'instagram' | 'facebook' = 'instagram'): string {
   const u = new URL(listingPath, 'https://eventlinqs.invalid')
-  u.searchParams.set('utm_source', 'instagram')
+  u.searchParams.set('utm_source', source)
   u.searchParams.set('utm_medium', 'social')
   u.searchParams.set('utm_campaign', 'ig')
   u.searchParams.set('utm_content', postId)

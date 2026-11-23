@@ -11,7 +11,7 @@ import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
-import { IG_DAYS, igHref, igPicks, type IgNight, type IgPost } from './ig-math'
+import { IG_DAYS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
 /**
  * The rows behind /ig (the rules and why are in ./ig-math.ts). The posts are the engine's own record of what went to
@@ -75,6 +75,12 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
 
   const named = [...new Set(posts.flatMap((p) => p.eventIds))]
   if (named.length === 0) return []
+  const rows = await readPublicNights(named, now)
+  return cardsOf(igPicks(posts, nightsOf(rows), now), rows, now)
+}
+
+/** The nights named, by the site's one public visibility rule, test accounts left out; a hundred ids a read. */
+async function readPublicNights(named: readonly string[], now: Date): Promise<RawRow[]> {
   const db = createPublicClient()
   const rows: RawRow[] = []
   for (let i = 0; i < named.length; i += IDS_PER_READ) {
@@ -88,13 +94,18 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
     )
     rows.push(...(page ?? []))
   }
+  return rows
+}
 
-  const nights = new Map<string, IgNight>(
+function nightsOf(rows: readonly RawRow[]): Map<string, IgNight> {
+  return new Map<string, IgNight>(
     rows.map((r) => [r.id, { id: r.id, start_date: r.start_date, end_date: r.end_date ?? null, timezone: r.timezone ?? null, listing: listingKey({ title: r.title, venue: r.venue_name ?? null }) }]),
   )
-  const picks = igPicks(posts, nights, now)
-  if (picks.length === 0) return []
+}
 
+/** Each pick on the marketplace's own card, its link tagged for the visit ledger. */
+async function cardsOf(picks: readonly IgPick[], rows: readonly RawRow[], now: Date, source: 'instagram' | 'facebook' = 'instagram'): Promise<IgItem[]> {
+  if (picks.length === 0) return []
   const pickedIds = new Set(picks.map((p) => p.eventId))
   const shaped = await discoveryData((await withVenuePhotos(rows.filter((r) => pickedIds.has(r.id)))) as LedgerRow[], now)
   const byId = new Map(shaped.rows.map((r) => [r.id, r]))
@@ -102,6 +113,34 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
     const row = byId.get(p.eventId)
     if (!row) return []
     const card = marketCard({ row, more: p.more, every: null }, shaped.days.todayKey)
-    return [{ card, href: igHref(card.href, p.postId), postId: p.postId }]
+    return [{ card, href: igHref(card.href, p.postId, source), postId: p.postId }]
   })
+}
+
+/** One piece's own page: its heading from its own hook, and exactly its nights (ig-math.ts igPiecePicks). */
+export type IgPiecePage = { readonly heading: string | null; readonly items: IgItem[] }
+
+/**
+ * /ig?piece=<id>, ONE PIECE'S OWN NIGHTS (the PM's RETURN of 04:05 on 24 November 2026; the rules in ig-math.ts
+ * igPiecePicks): the nights the piece's newest revision names, still public and still listed, in date order, each on the
+ * marketplace's own card leading to its event page, which carries its booking button. A piece unknown, or none of whose
+ * nights is still ahead, gives no item, and the page says so. Read whether or not the piece was posted: its own link
+ * lands here from its first post.
+ */
+export async function readIgPiecePage(pieceId: string, source: 'instagram' | 'facebook', now: Date = new Date()): Promise<IgPiecePage> {
+  if (!getSupabaseServiceRoleKey()) {
+    console.warn('[ig] no service-role key on this host; the piece is not read')
+    return { heading: null, items: [] }
+  }
+  const admin = createAdminClient()
+  const newest = await readOrThrow("the piece's newest words for /ig", () =>
+    admin.from('social_piece_revisions').select('version, event_ids, versions').eq('piece_id', pieceId).order('version', { ascending: false }).limit(1),
+  )
+  const rev = (newest ?? [])[0] as { event_ids?: string[] | null; versions?: { instagram?: { hook?: string } } | null } | undefined
+  if (!rev) return { heading: null, items: [] }
+  const named = [...new Set(rev.event_ids ?? [])]
+  const heading = igPieceHeading(rev.versions?.instagram?.hook ?? null)
+  if (named.length === 0) return { heading, items: [] }
+  const rows = await readPublicNights(named, now)
+  return { heading, items: await cardsOf(igPiecePicks(pieceId, named, nightsOf(rows), now), rows, now, source) }
 }

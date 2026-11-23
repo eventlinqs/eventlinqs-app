@@ -10,7 +10,8 @@ import { campaignStageOf } from './stages'
 import { creditLine } from '@/lib/media/photo-credits'
 import { captionMarkFaults, holdsAtPublishing, emojiCount, MAX_EMOJI } from './caption-marks'
 import { NO_STAND_INS, namesAStandIn, STAND_INS, STAND_INS_IN_PLAN, standInChooser, standInCredit, standInOf, standInUrl, type Sport, type StandIn } from './stand-ins'
-import { goHop } from './go-hop'
+import { goHop, PIECE_MARK } from './go-hop'
+import { igHref } from '@/lib/growth/ig-math'
 import { nightTimes } from './lifecycle'
 import { getSupabaseUrl } from '@/lib/supabase/env'
 import type { ApprovedSet } from './approved-sets'
@@ -1740,8 +1741,9 @@ export function feedDayLine(n: Pick<CampaignNight, 'startDate' | 'endDate' | 'ti
  * emoji and the count from the rows, the rows, the place or the days, the link line, the share line and the tags, and no
  * relative day word, since a feed post stays on the profile after its day (the PM's 13:32 of 23 November 2026). Instagram
  * points to the link in our bio; Facebook carries the counted /go hop (go-hop.ts), which lands on the piece's own page:
- * the night's page for one show, otherwise the page that lists every night (destinationOf). Every night of the set must
- * be read (public, still to come, in one guide city), or nothing is planned and the missing are named. Pure.
+ * one show's own event page, or for several shows /ig?piece=<its id>, the page of exactly its own nights (the PM's RETURN
+ * of 04:05 on 24 November 2026; src/app/ig/page.tsx). Every night of the set must be read (public, still to come, in one
+ * guide city), or nothing is planned and the missing are named. Pure.
  */
 export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[], origin: string): { readonly plan: PiecePlan } | { readonly refused: string } {
   const byId = new Map(read.map((n) => [n.eventId, n]))
@@ -1772,7 +1774,15 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
   // One show's date line: one night from its own record in the feed format (Lawal's 16:04 of 23 November 2026), several
   // sessions as their row says them, the title not said again.
   const oneShowDate = sorted.length === 1 ? feedDayLine(first) : `\u{1F4C5} ${rowLine(first, sorted, false).slice(0, -(`: ${first.title}`.length))}`
-  const page = shows.length === 1 ? `/events/${first.slug}` : destinationOf(sorted, city).path
+  // A SET PIECE LANDS ON A PAGE OF EXACTLY ITS OWN NIGHTS (the PM's RETURN of 04:05 on 24 November 2026: the comedy piece
+  // landed on /city/melbourne, every Melbourne night, where its three shows had to be hunted for; Lawal's 13:12 item 3, the
+  // whole booking journey to the right event). One show: its own event page, which holds its booking button. Several:
+  // /ig with this piece named, its nights on the approved marketplace card, each leading to its event page and its booking
+  // button, tagged by /ig's own rule (ig-math.ts igHref: source instagram, medium social, campaign ig, content the piece's
+  // id). The piece's id goes where PIECE_MARK stands, set by its writer (store.ts drawApprovedSet); the /go hop keeps the
+  // path and query and sets the network the visitor came from (go-math.ts goDestination).
+  const page = oneShow ? `/events/${first.slug}` : `/ig?piece=${PIECE_MARK}`
+  const link = oneShow ? page : igHref(page, PIECE_MARK)
   const own = shows.length === 1 ? tagWord(first.title) : place ? tagWord(place) : tagWord(city.name)
   // THE SELLER IN THE CAPTION, NEVER ON OUR ARTWORK (playbook.ts design-seller-in-the-caption; Lawal's 12:47 of 23 November
   // 2026: booking is completed through the organiser's ticketing provider, and EventLinqs never implies it sells them):
@@ -1802,9 +1812,9 @@ export function planApprovedSet(set: ApprovedSet, read: readonly CampaignNight[]
       audience: 'attendees',
       objective: 'audience_growth',
       purpose: `Post Lawal's approved designs for the ${set.label}, as he approved them`.slice(0, 200),
-      nextStep: `Open ${siteOf(origin)}${page}`,
+      nextStep: oneShow ? `Open ${siteOf(origin)}${page}` : `Open its own page, ${siteOf(origin)}/ig with this piece named`,
       outcome: "Visits through this post's own link, then presses out and tickets from there",
-      link: `${origin}${page}`,
+      link: `${origin}${link}`,
       format: 'feed',
       eventIds: sorted.map((n) => n.eventId),
       picks: sorted.map((n) => ({ eventId: n.eventId, reason: `Picked: a night of Lawal's approved ${set.name} set (23 November 2026), on ${whenOf(n)}.` })),

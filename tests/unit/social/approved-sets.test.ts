@@ -11,6 +11,8 @@ import { pieceCorrections, pieceQuality, type QualityNight } from '@/lib/social/
 import { approveApprovedSet, drawApprovedSet, readCampaignNights } from '@/lib/social/store'
 import { timingOf } from '@/lib/social/timing'
 import { PLAYBOOK } from '@/lib/social/playbook'
+import { igPieceHeading, igPiecePicks, type IgNight } from '@/lib/growth/ig-math'
+import { listingKey } from '@/lib/events/guide-sections'
 
 /*
  * LAWAL'S APPROVED SETS (the founder, 23 November 2026, 14:34: "the smallest car that lets the engine publish designed
@@ -23,6 +25,8 @@ import { PLAYBOOK } from '@/lib/social/playbook'
 
 const ORIGIN = 'https://www.eventlinqs.com.au'
 const NOW = new Date('2026-11-23T05:00:00.000Z') // 4 pm on Monday 23 November, Melbourne
+/** A set of several shows' own page: /ig with its piece named, tagged by /ig's own rule (ig-math.ts igHref). */
+const ownPage = (id: string) => `${ORIGIN}/ig?piece=${id}&utm_source=instagram&utm_medium=social&utm_campaign=ig&utm_content=${id}`
 const IMPROV = ['ecd0776e-e5c9-4a9e-9641-185c2cf750b3', 'b772a3ad-88a9-4a8f-bff5-aa3348b7a503', '152f235f-6a42-44bf-aeef-d03530f13af4']
 const MAIN = ['11ac88ce-b5fd-4aa6-b2c6-78aa6bea3f89', 'dccd097f-be36-4ad0-bc53-09018758c117']
 const SUNDAY = '7e2d2595-783f-4b5d-9485-6f829c954417'
@@ -66,10 +70,10 @@ const EVENTS: Row[] = [
 const CITIES: Row[] = [{ slug: 'melbourne', name: 'Melbourne', free_guide: true, is_active: true, display_order: 1 }]
 
 /** A database as these reads and writes use it: every filter they send, the unique rules they meet, and every write kept. */
-function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?: { insert?: Record<string, string>; delete?: Record<string, string> } } = {}) {
+function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?: { insert?: Record<string, string>; delete?: Record<string, string>; update?: Record<string, string> } } = {}) {
   const tables: Record<string, Row[]> = { cities: CITIES, events: seed.events ?? EVENTS, ...(seed.tables ?? {}) }
   // A refusal the database answers, as production did (a check on an insert; a missing grant on a delete), by table.
-  const refuse = { insert: { ...(seed.refuse?.insert ?? {}) }, delete: { ...(seed.refuse?.delete ?? {}) } }
+  const refuse = { insert: { ...(seed.refuse?.insert ?? {}) }, delete: { ...(seed.refuse?.delete ?? {}) }, update: { ...(seed.refuse?.update ?? {}) } }
   const writes: { table: string; op: string; rows: Row[] }[] = []
   let made = 0
   const subset = (have: unknown, want: unknown): boolean => {
@@ -79,7 +83,7 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?:
   }
   const from = (table: string) => {
     const filters: ((r: Row) => boolean)[] = []
-    let op: 'select' | 'insert' | 'upsert' | 'delete' = 'select'
+    let op: 'select' | 'insert' | 'upsert' | 'delete' | 'update' = 'select'
     let payload: Row[] = []
     let one: 'single' | 'maybe' | null = null
     let lim = Infinity
@@ -88,6 +92,7 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?:
     const run = () => {
       if (op === 'insert' && refuse.insert[table]) return { data: null, error: { code: '23514', message: refuse.insert[table] } }
       if (op === 'delete' && refuse.delete[table]) return { data: null, error: { code: '42501', message: refuse.delete[table] } }
+      if (op === 'update' && refuse.update[table]) return { data: null, error: { code: '42501', message: refuse.update[table] } }
       if (op === 'insert' || op === 'upsert') {
         const rows = payload.map((r): Row => ({ id: r.id ?? `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`, ...r }))
         const have = tables[table] ?? []
@@ -105,6 +110,11 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?:
         return { data: one ? rows[0] : rows, error: null }
       }
       const hit = (tables[table] ?? []).filter((r) => filters.every((f) => f(r)))
+      if (op === 'update') {
+        for (const r of hit) Object.assign(r, payload[0])
+        writes.push({ table, op, rows: hit })
+        return { data: null, error: null }
+      }
       if (op === 'delete') {
         tables[table] = (tables[table] ?? []).filter((r) => !hit.includes(r))
         writes.push({ table, op, rows: hit })
@@ -137,6 +147,7 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?:
       insert: (rows: Row | Row[]) => ((op = 'insert'), (payload = [rows].flat()), q),
       upsert: (rows: Row | Row[]) => ((op = 'upsert'), (payload = [rows].flat()), q),
       delete: () => ((op = 'delete'), q),
+      update: (row: Row) => ((op = 'update'), (payload = [row]), q),
       then: (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve().then(run).then(ok, bad),
     }
     return q
@@ -244,7 +255,7 @@ describe('an approved set, planned by the engine', () => {
     )
     expect(comedy.versions.facebook.caption).toContain('\u{1F39F} Event details and tickets:\nhttps://www.eventlinqs.com.au/go/PIECE_ID_HERE?via=facebook\n')
     expect(comedy.versions.facebook.cta).toBe('https://www.eventlinqs.com.au/go/PIECE_ID_HERE?via=facebook')
-    expect(comedy.link).toBe('https://www.eventlinqs.com.au/city/melbourne')
+    expect(comedy.link).toBe(ownPage('PIECE_ID_HERE'))
 
     const music = await planOf('live-music')
     expect(music.versions.instagram.caption).toBe(
@@ -263,7 +274,7 @@ describe('an approved set, planned by the engine', () => {
       ].join('\n'),
     )
     expect(music.versions.facebook.caption).toContain('\u{1F39F} Times and tickets for all four:\nhttps://www.eventlinqs.com.au/go/PIECE_ID_HERE?via=facebook\n')
-    expect(music.link).toBe('https://www.eventlinqs.com.au/city/melbourne')
+    expect(music.link).toBe(ownPage('PIECE_ID_HERE'))
 
     const kyivska = await planOf('kyivska-perepichka')
     expect(kyivska.versions.instagram.caption).toBe(
@@ -342,7 +353,7 @@ describe("the engine's intake: drawn unapproved for the PM's review, once", () =
     expect(tables.social_piece_approvals ?? []).toEqual([])
     expect(tables.social_piece_schedules ?? []).toEqual([])
     const piece = (tables.social_pieces ?? [])[0]
-    expect(piece).toMatchObject({ id: drawn.pieceId, kind: 'weekend_carousel', city: 'melbourne', format: 'feed', moment_key: null, link: 'https://www.eventlinqs.com.au/city/melbourne' })
+    expect(piece).toMatchObject({ id: drawn.pieceId, kind: 'weekend_carousel', city: 'melbourne', format: 'feed', moment_key: null, link: ownPage(drawn.pieceId as string) })
     const rev = (tables.social_piece_revisions ?? [])[0] as { version: number; made_by: string; versions: PiecePlan['versions']; caption: string }
     expect(rev).toMatchObject({ piece_id: drawn.pieceId, version: 1, made_by: 'planner' })
     expect(rev.caption).toContain('link in our bio')
@@ -501,5 +512,113 @@ describe("an unapproved set piece is drawn again with today's rules", () => {
 
   it('is a playbook rule, with its reason and its source', () => {
     expect(PLAYBOOK.find((r) => r.id === 'unapproved-set-redrawn-with-todays-rules')?.source).toBe("the PM's intake of 23 and 24 November 2026")
+  })
+})
+
+/*
+ * A SET PIECE LANDS ON A PAGE OF EXACTLY ITS OWN NIGHTS (the PM's RETURN of 04:05 on 24 November 2026, comedy piece
+ * ed0c1dca): after posting, its link landed on /city/melbourne, every Melbourne night, where its three shows had to be
+ * hunted for (Lawal's 13:12 item 3: the whole booking journey to the right event). Red on its base: the link named the
+ * city page, the gate read the link's path without its query, and no page listed one piece's nights.
+ */
+describe('a set piece lands on a page of exactly its own nights', () => {
+  // Every fixture night as the public read returns it, the other sets' nights among them, so a page listing more than its
+  // own nights would be seen.
+  const PUBLIC: ReadonlyMap<string, IgNight> = new Map(
+    EVENTS.map((e) => [String(e.id), { id: String(e.id), start_date: String(e.start_date), end_date: String(e.end_date), timezone: 'Australia/Melbourne', listing: listingKey({ title: String(e.title), venue: String(e.venue_name) }) }]),
+  )
+  const COMEDY_SLUGS = EVENTS.filter((e) => approvedSetNamed('comedy-weekend')?.eventIds.includes(String(e.id))).map((e) => String(e.slug))
+
+  it("the comedy weekend's and the music Friday's link is their own page, tagged by /ig's rule; one show's is its own event page", async () => {
+    expect((await planOf('comedy-weekend')).link).toBe(ownPage('PIECE_ID_HERE'))
+    expect((await planOf('live-music')).link).toBe(ownPage('PIECE_ID_HERE'))
+    expect((await planOf('kyivska-perepichka')).link).toBe(`${ORIGIN}/events/kyivska-perepichka`)
+  })
+
+  it('drawn, its link names its own id, and that page lists its nights and only them, in date order', async () => {
+    const { db, tables } = fakeDb()
+    const drawn = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    if (drawn.state !== 'drawn') throw new Error(drawn.reason)
+    const piece = (tables.social_pieces ?? []).find((r) => r.id === drawn.pieceId) as { link: string }
+    expect(piece.link).toBe(ownPage(drawn.pieceId))
+    const landing = new URL(piece.link)
+    expect(landing.pathname).toBe('/ig')
+    const named = landing.searchParams.get('piece') as string
+    expect(named).toBe(drawn.pieceId)
+    // The page reads that piece's newest revision (src/lib/growth/ig.ts readIgPiecePage) and lists it by igPiecePicks:
+    // each show once, at its soonest night with its other nights counted, in date order, and nothing of another set.
+    const rev = (tables.social_piece_revisions ?? []).filter((r) => r.piece_id === named).sort((a, b) => Number(b.version) - Number(a.version))[0] as { event_ids: string[]; versions: PiecePlan['versions'] }
+    const picks = igPiecePicks(named, rev.event_ids, PUBLIC, NOW)
+    expect(picks.map((p) => [p.eventId, p.more])).toEqual([[IMPROV[0], 2], [MAIN[0], 1], [SUNDAY, 0]])
+    expect(picks.every((p) => p.postId === named)).toBe(true)
+    expect(igPieceHeading(rev.versions.instagram.hook)).toBe('Three shows at Comedy Republic, Friday 27 to Sunday 29 November')
+  })
+
+  it('the publish gate reads that page itself, its query kept, and holds a piece whose own page does not list a night', async () => {
+    const { db } = fakeDb()
+    const drawn = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    if (drawn.state !== 'drawn') throw new Error(drawn.reason)
+    const asked: string[] = []
+    // The site as it stands: /ig with this piece named lists its nights; /ig alone, the page of every post, lists none.
+    const site = (listed: readonly string[]) => async (url: string) => {
+      asked.push(url)
+      const u = new URL(url)
+      const slugs = u.pathname === '/ig' && u.searchParams.get('piece') === drawn.pieceId ? listed : []
+      return new Response(`<html><body>${slugs.map((s) => `<a href="/events/${s}?utm_source=instagram">x</a>`).join('')}</body></html>`, { status: 200 })
+    }
+    const short = await approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(COMEDY_SLUGS.slice(1)) })
+    expect(short.state).toBe('refused')
+    expect(short.reason).toMatch(/does not list it/)
+    const approved = await approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(COMEDY_SLUGS) })
+    expect(approved).toMatchObject({ state: 'approved', pieceId: drawn.pieceId })
+    expect(asked.some((u) => u.startsWith(`${ORIGIN}/ig?piece=${drawn.pieceId}&`))).toBe(true)
+  })
+
+  const EARLIER = 'c0ffee00-0000-4000-8000-0000000c0ffe'
+  const drawnBeforeTheRule = (extra: Record<string, Row[]> = {}, refuse?: { update?: Record<string, string> }) => {
+    const set = approvedSetNamed('comedy-weekend') as ApprovedSet
+    const slides = set.files.map((f) => ({ t: 'file', composition: 'close', url: `${APPROVED_FILE_PREFIX}${f}`, format: 'feed', eventId: IMPROV[0], startDate: '2026-11-27T06:00:00.000Z' }))
+    const OLD = '\u{1F602} Three shows at Comedy Republic, Friday 27 to Sunday 29 November.\nFrom Holy Sh!t Improv on Friday to Sunday Laughternoons on Sunday.'
+    return fakeDb({
+      tables: {
+        social_pieces: [{ id: EARLIER, campaign_id: 'c1', kind: 'weekend_carousel', city: 'melbourne', moment_key: null, link: 'https://www.eventlinqs.com.au/city/melbourne' }],
+        social_piece_revisions: [{ piece_id: EARLIER, version: 1, event_ids: set.eventIds, picks: [], mode: 'graphic_led', slides, caption: OLD, versions: { instagram: { caption: OLD }, facebook: { caption: OLD } }, message: null, made_by: 'planner', made_at: '2026-11-23T11:15:00.000Z' }],
+        ...extra,
+      },
+      refuse,
+    })
+  }
+
+  it('a piece drawn before this rule, nobody having approved it, takes its own page when it is drawn again, and says so', async () => {
+    const { db, tables, writes } = drawnBeforeTheRule()
+    const out = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(out).toMatchObject({ state: 'drawn', pieceId: EARLIER, already: true, redrawn: true })
+    expect(writes.map((w) => `${w.op} ${w.table}`)).toEqual(['update social_pieces', 'insert social_piece_revisions'])
+    expect(tables.social_pieces?.[0]?.link).toBe(ownPage(EARLIER))
+    expect(out.state === 'drawn' && out.lines.join('\n')).toContain(`Its link now lands on its own page: ${ownPage(EARLIER)}.`)
+    // Drawn again with nothing changed since, nothing is written.
+    await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(writes.length).toBe(2)
+  })
+
+  it('a refused link is said, and the drawing still goes ahead', async () => {
+    const { db, tables } = drawnBeforeTheRule({}, { update: { social_pieces: 'permission denied for table social_pieces' } })
+    const out = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(out).toMatchObject({ state: 'drawn', redrawn: true })
+    expect(out.state === 'drawn' && out.lines.join('\n')).toContain('Its link could not be set to its own page (permission denied for table social_pieces).')
+    expect(tables.social_pieces?.[0]?.link).toBe('https://www.eventlinqs.com.au/city/melbourne')
+  })
+
+  it('an approved piece keeps its link and its words', async () => {
+    const { db, tables, writes } = drawnBeforeTheRule({ social_piece_approvals: [{ piece_id: EARLIER }] })
+    await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(writes).toEqual([])
+    expect(tables.social_pieces?.[0]?.link).toBe('https://www.eventlinqs.com.au/city/melbourne')
+  })
+
+  it('is a playbook rule, with its reason and its source', () => {
+    const rule = PLAYBOOK.find((r) => r.id === 'set-piece-lands-on-its-own-nights')
+    expect(rule?.source).toBe("the PM's RETURN of 04:05 on 24 November 2026 (comedy piece ed0c1dca)")
+    expect(rule?.rule).toContain('/ig?piece=<id>')
   })
 })

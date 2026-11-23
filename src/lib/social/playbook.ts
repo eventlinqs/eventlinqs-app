@@ -161,6 +161,13 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: RETURN_0405,
     date: '2026-11-24',
   },
+  {
+    id: 'set-piece-lands-on-its-own-nights',
+    rule: "A set piece's link lands on a page of exactly its own nights: one show's own event page, which holds its booking button; several shows' own page, /ig?piece=<id> (its newest revision's nights, still ahead and public, in date order, each on the approved marketplace card that leads to its event page and its booking button); never a city page where the visitor must hunt for them.",
+    reason: "After posting, the comedy piece's link landed on /city/melbourne, every Melbourne night, where the three Comedy Republic shows had to be hunted for; Lawal's 13:12 item 3: the whole booking journey to the right event.",
+    source: RETURN_0405,
+    date: '2026-11-24',
+  },
 ]
 
 /**
