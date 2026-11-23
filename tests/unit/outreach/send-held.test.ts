@@ -21,7 +21,7 @@ vi.mock('@/lib/outreach/crm', () => ({ confirmPageChecked: async () => (calls.pu
 vi.mock('@/lib/outreach/sender', () => ({ runOutreachSender: async (_db: unknown, deps: { only?: string[] }) => (calls.push(`sender:${(deps.only ?? []).join(',')}`), senderAnswer) }))
 vi.mock('@/lib/outreach/voice-gate', () => ({ approvalProblems: () => approval, readVoicePolicy: () => ({ version: '0123456789abcdef' }) }))
 
-type Row = { state: string; step: number; comms_category: string; internet_message_id?: string; sent_at?: string }
+type Row = { state: string; step: number; comms_category: string; comms_subtype?: string; internet_message_id?: string; sent_at?: string }
 function fakeDb(rows: Record<string, Row>) {
   const updates: { id: string; to: Record<string, unknown>; from: string | null }[] = []
   const db = {
@@ -91,6 +91,23 @@ describe('Send on a held first letter', () => {
     const { sendHeldFirstLetter } = await import('@/lib/outreach/send-held')
     const { db } = fakeDb({ t2: { state: 'held', step: 2, comms_category: 'ACQ' } })
     expect(await sendHeldFirstLetter(db, { ...base, touchId: 't2', byFounder: true })).toMatchObject({ state: 'refused', reason: 'it is not a held first letter' })
+  })
+
+  // The source ask (PERM-SOURCE; the founder, 12:14 and 14:55 of 23 November 2026) is pressed as a first letter too; any
+  // other PERM letter is not.
+  it('admits a held source ask (PERM-SOURCE) and no other PERM letter', async () => {
+    const { isPressableFirstLetter, sendHeldFirstLetter } = await import('@/lib/outreach/send-held')
+    expect(isPressableFirstLetter({ state: 'held', step: 1, comms_category: 'PERM', comms_subtype: 'PERM-SOURCE' })).toBe(true)
+    expect(isPressableFirstLetter({ state: 'held', step: 1, comms_category: 'ACQ', comms_subtype: 'ACQ-FIRST' })).toBe(true)
+    expect(isPressableFirstLetter({ state: 'held', step: 1, comms_category: 'PERM', comms_subtype: 'PERM-IMAGE' })).toBe(false)
+    expect(isPressableFirstLetter({ state: 'held', step: 2, comms_category: 'PERM', comms_subtype: 'PERM-SOURCE' })).toBe(false)
+    expect(isPressableFirstLetter({ state: 'queued', step: 1, comms_category: 'PERM', comms_subtype: 'PERM-SOURCE' })).toBe(false)
+    const rows = { s1: { state: 'held', step: 1, comms_category: 'PERM', comms_subtype: 'PERM-SOURCE' } as Row, p1: { state: 'held', step: 1, comms_category: 'PERM', comms_subtype: 'PERM-IMAGE' } as Row }
+    const { db, updates } = fakeDb(rows)
+    senderAnswer = { ...senderAnswer, sent: ['s1'] }
+    expect((await sendHeldFirstLetter(db, { ...base, touchId: 's1', byFounder: true })).state).toBe('sent')
+    expect(updates[0]).toMatchObject({ id: 's1', from: 'held', to: { state: 'queued' } })
+    expect(await sendHeldFirstLetter(db, { ...base, touchId: 'p1', byFounder: true })).toMatchObject({ state: 'refused', reason: 'it is not a held first letter' })
   })
 
   it('sends through the sender for that letter only, after the page check, and shows its receipt', async () => {

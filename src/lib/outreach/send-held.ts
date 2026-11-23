@@ -17,13 +17,23 @@ import { approvalProblems, readVoicePolicy, type VoicePolicy } from './voice-gat
  *      requires it before any letter leaves held;
  *   4. held to queued for now, then the sender's ONE path for this letter only (sender.ts runOutreachSender, only): the
  *      database's claim with its every check, business hours in their zone, one first letter per organiser, the words
- *      again, its mailbox from law 33's table (ACQ from lawal@), Graph;
+ *      again, its mailbox from law 33's table (ACQ from lawal@, a source ask from hello@), Graph;
  *   5. a letter the sender did not send goes back to held at once with the reason, so no scheduled run ever sends what
  *      his press did not.
+ * A held first letter is an acquisition first letter (ACQ), or a source ask (PERM-SOURCE: the founder, 12:14 and 14:55 of
+ * 23 November 2026, isPressableFirstLetter); no other letter is pressed here.
  * Graph's sendMail answers 202 and no id: the receipt is our own Message-ID and the time it was accepted; the Sent Items
  * sync then records Graph's own id on the organiser's timeline.
  */
 type Admin = SupabaseClient<Database>
+
+/**
+ * The first letters this press sends: an acquisition first letter, and the source ask (PERM-SOURCE; the founder, 12:14 of
+ * 23 November 2026: "Apply the already-approved communication workflow to routine source requests."). Pure.
+ */
+export function isPressableFirstLetter(row: { readonly state: string; readonly step: number | null; readonly comms_category: string | null; readonly comms_subtype?: string | null }): boolean {
+  return row.state === 'held' && row.step === 1 && (row.comms_category === 'ACQ' || row.comms_subtype === 'PERM-SOURCE')
+}
 
 export type SendHeldAnswer =
   | { readonly state: 'sent'; readonly touchId: string; readonly messageId: string; readonly at: string }
@@ -55,9 +65,9 @@ export async function sendHeldFirstLetter(db: Admin, input: SendHeldInput): Prom
   }
   const voice = await readTouchVoice(db, input.touchId)
   if (!voice) return refused('it is no longer waiting')
-  const row = await db.from('outreach_touches').select('state, step, comms_category').eq('id', input.touchId).maybeSingle()
+  const row = await db.from('outreach_touches').select('state, step, comms_category, comms_subtype').eq('id', input.touchId).maybeSingle()
   if (row.error || !row.data) return refused(`the letter could not be read${row.error ? `: ${row.error.message}` : ''}`)
-  if (row.data.state !== 'held' || row.data.step !== 1 || row.data.comms_category !== 'ACQ') return refused('it is not a held first letter')
+  if (!isPressableFirstLetter(row.data)) return refused('it is not a held first letter')
   const blocked = approvalProblems({ contentHash: input.contentHash, policyVersion: input.policyVersion, byFounder: true }, voice, policy)
   if (blocked.length > 0) return refused(blocked.join('; '))
   const checked = await confirmPageChecked(db, { touchId: input.touchId, by: input.by })

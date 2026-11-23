@@ -10,6 +10,7 @@ vi.mock('@/lib/outreach/voice-gate', async (orig) => ({
 }))
 
 import {
+  SELF_QUEUED_FIRST_LETTERS,
   gatewayContentHash,
   gatewayFirstLetter,
   letterApprovals,
@@ -21,6 +22,14 @@ import {
   type LetterApproval,
   type StandingApproval,
 } from '@/lib/outreach/self-queue'
+import { SOURCE_ASK_EMAIL, draftSourceAsk, type SourceAskData } from '@/lib/outreach/source-asks'
+import { HELLO_MAILBOX } from '@/lib/outreach/addresses'
+
+/** The source asks of 23 November 2026, each the template source_ask v1 with only its fields filled. */
+const SOURCE_LINK_ID = '00000000-0000-4000-8000-000000000004'
+const SOURCE_DRAFTS = (JSON.parse(readFileSync('scripts/ops/data/source-asks-23nov.json', 'utf8')) as SourceAskData).asks.map((a) =>
+  draftSourceAsk(a, `https://www.eventlinqs.com.au/unsubscribe/outreach?t=${SOURCE_LINK_ID}`),
+)
 
 /*
  * NO DAILY PRESS (the PM's item 2 of 00:05:52, 21 November 2026): a held first letter that clears under Lawal's standing
@@ -127,6 +136,7 @@ describe('the self queue', () => {
       const b = {
         select: () => b,
         eq: (k: string, v: unknown) => (call.filters.push([`eq:${k}`, v]), b),
+        or: (f: string) => (call.filters.push(['or', f]), b),
         limit: () => b,
         update: (p: unknown) => ((call.op = 'update'), (call.payload = p), b),
         single: done,
@@ -199,6 +209,60 @@ describe('the self queue', () => {
     const r = await queueApprovedHeldLetters(db, { now: NOW, policy, letterApprovals: [own] })
     expect(r.queued).toEqual([{ id: 'geelong', at: SATURDAY_6, why: "Lawal's own approval acq-test-02 of 2026-11-20T12:21:12+1100" }])
     expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: SATURDAY_6 })
+  })
+
+  // The source ask (the founder, 12:14 and 14:55 of 23 November 2026): read beside the acquisition letters, and queued
+  // itself when it clears under source_ask v1.
+  test('the engine reads held source asks beside acquisition letters, and queues one that clears', async () => {
+    expect(SELF_QUEUED_FIRST_LETTERS).toBe('comms_category.eq.ACQ,comms_subtype.eq.PERM-SOURCE')
+    const d = SOURCE_DRAFTS[0]
+    const { db, calls } = fakeDb([{ id: 'source', template: 'source_ask v1', mail: { template: 'source_ask v1', subject: d.subject ?? '', body: d.body, to: d.address } }])
+    const r = await queueApprovedHeldLetters(db, { now: NOW, policy })
+    expect(r.queued).toEqual([expect.objectContaining({ id: 'source', at: SATURDAY_6, why: expect.stringContaining('standing approval of source_ask v1') })])
+    const read = calls.find((c) => c.table === 'outreach_touches' && c.op === 'select' && c.filters.some(([k, v]) => k === 'eq:state' && v === 'held'))
+    expect(read?.filters).toEqual(expect.arrayContaining([['eq:step', 1], ['or', SELF_QUEUED_FIRST_LETTERS]]))
+  })
+})
+
+/*
+ * THE SOURCE ASK, A STANDING TEMPLATE THE ENGINE SENDS (the founder, 23 November 2026, 12:14: "Apply the already-approved
+ * communication workflow to routine source requests."; 14:55: "Just get my engine going, please: my outreach, my photo
+ * permissions, everything my system should be doing."): source_ask v1 is in the gateway's record and its copy, so each
+ * source ask, the template with only its fields filled, clears; a changed sentence does not.
+ */
+describe('the source ask, a standing template the engine sends', () => {
+  const entry = standingApprovals().find((a) => a.key === 'source_ask' && a.version === 1)
+
+  test("source_ask v1 is recorded on, with the founder's words, and is the code's template word for word", () => {
+    expect(entry?.on).toBe(true)
+    expect(entry?.words).toContain('Just get my engine going, please: my outreach, my photo permissions, everything my system should be doing.')
+    expect(entry?.words).toContain('Apply the already-approved communication workflow to routine source requests.')
+    expect(entry?.policy_version).toBe(POLICY)
+    expect(entry?.subject).toBe(SOURCE_ASK_EMAIL.subject)
+    expect(entry?.body).toBe(SOURCE_ASK_EMAIL.body)
+  })
+
+  test('each source ask, the template with only its fields filled, clears under it', () => {
+    expect(SOURCE_DRAFTS.length).toBeGreaterThan(0)
+    for (const d of SOURCE_DRAFTS) {
+      const r = standingClear({ template: 'source_ask v1', subject: d.subject ?? '', body: d.body }, POLICY)
+      expect([d.id, r.cleared, r.reason]).toEqual([d.id, true, expect.stringContaining('standing approval of source_ask v1')])
+    }
+  })
+
+  test('a changed sentence, an ask with no question, a subject off the template or a link with no token does not clear', () => {
+    const d = SOURCE_DRAFTS[0]
+    const clear = (subject: string, body: string) => standingClear({ template: 'source_ask v1', subject, body }, POLICY).cleared
+    expect(clear(d.subject ?? '', d.body.replace('with a link back to its own page', 'with a link to its page'))).toBe(false)
+    expect(clear(d.subject ?? '', d.body.replace('?\n\nThanks for your time.', '.\n\nThanks for your time.'))).toBe(false)
+    expect(clear(`${d.subject} today`, d.body)).toBe(false)
+    expect(clear(d.subject ?? '', d.body.replace(SOURCE_LINK_ID, 'not-a-token'))).toBe(false)
+  })
+
+  test("a source ask's own approval is hashed as the gateway is given it, from hello@", () => {
+    const d = SOURCE_DRAFTS[0]
+    expect(gatewayFirstLetter({ subject: d.subject ?? '', body: d.body, to: d.address, category: 'PERM' }).from).toBe(HELLO_MAILBOX)
+    expect(gatewayFirstLetter({ subject: d.subject ?? '', body: d.body, to: d.address }).from).not.toBe(HELLO_MAILBOX)
   })
 })
 

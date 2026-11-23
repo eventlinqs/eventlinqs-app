@@ -97,11 +97,12 @@ export function gatewayContentHash(msg: Readonly<Record<string, unknown>>): stri
 }
 
 /**
- * A held first letter as the gateway is given it: an email from lawal@ to the organiser's address (a list of one, as
- * the approved message files carry it: C:\dev\EVIDENCE\EL-20NOV\acq\letters-today), greeted by its first line.
+ * A held first letter as the gateway is given it: an email from its category's mailbox (law 33 (a): an ACQ letter from
+ * lawal@, a source ask, PERM, from hello@) to the organiser's address (a list of one, as the approved message files carry
+ * it: C:\dev\EVIDENCE\EL-20NOV\acq\letters-today), greeted by its first line.
  */
-export function gatewayFirstLetter(letter: { readonly subject: string; readonly body: string; readonly to: string | null }): Record<string, unknown> {
-  const from = mailboxFor({ category: 'ACQ', purpose: 'cadence' })
+export function gatewayFirstLetter(letter: { readonly subject: string; readonly body: string; readonly to: string | null; readonly category?: string | null }): Record<string, unknown> {
+  const from = mailboxFor({ category: letter.category ?? 'ACQ', purpose: 'cadence' })
   const greeting = /^Hi ([^,\n]{1,80}),$/.exec(letter.body.split('\n')[0] ?? '')?.[1] ?? null
   return { channel: 'email', category: 'first_contact', from: 'mailbox' in from ? from.mailbox : null, to: letter.to ? [letter.to] : null, subject: letter.subject, greeting_name: greeting, body: letter.body, thread_ref: null }
 }
@@ -111,7 +112,7 @@ export function gatewayFirstLetter(letter: { readonly subject: string; readonly 
  * standing approval decides; otherwise that approval alone decides, never the standing one.
  */
 export function ownApprovalClear(
-  letter: { readonly subject: string; readonly body: string; readonly to: string | null },
+  letter: { readonly subject: string; readonly body: string; readonly to: string | null; readonly category?: string | null },
   policyVersion: string,
   approvals: readonly LetterApproval[] = letterApprovals(),
 ): { readonly cleared: boolean; readonly reason: string } | null {
@@ -135,6 +136,11 @@ const FIELD_FORMS: Readonly<Record<string, string>> = {
   'city slug': '[a-z0-9]+(?:-[a-z0-9]+)*',
   'what they run, or events': 'events',
   'unsubscribe link': 'https://www\\.eventlinqs\\.com\\.au/unsubscribe/outreach\\?t=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+  // The source ask's fields (source_ask v1; the founder, 12:14 and 14:55 of 23 November 2026): the listings its subject
+  // names, the website whose events it would include, and its ask, one paragraph ending in its one question.
+  listings: '[A-Za-z0-9][^\\n\\[\\]]{0,79}',
+  site: '[A-Za-z0-9][^\\n\\[\\]]{0,79}',
+  ask: '[A-Z][^\\n\\[\\]]{19,599}\\?',
 }
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`)
@@ -215,7 +221,14 @@ export type SelfQueueReport = {
   readonly replanned?: { readonly id: string; readonly from: string; readonly to: string }[]
 }
 
-type HeldFirst = { id: string; contact_id: string; subject: string | null; body: string; outreach_templates: { key: string; version: number } | null }
+type HeldFirst = { id: string; contact_id: string; comms_category?: string | null; subject: string | null; body: string; outreach_templates: { key: string; version: number } | null }
+
+/**
+ * THE FIRST LETTERS THE ENGINE SENDS ITSELF: an acquisition first letter (ACQ), and the source ask (PERM-SOURCE: the
+ * founder, 12:14 and 14:55 of 23 November 2026; source_ask v1 is a standing template). Every other PERM letter keeps its
+ * own path (law 49's plays queue their own). As a PostgREST filter on outreach_touches.
+ */
+export const SELF_QUEUED_FIRST_LETTERS = 'comms_category.eq.ACQ,comms_subtype.eq.PERM-SOURCE'
 
 export async function queueApprovedHeldLetters(
   db: Admin,
@@ -233,10 +246,10 @@ export async function queueApprovedHeldLetters(
   }
   const held = await db
     .from('outreach_touches')
-    .select('id, contact_id, subject, body, outreach_templates(key, version)')
+    .select('id, contact_id, comms_category, subject, body, outreach_templates(key, version)')
     .eq('state', 'held')
     .eq('step', 1)
-    .eq('comms_category', 'ACQ')
+    .or(SELF_QUEUED_FIRST_LETTERS)
     .limit(200)
   if (held.error) throw new Error(`the held first letters: ${held.error.message}`)
   for (const t of (held.data ?? []) as unknown as HeldFirst[]) {
@@ -249,7 +262,7 @@ export async function queueApprovedHeldLetters(
     reasons.push(...voiceProblems(voice, policy))
     const template = t.outreach_templates ? `${t.outreach_templates.key} v${t.outreach_templates.version}` : ''
     const contact = await db.from('organiser_contacts').select('basis, no_marketing_statement_checked, address, engine_check_note, engine_checked_on').eq('id', t.contact_id).maybeSingle()
-    const own = ownApprovalClear({ subject: t.subject ?? '', body: t.body, to: contact.data?.address ?? null }, policy.version, deps.letterApprovals ?? letterApprovals())
+    const own = ownApprovalClear({ subject: t.subject ?? '', body: t.body, to: contact.data?.address ?? null, category: t.comms_category ?? 'ACQ' }, policy.version, deps.letterApprovals ?? letterApprovals())
     const clear = own ?? standingClear({ template, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
     if (!clear.cleared) reasons.push(clear.reason)
     if (contact.error || !contact.data) reasons.push('its contact could not be read')
@@ -279,7 +292,7 @@ export async function queueApprovedHeldLetters(
   // later than the next opening of the current window, as one queued under an earlier window is, goes at that opening.
   // Follow ups keep their own day; a letter slotted at or before the opening is never touched.
   const window = sendWindowOf(sender.data)
-  const queued = await db.from('outreach_touches').select('id, contact_id, scheduled_for').eq('state', 'queued').eq('step', 1).eq('comms_category', 'ACQ').limit(200)
+  const queued = await db.from('outreach_touches').select('id, contact_id, scheduled_for').eq('state', 'queued').eq('step', 1).or(SELF_QUEUED_FIRST_LETTERS).limit(200)
   if (queued.error) throw new Error(`the queued first letters: ${queued.error.message}`)
   const replanned: { id: string; from: string; to: string }[] = []
   for (const q of (queued.data ?? []) as { id: string; contact_id: string; scheduled_for: string | null }[]) {
