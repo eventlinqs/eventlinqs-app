@@ -1613,7 +1613,7 @@ export function offerCaptions(hook: string, body: readonly string[], origin: str
 
 /**
  * AN APPROVED SET, PLANNED (the founder, 23 November 2026, 14:34: the engine posts Lawal's approved designs "with the
- * engine's own captions, windows and Facebook links"; the creative policy of 13:41, law37.ts; the sets in approved-sets.ts).
+ * engine's own captions, windows and Facebook links"; the creative policy of 13:41 of 23 November 2026, law37.ts; the sets in approved-sets.ts).
  * Beside the organiser offer, the other piece made from approved files. Its slides are the set's files, each posted as it
  * is, in the set's order, and each carries the set's first night (a cover or a list shows the whole set; a poster and its
  * why go show the one night), so the gate reads that night again at approval and publishing and holds the piece once it

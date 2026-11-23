@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
   }
 
   // LAWAL'S APPROVED SETS, DRAWN, THEN APPROVED BY THE PM, NEVER POSTED HERE (the founder, 23 November 2026, 14:34; the
-  // creative policy of 13:41; src/lib/social/approved-sets.ts). ?post=now&stage=intake&set=<name> draws the set as an
+  // creative policy of 13:41 of 23 November 2026; approved-sets.ts). ?post=now&stage=intake&set=<name> draws the set as an
   // unapproved feed carousel for the PM's review (store.ts drawApprovedSet); ?post=now&stage=approve&piece=<id> records only
   // the checked approval of a drawn set (approveApprovedSet), and the ordinary scheduler gives it its band inside its
   // window. Neither stage schedules or publishes. Started only by .github/workflows/social-post-now.yml.

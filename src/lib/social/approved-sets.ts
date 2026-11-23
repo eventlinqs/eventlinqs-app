@@ -5,7 +5,7 @@ import { APPROVED_FILE_PREFIX, isApprovedFileUrl, type PieceKind, type Slide } f
  * designed artwork (the creative policy's designed artwork kind, nothing more) and loads the approved files ... with the
  * engine's own captions, windows and Facebook links: comedy carousel (cover plus three shows), live music carousel (cover
  * plus four choices), Kyivska carousel (poster plus why go) ... Windows: comedy and music before Friday 27 November
- * evening; Kyivska before Saturday 5 December."; the creative policy of 13:41, law37.ts).
+ * evening; Kyivska before Saturday 5 December."; the creative policy of 13:41 of 23 November 2026, law37.ts).
  *
  * Each set is its name, Lawal's approved files in slide order (public/social/approved/, converted from the approved PNGs
  * of C:\dev\EVIDENCE\EL-23NOV\claude-design\APPROVED-1305 at 1080 by 1350, JPEG quality 92, nothing else changed) and the
