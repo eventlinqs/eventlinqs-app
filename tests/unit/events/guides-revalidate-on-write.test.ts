@@ -53,7 +53,7 @@ describe('every guide at once', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/events', undefined)
     // The Weekend Guide lists Victoria's nights (law 46 (b)), so every guide's refresh refreshes it (law 16).
     expect(revalidatePath).toHaveBeenCalledWith('/weekend', undefined)
-    // /ig lists the nights our Instagram posts named, in every city (Lawal, 23 November 2026, 12:47).
+    // /ig lists the nights our posts named, in every city (Lawal's ruling of 23 November 2026).
     expect(revalidatePath).toHaveBeenCalledWith('/ig', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/city/[slug]', 'page')

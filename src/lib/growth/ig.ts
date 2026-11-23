@@ -48,6 +48,8 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
       .from('social_piece_postings')
       .select('piece_id, post_url, posted_at, social_piece_approvals(revision)')
       .eq('platform', 'instagram')
+      // Public posts only: a partner kit marked sent is never a post (scripts/guards/kit-sent-reads-the-touch.mjs).
+      .neq('post_url', 'sent')
       .gte('posted_at', since)
       .lte('posted_at', now.toISOString())
       .order('posted_at', { ascending: false })
