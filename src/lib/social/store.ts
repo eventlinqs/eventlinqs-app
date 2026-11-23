@@ -1270,6 +1270,34 @@ function revisionRow(pieceId: string, version: number, p: PiecePlan, message: st
   }
 }
 
+/** A piece and its first revision written, or refused with the reason (duplicate: the week holds its place already). */
+export type PieceWritten = { readonly pieceId: string } | { readonly refused: string; readonly duplicate: boolean }
+
+/**
+ * A PIECE AND ITS FIRST REVISION ARE WRITTEN TOGETHER (the PM's intake of 23 and 24 November 2026: the comedy set's piece
+ * 28e4096c was kept at 22:14 on 23 November while the database refused its words, and the empty piece held the week's one
+ * Melbourne weekend carousel place, so the next intake was refused). The two rows are two writes, so when the revision is
+ * refused the piece is removed at once, and the answer to that removal is read: the database allows it only for a piece
+ * with nothing written under it (migration 20261124030001). The one writer of every piece and its first revision: the
+ * week's planner (with the lifecycle's moments, the partner kits and the owner's Post now it draws through) and the
+ * approved sets' intake. Never a piece without words, and a removal refused is said, never silent.
+ */
+export async function writePieceWithFirstRevision(
+  db: Db,
+  piece: Record<string, unknown>,
+  firstRevision: (pieceId: string) => Record<string, unknown>,
+): Promise<PieceWritten> {
+  const { data, error: perr } = await db.from('social_pieces').insert(piece).select('id').single()
+  if (perr || !data) return { refused: refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row', duplicate: perr?.code === '23505' }
+  const pieceId = data.id as string
+  const { error: rerr } = await db.from('social_piece_revisions').insert(firstRevision(pieceId))
+  if (!rerr) return { pieceId }
+  const words = `its words were not kept (${refusalOf(rerr.message) ?? rerr.message})`
+  const { error: derr } = await db.from('social_pieces').delete().eq('id', pieceId)
+  if (derr) return { refused: `${words}, and its empty piece ${pieceId} could not be removed (${derr.message}); it holds its place until a person removes it`, duplicate: false }
+  return { refused: `${words}; its empty piece was removed, so the place is free`, duplicate: false }
+}
+
 /**
  * existing counts today's plan found already kept; kept is every piece the week holds after this press, which is the
  * number the founder is told (a night ended since Monday takes its partner kit out of today's plan, not out of the week).
@@ -1364,20 +1392,15 @@ export async function planCampaignWeek(db: Db, input: { readonly plannedBy: stri
       const printed = own.url.replace(/^https?:\/\//, '').replace(/^www\./, '')
       p.slides = p.slides.map((s) => (s.t === 'poster' ? { ...s, night: { ...s.night, shortLink: printed } } : s))
     }
-    const { data: piece, error: perr } = await db
-      .from('social_pieces')
-      .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, poster_day: p.posterDay ?? null, moment_key: p.momentKey ?? null, planned_at: input.now.toISOString() })
-      .select('id')
-      .single()
-    if (perr || !piece) {
+    const written = await writePieceWithFirstRevision(
+      db,
+      { campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link, format: p.format, partner_name: p.partnerName, share_link_id: shareLinkId, poster_day: p.posterDay ?? null, moment_key: p.momentKey ?? null, planned_at: input.now.toISOString() },
+      (pieceId) => revisionRow(pieceId, 1, p, message, 'planner', input.plannedBy, input.now),
+    )
+    if ('refused' in written) {
       /* A second press racing the first: the database kept one, which is the rule, not a fault. */
-      if (perr?.code === '23505') existing += 1
-      else held.push(`${p.kind} ${p.city}: ${refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row'}`)
-      continue
-    }
-    const { error: rerr } = await db.from('social_piece_revisions').insert(revisionRow(piece.id as string, 1, p, message, 'planner', input.plannedBy, input.now))
-    if (rerr) {
-      held.push(`${p.kind} ${p.city}: its words were not kept: ${refusalOf(rerr.message) ?? rerr.message}`)
+      if (written.duplicate) existing += 1
+      else held.push(`${p.kind} ${p.city}: ${written.refused}`)
       continue
     }
     created += 1
@@ -1452,22 +1475,16 @@ export async function drawApprovedSet(db: Db, input: { readonly set: string; rea
   if (cerr) return { state: 'refused', set: set.name, reason: `Not drawn: the week's campaign could not be kept (${cerr.message}).` }
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) return { state: 'refused', set: set.name, reason: "Not drawn: the week's campaign could not be read." }
-  const { data: piece, error: perr } = await db
-    .from('social_pieces')
-    .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() })
-    .select('id')
-    .single()
-  if (perr || !piece) {
-    const why = perr?.code === '23505' ? `this week's campaign already holds a ${p.kind.replace(/_/g, ' ')} piece for ${p.city}` : (refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row')
+  const written = await writePieceWithFirstRevision(
+    db,
+    { campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
+    (id) => revisionRow(id, 1, p, null, 'planner', null, input.now),
+  )
+  if ('refused' in written) {
+    const why = written.duplicate ? `this week's campaign already holds a ${p.kind.replace(/_/g, ' ')} piece for ${p.city}` : written.refused
     return { state: 'refused', set: set.name, reason: `Not drawn: ${why}.` }
   }
-  const pieceId = piece.id as string
-  const { error: rerr } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, 1, p, null, 'planner', null, input.now))
-  if (rerr) {
-    // A piece with no words is never left behind: it would hold the week's place for its kind and never post.
-    await db.from('social_pieces').delete().eq('id', pieceId)
-    return { state: 'refused', set: set.name, reason: `Not drawn: its words were not kept (${refusalOf(rerr.message) ?? rerr.message}).` }
-  }
+  const pieceId = written.pieceId
   return {
     state: 'drawn',
     set: set.name,

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
@@ -10,6 +10,7 @@ import { law37Refusal } from '@/lib/social/law37'
 import { pieceCorrections, pieceQuality, type QualityNight } from '@/lib/social/piece-quality'
 import { approveApprovedSet, drawApprovedSet, readCampaignNights } from '@/lib/social/store'
 import { timingOf } from '@/lib/social/timing'
+import { PLAYBOOK } from '@/lib/social/playbook'
 
 /*
  * LAWAL'S APPROVED SETS (the founder, 23 November 2026, 14:34: "the smallest car that lets the engine publish designed
@@ -65,8 +66,10 @@ const EVENTS: Row[] = [
 const CITIES: Row[] = [{ slug: 'melbourne', name: 'Melbourne', free_guide: true, is_active: true, display_order: 1 }]
 
 /** A database as these reads and writes use it: every filter they send, the unique rules they meet, and every write kept. */
-function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]> } = {}) {
+function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]>; refuse?: { insert?: Record<string, string>; delete?: Record<string, string> } } = {}) {
   const tables: Record<string, Row[]> = { cities: CITIES, events: seed.events ?? EVENTS, ...(seed.tables ?? {}) }
+  // A refusal the database answers, as production did (a check on an insert; a missing grant on a delete), by table.
+  const refuse = { insert: { ...(seed.refuse?.insert ?? {}) }, delete: { ...(seed.refuse?.delete ?? {}) } }
   const writes: { table: string; op: string; rows: Row[] }[] = []
   let made = 0
   const subset = (have: unknown, want: unknown): boolean => {
@@ -83,6 +86,8 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]> } = {}) {
     let order: { k: string; asc: boolean } | null = null
     const cmp = (k: string, f: (a: string, b: string) => boolean) => (v: unknown) => (filters.push((r) => r[k] != null && f(String(r[k]), String(v))), q)
     const run = () => {
+      if (op === 'insert' && refuse.insert[table]) return { data: null, error: { code: '23514', message: refuse.insert[table] } }
+      if (op === 'delete' && refuse.delete[table]) return { data: null, error: { code: '42501', message: refuse.delete[table] } }
       if (op === 'insert' || op === 'upsert') {
         const rows = payload.map((r): Row => ({ id: r.id ?? `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`, ...r }))
         const have = tables[table] ?? []
@@ -143,7 +148,7 @@ function fakeDb(seed: { events?: Row[]; tables?: Record<string, Row[]> } = {}) {
       throw new Error(`the fixture holds no function ${name}`)
     },
   }
-  return { db: db as never, tables, writes }
+  return { db: db as never, tables, writes, refuse }
 }
 
 const nightsOf = async (set: ApprovedSet, events: Row[] = EVENTS) =>
@@ -399,3 +404,53 @@ describe("stage approve: the PM's checked approval only", () => {
   })
 })
 
+/*
+ * A PIECE AND ITS FIRST REVISION ARE WRITTEN TOGETHER (the PM's intake of 23 and 24 November 2026): the comedy set's
+ * piece 28e4096c was kept at 22:14 on 23 November while the caption check refused its words, the clean up's delete was
+ * refused by a missing grant and never read, and the empty piece held the week's Melbourne weekend carousel place.
+ */
+describe('a piece and its first revision are written together', () => {
+  const REFUSED_WORDS = 'new row for relation "social_piece_revisions" violates check constraint "social_piece_revisions_caption_check"'
+
+  it('when the database refuses the first words, the empty piece is removed, and the next intake finds the place free', async () => {
+    const { db, tables, writes, refuse } = fakeDb({ refuse: { insert: { social_piece_revisions: REFUSED_WORDS } } })
+    const first = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(first.state).toBe('refused')
+    expect(first.state === 'refused' && first.reason).toMatch(/its words were not kept .*social_piece_revisions_caption_check.*; its empty piece was removed, so the place is free/)
+    expect(tables.social_pieces ?? []).toEqual([])
+    expect(writes.map((w) => `${w.op} ${w.table}`)).toEqual(['upsert social_campaigns', 'insert social_pieces', 'delete social_pieces'])
+    // The rule the database refused by is put right (train seven's migration): the next intake draws, the place being free.
+    delete refuse.insert.social_piece_revisions
+    const second = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+    expect(second).toMatchObject({ state: 'drawn', already: false })
+    expect((tables.social_pieces ?? []).length).toBe(1)
+  })
+
+  it('a removal the database refuses is said, never left silent', async () => {
+    const { db, tables } = fakeDb({ refuse: { insert: { social_piece_revisions: REFUSED_WORDS }, delete: { social_pieces: 'permission denied for table social_pieces' } } })
+    const out = await drawApprovedSet(db, { set: 'kyivska-perepichka', now: NOW })
+    expect(out.state === 'refused' && out.reason).toMatch(/its empty piece \S+ could not be removed \(permission denied for table social_pieces\); it holds its place until a person removes it/)
+    expect((tables.social_pieces ?? []).length).toBe(1)
+  })
+
+  it('every path that writes a piece writes it through the one writer, which removes the piece when its words are refused', () => {
+    const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
+    const store = src('src/lib/social/store.ts')
+    const writer = store.slice(store.indexOf('export async function writePieceWithFirstRevision('), store.indexOf('\n}\n', store.indexOf('export async function writePieceWithFirstRevision(')))
+    expect(writer).toContain(".from('social_pieces').insert(piece)")
+    expect(writer).toContain(".from('social_pieces').delete().eq('id', pieceId)")
+    expect(writer).toMatch(/const \{ error: derr \} = await db\.from\('social_pieces'\)\.delete\(\)/)
+    // The one insert into social_pieces anywhere in src is the writer's own (the planner, its lifecycle moments, partner
+    // kits and the owner's Post now draw through planCampaignWeek; the approved sets through drawApprovedSet).
+    const inserts = [...store.matchAll(/from\('social_pieces'\)\s*\.insert\(/g)].length
+    expect(inserts).toBe(1)
+    for (const fn of ['export async function planCampaignWeek(', 'export async function drawApprovedSet(']) {
+      const at = store.indexOf(fn)
+      expect(store.slice(at, store.indexOf('\n}\n', at)), fn).toContain('await writePieceWithFirstRevision(')
+    }
+  })
+
+  it('is a playbook rule, with its reason and its source', () => {
+    expect(PLAYBOOK.find((r) => r.id === 'piece-and-first-revision-together')?.source).toBe("the PM's intake of 23 and 24 November 2026")
+  })
+})

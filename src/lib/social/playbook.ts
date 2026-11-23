@@ -25,12 +25,13 @@ export type PlaybookRule = {
 }
 
 /** The version of this list: the day of its newest rule. */
-export const PLAYBOOK_VERSION = '2026-11-23'
+export const PLAYBOOK_VERSION = '2026-11-24'
 
 const RETURN_1530 = "the PM's RETURN of 15:30 on piece da22e104 (A Moment of Sanity), 23 November 2026; Lawal's 16:04"
 const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:34 (DESIGN-REVIEW-SEVEN-23NOV.md)"
 const DECISION_1247 = "Lawal's final creative decision, 23 November 2026, 12:47 (FINAL-CREATIVE-DECISION-23NOV.md)"
 const INTAKE_2215 = "the PM's intake read of 23 November 2026, 22:15"
+const INTAKE_2324 = "the PM's intake of 23 and 24 November 2026"
 
 export const PLAYBOOK: readonly PlaybookRule[] = [
   {
@@ -137,6 +138,13 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     reason: "Each row of the live music caption repeated 'Fri 27 Nov' under the line that already says Friday 27 November.",
     source: `${INTAKE_2215} (live music, piece 8d252108)`,
     date: '2026-11-23',
+  },
+  {
+    id: 'piece-and-first-revision-together',
+    rule: 'A piece and its first revision are written together: when the database refuses the first words, the piece is removed at once and the removal is read, so no empty piece ever holds a week\'s place; one writer (writePieceWithFirstRevision) for every path.',
+    reason: "At 22:14 on 23 November the comedy set's piece 28e4096c was kept while the caption check refused its words; the clean up's delete was refused by a missing grant and never read, the empty piece held the week's one Melbourne weekend carousel place, and the next intake was refused: 'this week's campaign already holds a weekend carousel piece for melbourne'.",
+    source: INTAKE_2324,
+    date: '2026-11-24',
   },
 ]
 
