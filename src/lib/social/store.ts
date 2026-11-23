@@ -37,6 +37,7 @@ import { slidesMisfit } from './destination-check'
 import type { BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
+import { intakeFaults, intakeOfRow, intakeRow, planIntakePiece, slidesOf as slidesOfIntake, stateAfter, type GateStage, type IntakeInput, type IntakeRead, type IntakeRecord, type IntakeState, type Network, type RegisterAsset } from '@/lib/creative/intake'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -886,7 +887,7 @@ export async function pieceDependencies(
   db: Db,
   pieceId: string,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
@@ -895,6 +896,9 @@ export async function pieceDependencies(
   const rev = await newestRevision(db, pieceId)
   if (rev === null) return ['The piece has no version to approve.']
   const ids = rev.eventIds
+  /* THE CREATIVE INTAKE'S GATES, AGAIN, at approval and immediately before publishing (creative/intake.ts): a creative
+     piece is held by any reason its record now has, and on a network its record does not name. */
+  if (String(piece.kind) === 'creative') issues.push(...(await intakeIssuesAtPublish(db, pieceId, rev, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: opts.goesAt, platform: opts.platform })))
 
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
@@ -1494,6 +1498,233 @@ export async function approveApprovedSet(db: Db, input: { readonly pieceId: stri
   const done = await approvePieceChecked(db, input)
   if (done.state === 'refused') return { state: 'refused', pieceId: input.pieceId, set: set.name, reason: done.reason }
   return { state: 'approved', pieceId: input.pieceId, set: set.name, reason: null }
+}
+
+/* ------------------------------------------------------------------ the creative intake (src/lib/creative/intake.ts) */
+
+/** The register's assets a record's images rest on, read now, each with the record's nights it is usable for this minute. */
+async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<string, RegisterAsset>> {
+  const ids = [...new Set(r.images.flatMap((i) => (i.restsOn.kind === 'asset' || i.restsOn.kind === 'organiser_artwork' ? [i.restsOn.assetId] : [])))]
+  const out = new Map<string, RegisterAsset>()
+  if (ids.length === 0) return out
+  const { data, error } = await db.from('social_assets').select('id, asset_url, asset_type, event_id, source_width, source_height').in('id', ids)
+  if (error) throw new Error(`the register's assets could not be read: ${error.message}`)
+  for (const a of (data ?? []) as Record<string, unknown>[]) {
+    const usableFor = new Set<string>()
+    for (const id of r.eventIds) {
+      // The register's own rule (social_asset_usable), asked and never restated: approved, in scope, current, this night's.
+      const { data: ok, error: uerr } = await db.rpc('social_asset_usable', { p_url: String(a.asset_url), p_event: id, p_at: now.toISOString() })
+      if (uerr) throw new Error(`whether the asset ${String(a.id)} may be used could not be read: ${uerr.message}`)
+      if (ok === true) usableFor.add(id)
+    }
+    out.set(String(a.id), {
+      id: String(a.id),
+      assetUrl: String(a.asset_url),
+      assetType: String(a.asset_type),
+      eventId: (a.event_id as string | null) ?? null,
+      width: (a.source_width as number | null) ?? null,
+      height: (a.source_height as number | null) ?? null,
+      usableFor,
+    })
+  }
+  return out
+}
+
+/** Each yes a record's images rest on, and the record's nights it covers now: the yes the database names for that night. */
+async function intakeGrantsOf(db: Db, r: IntakeInput): Promise<Map<string, Set<string>>> {
+  const ids = new Set(r.images.flatMap((i) => (i.restsOn.kind === 'grant' ? [i.restsOn.grantId] : [])))
+  const out = new Map<string, Set<string>>()
+  if (ids.size === 0) return out
+  for (const id of r.eventIds) {
+    const { data, error } = await db.rpc('organiser_permission_for', { p_event: id })
+    if (error) throw new Error(`the yes that covers ${id} could not be read: ${error.message}`)
+    const yes = (Array.isArray(data) ? data[0] : data) as { id?: string | null } | null
+    if (yes?.id && ids.has(yes.id)) out.set(yes.id, new Set([...(out.get(yes.id) ?? []), id]))
+  }
+  return out
+}
+
+/**
+ * EVERYTHING THE INTAKE'S GATES READ, AT THAT MINUTE: the record's nights by the public rule (the night reader every piece
+ * uses), the timing engine's window from their rows, the venues, the register's assets and the yeses, its images as Car A's
+ * slides measured against each destination, and, at intake, the booking destination's own page (before publishing,
+ * pieceDependencies reads that page itself). A read that fails throws, and the caller holds the record with it.
+ */
+export async function readIntakeFacts(
+  db: Db,
+  r: IntakeInput,
+  now: Date,
+  opts: { readonly stage: GateStage; readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date },
+): Promise<{ readonly read: IntakeRead; readonly slides: readonly Slide[] | null; readonly slideRefusal: string | null }> {
+  const fetcher = opts.fetcher ?? fetch
+  const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(now), now, { ids: r.eventIds })
+  const byId = new Map(nights.map((n) => [n.eventId, n]))
+  const { data: rows, error } = await db.from('events').select(NIGHT_COLUMNS).in('id', [...r.eventIds])
+  if (error) throw new Error(`the nights could not be read again: ${error.message}`)
+  // At intake the window is read for the record's own expiry, so the record's timeline is judged whole; before publishing,
+  // for the minute it goes (timing.ts: a piece's window is its own day's, never later than two hours before the doors).
+  const timing = timingOfRows(null, (rows ?? []) as Record<string, unknown>[], opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.expiresAt), now)
+  const aliases = await venueAliasesOf(db, [...new Set(nights.map((n) => n.venueId).filter((v): v is string => typeof v === 'string'))])
+  const assets = await intakeAssetsOf(db, r, now)
+  const grants = await intakeGrantsOf(db, r)
+  const planned = slidesOfIntake(r, assets, byId)
+  const slides = 'slides' in planned ? planned.slides : null
+  const misfits = new Map<Network, string | null>()
+  for (const net of r.destinations) {
+    try {
+      misfits.set(net, slides ? await slidesMisfit(slides, net, r.format, fetcher) : null)
+    } catch (e) {
+      misfits.set(net, `its fit for ${net} could not be read (${e instanceof Error ? e.message : String(e)})`)
+    }
+  }
+  const page = opts.stage === 'intake' ? await answers(fetcher, `${opts.siteOrigin.replace(/\/$/, '')}${new URL(r.link).pathname}`) : null
+  return {
+    read: { nights: byId, aliases, known: await knownVenuesOf(db), timing, assets, grants, page, misfits },
+    slides,
+    slideRefusal: 'refused' in planned ? planned.refused : null,
+  }
+}
+
+/** A record's check, kept on it: when, at which stage, every reason, and the state it leaves. A failed write is said. */
+async function keepIntakeCheck(db: Db, id: string, input: { readonly stage: GateStage; readonly faults: readonly string[]; readonly state: IntakeState; readonly now: Date; readonly pieceId?: string }): Promise<string | null> {
+  const { error } = await db
+    .from('creative_intake')
+    .update({ state: input.state, checked_at: input.now.toISOString(), checked_stage: input.stage, check_reasons: input.faults.map((f) => f.slice(0, 1000)), ...(input.pieceId ? { piece_id: input.pieceId } : {}) })
+    .eq('id', id)
+  return error ? `the check could not be kept on ${id}: ${error.message}` : null
+}
+
+/**
+ * A FINISHED PIECE RECEIVED: kept as one creative_intake record exactly as handed in (the database refuses a record out
+ * of shape, said here), then checked and, passed, handed off (checkIntake). Never a publication by itself.
+ */
+export async function receiveIntake(
+  db: Db,
+  input: IntakeInput,
+  opts: { readonly now: Date; readonly siteOrigin: string; readonly fetcher?: Fetcher },
+): Promise<IntakeChecked | { readonly state: 'refused'; readonly reason: string }> {
+  const { data, error } = await db.from('creative_intake').insert(intakeRow(input)).select('id').single()
+  if (error || !data) return { state: 'refused', reason: `Not received: ${refusalOf(error?.message ?? '') ?? error?.message ?? 'no row'}.` }
+  return checkIntake(db, String((data as { id: string }).id), opts)
+}
+
+/** One intake record by its id, or null. */
+export async function readIntake(db: Db, id: string): Promise<IntakeRecord | null> {
+  const { data, error } = await db.from('creative_intake').select('*').eq('id', id).maybeSingle()
+  if (error) throw new Error(`the intake record ${id} could not be read: ${error.message}`)
+  return data ? intakeOfRow(data as Record<string, unknown>) : null
+}
+
+/** The outcome of a check at intake: its state, every reason, and the piece Car A holds once it passed. */
+export type IntakeChecked = { readonly id: string; readonly state: IntakeState; readonly faults: readonly string[]; readonly pieceId: string | null; readonly lines: readonly string[] }
+
+/**
+ * THE INTAKE'S CHECK AND ITS HANDOFF (the founder's section F; the PM's 12:18, items 2 and 3). The record's gates run on
+ * what is read that minute (creative/intake.ts intakeFaults). A failure holds the record with every reason, and nothing is
+ * drawn in its place: NO FALLBACK, the slot it would have filled is left empty and the reason is the log. A record past its
+ * expiry is EXPIRED. A record that passes is handed to Car A at once (drawIntakePiece) as a 'creative' piece with its first
+ * revision, UNAPPROVED and unscheduled: the PM's verify approves it (approvePieceChecked), the ordinary scheduler gives it
+ * its band, and publishDuePieces runs these gates again before the provider is called.
+ */
+export async function checkIntake(db: Db, id: string, input: { readonly now: Date; readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<IntakeChecked> {
+  const r = await readIntake(db, id)
+  if (r === null) return { id, state: 'held', faults: [`[shape] No intake record ${id}.`], pieceId: null, lines: [] }
+  if (r.state === 'handed_off' && r.pieceId) return { id, state: r.state, faults: [], pieceId: r.pieceId, lines: [`Handed off already, as piece ${r.pieceId}; it is not drawn twice.`] }
+  let faults: string[]
+  let facts: Awaited<ReturnType<typeof readIntakeFacts>> | null = null
+  try {
+    facts = await readIntakeFacts(db, r, input.now, { stage: 'intake', siteOrigin: input.siteOrigin, fetcher: input.fetcher })
+    faults = [...intakeFaults(r, facts.read, { stage: 'intake', now: input.now, origin: ORIGIN, pieceId: null }), ...(facts.slideRefusal ? [`[rights] ${facts.slideRefusal}.`] : [])]
+  } catch (e) {
+    faults = [`[read] The checks could not read what they need (${e instanceof Error ? e.message : String(e)}); it is held, never passed on a guess.`]
+  }
+  const state = stateAfter(faults)
+  if (state !== 'passed' || facts === null || facts.slides === null) {
+    const kept = await keepIntakeCheck(db, id, { stage: 'intake', faults, state: state === 'passed' ? 'held' : state, now: input.now })
+    console.log(JSON.stringify({ ts: input.now.toISOString(), evt: 'creative.intake_held', id, state, faults, kept: kept ?? 'kept' }))
+    return { id, state: state === 'passed' ? 'held' : state, faults, pieceId: null, lines: [`Held: ${faults.join(' ')}`, ...(kept ? [kept] : [])] }
+  }
+  const drawn = await drawIntakePiece(db, { record: r, slides: facts.slides, nights: facts.read.nights, now: input.now })
+  if (drawn.state === 'refused') {
+    const held = [`[handoff] ${drawn.reason}`]
+    const kept = await keepIntakeCheck(db, id, { stage: 'intake', faults: held, state: 'held', now: input.now })
+    return { id, state: 'held', faults: held, pieceId: null, lines: [`Held at the handoff: ${drawn.reason}`, ...(kept ? [kept] : [])] }
+  }
+  const kept = await keepIntakeCheck(db, id, { stage: 'intake', faults: [], state: 'handed_off', now: input.now, pieceId: drawn.pieceId })
+  if (kept) {
+    // The record could not be tied to its piece: the piece is taken back, so a later check never draws a second.
+    await db.from('social_pieces').delete().eq('id', drawn.pieceId)
+    return { id, state: 'passed', faults: [], pieceId: null, lines: [`Passed, and not handed off: ${kept}; the piece was taken back.`] }
+  }
+  return { id, state: 'handed_off', faults: [], pieceId: drawn.pieceId, lines: [`Passed every gate and handed to publishing as piece ${drawn.pieceId}, UNAPPROVED and unscheduled, for the PM's verify.`] }
+}
+
+/**
+ * THE HANDOFF, THE ONE JOIN INTO CAR A: a passed record becomes a social piece of kind 'creative' in this week's campaign
+ * with its first revision (planner), exactly as drawApprovedSet writes an approved set's piece. Its slides are its images
+ * in order (creative/intake.ts slidesOf), its words the record's approved captions, the /go hop given the piece's own id.
+ * Nothing is approved, scheduled or published here.
+ */
+async function drawIntakePiece(
+  db: Db,
+  input: { readonly record: IntakeRecord; readonly slides: readonly Slide[]; readonly nights: ReadonlyMap<string, CampaignNight>; readonly now: Date },
+): Promise<{ readonly state: 'drawn'; readonly pieceId: string } | { readonly state: 'refused'; readonly reason: string }> {
+  const p = planIntakePiece(input.record, input.slides, input.nights, ORIGIN)
+  const refused = pieceRefusal(p) ?? law37Refusal(p.slides)
+  if (refused) return { state: 'refused', reason: refused }
+  const weekStart = weekStartOf(input.now)
+  const { error: cerr } = await db.from('social_campaigns').upsert({ week_start: weekStart, planned_by: null, planned_at: input.now.toISOString() }, { onConflict: 'week_start', ignoreDuplicates: true })
+  if (cerr) return { state: 'refused', reason: `the week's campaign could not be kept (${cerr.message})` }
+  const campaignId = await campaignIdFor(db, weekStart)
+  if (campaignId === null) return { state: 'refused', reason: "the week's campaign could not be read" }
+  const { data: piece, error: perr } = await db
+    .from('social_pieces')
+    .insert({ campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() })
+    .select('id')
+    .single()
+  if (perr || !piece) return { state: 'refused', reason: `its piece was not kept (${refusalOf(perr?.message ?? '') ?? perr?.message ?? 'no row'})` }
+  const pieceId = piece.id as string
+  const { error: rerr } = await db.from('social_piece_revisions').insert(revisionRow(pieceId, 1, p, null, 'planner', null, input.now))
+  if (rerr) {
+    // A piece with no words is never left behind.
+    await db.from('social_pieces').delete().eq('id', pieceId)
+    return { state: 'refused', reason: `its words were not kept (${refusalOf(rerr.message) ?? rerr.message})` }
+  }
+  return { state: 'drawn', pieceId }
+}
+
+/**
+ * THE INTAKE'S GATES AGAIN, IMMEDIATELY BEFORE PUBLISHING (the founder's section F: "The publishing engine must
+ * independently verify eligibility immediately before provider submission"). Called by pieceDependencies for a 'creative'
+ * piece, at approval and for each network's schedule at publishing: its record is read, every gate runs again on what is
+ * read now and on the words that will go (the newest revision's), the result is kept on the record, and a network the
+ * record does not name as a destination is held. Every reason comes back to hold the schedule; nothing replaces it.
+ */
+async function intakeIssuesAtPublish(
+  db: Db,
+  pieceId: string,
+  rev: Revision,
+  now: Date,
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
+): Promise<string[]> {
+  const { data, error } = await db.from('creative_intake').select('*').eq('piece_id', pieceId).maybeSingle()
+  if (error) return [`[intake] Its intake record could not be read (${error.message}).`]
+  if (!data) return ['[intake] A creative piece with no intake record never posts.']
+  const r = intakeOfRow(data as Record<string, unknown>)
+  let faults: string[]
+  try {
+    const facts = await readIntakeFacts(db, r, now, { stage: 'publish', siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, goesAt: opts.goesAt })
+    const captions = { instagram: rev.versions?.instagram?.caption ?? '', facebook: rev.versions?.facebook?.caption ?? '' }
+    faults = [...intakeFaults(r, facts.read, { stage: 'publish', now, goesAt: opts.goesAt, origin: ORIGIN, pieceId, captions }), ...(facts.slideRefusal ? [`[rights] ${facts.slideRefusal}.`] : [])]
+  } catch (e) {
+    faults = [`[read] The checks could not read what they need (${e instanceof Error ? e.message : String(e)}).`]
+  }
+  const state = stateAfter(faults)
+  const kept = await keepIntakeCheck(db, r.id, { stage: 'publish', faults, state: state === 'passed' ? 'handed_off' : state, now })
+  if (kept) console.error('[creative] the check before publishing could not be kept', kept)
+  const out = faults.map((f) => `[intake] ${f}`)
+  if (opts.platform && !r.destinations.includes(opts.platform)) out.push(`[intake] ${opts.platform} is not a destination of its intake record (${r.destinations.join(', ')}); it is skipped there.`)
+  return out
 }
 
 export type PieceState = 'drafted' | 'rejected' | 'approved' | 'gone'
@@ -2848,7 +3079,7 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
     let timing: Timing
     try {
       // Published at this minute, so words that say on now are judged against that day's doors now (goesAt).
-      issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, goesAt: now })
+      issues = await pieceDependencies(db, pieceId, now, { siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, goesAt: now, platform })
       rev = issues.length > 0 || opts.publisher === null ? null : await newestRevision(db, pieceId)
       format = rev === null ? null : await ownFormatOf(db, pieceId)
       // EVERY IMAGE AGAINST ITS DESTINATION, before any publisher is called (the PM's 13:42 of 18 November 2026, P0):
