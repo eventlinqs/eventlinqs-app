@@ -23,6 +23,8 @@ import { renderTemplate, type MessageChannel, type MessagePurpose } from './rule
 import { factsForContact } from './facts'
 import { refusalFromError, type Done } from './crm'
 import { decisionWords, readContactPolicy, type PolicyRule } from './contact-policy'
+import { firstLetterBlocked } from './one-first-letter'
+import { FIRST_LETTER_WRITTEN, readFirstLetterRecord } from './first-letter-record'
 
 type Admin = SupabaseClient<Database>
 
@@ -89,6 +91,17 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
   )
   if (decision.state === 'unread') return { state: 'refused', reason: `whether they may be written to now could not be read: ${decision.why}` }
   if (decision.state === 'held') return { state: 'held by policy', rule: decision.rule, reason: decisionWords(decision), nextEligibleAt: decision.nextEligibleAt }
+  // ONE FIRST LETTER PER ORGANISATION, BEFORE IT IS DRAFTED (the coordinator's order of 23 November 2026, train seven):
+  // the sender's own rule (./one-first-letter.ts, read by ./first-letter-record.ts), by organiser and by address domain,
+  // with a letter queued or being sent counted as written. At 22:15 that night a play drafted a source ask to
+  // marketing@ballarat.vic.gov.au though balc@ballarat.vic.gov.au had been written to: the contact policy reads by
+  // organiser only, and only the sender read this rule, so a letter it would refuse was drafted and sat held.
+  if (r.purpose === 'cadence' && step === 1) {
+    const record = await readFirstLetterRecord(db, { contactId: r.contactId }, FIRST_LETTER_WRITTEN)
+    if (record === null) return { state: 'refused', reason: 'whether their organisation was already written to could not be read; not drafted on a guess' }
+    const written = firstLetterBlocked(record)
+    if (written) return { state: 'refused', reason: written }
+  }
   const contact = await db.from('organiser_contacts').select('channel, unsubscribe_token').eq('id', r.contactId).single()
   if (contact.error) return { state: 'refused', reason: refusalFromError(contact.error) }
 
