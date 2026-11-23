@@ -336,6 +336,25 @@ describe('the press with the contact token records the opt out and suppresses th
     expect(await unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))).toMatchObject({ status: 'invalid', field: 'email' })
   })
 
+  // THE PM'S 09:12 OF 24 NOVEMBER 2026: "a press with a bad or expired token shows a clear message and logs it". A contact
+  // token never expires (organiser_contacts has no expiry column), so an expired token is an unknown one. The person sees
+  // the same words as before; the server keeps one line naming the token by its first eight characters only, never whole.
+  test('a press with a token matching nobody shows the clear message and logs one line, the token cut to eight characters', async () => {
+    rpcResult.mockResolvedValue({ data: 'unknown', error: null })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const state = await unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))
+      expect(state).toEqual({ status: 'invalid', field: 'email', message: "We couldn't match that link. Enter the email address you'd like to unsubscribe." })
+      expect(warn).toHaveBeenCalledTimes(1)
+      const line = warn.mock.calls[0].map(String).join(' ')
+      expect(line.startsWith('[outreach-unsubscribe]')).toBe(true)
+      expect(line).toContain(TOKEN.slice(0, 8))
+      expect(line).not.toContain(TOKEN.slice(8))
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   test('a failed record THROWS to the error boundary, so the person is never told they are unsubscribed', async () => {
     rpcResult.mockResolvedValue({ data: null, error: { message: 'connection failure' } })
     await expect(unsubscribeFromOutreachAction(IDLE, form({ t: TOKEN }))).rejects.toThrow(/could not be recorded: connection failure/)
