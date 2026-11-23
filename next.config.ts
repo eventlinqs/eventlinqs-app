@@ -516,6 +516,7 @@ const nextConfig: NextConfig = {
       { source: '/kit/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
       { source: '/api/launch/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noimageindex' }] },
       { source: '/go/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      { source: '/ig', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/api/venues/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/out/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       // An edition's web copy (View in browser, train AT): the same edition every subscriber of the city receives, never indexed.
