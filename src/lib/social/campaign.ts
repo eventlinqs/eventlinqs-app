@@ -121,6 +121,12 @@ export type CampaignNight = {
   sourceTitle?: string
   /** The host the night is shown under: its organiser, or for a listing its venue. */
   host: string | null
+  /**
+   * Who puts the night on, as the night itself names them (shown-organiser.ts nightMaker): an organiser's own night its
+   * organisation; a listing the host its metadata records, else the organiser its own words name; null when none is named,
+   * never the venue. A caption's 'Title, by ...' names only this (the PM's verify of 23 November 2026, piece da22e104).
+   */
+  organiser?: string | null
   categorySlug: string | null
   summary: string | null
   /** A photograph with an APPROVED rights row for this night (J1 to J4), else null and the slide is typographic. */

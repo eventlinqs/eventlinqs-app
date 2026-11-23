@@ -84,3 +84,55 @@ export function shownOrganiser(
     followable: Boolean(organisation),
   }
 }
+
+/**
+ * WHO PUTS A NIGHT ON, NEVER WHERE IT IS (the PM's verify of 23 November 2026 on piece da22e104: its caption read 'A Moment
+ * of Sanity, by Thornbury Apothecary', the venue named as the night's maker). A page shows a listing under its host, which
+ * is its venue unless its metadata records another (listingHost); a line that says who MADE the night names only an
+ * organiser the night itself names: an organiser's own night, its organisation; a listing, the host its metadata records
+ * (host_name), else the organiser its own words name as presenting, hosting or organising it (presenterNamedIn); else
+ * nobody, and never the venue for want of a name. Pure.
+ */
+export function nightMaker(
+  event: { listing_source?: string | null; metadata?: unknown; words?: readonly (string | null | undefined)[] },
+  organisation: { name?: string | null; slug?: string | null } | null,
+): string | null {
+  if (!isEventLinqsListing(event) && !isListingsOrganisation(organisation?.slug)) {
+    const own = organisation?.name?.trim()
+    if (own) return own
+  }
+  const meta = event.metadata
+  const host = meta && typeof meta === 'object' && !Array.isArray(meta) ? (meta as Record<string, unknown>).host_name : null
+  if (typeof host === 'string' && host.trim() !== '') return host.trim()
+  for (const text of event.words ?? []) {
+    const named = presenterNamedIn(text)
+    if (named) return named
+  }
+  return null
+}
+
+/** A name as a night's words write it: up to six words in capitals, joined by spaces or '&'. */
+const NAME = String.raw`[A-Z0-9][^\s,.;:!?()"“”]*(?:\s+(?:&\s+)?[A-Z0-9][^\s,.;:!?()"“”]*){0,5}`
+/**
+ * The words that say who puts a night on ('presented by', 'hosted by', 'organised by', 'run by', 'led by', 'facilitated
+ * by', 'brought to you by', 'your host is'), the name after them, and the organisation that person is of, where named
+ * ('Berenice Franklin of GroovyTown Wellbeing', '... from ...', '... (GroovyTown Wellbeing)').
+ */
+const MAKER_WORDS = new RegExp(
+  String.raw`\b(?:(?:[Pp]resented|[Hh]osted|[Oo]rgani[sz]ed|[Rr]un|[Cc]urated|[Ll]ed|[Ff]acilitated|[Bb]rought to you)\s+by|[Yy]our hosts?(?:\s+is|\s+are|,|:)?)\s+(${NAME})(?:\s+(?:of|from)\s+(${NAME})|\s*\((${NAME})\))?`,
+)
+
+/**
+ * The organiser a night's own words name as putting it on, or null: the organisation where a person is named with it (the
+ * PM's RETURN of 15:30 of 23 November 2026: the listing names 'Berenice Franklin of GroovyTown Wellbeing' as host, and the
+ * line must read 'by GroovyTown Wellbeing'), else the name itself ('... hosted by GroovyTown Wellbeing at the apothecary.').
+ * Only a name in capitals right after the words counts, up to six words, so 'run by volunteers' or a sentence that merely
+ * mentions a venue is never read as an organiser. Pure.
+ */
+export function presenterNamedIn(text: string | null | undefined): string | null {
+  if (typeof text !== 'string' || text.trim() === '') return null
+  const plain = text.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
+  const m = MAKER_WORDS.exec(plain)
+  const name = (m?.[2] ?? m?.[3] ?? m?.[1] ?? '').trim()
+  return name.length >= 2 && name.length <= 80 ? name : null
+}

@@ -3,6 +3,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { tierOf } from '@/lib/events/relevance'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { crmNameKey } from '@/lib/listings/discovery-organisers'
+import { presenterNamedIn } from '@/lib/listings/shown-organiser'
 import type { CampaignNight, PiecePlan, Slide } from './campaign'
 import { goHop } from './go-hop'
 import { pastLatest, timingOf } from './timing'
@@ -328,6 +329,22 @@ export function feedNightDates(startIso: string, endIso: string | null, zone: st
   return nightDates(startIso, endIso, zone, onDay, 'long')
 }
 
+/**
+ * Each night's own description, for the organiser it names (shown-organiser.ts presenterNamedIn). A failed read names no
+ * organiser, said in the notes: the caption keeps the title alone, never a guess and never the venue.
+ */
+async function readOwnWords(db: Db, ids: readonly string[], notes: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (ids.length === 0) return out
+  const { data, error } = await db.from('events').select('id, description').in('id', [...ids])
+  if (error) {
+    notes.push(`the nights' own descriptions could not be read (${error.message}); no organiser is named from them`)
+    return out
+  }
+  for (const r of (data ?? []) as { id: string; description: string | null }[]) if (r.description) out.set(r.id, r.description)
+  return out
+}
+
 /** Whether a night has ended by this minute (an owner's Post now is judged at the minute it is pressed). */
 function endedByNow(endIso: string | null, now: Date): boolean {
   return endIso !== null && Number.isFinite(Date.parse(endIso)) && Date.parse(endIso) <= now.getTime()
@@ -421,6 +438,9 @@ export async function planLifecyclePieces(
   const chosen = choice.chosen
   const hosts = chosen.map((c) => byId.get(nightForDay(c.run, dayIn(input.now, c.run.zone)).eventId)?.host ?? '').filter((h) => h !== '')
   const organisers = await readCollabOrganisers(db, hosts)
+  // Each chosen night that names no organiser yet: its own description, for the organiser it names (nightMaker).
+  const unnamed = chosen.map((c) => byId.get(nightForDay(c.run, dayIn(input.now, c.run.zone)).eventId)).filter((n): n is CampaignNight => n !== undefined && !n.organiser)
+  const ownWords = await readOwnWords(db, [...new Set(unnamed.map((n) => n.eventId))], notes)
 
   const lines = new Set(history.recentLines)
   const pieces: PiecePlan[] = []
@@ -491,6 +511,7 @@ export async function planLifecyclePieces(
     }
     // The 05:15 standard's facts, every one read from the night's own row.
     const nightDay = dayIn(new Date(ln.startDate), ln.timezone?.trim() || c.run.zone)
+    const maker = n.organiser ?? presenterNamedIn(ownWords.get(n.eventId) ?? null)
     const facts = {
       title: n.title,
       place,
@@ -500,8 +521,9 @@ export async function planLifecyclePieces(
       times: dayTimes(ln, day, ln.timezone?.trim() || c.run.zone),
       priceLine: n.priceLine,
       summary: n.summary,
-      names: [n.title, ...(n.host ? [n.host] : [])],
-      organiser: n.host ?? null,
+      names: [n.title, ...(n.host ? [n.host] : []), ...(maker ? [maker] : [])],
+      // Who puts it on as the night names them (nightMaker), never its venue: with none named, the title stands alone.
+      organiser: maker,
       address: n.venueAddress ?? null,
       city: n.cityName ?? null,
       dayWord: c.moment.format === 'feed' ? null : dayWordOf(nightDay < day ? day : nightDay, day),
