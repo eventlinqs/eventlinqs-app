@@ -79,6 +79,10 @@ export async function unsubscribeFromOutreachAction(
     })
     if (byToken.error) throw new Error(`[outreach-unsubscribe] the unsubscribe could not be recorded: ${byToken.error.message}`)
     if (byToken.data === 'unknown') {
+      // A PRESS WITH A BAD OR EXPIRED TOKEN IS LOGGED (the PM's 09:12 of 24 November 2026). A contact token never expires
+      // (organiser_contacts has no expiry column), so an expired token is an unknown one. One line, the token named by its
+      // first eight characters only, so the log can be matched to a link without holding a token whole.
+      console.warn('[outreach-unsubscribe] a press named a token that matches no contact; the address is asked for instead:', parsed.value.contactToken.slice(0, 8))
       return { status: 'invalid', field: 'email', message: "We couldn't match that link. Enter the email address you'd like to unsubscribe." }
     }
     return { status: 'done' }
