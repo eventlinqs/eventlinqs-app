@@ -168,6 +168,30 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: RETURN_0405,
     date: '2026-11-24',
   },
+  // THE SAME RULE FOR LETTERS (Lawal, 23 November 2026, 16:04: "the corrections you'll be making for the future, so that it
+  // doesn't repeat itself"): the source ask defect Bendigo's reply exposed, fixed in the engine (src/lib/outreach/source-asks.ts,
+  // voice-gate.ts sourceAskBodyProblems, replies.ts) with its tests, and written here.
+  {
+    id: 'source-ask-says-where-and-how',
+    rule: "A source ask says what we ask permission for and where the events would appear (on EventLinqs), that the source need send nothing, how we would get the events (their public listings checked about once a week, each event reviewed by a person before it appears, as our proposed process), what each listing shows and where its link goes, that no photo or description is copied, the alternative of a list or feed, and one question; never 'include the events on' a source. The voice gate refuses a source ask that says 'include the events on', names no place on EventLinqs, or names no collection method.",
+    reason: "Bendigo's reply to version 1 asked whether we wanted an event list sent to us or were asking to copy events from their calendar: its second line said 'we would like to include the events on' their site, which reads as putting events on their calendar, and it never said the events would appear on EventLinqs or how we would get them.",
+    source: "the PM's 20:50 and 20:55 of 24 November 2026; Lawal approved source_ask version 2 at 20:42 and locked it in at 20:52",
+    date: '2026-11-24',
+  },
+  {
+    id: 'source-ask-terms-say-why',
+    rule: "A source's terms are quoted in its ask only to say why we are asking, never as if they might authorise us: an ask that asks to be one of a party the source's terms name is refused, and where the source has no term to name the ask is 'Would you be happy for EventLinqs to feature your events in this way?'.",
+    reason: "Version 1's Bendigo ask quoted their clause that listings may be forwarded to other third party networks and asked whether EventLinqs could be one of them; the clause names their own Tourism Partners.",
+    source: "the PM's 20:50 item 2 and 20:55 of 24 November 2026",
+    date: '2026-11-24',
+  },
+  {
+    id: 'reply-asking-what-we-mean-is-a-question',
+    rule: "A reply that asks which of two things we mean, or what we want, is classed 'question', outranking 'referred', which a signature naming a place can trip.",
+    reason: "Bendigo's reply asked which of two things our source ask meant and was classed 'referred' because her signature named a place, so it was not answered during the day.",
+    source: "the PM's 20:50 item 4 and 20:56 item 1 of 24 November 2026",
+    date: '2026-11-24',
+  },
 ]
 
 /**

@@ -112,6 +112,31 @@ describe('bounces and automatic replies are not replies', () => {
   })
 })
 
+/*
+ * A REPLY ASKING WHAT WE MEAN IS A QUESTION (the PM's 20:50 item 4 of 24 November 2026): a reply to the Bendigo source ask
+ * asked which of two things we meant and was classed 'referred' at 0.6, because its signature named a place. The fixtures
+ * are paraphrases in the same shape, never the sender's own words.
+ */
+describe('a reply asking what we mean is a question, outranking referred', () => {
+  const SIGNED = '\n\nKind regards,\nSam Example\nVisitor Information Officer\nExample Shire Visitor Centre\nvisitors@example-shire.vic.gov.au'
+  test('which of two things we mean, with a signature naming a place and an address', () => {
+    const r = reply(`Hi Lawal,\n\nAre you hoping we will send you a list of our events, or are you asking whether you can take the events on our calendar for your site?${SIGNED}`, 'Re: Example Region events on EventLinqs')
+    expect(r).toMatchObject({ kind: 'reply', outcome: 'question', answerKey: null })
+    // Never answered by itself: below CLEAR, it waits for Lawal with its class named.
+    expect(r.kind === 'reply' && r.confidence < CLEAR).toBe(true)
+  })
+  test('what we want, said three ways', () => {
+    expect(reply(`Thanks for your note. What exactly are you asking us for?${SIGNED}`)).toMatchObject({ kind: 'reply', outcome: 'question', answerKey: null })
+    expect(reply(`Could you clarify what you need from our team?${SIGNED}`)).toMatchObject({ kind: 'reply', outcome: 'question', answerKey: null })
+    expect(reply(`Hello, what is it that you're after here?${SIGNED}`)).toMatchObject({ kind: 'reply', outcome: 'question', answerKey: null })
+  })
+  test('a stop, a referral alone and a cost question keep their own class', () => {
+    expect(reply(`Are you a business or a charity? Either way please stop emailing us.${SIGNED}`)).toMatchObject({ outcome: 'stop' })
+    expect(reply(`Please contact Jordan in our events team.${SIGNED}`)).toMatchObject({ outcome: 'referred' })
+    expect(reply('How much does it cost?')).toMatchObject({ outcome: 'question', answerKey: 'reply_cost' })
+  })
+})
+
 describe('which published address the planner writes to first', () => {
   test('a named person, then events or bookings, then a general inbox, then the rest', () => {
     const order = ['steakhouse@mitretavern.com.au', 'info@mitretavern.com.au', 'events@mitretavern.com.au']

@@ -78,15 +78,16 @@ describe('the gate refuses a stock pleasantry, from the gateway\'s own standard'
     expect(pleasantry(voiceProblems({ ...reply, body: reply.body.replace("I hope you're well.", 'I hope Mountaingrass in Bright next month is a wonderful weekend.') }, POLICY))).toEqual([])
   })
 
-  it('(b) the current templates pass: acq_first v2, source_ask v1, lifecycle_perm v2 and the twenty letters', () => {
+  it('(b) the current templates pass: acq_first v2, source_ask v2, lifecycle_perm v2 and the twenty letters', () => {
     const standing = (JSON.parse(readFileSync('src/lib/outreach/standing-approvals.generated.json', 'utf8')) as { templates: { key: string; version: number; body: string }[] }).templates
     const acqFirstV2 = standing.find((t) => t.key === 'acq_first' && t.version === 2)
-    const sourceAskV1 = standing.find((t) => t.key === 'source_ask' && t.version === 1)
+    // source_ask v2 replaced v1 on 24 November 2026 (the PM's 20:50 and 20:55; v1 is withdrawn).
+    const sourceAskV2 = standing.find((t) => t.key === 'source_ask' && t.version === 2)
     expect(acqFirstV2).toBeDefined()
-    expect(sourceAskV1?.body).toBe(SOURCE_ASK_EMAIL.body)
+    expect(sourceAskV2?.body).toBe(SOURCE_ASK_EMAIL.body)
     const bodies: [string, string][] = [
       ['acq_first v2', acqFirstV2?.body ?? ''],
-      ['source_ask v1', SOURCE_ASK_EMAIL.body],
+      ['source_ask v2', SOURCE_ASK_EMAIL.body],
       ['lifecycle_perm v2', LIFECYCLE_PERM.body],
       ...TWENTY_LETTERS.map((t) => [`${t.key}`, t.body] as [string, string]),
     ]

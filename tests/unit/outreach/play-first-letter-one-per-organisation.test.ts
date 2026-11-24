@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fakeOutreachDb, type Tables } from '../../helpers/outreach-db-fake'
-import { SOURCE_ASK_EMAIL } from '@/lib/outreach/source-asks'
+// The play of 23 November 2026 drafts from source_ask v1, the template its letters were (withdrawn since 24 November).
+import { SOURCE_ASK_EMAIL_V1 as SOURCE_ASK_EMAIL } from '@/lib/outreach/source-asks'
 
 /*
  * ONE FIRST LETTER PER ORGANISATION, BEFORE A PLAY DRAFTS IT (the coordinator's order of 23 November 2026, train seven).

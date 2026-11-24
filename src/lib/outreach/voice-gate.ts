@@ -79,6 +79,52 @@ export interface VoiceStandard {
 /** The source ask's subtype (law 24 PERM; standard.json source_ask), as gateway.py's is_source_ask reads it. */
 export const SOURCE_ASK_SUBTYPE = 'PERM-SOURCE'
 
+/**
+ * LAWAL'S OWN APPROVED SENTENCES ARE NOT JUDGED AGAINST THE WORD LISTS (source_ask version 2: Lawal approved its wording at
+ * 20:42 of 24 November 2026 and the PM's 20:55 gives it as final). Two of its sentences carry words the standard's lists
+ * catch elsewhere: "a feed" (internal_words: our machinery never reaches a customer; here it is the source's own format,
+ * offered as their alternative) and "feature your events" (unproved_claims: a promise to feature; here it is the question
+ * asking their permission). Each sentence, word for word, is taken out before the internal word and unproved claim lists
+ * are read; every other word of the letter is judged as before, so "your feed" or "we'll feature your events" anywhere
+ * else is still refused. gateway.py APPROVED_SENTENCES, the same.
+ */
+export const APPROVED_SENTENCES: readonly string[] = [
+  "If you'd rather provide an event list or a feed, we're happy to work that way.",
+  'Would you be happy for EventLinqs to feature your events in this way?',
+]
+
+/** The text with each approved sentence, word for word (any spacing), taken out, for the word lists alone. Pure. */
+export function withoutApprovedSentences(text: string): string {
+  let out = text.replace(/\s+/g, ' ')
+  for (const s of APPROVED_SENTENCES) out = out.split(s).join(' ')
+  return out
+}
+
+/**
+ * WHAT A SOURCE ASK MUST SAY (the PM's 20:50 item 3 of 24 November 2026; Bendigo's reply asked whether we wanted an event
+ * list sent to us or were asking to copy events from their calendar). A source ask's body (its own words, the quoted thread
+ * left out) is refused when it says "include the events on" a source, which reads as putting events ON their site; when it
+ * never names EventLinqs as where the events appear ("... events ... on EventLinqs" in one sentence); or when it names no
+ * collection method (their public listings checked or read, or the feed or list they provide). gateway.py
+ * source_ask_body_problems, the same. Every reason; empty when the body says all three. Pure.
+ */
+export function sourceAskBodyProblems(ownWords: string): string[] {
+  const why: string[] = []
+  const text = ownWords.replace(/\s+/g, ' ')
+  // One sentence: any character but a full stop, question or exclamation mark that ends it (a site's own dots, as in
+  // visitballarat.com.au, stay inside the sentence).
+  const inSentence = (n: number) => `(?:[^.?!]|[.?!](?=\\S)){0,${n}}`
+  if (/\binclude (the |their |your )?events on\b/i.test(text)) {
+    why.push('a source ask never says "include the events on" a source: it reads as asking to put events on their site; say they would appear on EventLinqs')
+  }
+  if (!new RegExp(`\\bevents?\\b${inSentence(160)}\\bon EventLinqs\\b`, 'i').test(text)) why.push('a source ask names EventLinqs as where the events would appear ("... events ... on EventLinqs")')
+  const method =
+    new RegExp(`\\b(check|checking|read|reading|review|reviewing)\\b${inSentence(100)}\\bpublic\\b${inSentence(40)}\\blistings?\\b`, 'i').test(text) ||
+    new RegExp(`\\b(your|their) (event )?(feed|event list)\\b${inSentence(60)}\\b(send|provide|share)`, 'i').test(text)
+  if (!method) why.push('a source ask names how we would get the events (their public listings checked, or the list or feed they provide)')
+  return why
+}
+
 /** The lawful basis to write to this address (the standard's Part 2 rule 5, the Spam Act's conspicuous publication test). */
 export interface VoiceConsent {
   readonly basis: string
@@ -214,12 +260,13 @@ export function wordsProblems(body: string, policy: VoicePolicy): string[] {
   const L = linesOf(ownPart(toText(body)))
   const k = L.indexOf('Kind regards,')
   const before = (k === -1 ? L.slice(1) : L.slice(1, k)).join(' ')
+  const listed = withoutApprovedSentences(before)
   for (const pat of std.internalWords) {
-    const m = before.match(new RegExp(pat, 'i'))
+    const m = listed.match(new RegExp(pat, 'i'))
     if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)
   }
   for (const pat of std.unprovedClaims) {
-    const m = before.match(new RegExp(pat, 'i'))
+    const m = listed.match(new RegExp(pat, 'i'))
     if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
   }
   r.push(...founderIntroductionProblems(before, std))
@@ -260,6 +307,7 @@ export function voiceProblems(msg: VoiceMessage, policy: VoicePolicy): string[] 
   const own = ownPart(toText(msg.body ?? ''))
   const L = linesOf(own)
   if (L.length === 0) return [...r, 'empty message']
+  if (msg.subtype === SOURCE_ASK_SUBTYPE && (cat === 'first_contact' || cat === 'follow_up')) r.push(...sourceAskBodyProblems(own))
   const gname = (msg.greetingName ?? '').trim()
   if (!gname) r.push('greeting_name missing: the recipient must be verified before drafting')
   if (!/^Hi [^,]+,$/.test(L[0])) r.push(`first line must be the greeting "Hi <name>," on its own line; found ${JSON.stringify(L[0].slice(0, 60))}`)
@@ -340,12 +388,13 @@ function standardProblems(msg: VoiceMessage, std: VoiceStandard, bodyBefore: str
   const r: string[] = []
   const cat = msg.category
   if (!std.outreachCategories.includes(cat)) return r
+  const listed = withoutApprovedSentences(bodyBefore)
   for (const pat of std.internalWords) {
-    const m = bodyBefore.match(new RegExp(pat, 'i'))
+    const m = listed.match(new RegExp(pat, 'i'))
     if (m) r.push(`internal word ${JSON.stringify(m[0])} never reaches a customer (standard Part 2 rule 6)`)
   }
   for (const pat of std.unprovedClaims) {
-    const m = bodyBefore.match(new RegExp(pat, 'i'))
+    const m = listed.match(new RegExp(pat, 'i'))
     if (m) r.push(`unproved claim ${JSON.stringify(m[0])}: only what works on production today is named (standard Part 2 rule 1)`)
   }
   // As gateway.py reads it: the whole body, case ignored (the founder sentence, Lawal's 11:31 of 18 November 2026).

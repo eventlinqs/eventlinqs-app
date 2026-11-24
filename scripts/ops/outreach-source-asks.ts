@@ -44,7 +44,9 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { SOURCE_ASK_EMAIL, SOURCE_ASK_PLAY, draftSourceAsk, sourceAskVoiceMessage, type SourceAskData } from '../../src/lib/outreach/source-asks'
+// The loader of 23 November 2026 loads VERSION 1, the letters then approved: it is the record of what was loaded. Version 1
+// is withdrawn since 24 November 2026 (the PM's 20:50), so a run now refuses before writing: the voice gate refuses its body.
+import { SOURCE_ASK_EMAIL_V1 as SOURCE_ASK_EMAIL, SOURCE_ASK_PLAY, draftSourceAsk, sourceAskVoiceMessage, type SourceAskData } from '../../src/lib/outreach/source-asks'
 import { readVoicePolicy, voiceProblems } from '../../src/lib/outreach/voice-gate'
 
 const TEST_REF = 'vkapkibzokmfaxqogypq'
@@ -75,7 +77,7 @@ const arr = (xs: string[]): string => `array[${xs.map(q).join(', ')}]::text[]`
 
 // Every draft passes the messages file's rules and the gateway's own checks, or nothing is written.
 const policy = readVoicePolicy()
-const drafted = data.asks.map((ask) => ({ ask, draft: draftSourceAsk(ask, UNSUBSCRIBE) }))
+const drafted = data.asks.map((ask) => ({ ask, draft: draftSourceAsk(ask, UNSUBSCRIBE, SOURCE_ASK_EMAIL) }))
 let refused = false
 for (const { ask, draft } of drafted) {
   const words = voiceProblems(sourceAskVoiceMessage(ask, { ...draft, body: draft.body.replace(UNSUBSCRIBE, () => SAMPLE) }), policy)
