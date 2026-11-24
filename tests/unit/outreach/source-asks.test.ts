@@ -3,8 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { TEMPLATE_CLASS } from '@/lib/comms/categories'
 import { HELLO_MAILBOX, mailboxFor } from '@/lib/outreach/addresses'
 import { LAWAL_SIGNATURE } from '@/lib/outreach/rules'
-import { SOURCE_ASK_EMAIL, draftSourceAsk, sourceAskVoiceMessage, type SourceAskData } from '@/lib/outreach/source-asks'
-import { SOURCE_ASK_SUBTYPE, readVoicePolicy, voiceProblems } from '@/lib/outreach/voice-gate'
+import {
+  SOURCE_ASK_DEFAULT_ASK,
+  SOURCE_ASK_EMAIL,
+  SOURCE_ASK_EMAIL_V1,
+  askLineProblems,
+  draftSourceAsk,
+  sourceAskVoiceMessage,
+  type SourceAskData,
+} from '@/lib/outreach/source-asks'
+import { APPROVED_SENTENCES, SOURCE_ASK_SUBTYPE, readVoicePolicy, sourceAskBodyProblems, voiceProblems, wordsProblems } from '@/lib/outreach/voice-gate'
 
 // THE SOURCE ASKS (WINDOW 5C, 23 November 2026; the founder, 12:14: "Apply the already-approved communication workflow
 // to routine source requests."; 14:55: "Just get my engine going, please"). Five letters asking an event listing website
@@ -17,7 +25,8 @@ const data = JSON.parse(readFileSync('scripts/ops/data/source-asks-23nov.json', 
 const POLICY = readVoicePolicy()
 const DRAFTED_UNSUB = 'https://www.eventlinqs.com.au/unsubscribe/outreach'
 const UNSUB = 'https://www.eventlinqs.com.au/unsubscribe/outreach?t=0b6f2c1e-6a3d-4e8b-9f1a-2c3d4e5f6a7b'
-const drafts = data.asks.map((a) => ({ ask: a, draft: draftSourceAsk(a, UNSUB) }))
+// The letters of 23 November 2026 were version 1's (withdrawn since the PM's 20:50 of 24 November): drafted through it here.
+const drafts = data.asks.map((a) => ({ ask: a, draft: draftSourceAsk(a, UNSUB, SOURCE_ASK_EMAIL_V1) }))
 
 // The first of the set as WINDOW 5C drafted it (C:/dev/EVIDENCE/EL-23NOV/source-asks/source-ask-1-city-of-ballarat.json),
 // so the word for word rule is held on a host without the evidence folder too.
@@ -50,7 +59,7 @@ describe('the source asks of 23 November 2026', () => {
     const first = data.asks.find((a) => a.id === 'source-ask-1-city-of-ballarat')
     expect(first).toBeDefined()
     if (!first) return
-    const d = draftSourceAsk(first, DRAFTED_UNSUB)
+    const d = draftSourceAsk(first, DRAFTED_UNSUB, SOURCE_ASK_EMAIL_V1)
     expect(d.body).toBe(FIRST_AS_DRAFTED)
     expect(d.subject).toBe('Ballarat In The Know events on EventLinqs')
     expect(SOURCE_ASK_EMAIL.subject).toBe('[listings] events on EventLinqs')
@@ -61,7 +70,7 @@ describe('the source asks of 23 November 2026', () => {
       const file = `C:/dev/EVIDENCE/EL-23NOV/source-asks/${a.id}.json`
       if (!existsSync(file)) return
       const drafted = JSON.parse(readFileSync(file, 'utf8')) as { to: string[]; subject: string; greeting_name: string; body: string; consent: { published_on_url: string } }
-      const d = draftSourceAsk(a, DRAFTED_UNSUB)
+      const d = draftSourceAsk(a, DRAFTED_UNSUB, SOURCE_ASK_EMAIL_V1)
       expect(d.body, a.id).toBe(drafted.body)
       expect(d.subject, a.id).toBe(drafted.subject)
       expect(d.greetingName, a.id).toBe(drafted.greeting_name)
@@ -70,21 +79,25 @@ describe('the source asks of 23 November 2026', () => {
     }
   })
 
-  it('each passes every rule of the messages file, so nothing holds it', () => {
+  it("each passes the messages file's rules; the ask line rule of 24 November refuses Bendigo's ask alone", () => {
     for (const { ask, draft } of drafts) {
-      expect(draft.ruleFailures, ask.id).toEqual([])
+      expect(draft.ruleFailures, ask.id).toEqual(ask.id === 'source-ask-3-explore-bendigo' ? [expect.stringContaining("asks to be one of a party the source's terms name")] : [])
       expect(draft.body, ask.id).toContain(LAWAL_SIGNATURE)
       expect(draft.body.endsWith(`unsubscribe here: ${UNSUB}`), ask.id).toBe(true)
     }
   })
 
-  it("each passes the gateway's checks as a PERM-SOURCE first letter from hello@, on its published page, checked", () => {
+  it("each is a PERM-SOURCE first letter from hello@, on its published page, checked; the voice gate now refuses version 1's body, for its three faults and nothing else", () => {
     for (const { ask, draft } of drafts) {
       const msg = sourceAskVoiceMessage(ask, draft)
       expect(msg).toMatchObject({ category: 'first_contact', subtype: SOURCE_ASK_SUBTYPE, from: HELLO_MAILBOX, to: [ask.contact.address] })
       expect(msg.consent).toEqual({ basis: 'conspicuous_publication', publishedOnUrl: ask.contact.publishedOn, noMarketingStatementChecked: true })
       expect(msg.consent?.publishedOnUrl, ask.id).toMatch(/^https:\/\//)
-      expect(voiceProblems(msg, POLICY), ask.id).toEqual([])
+      expect(voiceProblems(msg, POLICY), ask.id).toEqual([
+        expect.stringContaining('never says "include the events on"'),
+        expect.stringContaining('names EventLinqs as where the events would appear'),
+        expect.stringContaining('names how we would get the events'),
+      ])
     }
   })
 
@@ -129,6 +142,93 @@ describe('the source asks of 23 November 2026', () => {
       expect(a.contact.checkNote, a.id).toMatch(/read on 23 November 2026/)
       expect(a.contact.evidence, a.id).toBe(`C:/dev/EVIDENCE/EL-23NOV/source-asks/${a.id}.json`)
     }
+  })
+})
+
+/*
+ * SOURCE_ASK VERSION 2 (Lawal, 24 November 2026: approved at 20:42, "Lock it in ... It is ready for the next day, for
+ * tomorrow's message." at 20:52; the PM's 20:50, 20:55 and 20:56). Bendigo's reply to version 1 asked whether we wanted an
+ * event list sent to us or were asking to copy events from their calendar. Version 2 says what we ask and where it appears,
+ * that they send nothing, how we would get the events, what each listing shows, that nothing is copied, the alternative,
+ * and one question; the voice gate refuses a source ask that does not, and an ask leaning on a party their terms name.
+ */
+const V2_BODY_AS_APPROVED = [
+  'Hi [organiser] team,',
+  "We'd like your permission to feature upcoming events from [site] on EventLinqs, our Australian event discovery platform, so more people discover events in [city].",
+  "Our proposed process is to check [site]'s public event listings about once a week, with a person on our team reviewing each event before it appears. Each EventLinqs listing would show the event's title, date, venue and organiser, with a direct link to its page on [site] for full details and bookings. We would not copy any event photos or descriptions.",
+  "You wouldn't need to prepare or send us anything. If you'd rather provide an event list or a feed, we're happy to work that way.",
+  '[ask]',
+].join('\n\n')
+
+describe('source_ask version 2', () => {
+  const v2Drafts = data.asks.map((a) => {
+    const ask = { ...a, askLine: SOURCE_ASK_DEFAULT_ASK }
+    return { ask, draft: draftSourceAsk(ask, UNSUB) }
+  })
+
+  it("is the approved body word for word, in its order, with version 1's subject, greeting, signature and unsubscribe line", () => {
+    expect(SOURCE_ASK_EMAIL).toMatchObject({ key: 'source_ask', version: 2, channel: 'email', purpose: 'cadence', step: 1, subject: SOURCE_ASK_EMAIL_V1.subject })
+    expect(SOURCE_ASK_EMAIL.body.startsWith(`${V2_BODY_AS_APPROVED}\n\nKind regards,\n${LAWAL_SIGNATURE}\n\n`)).toBe(true)
+    expect(SOURCE_ASK_EMAIL.body.split('\n\nKind regards,\n')[1]).toBe(SOURCE_ASK_EMAIL_V1.body.split('\n\nKind regards,\n')[1])
+    expect(SOURCE_ASK_EMAIL.body).not.toContain('include the events on')
+    expect(SOURCE_ASK_EMAIL.body).not.toContain('Thanks for your time.')
+    expect(SOURCE_ASK_EMAIL_V1.version).toBe(1)
+  })
+
+  it("each source drafted through it, with the ask for a source with no term to name, passes every rule and the gateway's checks", () => {
+    expect(SOURCE_ASK_DEFAULT_ASK).toBe('Would you be happy for EventLinqs to feature your events in this way?')
+    for (const { ask, draft } of v2Drafts) {
+      expect(draft.ruleFailures, ask.id).toEqual([])
+      expect(draft.body, ask.id).toContain(`feature upcoming events from ${ask.site} on EventLinqs`)
+      expect(draft.body, ask.id).toContain(`in ${ask.city}.`)
+      expect(draft.body.endsWith(`unsubscribe here: ${UNSUB}`), ask.id).toBe(true)
+      expect(draft.subject, ask.id).toBe(`${ask.listings} events on EventLinqs`)
+      expect(voiceProblems(sourceAskVoiceMessage(ask, draft), POLICY), ask.id).toEqual([])
+      expect(`${draft.subject}\n${draft.body}`.match(NIGHT), ask.id).toBeNull()
+    }
+  })
+
+  it("Lawal's two approved sentences pass the word lists word for word; the same words anywhere else are still refused", () => {
+    // Each approved sentence is version 2's own: one in its body, the other its ask for a source with no term to name.
+    expect(APPROVED_SENTENCES).toEqual([expect.any(String), SOURCE_ASK_DEFAULT_ASK])
+    expect(SOURCE_ASK_EMAIL.body).toContain(APPROVED_SENTENCES[0])
+    const { ask, draft } = v2Drafts[0]
+    const msg = sourceAskVoiceMessage(ask, draft)
+    expect(voiceProblems(msg, POLICY)).toEqual([])
+    expect(wordsProblems(draft.body, POLICY)).toEqual([])
+    // Without the exemption the lists catch both: the words as the standard reads them elsewhere.
+    expect(voiceProblems({ ...msg, body: draft.body.replace("If you'd rather provide", 'If you would rather provide') }, POLICY)).toEqual([expect.stringContaining('internal word "feed"')])
+    expect(voiceProblems({ ...msg, body: draft.body.replace('Would you be happy for EventLinqs to feature', 'Would you like EventLinqs to feature') }, POLICY)).toEqual([expect.stringContaining('unproved claim "feature your"')])
+    expect(wordsProblems(draft.body.replace('Kind regards,', 'We would read your feed.\n\nKind regards,'), POLICY)).toEqual([expect.stringContaining('internal word "feed"')])
+    expect(wordsProblems(draft.body.replace('Kind regards,', "We'll feature your events.\n\nKind regards,"), POLICY).some((x) => x.includes('unproved claim'))).toBe(true)
+  })
+
+  it("the ask line rule: a source's terms say why we ask, never that they might authorise us", () => {
+    const bendigo = data.asks.find((a) => a.id === 'source-ask-3-explore-bendigo')
+    expect(askLineProblems(bendigo?.askLine ?? '')).toEqual([expect.stringContaining("asks to be one of a party the source's terms name")])
+    expect(askLineProblems('Their terms name their tourism partners. Could EventLinqs become one of your partners?')).toHaveLength(1)
+    expect(askLineProblems('Could we count as part of the networks your terms name?')).toHaveLength(1)
+    expect(askLineProblems('Would EventLinqs be among the third party networks your terms allow?')).toHaveLength(1)
+    expect(askLineProblems(SOURCE_ASK_DEFAULT_ASK)).toEqual([])
+    expect(askLineProblems(data.asks[0].askLine)).toEqual([])
+    expect(askLineProblems('Would you be happy for EventLinqs to feature your events in this way.')).toEqual(['the ask ends in no question'])
+    // Drafted, the refused ask holds the letter: it never queues.
+    const held = draftSourceAsk({ ...data.asks[0], askLine: 'Could you let us know whether you are happy for EventLinqs to be one of them?' }, UNSUB)
+    expect(held.ruleFailures).toEqual([expect.stringContaining("asks to be one of a party the source's terms name")])
+  })
+
+  it('the voice gate refuses a source ask that says "include the events on", names no place on EventLinqs, or names no collection method', () => {
+    const { ask, draft } = v2Drafts[0]
+    const msg = sourceAskVoiceMessage(ask, draft)
+    const gate = (body: string) => voiceProblems({ ...msg, body }, POLICY)
+    expect(gate(draft.body)).toEqual([])
+    expect(gate(draft.body.replace('so more people discover', 'and we would like to include the events on our site so more people discover'))).toEqual([expect.stringContaining('never says "include the events on"')])
+    expect(gate(draft.body.replace(`from ${ask.site} on EventLinqs, our`, `from ${ask.site} with EventLinqs, our`))).toEqual([expect.stringContaining('names EventLinqs as where the events would appear')])
+    expect(gate(draft.body.replace(`Our proposed process is to check ${ask.site}'s public event listings about once a week, with`, 'We would work with'))).toEqual([expect.stringContaining('names how we would get the events')])
+    // The feed or list they provide is a collection method too; a site's own dots stay inside its sentence.
+    expect(sourceAskBodyProblems(`We'd like to show events from visitballarat.com.au on EventLinqs. Your event feed is what we would read, if you can share it.`)).toEqual([])
+    // Only a source ask is judged so: an image request is not.
+    expect(voiceProblems({ ...msg, subtype: 'PERM-IMAGE', body: draft.body.replace(`from ${ask.site} on EventLinqs, our`, `from ${ask.site} with EventLinqs, our`) }, POLICY).some((x) => x.includes('names EventLinqs as where'))).toBe(false)
   })
 })
 

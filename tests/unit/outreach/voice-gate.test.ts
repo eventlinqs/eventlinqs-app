@@ -251,13 +251,15 @@ describe("the founder sentence is out of every message (Lawal, 18 November 2026,
 // THE SOURCE ASK (the founder, 12:14 of 23 November 2026: "Apply the already-approved communication workflow to routine
 // source requests."; standard.json source_ask), as the gateway's tests 47 to 51: a PERM-SOURCE first letter takes its own
 // subject, '<listings> events on EventLinqs', and no other; that subject opens no other letter; it names no night, so
-// the timing rule has nothing to judge; every other check of law and fact stays. The first of WINDOW 5C's set of 07:30.
+// the timing rule has nothing to judge; every other check of law and fact stays. The first of WINDOW 5C's set of 07:30,
+// drawn through source_ask version 2 (Lawal, 24 November 2026; the PM's 20:55 gives its wording as final) with the ask for
+// a source with no term to name; version 1's body is refused since (source-asks.test.ts, gateway.py test 59).
 const SOURCE_BODY = [
   'Hi City of Ballarat team,',
-  'EventLinqs is an Australian event discovery platform. We list upcoming Ballarat events so more people can find them, and we would like to include the events on Ballarat In The Know.',
-  'For each event we would show its title, date, venue and organiser, with a link back to its own page on Ballarat In The Know.',
-  'As we could not find terms covering the reuse of these listings, we wanted to ask first. Could you let us know whether the City is happy for us to show the Ballarat In The Know listings this way?',
-  'Thanks for your time.',
+  "We'd like your permission to feature upcoming events from Ballarat In The Know on EventLinqs, our Australian event discovery platform, so more people discover events in Ballarat.",
+  "Our proposed process is to check Ballarat In The Know's public event listings about once a week, with a person on our team reviewing each event before it appears. Each EventLinqs listing would show the event's title, date, venue and organiser, with a direct link to its page on Ballarat In The Know for full details and bookings. We would not copy any event photos or descriptions.",
+  "You wouldn't need to prepare or send us anything. If you'd rather provide an event list or a feed, we're happy to work that way.",
+  'Would you be happy for EventLinqs to feature your events in this way?',
   'Kind regards,\n' + SIG.join('\n'),
   OPT,
 ].join('\n\n')
@@ -296,13 +298,13 @@ describe('the source ask (PERM-SOURCE; the founder, 12:14 of 23 November 2026)',
   it('50: every check of law and fact stays', () => {
     expect(has(voiceProblems({ ...SOURCE, consent: undefined }, POLICY), 'consent')).toBe(true)
     expect(has(voiceProblems({ ...SOURCE, consent: { ...SOURCE_CONSENT, noMarketingStatementChecked: false } }, POLICY), 'consent')).toBe(true)
-    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('For each event', 'We would read your feed. For each event') }, POLICY), 'internal word')).toBe(true)
-    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('For each event', "We'll feature it in our guides. For each event") }, POLICY), 'unproved claim')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('Each EventLinqs listing', 'We would read your feed. Each EventLinqs listing') }, POLICY), 'internal word')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('Each EventLinqs listing', "We'll feature it in our guides. Each EventLinqs listing") }, POLICY), 'unproved claim')).toBe(true)
     expect(has(voiceProblems({ ...SOURCE, greetingName: 'Visit Ballarat team' }, POLICY), 'verified recipient')).toBe(true)
     expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('Founder, EventLinqs', 'CEO') }, POLICY), 'signature')).toBe(true)
     expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace(OPT, '') }, POLICY), 'opt out')).toBe(true)
-    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('platform. We list', 'platform \u2014 we list') }, POLICY), 'dash')).toBe(true)
-    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('EventLinqs is an Australian', "I'm building EventLinqs. EventLinqs is an Australian") }, POLICY), 'founder sentence')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace('platform, so more', 'platform \u2014 so more') }, POLICY), 'dash')).toBe(true)
+    expect(has(voiceProblems({ ...SOURCE, body: SOURCE_BODY.replace("We'd like your permission", "I'm building EventLinqs. We'd like your permission") }, POLICY), 'founder sentence')).toBe(true)
   })
   it('51: without its entry in the policy a source ask is refused, its subject and its timing', () => {
     const { sourceAsk: _absent, ...standard } = POLICY.standard

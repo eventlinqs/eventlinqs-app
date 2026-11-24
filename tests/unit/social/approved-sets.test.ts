@@ -567,12 +567,36 @@ describe('a set piece lands on a page of exactly its own nights', () => {
       const slugs = u.pathname === '/ig' && u.searchParams.get('piece') === drawn.pieceId ? listed : []
       return new Response(`<html><body>${slugs.map((s) => `<a href="/events/${s}?utm_source=instagram">x</a>`).join('')}</body></html>`, { status: 200 })
     }
-    const short = await approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(COMEDY_SLUGS.slice(1)) })
+    // A whole show missing from the page (Sunday Laughternoons, its one night) holds the piece.
+    const sundaySlug = String(EVENTS.find((e) => e.id === SUNDAY)?.slug)
+    const short = await approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(COMEDY_SLUGS.filter((s) => s !== sundaySlug)) })
     expect(short.state).toBe('refused')
     expect(short.reason).toMatch(/does not list it/)
     const approved = await approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(COMEDY_SLUGS) })
     expect(approved).toMatchObject({ state: 'approved', pieceId: drawn.pieceId })
     expect(asked.some((u) => u.startsWith(`${ORIGIN}/ig?piece=${drawn.pieceId}&`))).toBe(true)
+  })
+
+  // THE COMEDY SET'S APPROVAL OF 25 NOVEMBER 2026 (run 45411129004, 01:10): refused for three nights its page shows, each a
+  // further night of a show drawn as one card ('+2 more dates', '+1 more date'), because the gate looked for every night's
+  // own link; the music set passed only because one night's address is the start of another's.
+  it("a show's nights on one card count as listed, as the piece's own page draws them; a link is read whole, never as a prefix", async () => {
+    const slugOf = (id: string) => String(EVENTS.find((e) => e.id === id)?.slug)
+    const site = (listed: readonly string[]) => async () =>
+      new Response(`<html><body>${listed.map((s) => `<a href="/events/${s}?utm_source=instagram&amp;utm_campaign=ig">x</a>`).join('')}</body></html>`, { status: 200 })
+    const approve = async (listed: readonly string[]) => {
+      const { db } = fakeDb()
+      const drawn = await drawApprovedSet(db, { set: 'comedy-weekend', now: NOW })
+      if (drawn.state !== 'drawn') throw new Error(drawn.reason)
+      return approveApprovedSet(db, { pieceId: drawn.pieceId, by: 'f0000000-0000-4000-8000-000000000001', now: NOW, siteOrigin: ORIGIN, fetcher: site(listed) })
+    }
+    // The page as /ig?piece draws it on production (read 25 Nov 00:17): each show's soonest night linked, its others counted.
+    expect(await approve([IMPROV[0], MAIN[0], SUNDAY].map(slugOf))).toMatchObject({ state: 'approved' })
+    // A link whose address merely starts with a night's address is another page: that night's show is not on this one.
+    const prefixOnly = await approve([IMPROV[0], MAIN[0]].map(slugOf).concat(`${slugOf(SUNDAY)}-1830`))
+    expect(prefixOnly.state).toBe('refused')
+    expect(prefixOnly.reason).toMatch(/Sunday Laughternoons: [^ ]+ does not list it/)
+    expect(prefixOnly.reason).not.toMatch(/(Holy Sh!t Improv|Comedy Republic Main Stage): [^ ]+ does not list it/)
   })
 
   const EARLIER = 'c0ffee00-0000-4000-8000-0000000c0ffe'

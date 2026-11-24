@@ -1,5 +1,5 @@
 {
-  "_generated": "Copied unchanged from C:\\dev\\comms-gateway\\standing-approvals.json by C:\\dev\\EVIDENCE\\EL-21NOV\\pm\\make-standing-copy.py; never edited by hand.",
+  "_generated": "Copied unchanged from C:\\dev\\comms-gateway\\standing-approvals.json by C:\\dev\\EVIDENCE\\EL-25NOV\\source-ask-v2\\standing-v2.py, as C:\\dev\\EVIDENCE\\EL-21NOV\\pm\\make-standing-copy.py does; never edited by hand.",
   "templates": [
     {
       "key": "acq_first",
@@ -25,13 +25,25 @@
     {
       "key": "source_ask",
       "version": 1,
-      "on": true,
+      "on": false,
       "words": "Just get my engine going, please: my outreach, my photo permissions, everything my system should be doing. ... Apply the already-approved communication workflow to routine source requests.",
       "quoted_at": "2026-11-23T14:55:00+11:00",
       "policy_version": "3b9210ea627603c6",
       "subject": "[listings] events on EventLinqs",
       "body": "Hi [organiser] team,\n\nEventLinqs is an Australian event discovery platform. We list upcoming [city] events so more people can find them, and we would like to include the events on [site].\n\nFor each event we would show its title, date, venue and organiser, with a link back to its own page on [site].\n\n[ask]\n\nThanks for your time.\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
-      "basis": "The founder, 23 November 2026: at 12:14 he adopted \"Apply the already-approved communication workflow to routine source requests.\" (standard.json source_ask, PERM-SOURCE), and at 14:55 he said \"Just get my engine going, please: my outreach, my photo permissions, everything my system should be doing.\" Recorded by WINDOW 5C on the coordinator's order of 23 November 2026: the source ask letters of C:/dev/EVIDENCE/EL-23NOV/source-asks/SET.md, written through this template (src/lib/outreach/source-asks.ts), each field in its one form (gateway.py FIELD_FORMS: listings, organiser, city, site, ask, unsubscribe link)."
+      "basis": "The founder, 23 November 2026: at 12:14 he adopted \"Apply the already-approved communication workflow to routine source requests.\" (standard.json source_ask, PERM-SOURCE), and at 14:55 he said \"Just get my engine going, please: my outreach, my photo permissions, everything my system should be doing.\" Recorded by WINDOW 5C on the coordinator's order of 23 November 2026: the source ask letters of C:/dev/EVIDENCE/EL-23NOV/source-asks/SET.md, written through this template (src/lib/outreach/source-asks.ts), each field in its one form (gateway.py FIELD_FORMS: listings, organiser, city, site, ask, unsubscribe link).",
+      "withdrawn": "Withdrawn on 24 November 2026 (the PM's 20:50: 'Until he approves it, version 1 is withdrawn from the standing approvals: no new source ask queues'): its second line says 'include the events on [site]', which reads as asking to put events on their calendar, and it names no collection method. Switched off by WINDOW 5C on 25 November 2026 when version 2 was recorded; kept as the record of the four letters sent on 24 November."
+    },
+    {
+      "key": "source_ask",
+      "version": 2,
+      "on": true,
+      "words": "Lock it in ... It is ready for the next day, for tomorrow's message. ... have a review of what ChatGPT has brought up, and let's finish up. I think that answers your question.",
+      "quoted_at": "2026-11-24T20:52:00+11:00",
+      "policy_version": "3b9210ea627603c6",
+      "subject": "[listings] events on EventLinqs",
+      "body": "Hi [organiser] team,\n\nWe'd like your permission to feature upcoming events from [site] on EventLinqs, our Australian event discovery platform, so more people discover events in [city].\n\nOur proposed process is to check [site]'s public event listings about once a week, with a person on our team reviewing each event before it appears. Each EventLinqs listing would show the event's title, date, venue and organiser, with a direct link to its page on [site] for full details and bookings. We would not copy any event photos or descriptions.\n\nYou wouldn't need to prepare or send us anything. If you'd rather provide an event list or a feed, we're happy to work that way.\n\n[ask]\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
+      "basis": "Lawal, 24 November 2026 (PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md): at 20:42 he approved source_ask version 2 with the review he adopted (\"have a review of what ChatGPT has brought up, and let's finish up. I think that answers your question.\"; the PM's 20:55 gives the wording as final), and at 20:52 \"Lock it in ... It is ready for the next day, for tomorrow's message.\" (the PM's 20:56 item 2). Recorded by WINDOW 5C on 25 November 2026: the template of src/lib/outreach/source-asks.ts SOURCE_ASK_EMAIL (version 2), each field in its one form (gateway.py FIELD_FORMS: listings, organiser, city, site, ask, unsubscribe link). Version 1 is switched off the same minute."
     }
   ]
 }

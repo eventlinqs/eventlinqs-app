@@ -7,6 +7,7 @@ import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib
 import { generateShareCode, getOrCreateShareLink } from '@/lib/broadcast/share-links'
 import { buildShortUrl } from '@/lib/broadcast/share-codes'
 import { readBookingLinks } from '@/lib/events/booking-links-read'
+import { listingKey } from '@/lib/events/guide-sections'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { isLibraryPhoto } from '@/lib/listings/listing-photo'
 import { nightMaker } from '@/lib/listings/shown-organiser'
@@ -1127,9 +1128,17 @@ export async function pieceDependencies(
   if (!page.ok) issues.push(`Its page ${path} answers ${page.status ?? 'nothing'}.`)
   // A partner kit's and a daily poster's link is the night's own /e/ link, which opens that night's page itself.
   else if (String(piece.kind) !== 'partner_kit' && String(piece.kind) !== 'daily_poster') {
+    // A RUN OF NIGHTS IS ONE CARD (the comedy set's approval of 25 November 2026, refused for three nights the page shows):
+    // the piece's page draws a show's nights as one marketplace card by its listing (guide-sections.ts listingKey of its
+    // title and venue, ig-math.ts igPicks), its soonest night linked and the others said as '+N more dates'. So a night is
+    // listed when its own page is linked, or a night of the same listing is. Each link is read whole, to the quote, '?' or
+    // '#' that ends it, never as a prefix: '/events/joel-ross-...-2026-11-27' once passed as the start of '...-2026-11-27-1900'.
+    const linked = new Set([...page.body.matchAll(/href="\/events\/([^"?#]+)/g)].map((m) => m[1]))
+    const listingOf = (e: Record<string, unknown>) => listingKey({ title: String(e.title), venue: (e.venue_name as string | null) ?? null })
+    const shownListings = new Set(ids.map((id) => byId.get(id)).filter((e): e is Record<string, unknown> => Boolean(e) && linked.has(String(e?.slug))).map(listingOf))
     for (const id of ids) {
       const e = byId.get(id)
-      if (e && !page.body.includes(`/events/${String(e.slug)}`)) issues.push(`${String(e.title)}: ${path} does not list it, so the post would send people to a page without it.`)
+      if (e && !linked.has(String(e.slug)) && !shownListings.has(listingOf(e))) issues.push(`${String(e.title)}: ${path} does not list it, so the post would send people to a page without it.`)
     }
   }
   return issues

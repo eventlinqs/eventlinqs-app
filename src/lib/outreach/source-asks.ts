@@ -23,6 +23,17 @@
  * (self-queue.ts FIELD_FORMS, gateway.py the same), so the template is written in those fields: [listings], [organiser],
  * [city], [site], [ask] and [unsubscribe link]. The seventh source, What's On Melbourne, is a website form: it is not
  * drafted here, and only the founder sends it, by hand. Pure.
+ *
+ * VERSION 2 (Lawal, 24 November 2026, 20:42 and 20:52; the PM's 20:50, 20:55 and 20:56): Bendigo's reply asked whether we
+ * wanted an event list sent to us or were asking to copy events from their calendar, because version 1's second line said
+ * "we would like to include the events on [site]", which reads as asking to put events ON their calendar, never said the
+ * events would appear on EventLinqs or how we would get them, and its ask leaned on their third party clause as if it might
+ * cover us. Version 2 is the wording Lawal approved as final: what we ask and where it appears, that they need send nothing,
+ * how we would get the events (our PROPOSED process: their public listings checked about once a week, each event reviewed
+ * by a person before it appears), what each listing shows and where its link goes, that no photo or description is copied,
+ * the alternative of a list or feed, and the one question. Version 1 is withdrawn: its standing approval is off, so no
+ * letter of it queues again; it is kept below as the record of the four letters sent on 24 November. A source's terms are
+ * quoted only to say why we ask, never as if they might authorise us (askLineProblems).
  */
 import { HELLO_MAILBOX } from './addresses'
 import { LAWAL_SIGNATURE, renderTemplate, unsubscribeLine, type TemplateRow } from './rules'
@@ -67,8 +78,17 @@ export type SourceAsk = {
 
 export type SourceAskData = { source: string; adopted: string; seenOn: string; notLoaded: { id: string; source: string; channel: string; address: string; why: string }[]; asks: SourceAsk[] }
 
-export const SOURCE_ASK_EMAIL: TemplateRow & { key: string } = {
+/** A source ask template row: the template the CRM stores under its key and version. */
+export type SourceAskTemplate = TemplateRow & { key: string; version: number }
+
+/**
+ * source_ask VERSION 1 (23 November 2026), WITHDRAWN on 24 November 2026 (the PM's 20:50): the record of the four letters
+ * sent on 24 November. Never drafted again: its standing approval is off, and the voice gate refuses its body (it says
+ * "include the events on" a source and names no collection method; voice-gate.ts sourceAskBodyProblems).
+ */
+export const SOURCE_ASK_EMAIL_V1: SourceAskTemplate = {
   key: 'source_ask',
+  version: 1,
   channel: 'email',
   purpose: 'cadence',
   step: 1,
@@ -82,6 +102,47 @@ export const SOURCE_ASK_EMAIL: TemplateRow & { key: string } = {
     `Kind regards,\n${LAWAL_SIGNATURE}`,
     unsubscribeLine('[unsubscribe link]'),
   ].join('\n\n'),
+}
+
+/**
+ * source_ask VERSION 2, the standing template (Lawal, 24 November 2026: approved at 20:42; at 20:52, "Lock it in ... It is
+ * ready for the next day, for tomorrow's message."; the PM's 20:55 gives the wording as final). The subject, greeting,
+ * signature and unsubscribe line are version 1's; the body is exactly the approved one, in its order.
+ */
+export const SOURCE_ASK_EMAIL: SourceAskTemplate = {
+  key: 'source_ask',
+  version: 2,
+  channel: 'email',
+  purpose: 'cadence',
+  step: 1,
+  subject: '[listings] events on EventLinqs',
+  body: [
+    'Hi [organiser] team,',
+    "We'd like your permission to feature upcoming events from [site] on EventLinqs, our Australian event discovery platform, so more people discover events in [city].",
+    "Our proposed process is to check [site]'s public event listings about once a week, with a person on our team reviewing each event before it appears. Each EventLinqs listing would show the event's title, date, venue and organiser, with a direct link to its page on [site] for full details and bookings. We would not copy any event photos or descriptions.",
+    "You wouldn't need to prepare or send us anything. If you'd rather provide an event list or a feed, we're happy to work that way.",
+    '[ask]',
+    `Kind regards,\n${LAWAL_SIGNATURE}`,
+    unsubscribeLine('[unsubscribe link]'),
+  ].join('\n\n'),
+}
+
+/** The ask where a source has no term to name (the PM's 20:55): it asks about featuring the events in this way, so the yes covers the process. */
+export const SOURCE_ASK_DEFAULT_ASK = 'Would you be happy for EventLinqs to feature your events in this way?'
+
+/**
+ * A SOURCE'S TERMS SAY WHY WE ASK, NEVER THAT THEY MIGHT AUTHORISE US (the PM's 20:50 item 2): version 1's Bendigo ask quoted
+ * their clause that listings "may be forwarded to other third party networks" and asked whether EventLinqs could be "one of
+ * them", as if a clause written for their own partners might cover us. Refused: an ask that asks to be one of a party their
+ * terms name, and an ask that ends in no question. Every reason; empty when the ask may go. Pure.
+ */
+export function askLineProblems(askLine: string): string[] {
+  const why: string[] = []
+  if (/\b(be|become|count as|join)\s+(one of|part of)\b|\b(be|become|count|counted|included|listed)\s+among\b|\bone of (them|those|your\b[^.?]{0,40}\b(partners|networks|parties|affiliates))\b/i.test(askLine)) {
+    why.push("the ask asks to be one of a party the source's terms name; their terms say why we ask, never that they might authorise us")
+  }
+  if (!/\?$/.test(askLine.trim())) why.push('the ask ends in no question')
+  return why
 }
 
 /** The play the letters ride in, approved on the founder's words of 12:14 and 14:55 of 23 November 2026. */
@@ -100,19 +161,22 @@ export type SourceAskDraft = {
   ruleFailures: string[]
 }
 
-/** One source's letter, filled from its reviewed facts. `unsubscribeUrl` is the contact's own link. Pure. */
-export function draftSourceAsk(ask: SourceAsk, unsubscribeUrl: string): SourceAskDraft {
-  const rendered = renderTemplate(SOURCE_ASK_EMAIL, { organiser: ask.organiser, listings: ask.listings, city: ask.city, site: ask.site, ask: ask.askLine }, unsubscribeUrl)
+/**
+ * One source's letter, filled from its reviewed facts, through version 2 unless a template is named; its ask judged by
+ * askLineProblems beside the messages file's rules. `unsubscribeUrl` is the contact's own link. Pure.
+ */
+export function draftSourceAsk(ask: SourceAsk, unsubscribeUrl: string, template: SourceAskTemplate = SOURCE_ASK_EMAIL): SourceAskDraft {
+  const rendered = renderTemplate(template, { organiser: ask.organiser, listings: ask.listings, city: ask.city, site: ask.site, ask: ask.askLine }, unsubscribeUrl)
   return {
     id: ask.id,
     organiser: ask.organiser,
-    template: SOURCE_ASK_EMAIL.key,
+    template: template.key,
     channel: 'email',
     address: ask.contact.address,
     greetingName: `${ask.organiser} team`,
     subject: rendered.subject,
     body: rendered.body,
-    ruleFailures: rendered.heldBecause,
+    ruleFailures: [...rendered.heldBecause, ...askLineProblems(ask.askLine)],
   }
 }
 

@@ -69,6 +69,17 @@ const ANSWERS: { key: string; outcome: 'question' | 'later'; pattern: RegExp }[]
   { key: 'reply_not_now', outcome: 'later', pattern: /\b(not (right )?now|maybe later|another time|too busy|after (the )?(season|christmas|summer|new year))\b/i },
 ]
 
+/**
+ * A reply asking what we mean: which of two things ("are you hoping we send a list, or asking to take events from our
+ * site?"), or what we want ("what exactly are you after?", "could you clarify what you need?"). One question, with an
+ * 'or' between two readings, or a 'what' about what we want.
+ */
+const CLARIFYING: readonly RegExp[] = [
+  /\b(are|were|is|was|do|did|would|will) you\b[^?]{0,200}\bor\b[^?]{0,200}\?/i,
+  /\bwhat (exactly )?(is it )?(that )?(are you|do you|did you|would you|you('re| are))\b[^?.]{0,60}\b(want|wanting|after|asking|looking for|hoping|need|mean|proposing)\b/i,
+  /\b(could|can|would) you (please )?(clarify|explain|confirm) (what|whether|which)\b/i,
+]
+
 /** An acknowledgement's opening and its one message: received or passed on (no auto header needed). */
 const ACK_OPEN = /^\s*(thank you|thanks) for (contacting|your (e-?mail|message|enquiry|inquiry|interest)|getting in touch|reaching out)\b/i
 const ACK_BODY = /\b(has been (forwarded|passed on|received|sent on)|we have received your|we('ll| will) (respond|get back|be in touch|reply)|this is an automated|do not reply to this (e-?mail|message)|one of our team will)\b/i
@@ -110,6 +121,11 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   if (m.hasAttachments && PHOTO_WORDS.test(text)) return { kind: 'reply', outcome: 'photographs', confidence: 0.95, answerKey: null }
   if (CORRECTION_WORDS.test(text)) return { kind: 'reply', outcome: 'correction', confidence: 0.9, answerKey: null }
   if (PERMISSION_WORDS.test(text)) return { kind: 'reply', outcome: 'permission', confidence: 0.9, answerKey: null }
+  // A QUESTION ABOUT WHAT WE ASK (the PM's 20:50 item 4 of 24 November 2026): a reply to the Bendigo source ask asked which
+  // of two things we meant and was read as 'referred', because its signature named a place. A reply that asks which of two
+  // things we mean, or what we want, is a 'question', outranking 'referred'; no answer is drafted by itself (the answer to
+  // a source uses source_ask version 2's wording), so it waits for Lawal with its class named.
+  if (CLARIFYING.some((p) => p.test(text))) return { kind: 'reply', outcome: 'question', confidence: short ? 0.8 : 0.75, answerKey: null }
   const distinct = [...new Map(hits.map((h) => [h.outcome + (h.key ?? ''), h])).values()]
   if (distinct.length === 1) {
     const h = distinct[0]

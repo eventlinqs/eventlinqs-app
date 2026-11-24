@@ -22,14 +22,16 @@ import {
   type LetterApproval,
   type StandingApproval,
 } from '@/lib/outreach/self-queue'
-import { SOURCE_ASK_EMAIL, draftSourceAsk, type SourceAskData } from '@/lib/outreach/source-asks'
+import { SOURCE_ASK_DEFAULT_ASK, SOURCE_ASK_EMAIL, SOURCE_ASK_EMAIL_V1, draftSourceAsk, type SourceAskData } from '@/lib/outreach/source-asks'
 import { HELLO_MAILBOX } from '@/lib/outreach/addresses'
 
-/** The source asks of 23 November 2026, each the template source_ask v1 with only its fields filled. */
+/** The five sources of 23 November 2026, each drafted through source_ask v2 with the ask for a source with no term to name. */
 const SOURCE_LINK_ID = '00000000-0000-4000-8000-000000000004'
-const SOURCE_DRAFTS = (JSON.parse(readFileSync('scripts/ops/data/source-asks-23nov.json', 'utf8')) as SourceAskData).asks.map((a) =>
-  draftSourceAsk(a, `https://www.eventlinqs.com.au/unsubscribe/outreach?t=${SOURCE_LINK_ID}`),
-)
+const SOURCES = (JSON.parse(readFileSync('scripts/ops/data/source-asks-23nov.json', 'utf8')) as SourceAskData).asks
+const SOURCE_URL = `https://www.eventlinqs.com.au/unsubscribe/outreach?t=${SOURCE_LINK_ID}`
+const SOURCE_DRAFTS = SOURCES.map((a) => draftSourceAsk({ ...a, askLine: SOURCE_ASK_DEFAULT_ASK }, SOURCE_URL))
+/** The same sources as version 1 drafted them (the letters of 24 November), which no longer clear. */
+const SOURCE_DRAFTS_V1 = SOURCES.map((a) => draftSourceAsk(a, SOURCE_URL, SOURCE_ASK_EMAIL_V1))
 
 /*
  * NO DAILY PRESS (the PM's item 2 of 00:05:52, 21 November 2026): a held first letter that clears under Lawal's standing
@@ -212,13 +214,16 @@ describe('the self queue', () => {
   })
 
   // The source ask (the founder, 12:14 and 14:55 of 23 November 2026): read beside the acquisition letters, and queued
-  // itself when it clears under source_ask v1.
+  // itself when it clears under source_ask v2 (Lawal, 24 November 2026; v1 is withdrawn, so a held v1 letter is not).
   test('the engine reads held source asks beside acquisition letters, and queues one that clears', async () => {
     expect(SELF_QUEUED_FIRST_LETTERS).toBe('comms_category.eq.ACQ,comms_subtype.eq.PERM-SOURCE')
     const d = SOURCE_DRAFTS[0]
-    const { db, calls } = fakeDb([{ id: 'source', template: 'source_ask v1', mail: { template: 'source_ask v1', subject: d.subject ?? '', body: d.body, to: d.address } }])
+    const { db, calls } = fakeDb([{ id: 'source', template: 'source_ask v2', mail: { template: 'source_ask v2', subject: d.subject ?? '', body: d.body, to: d.address } }])
     const r = await queueApprovedHeldLetters(db, { now: NOW, policy })
-    expect(r.queued).toEqual([expect.objectContaining({ id: 'source', at: SATURDAY_6, why: expect.stringContaining('standing approval of source_ask v1') })])
+    expect(r.queued).toEqual([expect.objectContaining({ id: 'source', at: SATURDAY_6, why: expect.stringContaining('standing approval of source_ask v2') })])
+    const old = SOURCE_DRAFTS_V1[0]
+    const held = fakeDb([{ id: 'source-v1', template: 'source_ask v1', mail: { template: 'source_ask v1', subject: old.subject ?? '', body: old.body, to: old.address } }])
+    expect((await queueApprovedHeldLetters(held.db, { now: NOW, policy })).queued).toEqual([])
     const read = calls.find((c) => c.table === 'outreach_touches' && c.op === 'select' && c.filters.some(([k, v]) => k === 'eq:state' && v === 'held'))
     expect(read?.filters).toEqual(expect.arrayContaining([['eq:step', 1], ['or', SELF_QUEUED_FIRST_LETTERS]]))
   })
@@ -231,30 +236,45 @@ describe('the self queue', () => {
  * source ask, the template with only its fields filled, clears; a changed sentence does not.
  */
 describe('the source ask, a standing template the engine sends', () => {
-  const entry = standingApprovals().find((a) => a.key === 'source_ask' && a.version === 1)
+  const v1 = standingApprovals().find((a) => a.key === 'source_ask' && a.version === 1)
+  const entry = standingApprovals().find((a) => a.key === 'source_ask' && a.version === 2)
 
-  test("source_ask v1 is recorded on, with the founder's words, and is the code's template word for word", () => {
+  test("source_ask v2 is recorded on, with Lawal's words of 24 November, and is the code's template word for word", () => {
     expect(entry?.on).toBe(true)
-    expect(entry?.words).toContain('Just get my engine going, please: my outreach, my photo permissions, everything my system should be doing.')
-    expect(entry?.words).toContain('Apply the already-approved communication workflow to routine source requests.')
+    expect(entry?.words).toContain("Lock it in ... It is ready for the next day, for tomorrow's message.")
     expect(entry?.policy_version).toBe(POLICY)
     expect(entry?.subject).toBe(SOURCE_ASK_EMAIL.subject)
     expect(entry?.body).toBe(SOURCE_ASK_EMAIL.body)
   })
 
+  test("source_ask v1 is withdrawn: recorded off with its reason, still the record of the letters sent, and none of them clears now", () => {
+    expect(v1?.on).toBe(false)
+    expect((v1 as (StandingApproval & { withdrawn?: string }) | undefined)?.withdrawn).toContain('include the events on [site]')
+    expect(v1?.body).toBe(SOURCE_ASK_EMAIL_V1.body)
+    for (const d of SOURCE_DRAFTS_V1) {
+      expect(standingClear({ template: 'source_ask v1', subject: d.subject ?? '', body: d.body }, POLICY).reason, d.id).toBe(
+        "the standing approval for source_ask v1 is off: it is switched on only with Lawal's own words quoted",
+      )
+    }
+  })
+
   test('each source ask, the template with only its fields filled, clears under it', () => {
     expect(SOURCE_DRAFTS.length).toBeGreaterThan(0)
     for (const d of SOURCE_DRAFTS) {
-      const r = standingClear({ template: 'source_ask v1', subject: d.subject ?? '', body: d.body }, POLICY)
-      expect([d.id, r.cleared, r.reason]).toEqual([d.id, true, expect.stringContaining('standing approval of source_ask v1')])
+      const r = standingClear({ template: 'source_ask v2', subject: d.subject ?? '', body: d.body }, POLICY)
+      expect([d.id, r.cleared, r.reason]).toEqual([d.id, true, expect.stringContaining('standing approval of source_ask v2')])
     }
+    // A version 1 letter named as version 2 does not clear: its words are not version 2's.
+    const old = SOURCE_DRAFTS_V1[0]
+    expect(standingClear({ template: 'source_ask v2', subject: old.subject ?? '', body: old.body }, POLICY).reason).toBe("the letter's body is not source_ask v2 with only its fields filled")
   })
 
   test('a changed sentence, an ask with no question, a subject off the template or a link with no token does not clear', () => {
     const d = SOURCE_DRAFTS[0]
-    const clear = (subject: string, body: string) => standingClear({ template: 'source_ask v1', subject, body }, POLICY).cleared
-    expect(clear(d.subject ?? '', d.body.replace('with a link back to its own page', 'with a link to its page'))).toBe(false)
-    expect(clear(d.subject ?? '', d.body.replace('?\n\nThanks for your time.', '.\n\nThanks for your time.'))).toBe(false)
+    const clear = (subject: string, body: string) => standingClear({ template: 'source_ask v2', subject, body }, POLICY).cleared
+    expect(clear(d.subject ?? '', d.body)).toBe(true)
+    expect(clear(d.subject ?? '', d.body.replace('with a direct link to its page', 'with a link to its page'))).toBe(false)
+    expect(clear(d.subject ?? '', d.body.replace('?\n\nKind regards,', '.\n\nKind regards,'))).toBe(false)
     expect(clear(`${d.subject} today`, d.body)).toBe(false)
     expect(clear(d.subject ?? '', d.body.replace(SOURCE_LINK_ID, 'not-a-token'))).toBe(false)
   })

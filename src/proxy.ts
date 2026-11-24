@@ -8,6 +8,7 @@ import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 import { GONE_HEADERS, GONE_STATUS, renderGoneHtml } from '@/lib/events/gone-page'
 import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
 import { previewReadOnlyOn, previewReadOnlyRefusal } from '@/lib/preview/read-only'
+import { igForBioLink } from '@/lib/seo/bio-link'
 
 /**
  * /dev/* production gate.
@@ -303,6 +304,11 @@ export async function proxy(request: NextRequest) {
   // blocked requests short-circuit immediately.
   const devGate = gateDevRoutes(request)
   if (devGate) return devGate
+
+  // The Instagram bio's own link goes to /ig, every tag kept (the PM's 00:50 of 25 November 2026;
+  // src/lib/seo/bio-link.ts igForBioLink): synchronous, before the session, so the state page stays static.
+  const bio = igForBioLink(request.nextUrl.pathname, request.nextUrl.searchParams)
+  if (bio) return NextResponse.redirect(new URL(bio, request.nextUrl), 307)
 
   // The design preview writes nothing (the CONTROLLER's ruling of 1 November 2026, 11:42): asked before the session
   // is refreshed and before any client is made. Unset everywhere but that one branch's preview.
