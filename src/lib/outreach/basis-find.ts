@@ -91,7 +91,8 @@ export function domainOf(url: string): string | null {
 }
 
 const STOP = new Set(['and', 'of', 'the', 'at', 'for', 'with', 'inc', 'club', 'co'])
-const NOT_EVENTS = /^(careers?|jobs?|hr|recruit\w*|accounts?|payroll|invoices?|billing|helpdesk|privacy|steakhouse|restaurant|kitchen)$/
+// A hotel's rooms and its restaurant are not its events (Novotel Geelong's reservations@ and dining@, 25 November 2026).
+const NOT_EVENTS = /^(careers?|jobs?|hr|recruit\w*|accounts?|payroll|invoices?|billing|helpdesk|privacy|steakhouse|restaurant|kitchen|dining|reservations?|rooms|stay|accommodation)$/
 
 /**
  * Whether this address is the organiser's own in the role an invitation to list relates to (scripts/lib/outreach-basis-
@@ -110,6 +111,28 @@ export function roleRefusal(address: string, organiserName: string, textBefore =
     if (!named) return `a shared government domain (${domain}): only the organiser's own named inbox is taken there`
   }
   return null
+}
+
+/**
+ * A DIRECTORY PAGE TAKES ONLY ITS EVENTS OR OFFICE INBOX (WINDOW 5C, 25 November 2026, the contact discovery of the PM's
+ * 06:59 item 2): the Basilica of St Mary of the Angels' contact page lists twelve people, priests, staff in other roles
+ * and four volunteers' own Gmail and Yahoo addresses, and every one passed the three tests. An invitation to list their
+ * events relates to the role of the inbox that handles them, never to a volunteer's own mail or a priest's. So on a page
+ * that publishes more than DIRECTORY_SIZE addresses, an address is taken only when its own name is an events or office
+ * inbox (DIRECTORY_INBOX), or the words just before it name that role (DIRECTORY_ROLE); a free mail address there is
+ * never taken. A page with few addresses keeps the rule as it was.
+ */
+export const DIRECTORY_SIZE = 4
+const DIRECTORY_INBOX = /^(info|hello|events?|bookings?|enquiries|inquiries|contact|office|admin|reception|functions|hire|venues?|tickets?|programming|parish(office)?|secretary)$/
+const DIRECTORY_ROLE = /\b(events?|bookings?|functions?|venue hire|hire|programming|office|secretary|administrator|reception)\b[^.@]{0,40}$/i
+
+/** Why an address on a directory page is not taken, or null when it is. Pure. */
+export function directoryRefusal(address: string, kind: 'own domain' | 'free mail', textBefore: string): string | null {
+  if (kind === 'free mail') return "a person's own mail on a page listing many people"
+  const local = address.toLowerCase().split('@')[0] ?? ''
+  if (DIRECTORY_INBOX.test(local)) return null
+  const lead = textBefore.slice(-80).replace(/\S+@\S+/g, ' ')
+  return DIRECTORY_ROLE.test(lead) ? null : "a person's address on a page listing many people, not the inbox for their events"
 }
 
 export type BasisFind = { address: string; pageUrl: string; kind: 'own domain' | 'free mail'; quote: string }
@@ -134,7 +157,9 @@ export function basisFinds(
   for (const page of pages) {
     const pageWords = words(page.html)
     const against = AGAINST.find((re) => re.test(pageWords))
-    for (const a of addressesOn(page.html)) {
+    const onPage = addressesOn(page.html)
+    const directory = onPage.length > DIRECTORY_SIZE
+    for (const a of onPage) {
       if (seen.has(a)) continue
       const kind = addressKind(a, site)
       seen.add(a)
@@ -147,7 +172,8 @@ export function basisFinds(
         continue
       }
       const at = pageWords.toLowerCase().indexOf(a)
-      const why = roleRefusal(a, organiser.name, at >= 0 ? pageWords.slice(0, at) : '')
+      const before = at >= 0 ? pageWords.slice(0, at) : ''
+      const why = roleRefusal(a, organiser.name, before) ?? (directory ? directoryRefusal(a, kind, before) : null)
       if (why) refused.push({ address: a, pageUrl: page.url, why: `not their role (${why})` })
       else finds.push({ address: a, pageUrl: page.url, kind, quote: quoteFor(pageWords, a) })
     }
