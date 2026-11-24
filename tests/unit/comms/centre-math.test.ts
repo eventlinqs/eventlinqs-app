@@ -5,12 +5,17 @@ import {
   EMPTY,
   combine,
   nextAction,
+  nextGoAt,
   noticeFigures,
   notificationFigures,
   outcomeFigures,
+  reportFigures,
+  reportGroups,
+  reportNotes,
   sectionsInOrder,
   sentRecordFigures,
   socialFigures,
+  socialNotes,
   touchFigures,
 } from '@/lib/comms/centre-math'
 
@@ -34,6 +39,55 @@ describe('the Centre counts what the rows say', () => {
     ]
     const f = socialFigures(pieces, new Set(['p1', 'p2']), schedules)
     expect(f).toMatchObject({ total: 3, pending: 1, approved: 2, scheduled: 0, sent: 1, delivered: 1, failed: 1, outcomes: null, withdrawn: null, lastUpdated: '2026-11-18T03:01:00Z' })
+  })
+
+  // THE PM's 06:59 ITEM 3 OF 25 NOVEMBER 2026: "141 waiting for approval, 12 failed" counted 136 pieces set aside (66
+  // rejected, 70 expired when their nights started) as waiting, and seven holds on purpose as failures.
+  it('a piece set aside is not waiting, and only a hold that names a fault is a failure', () => {
+    const pieces = [{ id: 'p1', planned_at: null }, { id: 'p2', planned_at: null }, { id: 'p3', planned_at: null }, { id: 'p4', planned_at: null }]
+    const held = (piece_id: string, held_reason: string | null) => ({ piece_id, state: 'held', published_ref: null, published_at: null, created_at: null, held_reason })
+    const schedules = [
+      held('p1', 'new row for relation "social_piece_schedules" violates check constraint "social_piece_schedules_published_ref_check"'),
+      held('p2', 'Withdrawn before publishing (Lawal, 19:04 of 22 November 2026: do not publish anything about AMCF tonight).'),
+      held('p3', 'Superseded: the PM chose this night\'s photograph by looking; the next revision carries it.'),
+      held('p4', null),
+    ]
+    const aside = new Set(['p2', 'p3'])
+    const f = socialFigures(pieces, new Set(), schedules, aside)
+    expect(f).toMatchObject({ total: 4, pending: 2, failed: 2 })
+    expect(socialNotes(pieces, new Set(), schedules, aside)).toEqual([
+      '2 set aside before approval (expired when their nights started, or rejected): nothing waits on them',
+      '2 held on purpose before posting (withdrawn, superseded, or held by a rule), each with its reason on its schedule: not failures',
+    ])
+  })
+  it('the next post is the earliest schedule still waiting, from an hour ago on', () => {
+    const now = new Date('2026-11-24T21:00:00Z')
+    const s = (state: string, go_at: string) => ({ piece_id: 'p', state, published_ref: null, published_at: null, created_at: null, go_at })
+    expect(nextGoAt([s('scheduled', '2026-11-25T22:00:00Z'), s('scheduled', '2026-11-24T22:00:00Z'), s('published', '2026-11-24T21:30:00Z'), s('scheduled', '2026-11-24T10:00:00Z')], now)).toBe('2026-11-24T22:00:00Z')
+    expect(nextGoAt([], now)).toBeNull()
+  })
+
+  // THE PM's 06:59 ITEM 4: "569 of 569 night reports not sent" read as waiting; none could ever go.
+  it('a night report that can never go is not sendable, with its reason; only a partner\'s in its window is pending', () => {
+    const now = new Date('2026-11-25T00:00:00Z')
+    const day = 86_400_000
+    const ended = (days: number) => new Date(now.getTime() - days * day).toISOString()
+    const reports = [
+      { event_id: 'e-sent', night_ended_at: ended(3), sent_at: ended(1), lettered: false },
+      { event_id: 'e-lettered', night_ended_at: ended(3), sent_at: null, lettered: true },
+      { event_id: 'e-no-venue', night_ended_at: ended(3), sent_at: null, lettered: false },
+      { event_id: 'e-nobody', night_ended_at: ended(3), sent_at: null, lettered: false },
+      { event_id: 'e-cold', night_ended_at: ended(3), sent_at: null, lettered: false },
+      { event_id: 'e-late', night_ended_at: ended(9), sent_at: null, lettered: false },
+      { event_id: 'e-due', night_ended_at: ended(3), sent_at: null, lettered: false },
+      { event_id: 'e-soon', night_ended_at: ended(0.5), sent_at: null, lettered: false },
+    ]
+    const venueOf = new Map<string, string | null>([['e-no-venue', null], ['e-nobody', 'v-empty'], ['e-cold', 'v-cold'], ['e-late', 'v-partner'], ['e-due', 'v-partner'], ['e-soon', 'v-partner']])
+    const organisersAt = new Map([['v-cold', ['o-cold']], ['v-partner', ['o-cold', 'o-partner']]])
+    const g = reportGroups(reports, { venueOf, organisersAt, partners: new Set(['o-partner']) }, now, { dueDays: 2, staleDays: 7 })
+    expect(g).toEqual({ total: 8, sent: 2, dueNow: 1, notYetDue: 1, firstDue: new Date(now.getTime() + 1.5 * day).toISOString(), noOrganiser: 2, notPartner: 1, pastWindow: 1 })
+    expect(reportFigures(g, null)).toMatchObject({ total: 8, pending: 2, sent: 2 })
+    expect(reportNotes(g).map((n) => n.split(':')[0])).toEqual(['2 night reports not sendable', '1 night reports not sendable', '1 night reports not sendable'])
   })
 
   it('a record with no approval step says so, and pending means not yet sent', () => {
@@ -60,12 +114,21 @@ describe('the Centre counts what the rows say', () => {
     expect(combine(EMPTY, EMPTY)).toEqual(EMPTY)
   })
 
-  it('the next action comes from the figures, and acquisition always shows its first letters against the 20', () => {
-    expect(nextAction('ACQ', { ...EMPTY, total: 29, pending: 29 }, 0)).toBe('0 of 20 first letters sent today. 29 waiting for approval')
+  it('the next action comes from the figures, then the real next step and its time, and acquisition always shows its first letters against the 20', () => {
+    expect(nextAction('ACQ', { ...EMPTY, total: 29, pending: 29 }, 0)).toBe('0 of 20 first letters sent today. 29 held until their own checks clear')
+    expect(nextAction('ACQ', { ...EMPTY, total: 29, pending: 0 }, 0, 'none is queued; the next sending window opens 26 Nov 2026, 6:00 am')).toBe(
+      '0 of 20 first letters sent today. Nothing waiting. None is queued; the next sending window opens 26 Nov 2026, 6:00 am',
+    )
     expect(nextAction('RET', { ...EMPTY, total: 395, pending: 395 }, null)).toBe('395 waiting to be sent')
-    expect(nextAction('SOC', { ...EMPTY, total: 3, pending: 0, scheduled: 2 }, null)).toBe('2 scheduled to go')
+    expect(nextAction('SOC', { ...EMPTY, total: 3, pending: 0, scheduled: 2 }, null, 'the next post goes 26 Nov 2026, 9:00 am')).toBe('2 scheduled to go. The next post goes 26 Nov 2026, 9:00 am')
+    expect(nextAction('SOC', { ...EMPTY, total: 3, pending: 1 }, null)).toBe("1 drawn and waiting for the PM's verify")
     expect(nextAction('TKT', EMPTY, null)).toBe('Nothing recorded yet')
     expect(nextAction('LIST', { ...EMPTY, total: 4, pending: 0, scheduled: 0 }, null)).toBe('Nothing waiting')
+  })
+  it('no tile says a founder approval is waited on: replies and approved letters go by themselves (Lawal, 07:02 of 25 November 2026)', () => {
+    for (const c of ['ACQ', 'PERM', 'LIST', 'SOC', 'RET', 'TKT', 'SYS'] as const) {
+      expect(nextAction(c, { ...EMPTY, total: 5, pending: 5 }, null)).not.toMatch(/for approval|your approval|Lawal/)
+    }
   })
 
   it('seven sections, always, in the directive\'s order, with his names', () => {
