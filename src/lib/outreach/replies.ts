@@ -20,6 +20,8 @@ import type { InboundMessage } from './graph'
 import { draftFromTemplate } from './drafts'
 import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
+import type { MediaDeps } from '@/lib/listings/organiser-media'
+import { keepEmailedImages, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
 
 type Admin = SupabaseClient<Database>
 
@@ -127,11 +129,42 @@ function ourIdsIn(m: InboundMessage): string[] {
   return [...new Set(`${m.headers['in-reply-to'] ?? ''} ${m.headers['references'] ?? ''} ${m.text}`.match(OUR_ID) ?? [])]
 }
 
+/**
+ * THEIR ATTACHMENTS, READ FROM THE MAILBOX ONLY WHEN TAKEN (the master directive's A3 (1)): the image attachments of a
+ * message (inbound-attachments.ts isShownPhoto chose them), and the media pipeline that stores them. The run passes it;
+ * without it a message's attachments stay in the mailbox, as before.
+ */
+export type InboxIntake = { readonly files: (graphId: string) => Promise<readonly EmailedFile[]>; readonly media: MediaDeps }
+
+/** Said in a reply's action when its attachments could not be kept, so the next run that reads it takes them again. */
+export const ATTACHMENTS_NOT_KEPT = 'its attachments were not kept'
+
+/** Their attachments, kept as candidate assets (src/lib/comms/emailed-media.ts); the answer in words for the reply's action. */
+async function takeAttachments(
+  db: Admin,
+  m: InboundMessage,
+  input: { contactId: string; touch: ThreadTouch; message: EmailedMessage; now: Date; by: string },
+  intake: InboxIntake,
+): Promise<string> {
+  try {
+    const kept = await keepEmailedImages(db, input, { files: () => intake.files(m.graphId), media: intake.media })
+    if (kept.state === 'not taken') return `its attachments stay in the mailbox: ${kept.why}`
+    const parts = [`${kept.kept} image${kept.kept === 1 ? '' : 's'} kept as candidates ${kept.night ? `for ${kept.night}` : 'for review, no night of theirs named by the thread'}`]
+    if (kept.already) parts.push(`${kept.already} already in the register`)
+    if (kept.refused.length) parts.push(`not kept: ${kept.refused.join('; ')}`)
+    return parts.join('; ')
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err)
+    console.error(`[outreach/replies] message ${m.internetMessageId || '(no id)'}: ${ATTACHMENTS_NOT_KEPT}:`, why)
+    return `${ATTACHMENTS_NOT_KEPT} (${why}); the next run takes them again`
+  }
+}
+
 /** Read new inbox messages, log each reply against its contact, and act on the clear ones. Idempotent by message id. */
 export async function handleInbox(
   db: Admin,
   messages: InboundMessage[],
-  deps: { mailbox: string; origin: string; actingUser: string; now: Date },
+  deps: { mailbox: string; origin: string; actingUser: string; now: Date; intake?: InboxIntake },
 ): Promise<InboxReport> {
   const report: InboxReport = { read: messages.length, matched: 0, unmatched: 0, autoReplies: 0, bounces: 0, replies: [], failed: [] }
   for (const m of messages) {
@@ -147,7 +180,7 @@ export async function handleInbox(
     }
     const ids = ourIdsIn(m)
     const touch = ids.length
-      ? (await db.from('outreach_touches').select('id, contact_id').in('internet_message_id', ids).order('sent_at', { ascending: false }).limit(1)).data?.[0]
+      ? (await db.from('outreach_touches').select('id, contact_id, subject, context_key').in('internet_message_id', ids).order('sent_at', { ascending: false }).limit(1)).data?.[0]
       : undefined
 
     if (kind.kind === 'bounce') {
@@ -193,9 +226,25 @@ export async function handleInbox(
       })
       .select('id')
       .single()
+    // THEIR ATTACHMENTS (src/lib/comms/emailed-media.ts): taken from a reply that is not a stop, a take down or a no.
+    const thread: ThreadTouch = touch ? { subject: (touch.subject as string | null) ?? null, context_key: (touch.context_key as string | null) ?? null } : null
+    const message: EmailedMessage = { internetMessageId: m.internetMessageId, fromAddress: m.fromAddress, receivedAt: m.receivedAt, ownWords: stripQuoted(m.text) }
+    const takes = deps.intake && m.hasAttachments === true && kind.outcome !== 'stop' && kind.outcome !== 'take_down' && kind.outcome !== 'no' ? deps.intake : null
     if (logged.error) {
-      // A second read of the same message is refused by the unique message id: already handled, nothing more to do.
-      if (/outreach_replies_one_per_message/.test(logged.error.message)) continue
+      // A second read of the same message is refused by the unique message id: already handled, nothing more to do,
+      // except where its attachments could not be kept last time: they are taken again (the register never keeps the
+      // same file twice), and the reply's action says what happened.
+      if (/outreach_replies_one_per_message/.test(logged.error.message)) {
+        if (takes && m.internetMessageId) {
+          const before = await db.from('outreach_replies').select('id, action_taken').eq('source_message_id', m.internetMessageId).maybeSingle()
+          if (before.data && String(before.data.action_taken ?? '').includes(ATTACHMENTS_NOT_KEPT)) {
+            const again = await takeAttachments(db, m, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }, takes)
+            const kept = String(before.data.action_taken).split(`; ${ATTACHMENTS_NOT_KEPT}`)[0]
+            await db.from('outreach_replies').update({ action_taken: `${kept}; ${again}` }).eq('id', before.data.id as string)
+          }
+        }
+        continue
+      }
       throw new Error(`logging a reply: ${logged.error.message}`)
     }
 
@@ -238,6 +287,7 @@ export async function handleInbox(
     } else if (clear && kind.outcome === 'no') {
       action = 'the organiser is stopped; nothing sent'
     }
+    if (takes) action = `${action}; ${await takeAttachments(db, m, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }, takes)}`
     await db.from('outreach_replies').update({ action_taken: action }).eq('id', logged.data.id)
     report.replies.push({ id: logged.data.id, outcome: kind.outcome, confidence: kind.confidence, action })
     } catch (err) {

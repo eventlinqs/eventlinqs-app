@@ -4,7 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { graphConfigFromEnv, graphReadInbox } from '@/lib/outreach/graph'
 import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
-import { handleInbox } from '@/lib/outreach/replies'
+import { handleInbox, type InboxIntake } from '@/lib/outreach/replies'
+import { graphPhotoBytes, graphPhotosOf } from '@/lib/comms/inbound-attachments'
+import { mediaDeps } from '@/lib/listings/organiser-media'
 import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, type PlayReport } from '@/lib/outreach/planner'
 import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
@@ -80,7 +82,17 @@ export async function GET(request: NextRequest) {
         for (const mailbox of OUR_MAILBOXES) {
           read[mailbox] = await isolated(RUN, `the inbox of ${mailbox}`, async () => {
             const messages = await graphReadInbox({ ...graph, mailbox }, new Date(now.getTime() - INBOX_LOOKBACK_MS).toISOString())
-            return handleInbox(db, messages, { mailbox, origin, actingUser, now })
+            // THEIR ATTACHMENTS, KEPT AS CANDIDATE ASSETS (the master directive's A3 (1); src/lib/comms/emailed-media.ts):
+            // read from this mailbox only for a message the intake takes, and stored through the photo page's own pipeline.
+            const box = { ...graph, mailbox }
+            const intake: InboxIntake = {
+              files: async (graphId) => {
+                const shown = await graphPhotosOf(box, graphId)
+                return Promise.all(shown.map(async (a) => ({ name: a.name, contentType: a.contentType, bytes: await graphPhotoBytes(box, graphId, a.id) })))
+              },
+              media: mediaDeps('gallery'),
+            }
+            return handleInbox(db, messages, { mailbox, origin, actingUser, now, intake })
           })
         }
         inbox = read
