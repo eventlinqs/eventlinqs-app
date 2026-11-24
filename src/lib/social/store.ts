@@ -41,6 +41,7 @@ import type { BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
 import { intakeFaults, intakeOfRow, intakeRow, planIntakePiece, slidesOf as slidesOfIntake, stateAfter, type GateStage, type IntakeInput, type IntakeRead, type IntakeRecord, type IntakeState, type Network, type RegisterAsset } from '@/lib/creative/intake'
+import { carouselPostAt, cityCoverPhotos } from './city-carousel'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -576,7 +577,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, host_name:metadata->>host_name, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
+  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, host_name:metadata->>host_name, category:event_categories!events_category_id_fkey(slug, name), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -1209,6 +1210,7 @@ export async function readCampaignNights(
       // Who puts it on, as the night names them, never its venue for want of a name (shown-organiser.ts nightMaker).
       organiser: nightMaker({ listing_source: (e.listing_source as string | null) ?? null, metadata: { host_name: (e.host_name as string | null) ?? null }, words: [(e.summary as string | null) ?? null] }, organisation),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
+      categoryName: (e.category as { name: string | null } | null)?.name ?? null,
       summary: (e.summary as string | null) ?? null,
       approvedPhotoUrl: image?.url ?? null,
       photoCredit: image?.credit ?? null,
@@ -1244,7 +1246,10 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN })
+  // THE WEEKLY CITY CAROUSEL (the PM's 01:12; ./city-carousel.ts): Monday's week ahead as the carousel, posted from the
+  // window's opening on the week's Monday, its cover over each city's own licensed photograph (cityCoverPhotos).
+  const carousel = { postAt: carouselPostAt(weekStart), cityPhotos: cityCoverPhotos(cities, ORIGIN) }
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN, carousel })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked

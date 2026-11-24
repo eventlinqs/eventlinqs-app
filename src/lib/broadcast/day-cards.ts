@@ -18,7 +18,7 @@ import type { DayRow } from '@/lib/social/campaign'
 export type DayFormat = 'feed' | 'square' | 'story'
 
 export type DaysWords = { day: string; date: string; rows: readonly DayRow[]; credit: string | null }
-export type WeekCoverWords = { range: string; lines: readonly [string, string, string]; draws: string | null; line: string; credit: string | null; lead?: readonly DayRow[] }
+export type WeekCoverWords = { range: string; lines: readonly [string, string, string]; draws: string | null; line: string; credit: string | null; lead?: readonly DayRow[]; accentLine?: 0 | 1 | 2 }
 export type FeatureWords = { eyebrow: string; title: string; accent: string | null; chip: string | null; credit: string | null }
 /** Family D's name card (the master's 11 LANY): the eyebrow, the name in gold, the accent, one cream timed card. */
 export type NameCardWords = { eyebrow: string; name: string; accent: string; row: DayRow; credit: string | null }
@@ -289,10 +289,13 @@ export function weekCoverElement(f: DayFormat, words: WeekCoverWords, photo: Dra
   // In type the cover's lines give room to its lead nights' cards.
   const room = photo ? (f === 'square' ? 120 : 150) : f === 'square' ? 96 : 120
   const big = Math.min(...words.lines.map((l) => fitLine(l, room, (w - 2 * pad) / k))) * k
+  // The accent line is the third unless the words say (the city carousel's city name, its second: the playbook's section 5).
+  const accent = words.accentLine ?? 2
+  const colour = (i: number) => (i === accent ? GOLD : WHITE)
   const lines = [
-    text(words.lines[0], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: WHITE, lineHeight: 1, marginTop: 12 * k, whiteSpace: 'nowrap' }),
-    text(words.lines[1], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: WHITE, lineHeight: 1, whiteSpace: 'nowrap' }),
-    text(words.lines[2], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: GOLD, lineHeight: 1, whiteSpace: 'nowrap' }),
+    text(words.lines[0], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: colour(0), lineHeight: 1, marginTop: 12 * k, whiteSpace: 'nowrap' }),
+    text(words.lines[1], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: colour(1), lineHeight: 1, whiteSpace: 'nowrap' }),
+    text(words.lines[2], { fontFamily: 'Archivo Compressed', fontWeight: 900, fontSize: big, color: colour(2), lineHeight: 1, whiteSpace: 'nowrap' }),
   ]
   const draws = words.draws ? wrap(keepTogether(words.draws), { fontFamily: 'Archivo Condensed', fontWeight: 800, fontSize: 52 * k, color: WHITE, marginTop: 22 * k, lineHeight: 1.08 }) : null
   const line = wrap(words.line, { fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: 34 * k, color: MIST, marginTop: 14 * k, lineHeight: 1.25 })

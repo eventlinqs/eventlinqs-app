@@ -1,4 +1,7 @@
-import { listEmoji, type CampaignNight } from './campaign'
+import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type PiecePlan, type Slide } from './campaign'
+import { midnightIn } from '@/lib/dates/zone-midnight'
+import { getCityBanner } from '@/lib/images/city-photo'
+import { getSpineCity } from '@/lib/images/spine'
 
 /**
  * "THINGS TO DO IN [CITY] THIS WEEK", THE WEEKLY CITY CAROUSEL (Lawal's yes, 25 November 2026, 00:47; the PM's 01:12 and
@@ -151,4 +154,107 @@ export function carouselCaption(input: {
   const tags = input.tags.slice(0, 3)
   if (tags.length) lines.push('', tags.map((t) => (t.startsWith('#') ? t : `#${t}`)).join(' '))
   return lines.join('\n')
+}
+
+/** The licensed photograph of the city itself for the cover (law 46 (f): its licence recorded in the media register). */
+export type CityPhoto = { readonly url: string; readonly credit: string | null }
+
+/**
+ * THE CAROUSEL AS A PIECE, IN THE LOCKED LOOK (the 9.5 look's own slides, src/lib/broadcast/day-cards.ts): the week's
+ * cover over the city's own licensed photograph ("THINGS TO DO IN" / the city, in the accent / "THIS WEEK", the date strip,
+ * the icon row), one feature slide per event (its own permitted photograph whole, else in type; its day, time and place,
+ * its name, its entry line, its category or FREE), and the ask. Null when the week holds fewer than two events. Pure.
+ */
+export function carouselPiece(input: {
+  readonly city: { readonly slug: string; readonly name: string }
+  readonly nights: readonly CarouselNight[]
+  readonly postAt: Date
+  readonly origin: string
+  readonly cityPhoto: CityPhoto | null
+  readonly tags: readonly string[]
+}): { readonly piece: PiecePlan; readonly short: string[] } | null {
+  const choice = chooseCarouselNights(input.nights, input.postAt)
+  const nights = choice.nights
+  if (nights.length < 2) return null
+  const cover: Slide = {
+    t: 'week_cover',
+    composition: 'contents_cover',
+    range: dateStrip(input.postAt),
+    lines: ['THINGS TO DO IN', input.city.name.toUpperCase(), 'THIS WEEK'],
+    accentLine: 1,
+    draws: iconRow(nights),
+    line: '',
+    photoEventId: null,
+    photo: input.cityPhoto?.url ?? null,
+    credit: input.cityPhoto?.credit ?? null,
+  }
+  const features: Slide[] = nights.map((n) => {
+    const f = featureSlideOf(n)
+    return {
+      ...f,
+      photo: n.approvedPhotoUrl ?? null,
+      credit: n.approvedPhotoUrl ? f.credit : null,
+      chip: n.free ? 'FREE' : n.categoryName ? n.categoryName.toUpperCase() : null,
+    }
+  })
+  const ask: Slide = { t: 'ask', composition: 'close', count: nights.length, three: nights.slice(0, 3).map((n) => dayRowOf(n)) }
+  const link = `${input.origin}/city/${input.city.slug}`
+  const instagram = carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform: 'instagram', link, tags: input.tags })
+  const facebook = carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform: 'facebook', link, tags: input.tags })
+  const hook = instagram.split('\n')[0]
+  const why = (n: CarouselNight) =>
+    [`on ${captionDay(n)}`, n.categoryName ?? null, n.free ? 'free' : null, n.relationship ? `its organiser ${n.relationship === 'permission' ? 'gave photo permission' : n.relationship === 'ticketing' ? 'sells on EventLinqs' : 'is one we write to'}` : null]
+      .filter((x): x is string => Boolean(x))
+      .join(', ')
+  const piece: PiecePlan = {
+    kind: 'week_ahead',
+    city: input.city.slug,
+    audience: 'attendees',
+    objective: 'audience_growth',
+    purpose: `Things to do in ${input.city.name} this week`,
+    nextStep: `Open the week at ${link.replace(/^https?:\/\//, '')}`,
+    outcome: `Saves and shares of the carousel, then visits to /city/${input.city.slug} through its own link`,
+    link,
+    format: 'feed',
+    eventIds: nights.map((n) => n.eventId),
+    picks: nights.map((n) => ({ eventId: n.eventId, reason: why(n) })),
+    mode: nights.some((n) => n.approvedPhotoUrl) ? 'photo_led' : 'type_led',
+    slides: [cover, ...features, ask],
+    caption: instagram,
+    versions: {
+      instagram: { hook, caption: instagram, crop: '4:5', cta: 'link in our bio' },
+      facebook: { hook: facebook.split('\n')[0], caption: facebook, crop: '4:5', cta: link },
+    },
+    partnerName: null,
+    partnerEventId: null,
+    message: null,
+  }
+  return { piece, short: choice.short }
+}
+
+/** When the week's carousel goes out: the window's opening, 06:00 on the week's Monday in Melbourne (law 44). */
+export function carouselPostAt(weekStart: string): Date {
+  return new Date(midnightIn(new Date(`${weekStart}T12:00:00Z`), ZONE).getTime() + 6 * 3_600_000)
+}
+
+/**
+ * Each city's own licensed photograph for its cover (the playbook's section 5: "a real, professional photograph of the
+ * city itself ... licensed stock with its licence recorded"): the city guide's banner where one is ruled (Geelong,
+ * Ballarat, Bendigo: Wikimedia Commons, author and licence on record, credited where its licence asks), else Lawal's own
+ * licensed photograph of the city from the photo-day spine (Melbourne's skyline at sunrise). A city with neither has no
+ * cover photograph, and its cover is drawn in type. The cover draws one only when the media register holds it as
+ * EventLinqs' own photograph (store.ts slideImagesNow, social_brand_images).
+ */
+export function cityCoverPhotos(cities: readonly { readonly slug: string }[], origin: string): Map<string, CityPhoto> {
+  const out = new Map<string, CityPhoto>()
+  for (const c of cities) {
+    const banner = getCityBanner(c.slug)
+    if (banner) {
+      out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? `Photo: ${banner.credit.author}, ${banner.licence}` : null })
+      continue
+    }
+    const spine = getSpineCity(c.slug)
+    if (spine) out.set(c.slug, { url: spine.src, credit: null })
+  }
+  return out
 }

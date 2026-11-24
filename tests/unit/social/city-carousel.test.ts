@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { CAROUSEL_EVENTS, captionWeek, carouselCaption, chooseCarouselNights, dateStrip, dayOf, iconRow, type CarouselNight } from '@/lib/social/city-carousel'
+import { CAROUSEL_EVENTS, captionWeek, carouselCaption, carouselPiece, carouselPostAt, chooseCarouselNights, dateStrip, dayOf, iconRow, type CarouselNight } from '@/lib/social/city-carousel'
+import { relationshipOf } from '@/lib/social/campaign'
 import { captionMarkFaults } from '@/lib/social/caption-marks'
 
 /*
@@ -108,5 +109,39 @@ describe('the caption', () => {
     const fb = carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform: 'facebook', link: 'https://www.eventlinqs.com.au/city/melbourne', tags: [] })
     expect(fb).toContain('https://www.eventlinqs.com.au/city/melbourne')
     expect(fb).not.toContain('link in bio')
+  })
+})
+
+describe('the carousel as a piece, in the locked look', () => {
+  test("the week's cover over the city's own photograph, the city in the accent, a feature slide per event, then the ask", () => {
+    const nights = Array.from({ length: 9 }, (_, i) => night({ hoursAfter: 3 + i * 17, category: ['Music', 'Comedy', 'Family'][i % 3], free: i === 4 }))
+    const out = carouselPiece({ city: { slug: 'melbourne', name: 'Melbourne' }, nights, postAt: POST, origin: 'https://www.eventlinqs.com.au', cityPhoto: { url: 'https://example.test/melbourne.jpg', credit: null }, tags: ['#MelbourneEvents', '#Melbourne', '#EventLinqs'] })
+    expect(out).not.toBeNull()
+    const piece = out!.piece
+    expect(piece.kind).toBe('week_ahead')
+    expect(piece.slides).toHaveLength(1 + CAROUSEL_EVENTS + 1)
+    const cover = piece.slides[0]
+    expect(cover).toMatchObject({ t: 'week_cover', lines: ['THINGS TO DO IN', 'MELBOURNE', 'THIS WEEK'], accentLine: 1, range: '30 NOV to 6 DEC 2026', photo: 'https://example.test/melbourne.jpg', photoEventId: null })
+    expect(String((cover as { draws: string }).draws)).toMatch(/^8 EVENTS · /)
+    expect(piece.slides.slice(1, -1).every((s) => s.t === 'feature')).toBe(true)
+    expect(piece.slides.at(-1)).toMatchObject({ t: 'ask', count: CAROUSEL_EVENTS })
+    expect(piece.versions.instagram.caption).toContain('link in bio')
+    expect(piece.versions.facebook.caption).toContain('https://www.eventlinqs.com.au/city/melbourne')
+    expect(out!.short).toEqual([])
+    // A feature slide with no permitted photograph of its own is drawn in type, never with a borrowed one.
+    expect(piece.slides.slice(1, -1).every((s) => s.t === 'feature' && s.photo === null)).toBe(true)
+  })
+  test('a week of fewer than two events makes no carousel', () => {
+    expect(carouselPiece({ city: { slug: 'bendigo', name: 'Bendigo' }, nights: [night({ hoursAfter: 4 })], postAt: POST, origin: 'https://www.eventlinqs.com.au', cityPhoto: null, tags: [] })).toBeNull()
+  })
+  test('a night leads by its photograph with rights recorded, then EventLinqs ticketing, then an organiser we write to', () => {
+    const base = night({ hoursAfter: 4 })
+    expect(relationshipOf({ ...base, approvedPhotoUrl: 'https://x.test/p.jpg' })).toBe('permission')
+    expect(relationshipOf({ ...base, cta: { ticketingByEventLinqs: true } as never })).toBe('ticketing')
+    expect(relationshipOf({ ...base, cta: { ticketingByEventLinqs: false } as never }, new Set([base.eventId]))).toBe('writing')
+    expect(relationshipOf({ ...base, cta: { ticketingByEventLinqs: false } as never })).toBeNull()
+  })
+  test("it goes at the window's opening, 06:00 on the week's Monday in Melbourne", () => {
+    expect(carouselPostAt('2026-11-30').toISOString()).toBe('2026-11-29T19:00:00.000Z')
   })
 })
