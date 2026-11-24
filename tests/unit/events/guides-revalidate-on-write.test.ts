@@ -53,11 +53,13 @@ describe('every guide at once', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/events', undefined)
     // The Weekend Guide lists Victoria's nights (law 46 (b)), so every guide's refresh refreshes it (law 16).
     expect(revalidatePath).toHaveBeenCalledWith('/weekend', undefined)
+    // /ig lists the nights our posts named, in every city (Lawal's ruling of 23 November 2026).
+    expect(revalidatePath).toHaveBeenCalledWith('/ig', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/sitemap.xml', undefined)
     expect(revalidatePath).toHaveBeenCalledWith('/city/[slug]', 'page')
     expect(revalidatePath).toHaveBeenCalledWith('/city/[slug]/[suburb]', 'page')
     expect(revalidatePath).toHaveBeenCalledWith('/state/[state]', 'page')
-    expect(out).toEqual(['/', '/events', '/weekend', '/sitemap.xml', '/city/[slug]', '/city/[slug]/[suburb]', '/state/[state]'])
+    expect(out).toEqual(['/', '/events', '/weekend', '/ig', '/sitemap.xml', '/city/[slug]', '/city/[slug]/[suburb]', '/state/[state]'])
   })
 
   it('expires every data cache under the guides at once, never stale-while-revalidate', () => {

@@ -63,6 +63,12 @@ describe('every surface an event appears on', () => {
     expect(revalidateEventSurfaces({ slug: 'e', venue_city: 'Sydney' })).not.toContain('/weekend')
   })
 
+  it('every night refreshes /ig, which lists the nights our Instagram posts named in any city (law 16)', () => {
+    expect(revalidateEventSurfaces({ slug: 'e', venue_city: 'Geelong' })).toContain('/ig')
+    expect(revalidateEventSurfaces({ slug: 'e', venue_city: 'Sydney' })).toContain('/ig')
+    expect(revalidateEventSurfaces({ slug: 'e' })).toContain('/ig')
+  })
+
   it('invalidates /categories/<real slug>, which is a real page again', () => {
     // THIS ASSERTION IS THE REVERSE OF WHAT IT WAS, AND THE REASON IS RECORDED
     // RATHER THAN THE ASSERTION SIMPLY BEING FLIPPED.

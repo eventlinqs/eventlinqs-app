@@ -261,9 +261,10 @@ export const MEDIA_SIZES = {
    *  the phone's content width, 256px from sm. It too wore rowThumb until 11 November 2026. */
   guideRailCard: '(min-width: 640px) 256px, 78vw',
 
-  /** The photograph on the marketplace home's card (src/components/features/home-market/market-browse.tsx; law 46,
-   *  site.html): w-32 (128px) beside the words on a phone, the card's full width from sm in two columns (about 47vw),
-   *  and one of four columns from lg inside the 1400px container (about 320px). */
+  /** The photograph on the marketplace card (src/components/features/home-market/market-card.tsx; law 46, site.html),
+   *  drawn in the one grid the home (market-browse.tsx) and /ig both use: w-32 (128px) beside the words on a phone, the
+   *  card's full width from sm in two columns (about 47vw), and one of four columns from lg inside the 1400px container
+   *  (about 320px). */
   marketCard: '(min-width: 1024px) 320px, (min-width: 640px) 47vw, 128px',
 
   /* THE FIVE AVATAR SLOTS ARE ALSO DECLARED IN `./avatar-sizes`, AS FINISHED

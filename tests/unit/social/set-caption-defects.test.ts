@@ -77,10 +77,10 @@ describe("the PM's four caption returns of 22:15, as the engine now writes them"
     expect(lines).toContain('7 pm and 9.30 pm: Joel Ross (NYC), The JazzLab')
   })
 
-  it('a list over several days keeps its days on each row, and its from-to line where the days differ', () => {
+  it('a list over several days keeps its days on each row, and says no from-to line either (the PM\'s RETURN of 04:05 on 24 November 2026)', () => {
     const two = [MUSIC[0], { ...MUSIC[3], startDate: '2026-11-28T08:30:00.000Z', endDate: '2026-11-28T10:00:00.000Z' }]
     const words = listCaptions({ hook: '\u{1F3B6} Two shows.', nights: two, rows: two.map((n) => rowLine(n, two)), pictured: null, place: null, link: `${ORIGIN}/city/melbourne`, share: 'Tag who you are going with.', tags: '#MelbourneEvents #EventLinqs', crop: '4:5' })
-    expect(words.caption).toContain('From Choir 3006 In Concert on Friday to Jack Jones: Hits & Stories on Saturday.')
+    expect(words.caption).not.toMatch(/^From .* to .*$/m)
     expect(words.caption).toContain('Fri 27 Nov, 6 pm: Choir 3006 In Concert, Melbourne Recital Centre')
     expect(words.caption).toContain("Sat 28 Nov, 7.30 pm: Jack Jones: Hits & Stories, Bird's Basement")
   })
@@ -93,5 +93,42 @@ describe("its playbook rule (Lawal's 16:04: every return is a fix, a test that f
       expect(rule, id).toBeDefined()
       expect(rule?.source, id).toContain("the PM's intake read of 23 November 2026, 22:15")
     }
+  })
+})
+
+/*
+ * NO 'FROM ... TO ...' LINE IN ANY SET CAPTION (the PM's RETURN of 04:05 on 24 November 2026, comedy piece ed0c1dca:
+ * "From Holy Sh!t Improv on Friday to Sunday Laughternoons on Sunday." restated the hook and the schedule beneath it).
+ * The comedy weekend runs over three days, so on its base the line was written.
+ */
+describe('no set caption carries a from-to line', () => {
+  const comedy = (id: string, title: string, start: string, minutes: number): CampaignNight =>
+    night({ eventId: id, slug: id, title, startDate: start, endDate: new Date(Date.parse(start) + minutes * 60_000).toISOString(), venueName: 'Comedy Republic', placeName: 'Comedy Republic', categorySlug: 'comedy' })
+  const COMEDY: CampaignNight[] = [
+    comedy('ecd0776e-e5c9-4a9e-9641-185c2cf750b3', 'Holy Sh!t Improv', '2026-11-27T06:00:00.000Z', 60),
+    comedy('b772a3ad-88a9-4a8f-bff5-aa3348b7a503', 'Holy Sh!t Improv', '2026-11-27T07:30:00.000Z', 60),
+    comedy('152f235f-6a42-44bf-aeef-d03530f13af4', 'Holy Sh!t Improv', '2026-11-28T07:30:00.000Z', 60),
+    comedy('11ac88ce-b5fd-4aa6-b2c6-78aa6bea3f89', 'Comedy Republic Main Stage', '2026-11-27T09:00:00.000Z', 90),
+    comedy('dccd097f-be36-4ad0-bc53-09018758c117', 'Comedy Republic Main Stage', '2026-11-28T09:00:00.000Z', 90),
+    comedy('7e2d2595-783f-4b5d-9485-6f829c954417', 'Sunday Laughternoons', '2026-11-29T05:00:00.000Z', 60),
+  ]
+
+  it('the comedy weekend, the live music Friday and Kyivska: the hook and the schedule carry it, never a from-to line', () => {
+    for (const [name, nights] of [['comedy-weekend', COMEDY], ['live-music', MUSIC], ['kyivska-perepichka', [KYIVSKA]]] as const) {
+      const p = planned(name, nights)
+      for (const caption of [p.caption, p.versions.instagram.caption, p.versions.facebook.caption]) {
+        expect(caption, name).not.toMatch(/^From .* on \w+ to .* on \w+\.$/m)
+      }
+    }
+    expect(planned('comedy-weekend', COMEDY).versions.instagram.caption.split('\n').slice(0, 2)).toEqual([
+      '\u{1F602} Three shows at Comedy Republic, Friday 27 to Sunday 29 November.',
+      'Fri 27 Nov, 5 pm and 6.30 pm and Sat 28 Nov, 6.30 pm: Holy Sh!t Improv',
+    ])
+  })
+
+  it('is a playbook rule that supersedes the one-day rule for the same line', () => {
+    const rule = PLAYBOOK.find((r) => r.id === 'caption-no-from-to-line')
+    expect(rule?.source).toBe("the PM's RETURN of 04:05 on 24 November 2026 (comedy piece ed0c1dca)")
+    expect(rule?.rule).toContain('caption-no-from-to-on-one-day')
   })
 })

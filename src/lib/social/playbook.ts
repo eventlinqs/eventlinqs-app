@@ -25,12 +25,14 @@ export type PlaybookRule = {
 }
 
 /** The version of this list: the day of its newest rule. */
-export const PLAYBOOK_VERSION = '2026-11-23'
+export const PLAYBOOK_VERSION = '2026-11-24'
 
 const RETURN_1530 = "the PM's RETURN of 15:30 on piece da22e104 (A Moment of Sanity), 23 November 2026; Lawal's 16:04"
 const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:34 (DESIGN-REVIEW-SEVEN-23NOV.md)"
 const DECISION_1247 = "Lawal's final creative decision, 23 November 2026, 12:47 (FINAL-CREATIVE-DECISION-23NOV.md)"
 const INTAKE_2215 = "the PM's intake read of 23 November 2026, 22:15"
+const INTAKE_2324 = "the PM's intake of 23 and 24 November 2026"
+const RETURN_0405 = "the PM's RETURN of 04:05 on 24 November 2026 (comedy piece ed0c1dca)"
 
 export const PLAYBOOK: readonly PlaybookRule[] = [
   {
@@ -137,6 +139,34 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     reason: "Each row of the live music caption repeated 'Fri 27 Nov' under the line that already says Friday 27 November.",
     source: `${INTAKE_2215} (live music, piece 8d252108)`,
     date: '2026-11-23',
+  },
+  {
+    id: 'piece-and-first-revision-together',
+    rule: 'A piece and its first revision are written together: when the database refuses the first words, the piece is removed at once and the removal is read, so no empty piece ever holds a week\'s place; one writer (writePieceWithFirstRevision) for every path.',
+    reason: "At 22:14 on 23 November the comedy set's piece 28e4096c was kept while the caption check refused its words; the clean up's delete was refused by a missing grant and never read, the empty piece held the week's one Melbourne weekend carousel place, and the next intake was refused: 'this week's campaign already holds a weekend carousel piece for melbourne'.",
+    source: INTAKE_2324,
+    date: '2026-11-24',
+  },
+  {
+    id: 'unapproved-set-redrawn-with-todays-rules',
+    rule: "An approved set's piece that nobody has approved, scheduled or posted is drawn again with today's nights and words as a new revision, its piece id kept; an approved, scheduled or posted piece is never redrawn.",
+    reason: "The live music (8d252108) and Kyivska (23f34b07) pieces were drawn at 22:15 with the captions train seven fixed, and intake, finding each by its first file, only ever answered 'drawn already'.",
+    source: INTAKE_2324,
+    date: '2026-11-24',
+  },
+  {
+    id: 'caption-no-from-to-line',
+    rule: "No list caption carries a 'From ... on <day> to ... on <day>' line, on one day or several: the hook and the schedule beneath it carry it. It supersedes caption-no-from-to-on-one-day.",
+    reason: "The comedy piece read 'From Holy Sh!t Improv on Friday to Sunday Laughternoons on Sunday.', which restates its hook ('Three shows at Comedy Republic, Friday 27 to Sunday 29 November.') and the rows beneath it; the same generator wrote the live music defect.",
+    source: RETURN_0405,
+    date: '2026-11-24',
+  },
+  {
+    id: 'set-piece-lands-on-its-own-nights',
+    rule: "A set piece's link lands on a page of exactly its own nights: one show's own event page, which holds its booking button; several shows' own page, /ig?piece=<id> (its newest revision's nights, still ahead and public, in date order, each on the approved marketplace card that leads to its event page and its booking button); never a city page where the visitor must hunt for them.",
+    reason: "After posting, the comedy piece's link landed on /city/melbourne, every Melbourne night, where the three Comedy Republic shows had to be hunted for; Lawal's 13:12 item 3: the whole booking journey to the right event.",
+    source: RETURN_0405,
+    date: '2026-11-24',
   },
 ]
 

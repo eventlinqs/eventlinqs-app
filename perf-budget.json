@@ -232,6 +232,7 @@
     "/guides/[slug]": 169314,
     "/help": 166248,
     "/help/[slug]": 156114,
+    "/ig": 1,
     "/join/[code]": 163681,
     "/launch": 185711,
     "/launch/k/[code]": 166536,

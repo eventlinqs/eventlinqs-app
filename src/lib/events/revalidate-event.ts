@@ -280,6 +280,9 @@ function markEventPaths(event: RevalidatableEvent): string[] {
   if (statePath) mark(statePath)
   // The Weekend Guide lists Victoria's nights (law 46 (b), /weekend), so a Victorian night leaves it at its end too.
   if (citySlug && getCity(citySlug)?.state === 'VIC') mark('/weekend')
+  // /ig lists the nights our posts named, wherever they are (Lawal's ruling of 23 November 2026, src/app/ig/page.tsx),
+  // so any night leaves it at its end, and a night unpublished or removed leaves it at once (law 16).
+  mark('/ig')
   if (citySlug) {
     revalidatePath('/city/[slug]/[suburb]', 'page')
     invalidated.push('/city/[slug]/[suburb]')
@@ -393,7 +396,7 @@ export function revalidateEventSurfacesFromRouteHandler(event: RevalidatableEven
  */
 export function revalidateEveryGuideFromRouteHandler(): string[] {
   const invalidated: string[] = []
-  for (const path of ['/', '/events', '/weekend', '/sitemap.xml']) {
+  for (const path of ['/', '/events', '/weekend', '/ig', '/sitemap.xml']) {
     revalidatePath(path)
     invalidated.push(path)
   }
