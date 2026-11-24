@@ -25,7 +25,7 @@ export type PlaybookRule = {
 }
 
 /** The version of this list: the day of its newest rule. */
-export const PLAYBOOK_VERSION = '2026-11-24'
+export const PLAYBOOK_VERSION = '2026-11-25'
 
 const RETURN_1530 = "the PM's RETURN of 15:30 on piece da22e104 (A Moment of Sanity), 23 November 2026; Lawal's 16:04"
 const REVIEW_1234 = "Lawal's review of the seven designs, 23 November 2026, 12:34 (DESIGN-REVIEW-SEVEN-23NOV.md)"
@@ -191,6 +191,20 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     reason: "Bendigo's reply asked which of two things our source ask meant and was classed 'referred' because her signature named a place, so it was not answered during the day.",
     source: "the PM's 20:50 item 4 and 20:56 item 1 of 24 November 2026",
     date: '2026-11-24',
+  },
+  {
+    id: 'instagram-bio-lands-on-ig',
+    rule: "The Instagram bio's own link (/state/victoria with utm_source=instagram and utm_campaign=bio) is sent to /ig with every tag kept, in the proxy before the cache; every other visit to that page stays where it is. Instagram posts only once that journey is read live to each event's booking button on a phone, recorded as the flag instagram_bio_journey_proven.",
+    reason: "The bio pointed at /state/victoria, a page that does not show the events our posts name, and nobody holds the Instagram login to change it.",
+    source: "the PM's 00:50 of 25 November 2026 (the bio read live at 00:48); Lawal's yes to the bio link, 24 November 20:35",
+    date: '2026-11-25',
+  },
+  {
+    id: 'set-page-one-card-a-show',
+    rule: "The publish gate counts a night as listed on a piece's own page when its own event page is linked or a night of the same show is, since the page draws a show's nights as one card (its soonest night linked, the others said as '+N more dates'); each link is read whole, never as the start of another address.",
+    reason: "The comedy set's approval was refused for three nights its own page shows under '+2 more dates' and '+1 more date', and the music set passed only because one night's address is the start of another's.",
+    source: "the comedy set's approval of 25 November 2026, 01:10 (GitHub Actions run 45411129004)",
+    date: '2026-11-25',
   },
 ]
 
