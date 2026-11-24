@@ -172,12 +172,12 @@ const QUEUED = [
   { id: 'q-refused', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
 ]
 
-function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[]; answered?: { category: string } } = {}) {
+function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[]; answered?: { category: string; sentAt?: string } } = {}) {
   return fakeDb((call, shape) => {
     // The letter a reply answers (sender.ts wroteToFor): their reply by its message id, then our letter it answered.
     if (opts.answered && call.table === 'outreach_replies' && shape === 'one') return { data: { touch_id: 't-answered' }, error: null }
     if (opts.answered && call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:id' && v === 't-answered')) {
-      return { data: { comms_category: opts.answered.category, purpose: 'cadence' }, error: null }
+      return { data: { comms_category: opts.answered.category, purpose: 'cadence', sent_at: opts.answered.sentAt ?? '2026-11-21T20:15:19Z' }, error: null }
     }
     if (call.table === 'outreach_sender') return { data: { mode, from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
@@ -291,6 +291,15 @@ describe('the run', () => {
     clearRecordedOutreachMail()
     const unread = standardDb('test', { queued: [reply] })
     await runOutreachSender(unread.db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(recordedOutreachMail().map((m) => m.from)).toEqual([HELLO_MAILBOX])
+  })
+
+  // Festival Indonesia (the PM's 09:39 of 25 November 2026): their reply answers our letter of 18 November, sent before
+  // each message type had its own address (#309, 19 November 19:24), when every letter left from hello@.
+  test('a reply to a letter sent before the addresses split goes from hello@, whatever that letter is classed now', async () => {
+    const reply = { ...QUEUED[0], id: 'q-old', purpose: 'reply', comms_category: 'ACQ', in_reply_to: '<theirs@eventlinqs.com>' }
+    const { db } = standardDb('test', { queued: [reply], answered: { category: 'ACQ', sentAt: '2026-11-18T05:21:00Z' } })
+    await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(recordedOutreachMail().map((m) => m.from)).toEqual([HELLO_MAILBOX])
   })
 
