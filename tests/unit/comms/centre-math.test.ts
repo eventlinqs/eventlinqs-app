@@ -60,6 +60,15 @@ describe('the Centre counts what the rows say', () => {
       '2 held on purpose before posting (withdrawn, superseded, or held by a rule), each with its reason on its schedule: not failures',
     ])
   })
+  // THE PM's 09:07 ITEM 1: the music piece's Instagram row read 'published' at 09:07 holding only Blotato's submission;
+  // its address was read back by 09:25. A submission is handed over, never confirmed.
+  it('a post is confirmed only by the network\'s own address, never by a Blotato submission', () => {
+    const pieces = [{ id: 'p1', planned_at: null }]
+    const pub = (published_ref: string) => ({ piece_id: 'p1', state: 'published', published_ref, published_at: '2026-11-24T22:00:29Z', created_at: null })
+    expect(socialFigures(pieces, new Set(['p1']), [pub('blotato:d3b1bbb3-a3a6-40ad-9b99-c4b215c02e58')])).toMatchObject({ sent: 1, delivered: 0 })
+    expect(socialFigures(pieces, new Set(['p1']), [pub('https://www.instagram.com/p/DgI-vbKlmXZ/')])).toMatchObject({ sent: 1, delivered: 1 })
+    expect(socialNotes(pieces, new Set(['p1']), [pub('blotato:d3b1bbb3')], new Set())).toEqual(['1 posts handed to Blotato whose public address is not read back yet: not confirmed until it is'])
+  })
   it('the next post is the earliest schedule still waiting, from an hour ago on', () => {
     const now = new Date('2026-11-24T21:00:00Z')
     const s = (state: string, go_at: string) => ({ piece_id: 'p', state, published_ref: null, published_at: null, created_at: null, go_at })

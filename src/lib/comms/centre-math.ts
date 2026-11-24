@@ -82,6 +82,8 @@ export type ScheduleRow = { piece_id: string; state: string; published_ref: stri
  * reason is counted as a fault, never assumed safe.
  */
 export const FAULT_HOLD = /\b(violates|could not|failed|error|exception|timed out|refused by the database)\b/i
+/** A public post's own address, as post-state.ts and the database's published_ref check read it. */
+const PUBLIC_POST = /^https:\/\/(www\.)?(instagram\.com|facebook\.com|fb\.com)\//
 export function isFaultHold(s: Pick<ScheduleRow, 'state' | 'held_reason'>): boolean {
   return s.state === 'held' && (!(s.held_reason ?? '').trim() || FAULT_HOLD.test(s.held_reason ?? ''))
 }
@@ -101,7 +103,9 @@ export function socialFigures(pieces: PieceRow[], approved: ReadonlySet<string>,
     approved: pieces.filter((p) => approved.has(p.id)).length,
     scheduled: piecesWith((s) => s.state === 'scheduled'),
     sent: piecesWith((s) => s.state === 'published'),
-    delivered: piecesWith((s) => s.state === 'published' && !!s.published_ref),
+    // Confirmed only by the network's own post address: a reference that is only Blotato's submission is not (the PM's
+    // 09:07 of 25 November 2026, item 1; src/lib/social/post-state.ts reads such a row as submitted).
+    delivered: piecesWith((s) => s.state === 'published' && PUBLIC_POST.test(s.published_ref ?? '')),
     failed: piecesWith(isFaultHold),
     outcomes: null,
     withdrawn: null,
@@ -113,7 +117,9 @@ export function socialFigures(pieces: PieceRow[], approved: ReadonlySet<string>,
 export function socialNotes(pieces: PieceRow[], approved: ReadonlySet<string>, schedules: ScheduleRow[], setAside: ReadonlySet<string>): string[] {
   const aside = pieces.filter((p) => !approved.has(p.id) && setAside.has(p.id)).length
   const onPurpose = new Set(schedules.filter((s) => s.state === 'held' && !isFaultHold(s)).map((s) => s.piece_id)).size
+  const submitted = schedules.filter((s) => s.state === 'published' && !PUBLIC_POST.test(s.published_ref ?? '')).length
   const notes: string[] = []
+  if (submitted) notes.push(`${submitted} posts handed to Blotato whose public address is not read back yet: not confirmed until it is`)
   if (aside) notes.push(`${aside} set aside before approval (expired when their nights started, or rejected): nothing waits on them`)
   if (onPurpose) notes.push(`${onPurpose} held on purpose before posting (withdrawn, superseded, or held by a rule), each with its reason on its schedule: not failures`)
   return notes
