@@ -9,7 +9,7 @@ import { graphPhotoBytes, graphPhotosOf } from '@/lib/comms/inbound-attachments'
 import { mediaDeps } from '@/lib/listings/organiser-media'
 import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, type PlayReport } from '@/lib/outreach/planner'
 import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
-import { queueApprovedHeldLetters } from '@/lib/outreach/self-queue'
+import { queueApprovedHeldLetters, queueApprovedReplies } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { isolated, isStepFault } from '@/lib/ops/isolated'
 import { melbourneMinutes, outreachPhaseAt } from '@/lib/ops/timetable'
@@ -157,6 +157,13 @@ export async function GET(request: NextRequest) {
       console.error('[cron/outreach-run] self queue failed:', message)
       selfQueued = { error: message }
     }
+    // REPLIES GO BY THEMSELVES (Lawal's 07:02 and 07:03 of 25 November 2026; src/lib/outreach/self-queue.ts
+    // queueApprovedReplies): an answer in an organiser's thread on a template his standing approval holds queues itself
+    // here, before the sender below; a fault is contained and named in the answer's faults.
+    const repliesQueued = await isolated(RUN, 'the replies that queue themselves', () => queueApprovedReplies(db, { now }))
+    if (!isStepFault(repliesQueued)) {
+      console.log(`[cron/outreach-run] replies: ${repliesQueued.queued.length} queued, ${repliesQueued.waiting.length} waiting${repliesQueued.note ? ` (${repliesQueued.note})` : ''}`)
+    }
 
     const sent = await runOutreachSender(db, { now, origin, graph })
     console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
@@ -269,7 +276,7 @@ export async function GET(request: NextRequest) {
     // no new cron. A failed read or write is named in the answer and never stops the run above.
     const watchdog = await recordMissedRuns(db, now)
     if ('unread' in watchdog) console.error('[cron/outreach-run] the missed-run alarm could not run:', watchdog.unread)
-    return NextResponse.json({ ok: true, faults, dns, inbox, judged, plays, dms, partners, selfQueued, sent, acquisition, tasks, twenty, spotlight, followUps, recheck, sentItems, pool, watchdog })
+    return NextResponse.json({ ok: true, faults, dns, inbox, judged, plays, dms, partners, selfQueued, repliesQueued, sent, acquisition, tasks, twenty, spotlight, followUps, recheck, sentItems, pool, watchdog })
   } catch (err) {
     console.error('[cron/outreach-run] failed:', err)
     return NextResponse.json({ error: 'outreach run failed' }, { status: 500 })

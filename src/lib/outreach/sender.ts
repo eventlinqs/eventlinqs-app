@@ -234,6 +234,24 @@ async function threadIds(db: Admin, contactId: string, excludeId: string): Promi
   return (r.data ?? []).map((x) => x.internet_message_id as string)
 }
 
+/**
+ * THE ADDRESS THEY WROTE TO (law 33 (a): "a reply goes from the address the organiser wrote to, in thread"; the PM's 07:03
+ * of 25 November 2026, item 1): an organiser answers the letter they were sent, so they wrote to the mailbox that letter
+ * went from. Read from their reply (outreach_replies, by the message id the answer is threaded to) and the letter it
+ * answers, whose category names its mailbox. Null when either cannot be read: the reply then goes from its own category's
+ * address, as before.
+ */
+async function wroteToFor(db: Admin, inReplyTo: string | null | undefined): Promise<string | null> {
+  if (!inReplyTo) return null
+  const reply = await db.from('outreach_replies').select('touch_id').eq('source_message_id', inReplyTo).maybeSingle()
+  const touchId = reply.data?.touch_id as string | null | undefined
+  if (reply.error || !touchId) return null
+  const answered = await db.from('outreach_touches').select('comms_category, purpose').eq('id', touchId).maybeSingle()
+  if (answered.error || !answered.data) return null
+  const from = mailboxFor({ category: answered.data.comms_category as string | null, purpose: (answered.data.purpose as string | null) ?? '' })
+  return 'mailbox' in from ? from.mailbox : null
+}
+
 export async function runOutreachSender(
   db: Admin,
   deps: {
@@ -366,7 +384,8 @@ export async function runOutreachSender(
     // The claim: the database runs every check here, or refuses and the message stays queued.
     // ITS ADDRESS FIRST (law 33 (a)): a message whose type has no address is refused before it is claimed, never sent
     // from a guessed mailbox; it stays queued with the refusal said.
-    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '' })
+    const wroteTo = t.purpose === 'reply' ? await wroteToFor(db, t.in_reply_to) : null
+    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '', wroteTo })
     if ('refused' in from) {
       report.refused.push({ id: t.id, reason: from.refused })
       continue

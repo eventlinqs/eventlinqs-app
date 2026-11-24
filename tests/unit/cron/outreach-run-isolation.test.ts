@@ -61,7 +61,7 @@ vi.mock('@/lib/outreach/sender', () => ({
   // The expiry sweep (event-validity.ts): no held or queued letter names a passed event here.
   expireLapsedLetters: async () => ({ voided: [], unread: [] }),
 }))
-vi.mock('@/lib/outreach/self-queue', () => ({ queueApprovedHeldLetters: async () => ({ queued: [], waiting: [] }) }))
+vi.mock('@/lib/outreach/self-queue', () => ({ queueApprovedHeldLetters: async () => ({ queued: [], waiting: [] }), queueApprovedReplies: async () => ({ queued: [], waiting: [] }) }))
 vi.mock('@/lib/ops/phase-runs', () => ({
   recordPhaseRun: async (_db: unknown, row: { result: string; failed: boolean }) => (h.phase.push({ result: row.result, failed: row.failed }), { ok: true }),
 }))

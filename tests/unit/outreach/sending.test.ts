@@ -172,8 +172,13 @@ const QUEUED = [
   { id: 'q-refused', comms_category: 'PERM', contact_id: 'c-ok', subject: 'Your nights', body: 'Hi Jo,\nEventLinqs.', in_reply_to: null },
 ]
 
-function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[] } = {}) {
+function standardDb(mode: string, opts: { refuse?: string[]; address?: string; queued?: unknown[]; answered?: { category: string } } = {}) {
   return fakeDb((call, shape) => {
+    // The letter a reply answers (sender.ts wroteToFor): their reply by its message id, then our letter it answered.
+    if (opts.answered && call.table === 'outreach_replies' && shape === 'one') return { data: { touch_id: 't-answered' }, error: null }
+    if (opts.answered && call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:id' && v === 't-answered')) {
+      return { data: { comms_category: opts.answered.category, purpose: 'cadence' }, error: null }
+    }
     if (call.table === 'outreach_sender') return { data: { mode, from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
     if (call.table === 'rpc:outreach_close_stuck_sends') return { data: 0, error: null }
     if (call.table === 'outreach_touches' && call.op === 'select' && call.filters.some(([k, v]) => k === 'eq:state' && v === 'queued')) return { data: opts.queued ?? QUEUED, error: null }
@@ -274,6 +279,19 @@ describe('the run', () => {
     await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     const mail = recordedOutreachMail()
     expect(mail.map((m) => m.from)).toEqual([LAWAL_MAILBOX, HELLO_MAILBOX])
+  })
+
+  // The PM's 07:03 of 25 November 2026, item 1: a reply goes from the address they wrote to, the mailbox of the letter
+  // it answers, whatever its own template's category names (reply_existing_ticketing is TKT, hello@).
+  test('a reply to our acquisition letter leaves from lawal@, the address they wrote to; with no thread read, its own address', async () => {
+    const reply = { ...QUEUED[0], id: 'q-reply', purpose: 'reply', comms_category: 'TKT', in_reply_to: '<theirs@eventlinqs.com>' }
+    const { db } = standardDb('test', { queued: [reply], answered: { category: 'ACQ' } })
+    await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(recordedOutreachMail().map((m) => m.from)).toEqual([LAWAL_MAILBOX])
+    clearRecordedOutreachMail()
+    const unread = standardDb('test', { queued: [reply] })
+    await runOutreachSender(unread.db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(recordedOutreachMail().map((m) => m.from)).toEqual([HELLO_MAILBOX])
   })
 
   test("a letter slotted earlier today, or with no slot, is today's and is not re planned", async () => {
