@@ -21,7 +21,7 @@ import { draftFromTemplate } from './drafts'
 import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
 import type { MediaDeps } from '@/lib/listings/organiser-media'
-import { keepEmailedImages, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
+import { keepEmailedImages, recordEmailedYes, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
 
 type Admin = SupabaseClient<Database>
 
@@ -39,7 +39,15 @@ export type ReplyOutcome = 'yes' | 'no' | 'stop' | 'take_down' | 'later' | 'ques
 export const DECISION_CLASSES: readonly ReplyOutcome[] = ['photographs', 'correction', 'permission']
 const PHOTO_WORDS = /\b(photos?|photographs?|images?|pictures?|pics|flyers?|posters?|artwork|attached)\b/i
 const CORRECTION_WORDS = /\b(correction|correct (the|our|it)|incorrect|wrong|update the (venue|date|time|price|title|address|listing)|should (be|read|say)|typo|change the (venue|date|time|title|address))\b/i
-const PERMISSION_WORDS = /\b(happy for (you|eventlinqs) to (use|share|post)|you (can|may) (use|share|post)|feel free to (use|share|post)|(you have|with) our permission|permission to (use|share|post)|go ahead and (use|share|post))\b/i
+// "you're welcome to use" is GroovyTown's own yes (the PM's 13:55 of 23 November 2026: "you're welcome to use our event
+// promotional material for EventLinqs listings and social posts, now and for future events"), with a typed or a curly
+// apostrophe as a mail client writes it.
+const PERMISSION_WORDS = /\b(happy for (you|eventlinqs) to (use|share|post)|you (can|may) (use|share|post)|feel free to (use|share|post)|(you have|with) our permission|permission to (use|share|post)|go ahead and (use|share|post)|(you['’]re|you are) (more than |most |very )?welcome to (use|share|post))\b/i
+
+/** Whether their own words (the quoted thread removed) give the use of their material: the 'permission' class. */
+export function grantsInWords(ownWords: string): boolean {
+  return PERMISSION_WORDS.test(ownWords)
+}
 
 export type ReplyKind =
   | { kind: 'bounce'; hard: boolean }
@@ -286,6 +294,16 @@ export async function handleInbox(
           : `${kind.answerKey} ${drafted.state === 'held by policy' ? 'not drafted' : 'refused'}: ${drafted.reason}`
     } else if (clear && kind.outcome === 'no') {
       action = 'the organiser is stopped; nothing sent'
+    }
+    // AN EMAILED YES IS A YES (the PM's 13:55 of 23 November 2026): their own words granting the use of their material,
+    // the 'permission' class, are logged as their yes, night by night, before their attachments are taken, so the images
+    // they sent with it are registered under it (src/lib/comms/emailed-media.ts recordEmailedYes).
+    if (kind.outcome !== 'stop' && kind.outcome !== 'take_down' && kind.outcome !== 'no' && grantsInWords(message.ownWords)) {
+      const yes = await recordEmailedYes(db, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }).catch((err: unknown) => ({
+        state: 'not recorded' as const,
+        why: err instanceof Error ? err.message : String(err),
+      }))
+      action = `${action}; ${yes.state === 'recorded' ? `their yes is recorded from their own words for ${yes.nights.join(', ')}` : `their yes is not recorded: ${yes.why}`}`
     }
     if (takes) action = `${action}; ${await takeAttachments(db, m, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }, takes)}`
     await db.from('outreach_replies').update({ action_taken: action }).eq('id', logged.data.id)

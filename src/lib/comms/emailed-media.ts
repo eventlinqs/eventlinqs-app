@@ -9,10 +9,12 @@ import { storeImage, type MediaDeps } from '@/lib/listings/organiser-media'
 import { nightNamedBy, restrictionFor } from '@/lib/listings/photo-permission-math'
 
 /**
- * AN ORGANISER'S EMAILED IMAGES (the master directive's A3 (1); the PM's 12:18 item 4 of
+ * AN ORGANISER'S EMAILED IMAGES AND THEIR EMAILED YES (the master directive's A3 (1) and (2); the PM's 12:18 item 4 of
  * 23 November 2026: "THE DEFECT: an organiser's emailed attachment is never ingested. Fix the cause: a reply's image
  * attachments from an organiser with a grant or pending request are recorded as candidate assets for that event,
- * matched to the grant, so nobody asks twice for a file already sent").
+ * matched to the grant, so nobody asks twice for a file already sent"; the PM's 13:55: "AN EMAILED YES IS A YES: an
+ * organiser who writes yes in the thread (as GroovyTown did) is recorded as the grant from their own words, with their
+ * attachments ingested").
  *
  * THE CAUSE. Kyivska Perepichka's organiser emailed the original poster on 9 November 2026 in reply to Lawal's request
  * for it. The inbox run (src/lib/outreach/replies.ts handleInbox) logged a reply's words and its class; a 'photographs'
@@ -20,7 +22,14 @@ import { nightNamedBy, restrictionFor } from '@/lib/listings/photo-permission-ma
  * nothing), so the file never reached the asset register and the engine kept a phone screenshot.
  *
  * WHAT HAPPENS NOW, from the inbox run, for a reply whose sender is an organiser contact on record:
- *   THEIR IMAGES (keepEmailedImages), only from an organiser who has a grant or one of our photo requests open: each
+ *   1. THEIR YES (recordEmailedYes): words that grant the use of their material, the inbox run's own 'permission' class
+ *      (replies.ts grantsInWords), are logged as their yes through the database's one way of logging a yes
+ *      (social_log_organiser_yes), in their own words as they wrote them, channel email, dated when it came, with the
+ *      message as its evidence. Always night by night ('this_event'): a host keyed future yes would cover every other
+ *      organiser's nights at a hired venue (the photo page's own rule, photo-permission.ts). The night is the one the
+ *      thread is about (our letter's context, event:<id>, or its subject); where their words name their future events,
+ *      each of their own nights listed ahead.
+ *   2. THEIR IMAGES (keepEmailedImages), only from an organiser who has a grant or one of our photo requests open: each
  *      supported image (inbound-attachments.ts isShownPhoto chose them: an image type, not inline, at most 25 MB) is
  *      re-encoded and stored by the organiser media pipeline (storeImage: magic bytes, orientation, metadata stripped,
  *      never a photo locked to another night) and entered through the register's one writer (social/store.ts addAsset)
@@ -111,11 +120,46 @@ function dayOf(iso: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne' }).format(new Date(iso))
 }
 
+export type YesAnswer = { readonly state: 'recorded'; readonly nights: readonly string[] } | { readonly state: 'not recorded'; readonly why: string }
+
+/** Their emailed yes, logged night by night in their own words (step 1 above). */
+export async function recordEmailedYes(
+  db: Db,
+  input: { readonly contactId: string; readonly touch: ThreadTouch; readonly message: EmailedMessage; readonly now: Date; readonly by: string },
+): Promise<YesAnswer> {
+  const words = input.message.ownWords.trim()
+  if (words.length < 10) return { state: 'not recorded', why: 'their words are too short to keep as a yes' }
+  const org = await organiserOf(db, input.contactId)
+  if (org.platform) return { state: 'not recorded', why: PLATFORM_IS_NO_HOST }
+  const nights = await readTheirNights(db, org, input.now, 20)
+  const thread = nightOfThread(input.touch, nights)
+  // Their words name their future events: each of their own nights listed ahead; otherwise the night of the thread.
+  const named = /\bfuture\b/i.test(words) ? nights : thread ? [thread] : []
+  const hosted = named.filter((n) => n.venueName)
+  if (hosted.length === 0) return { state: 'not recorded', why: 'their words grant the use of their material, but no night of theirs on EventLinqs is named by the thread, so it waits for Lawal' }
+  const recorded: string[] = []
+  for (const night of hosted) {
+    const yes = await db.rpc('social_log_organiser_yes', {
+      p_host: night.venueName as string,
+      p_granted_at: input.message.receivedAt,
+      p_wording: words.slice(0, 2000),
+      p_scope: 'this_event',
+      p_channel: 'email',
+      p_event: night.eventId,
+      p_logged_by: input.by,
+      p_evidence_file: `email ${input.message.internetMessageId} from ${input.message.fromAddress}`,
+    })
+    if (yes.error) throw new Error(`their yes for ${night.title} could not be logged: ${yes.error.message}`)
+    recorded.push(night.title)
+  }
+  return { state: 'recorded', nights: recorded }
+}
+
 export type IntakeAnswer =
   | { readonly state: 'kept'; readonly night: string | null; readonly kept: number; readonly already: number; readonly refused: readonly string[] }
   | { readonly state: 'not taken'; readonly why: string }
 
-/** Their emailed images, stored and registered as candidates for the night the thread is about (above). */
+/** Their emailed images, stored and registered as candidates for the night the thread is about (step 2 above). */
 export async function keepEmailedImages(
   db: Db,
   input: { readonly contactId: string; readonly touch: ThreadTouch; readonly message: EmailedMessage; readonly now: Date; readonly by: string },
