@@ -5,6 +5,7 @@ import { processEventImage } from '@/lib/media/image-pipeline'
 import { photoHashes } from '@/lib/images/photo-hash'
 import { lockPhotoToEvent, PHOTO_ALREADY_USED, photoLockedElsewhere, type PhotoHashes } from '@/lib/images/photo-lock'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sniffImage, type SniffedFormat } from '@/lib/launch/sniff-image'
 import { claimYes } from './claim-acceptance'
 
 /**
@@ -63,28 +64,32 @@ function chosen(file: File | null): file is File {
 /**
  * Re-encodes and stores one image under its night's folder; the answer is its address, path and fingerprint, or a
  * refusal. NO PHOTO IS EVER REUSED (Lawal's 00:23 of 31 October 2026, P8 and P9): one already locked to an event other
- * than eventId (any event when null) is refused here, before it is stored.
+ * than eventId (any event when null) is refused here, before it is stored. The answer also says what the file as
+ * supplied was, for the register (the master directive's A3 (3)): its size in bytes and its format from its own first
+ * bytes (hashes.sha256 is already its SHA-256).
  */
 export async function storeImage(
   folder: string,
   file: File | null,
   eventId: string | null,
   deps: MediaDeps,
-): Promise<{ url: string; path: string; hashes: PhotoHashes; width?: number; height?: number } | { refused: string }> {
+): Promise<{ url: string; path: string; hashes: PhotoHashes; width?: number; height?: number; byteSize: number; format: SniffedFormat | null } | { refused: string }> {
   if (!chosen(file)) return { refused: 'Choose a photo or artwork to add.' }
   if (file.size > MAX_IMAGE_BYTES) return { refused: 'The image must be under 10MB.' }
   let image
   let hashes: PhotoHashes
+  let format: SniffedFormat | null
   try {
     const bytes = await file.arrayBuffer()
     image = await deps.process(bytes)
     hashes = await deps.hash(bytes)
+    format = sniffImage(new Uint8Array(bytes))
   } catch (fault) {
     return { refused: fault instanceof ImageRefusal ? fault.message : 'That image could not be read. Try a JPEG or PNG.' }
   }
   if (await photoLockedElsewhere(hashes, eventId, deps)) return { refused: PHOTO_ALREADY_USED }
   const path = `${folder}/${randomUUID()}.${image.extension}`
-  return { url: await deps.store(path, image), path, hashes, width: image.width, height: image.height }
+  return { url: await deps.store(path, image), path, hashes, width: image.width, height: image.height, byteSize: file.size, format }
 }
 
 async function register(path: string, call: () => ReturnType<MediaDeps['rpc']>, deps: MediaDeps): Promise<{ data: unknown } | MediaAnswer> {

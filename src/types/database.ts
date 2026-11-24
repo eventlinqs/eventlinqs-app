@@ -10424,11 +10424,14 @@ export type Database = {
           asset_type: string
           asset_url: string
           attribution_text: string
+          byte_size: number | null
+          content_sha256: string | null
           created_at: string
           created_by: string | null
           event_id: string | null
           evidence_file: string | null
           expires_at: string | null
+          file_format: string | null
           focal_x: number | null
           focal_y: number | null
           id: string
@@ -10459,11 +10462,14 @@ export type Database = {
           asset_type: string
           asset_url: string
           attribution_text: string
+          byte_size?: number | null
+          content_sha256?: string | null
           created_at?: string
           created_by?: string | null
           event_id?: string | null
           evidence_file?: string | null
           expires_at?: string | null
+          file_format?: string | null
           focal_x?: number | null
           focal_y?: number | null
           id?: string
@@ -10494,11 +10500,14 @@ export type Database = {
           asset_type?: string
           asset_url?: string
           attribution_text?: string
+          byte_size?: number | null
+          content_sha256?: string | null
           created_at?: string
           created_by?: string | null
           event_id?: string | null
           evidence_file?: string | null
           expires_at?: string | null
+          file_format?: string | null
           focal_x?: number | null
           focal_y?: number | null
           id?: string
