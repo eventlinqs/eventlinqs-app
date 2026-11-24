@@ -21,6 +21,7 @@ import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
 import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
 import { scopeToRecord } from './grant-scope'
+import type { SniffedFormat } from '@/lib/launch/sniff-image'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { captionMarkFaults } from './caption-marks'
 import { dayTime } from '@/lib/dates/admin-dates'
@@ -2316,6 +2317,15 @@ export type AssetInput = {
   readonly sourceHeight: number | null
   /** Which of the night's photographs leads, 1 first (the directive: the strongest photograph is the hero). */
   readonly leadRank: number | null
+  /**
+   * THE FILE AS SUPPLIED (Lawal's 12:34 of 23 November 2026, the media library's integrity reference and file type; the
+   * master directive's A3 (3)): its SHA-256, so the same file is never registered twice (social_assets_one_file,
+   * 20261124060001); its size in bytes; its format read from its own first bytes. Optional: a person adding a row by
+   * address in the admin has no file in hand.
+   */
+  readonly contentSha256?: string | null
+  readonly byteSize?: number | null
+  readonly fileFormat?: SniffedFormat | null
 }
 
 export type AssetRow = {
@@ -2380,9 +2390,13 @@ export async function addAsset(db: Db, input: AssetInput & { readonly by: string
     source_width: input.sourceWidth,
     source_height: input.sourceHeight,
     lead_rank: input.leadRank,
+    content_sha256: input.contentSha256 ?? null,
+    byte_size: input.byteSize ?? null,
+    file_format: input.fileFormat ?? null,
     created_by: input.by,
   })
   if (error) {
+    if (error.code === '23505' && /social_assets_one_file/.test(error.message)) return { state: 'refused', reason: 'This file is in the register already.' }
     if (error.code === '23505') return { state: 'refused', reason: 'This asset is in the register for that night already.' }
     if (error.code === '23514') return { state: 'refused', reason: 'Every field is needed, the addresses must be https, someone else\'s work needs their permission in their words, the original file, the day it came and what it may be used for, and an archival photograph says so in its credit.' }
     return { state: 'refused', reason: refusalOf(error.message) ?? error.message }

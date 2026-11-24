@@ -179,9 +179,15 @@ export async function givePhotos(
       receivedOn,
       permittedUses: permittedUsesWords(),
       focal: null,
-      sourceWidth: null,
-      sourceHeight: null,
+      // THE ASSET'S OWN SIZE AND FILE (the master directive's A3 (3)): its pixel size as stored, without which the
+      // lifecycle planner passes it by (lifecycle-plan.ts reads a photo with no size as no photo), and the file as they
+      // supplied it, by its SHA-256, so the same file is never registered twice, its bytes and its format.
+      sourceWidth: stored.width ?? null,
+      sourceHeight: stored.height ?? null,
       leadRank: null,
+      contentSha256: stored.hashes.sha256,
+      byteSize: stored.byteSize,
+      fileFormat: stored.format,
       by: founder.id,
     })
     if (done.state === 'refused') {
