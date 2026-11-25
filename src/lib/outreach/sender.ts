@@ -256,6 +256,9 @@ export async function readConversation(
   type Theirs = { source_message_id: string | null; received_at: string | null; touch_id: string | null }
   const ours = ((sent.data ?? []) as Ours[]).filter((t) => t.internet_message_id)
   const replies = ((theirs.data ?? []) as Theirs[]).filter((r) => r.source_message_id)
+  // A message of ours sent by hand and on record only by its mailbox row (its words refused by the message record).
+  const hand = await db.from('outreach_message_mailboxes').select('internet_message_id, mailbox, message_at').eq('contact_id', contactId).eq('direction', 'sent')
+  if (hand.error) return { unread: `the messages sent to them by hand could not be read: ${hand.error.message}` }
   const ids = [...ours.map((t) => t.internet_message_id as string), ...replies.map((r) => r.source_message_id as string)]
   const recorded = new Map<string, string>()
   if (ids.length > 0) {
@@ -280,6 +283,10 @@ export async function readConversation(
   for (const r of replies) {
     const mailbox = recorded.get(r.source_message_id as string) ?? (r.touch_id ? ofTouch.get(r.touch_id) ?? null : null)
     messages.push({ id: r.source_message_id as string, at: r.received_at ?? '', mailbox })
+  }
+  const known = new Set(messages.map((x) => x.id))
+  for (const h of (hand.data ?? []) as { internet_message_id: string; mailbox: string; message_at: string | null }[]) {
+    if (!known.has(h.internet_message_id)) messages.push({ id: h.internet_message_id, at: h.message_at ?? '', mailbox: h.mailbox })
   }
   return conversationOf(messages, OUR_MAILBOXES)
 }
@@ -460,20 +467,29 @@ export async function runOutreachSender(
       continue
     }
     const stated = ((contact.data as { stated_address?: string | null }).stated_address ?? '').trim().toLowerCase() || null
-    if (stated) {
-      const stopped = await db.from('outreach_unsubscribes').select('email').eq('email', stated).limit(1)
+    // AN ANSWER GOES TO THE ADDRESS THEY WROTE FROM (Lawal's 14:43, item 1; the PM's 16:28): someone of the organisation
+    // who wrote from another address in the thread is answered there, as the record of their message says.
+    let wroteFrom: string | null = null
+    if (!stated && t.in_reply_to) {
+      const theirs = await db.from('outreach_message_mailboxes').select('counterpart_address, direction').eq('internet_message_id', t.in_reply_to).maybeSingle()
+      const row = theirs.data as { counterpart_address?: string | null; direction?: string } | null
+      if (!theirs.error && row?.direction === 'received' && row.counterpart_address) wroteFrom = row.counterpart_address.trim().toLowerCase()
+    }
+    const to = stated ?? wroteFrom ?? contact.data.address
+    // An address other than the contact's own is never written to once it has asked to stop.
+    if (to.toLowerCase() !== String(contact.data.address).toLowerCase()) {
+      const stopped = await db.from('outreach_unsubscribes').select('email').eq('email', to).limit(1)
       if (stopped.error) {
-        report.refused.push({ id: t.id, reason: `whether their stated address asked to stop could not be read: ${stopped.error.message}; not sent on a guess` })
+        report.refused.push({ id: t.id, reason: `whether ${to} asked to stop could not be read: ${stopped.error.message}; not sent on a guess` })
         continue
       }
       if ((stopped.data ?? []).length > 0) {
-        const why = `their stated address ${stated} asked to stop: nothing goes to it`
+        const why = `${stated ? 'their stated address' : 'the address they wrote from'} ${to} asked to stop: nothing goes to it`
         await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')
         report.refused.push({ id: t.id, reason: why })
         continue
       }
     }
-    const to = stated ?? contact.data.address
     // ONE MESSAGE, HOWEVER OFTEN IT IS TRIED (the PM's 01:52 of 23 November 2026, item 4): the claim moves the row from
     // queued to sending only where it is still queued, so of two runs, a retried run or Lawal's press racing the cron, one
     // takes it and the other is told 'taken by another run'; the database refuses any other move into sending

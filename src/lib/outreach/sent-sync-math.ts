@@ -16,6 +16,9 @@ export interface SentMail {
   readonly toAddresses: readonly string[]
   readonly sentAt: string
   readonly text: string
+  /** Outlook's conversation id and the ids its thread headers name (./graph.ts): the roads to its thread (./thread-match.ts). */
+  readonly conversationId?: string
+  readonly threadIds?: readonly string[]
 }
 
 export type SentAction =
@@ -26,6 +29,8 @@ export interface SentPlan {
   readonly actions: readonly SentAction[]
   readonly alreadyRecorded: number
   readonly notContacts: number
+  /** Each message not yet recorded whose addresses are no contact of ours: matched to its thread by the store, or not. */
+  readonly unmatched?: readonly SentMail[]
 }
 
 export function subjectKey(subject: string | null | undefined): string {
@@ -71,6 +76,7 @@ export function planSentSync(
   const actions: SentAction[] = []
   let alreadyRecorded = 0
   let notContacts = 0
+  const unmatched: SentMail[] = []
   for (const m of mail) {
     if (!m.internetMessageId || recorded.has(m.internetMessageId)) {
       alreadyRecorded += 1
@@ -89,7 +95,10 @@ export function planSentSync(
         actions.push({ kind: 'record', contactId, mail: m })
       }
     }
-    if (!matched) notContacts += 1
+    if (!matched) {
+      notContacts += 1
+      unmatched.push(m)
+    }
   }
-  return { actions, alreadyRecorded, notContacts }
+  return { actions, alreadyRecorded, notContacts, unmatched }
 }

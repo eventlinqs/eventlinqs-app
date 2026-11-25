@@ -178,10 +178,12 @@ type Conversation = {
   ours?: { id: string; internet_message_id: string; sent_at: string; comms_category: string | null; purpose: string; provider: string | null }[]
   theirs?: { source_message_id: string; received_at: string; touch_id: string | null }[]
   mailboxes?: { internet_message_id: string; mailbox: string }[]
+  /** Messages of ours on record only by their mailbox row (sent by hand), by the contact. */
+  hand?: { internet_message_id: string; mailbox: string; message_at: string }[]
 }
 function standardDb(
   mode: string,
-  opts: { refuse?: string[]; address?: string; queued?: unknown[]; conversation?: Conversation; receivedAt?: string; stated?: string; stopped?: string[] } = {},
+  opts: { refuse?: string[]; address?: string; queued?: unknown[]; conversation?: Conversation; receivedAt?: string; stated?: string; stopped?: string[]; wroteFrom?: string } = {},
 ) {
   return fakeDb((call, shape) => {
     const has = (k: string, v?: unknown) => call.filters.some(([fk, fv]) => fk === k && (v === undefined || fv === v))
@@ -190,7 +192,12 @@ function standardDb(
     if (call.table === 'outreach_replies' && call.op === 'select' && has('eq:contact_id')) return { data: opts.conversation?.theirs ?? [], error: null }
     // The message an answer answers, by its id: when it arrived.
     if (call.table === 'outreach_replies' && call.op === 'select' && has('eq:source_message_id')) return { data: opts.receivedAt ? { received_at: opts.receivedAt } : null, error: null }
-    if (call.table === 'outreach_message_mailboxes' && call.op === 'select') return { data: opts.conversation?.mailboxes ?? [], error: null }
+    if (call.table === 'outreach_message_mailboxes' && call.op === 'select') {
+      // The message an answer answers, by its id: who it came from.
+      if (has('eq:internet_message_id')) return { data: opts.wroteFrom ? { counterpart_address: opts.wroteFrom, direction: 'received' } : null, error: null }
+      if (has('eq:contact_id')) return { data: opts.conversation?.hand ?? [], error: null }
+      return { data: opts.conversation?.mailboxes ?? [], error: null }
+    }
     if (call.table === 'outreach_message_mailboxes' && call.op === 'upsert') return { data: null, error: null }
     if (call.table === 'outreach_unsubscribes' && has('eq:email')) return { data: (opts.stopped ?? []).filter((e) => has('eq:email', e)).map((email) => ({ email })), error: null }
     if (call.table === 'outreach_sender') return { data: { mode, from_address: 'hello@eventlinqs.com', test_domain: 'eventlinqs.com' }, error: null }
@@ -358,6 +365,33 @@ describe('the run', () => {
     const r = await runOutreachSender(stopped.db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(recordedOutreachMail()).toHaveLength(0)
     expect(r.refused[0].reason).toMatch(/their stated address bookings@eventlinqs\.com asked to stop/)
+  })
+
+  // THE PM'S 16:28: an answer goes to the address they wrote from (someone of the organisation writing from another
+  // address in the thread), never once it asked to stop; and a message of ours sent by hand, on record only by its
+  // mailbox row, is part of the conversation.
+  test('an answer goes to the address they wrote from; never once it asked to stop', async () => {
+    const reply = { ...QUEUED[0], id: 'q-shared', purpose: 'reply', comms_category: 'TKT', in_reply_to: '<theirs@eventlinqs.com>' }
+    const { db } = standardDb('test', { queued: [reply], receivedAt: RECEIVED, wroteFrom: 'shared@eventlinqs.com' })
+    await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(recordedOutreachMail().map((m) => m.to)).toEqual(['shared@eventlinqs.com'])
+    clearRecordedOutreachMail()
+    const stopped = standardDb('test', { queued: [reply], receivedAt: RECEIVED, wroteFrom: 'shared@eventlinqs.com', stopped: ['shared@eventlinqs.com'] })
+    const r = await runOutreachSender(stopped.db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    expect(recordedOutreachMail()).toHaveLength(0)
+    expect(r.refused[0].reason).toMatch(/the address they wrote from shared@eventlinqs\.com asked to stop/)
+  })
+
+  test('a message of ours sent by hand, on record only by its mailbox row, keeps the conversation on its mailbox', async () => {
+    const letter = { ...QUEUED[0], id: 'q-acq-2', purpose: 'relationship', comms_category: 'ACQ' }
+    const { db } = standardDb('test', {
+      queued: [letter],
+      conversation: { ours: [OUR_ACQ], theirs: [THEIRS], hand: [{ internet_message_id: '<hand@outlook>', mailbox: HELLO_MAILBOX, message_at: '2026-11-24T20:01:16Z' }] },
+    })
+    await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
+    const mail = recordedOutreachMail()
+    expect(mail.map((m) => m.from)).toEqual([HELLO_MAILBOX])
+    expect(Buffer.from(mail[0].base64Mime, 'base64').toString('utf8').split('\r\n\r\n')[0]).toMatch(/In-Reply-To: <hand@outlook>/)
   })
 
   // HOW FAST WE ANSWER (Lawal, 25 November 2026, 15:14 and 15:16): never under 50 minutes; inside 07:00 to 21:00 every

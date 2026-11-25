@@ -99,6 +99,12 @@ export type InboundMessage = {
   headers: Record<string, string>
   /** Whether the message carries attachments, as Graph says (photographs an organiser sends, the CRM directive's 4 A). */
   hasAttachments?: boolean
+  /**
+   * Outlook's conversation id (message.conversationId,
+   * https://learn.microsoft.com/en-us/graph/api/resources/message?view=graph-rest-1.0): the second road to its thread,
+   * after In-Reply-To and References (the PM's 16:28 of 25 November 2026). Empty when Graph gives none.
+   */
+  conversationId?: string
 }
 
 type GraphMessage = {
@@ -110,6 +116,7 @@ type GraphMessage = {
   body?: { content?: string }
   internetMessageHeaders?: { name: string; value: string }[]
   hasAttachments?: boolean
+  conversationId?: string
 }
 
 /** Messages per page asked of Graph (it allows 1 to 1000). */
@@ -122,7 +129,7 @@ export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchIm
     ['$filter', `receivedDateTime ge ${sinceIso}`],
     ['$orderby', 'receivedDateTime asc'],
     ['$top', String(INBOX_PAGE_SIZE)],
-    ['$select', 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders,hasAttachments'],
+    ['$select', 'id,internetMessageId,subject,from,receivedDateTime,body,internetMessageHeaders,hasAttachments,conversationId'],
   ])
   let url: string | null = `${GRAPH}/users/${encodeURIComponent(cfg.mailbox)}/mailFolders/inbox/messages?${params.toString()}`
   const out: InboundMessage[] = []
@@ -143,11 +150,19 @@ export async function graphReadInbox(cfg: GraphConfig, sinceIso: string, fetchIm
         text: m.body?.content ?? '',
         headers,
         hasAttachments: m.hasAttachments === true,
+        conversationId: m.conversationId ?? '',
       })
     }
     url = json['@odata.nextLink'] ?? null
   }
   return out
+}
+
+/** Every message id the In-Reply-To and References headers name, any domain, in order and once each. */
+export function idsInHeaders(headers: readonly { name: string; value: string }[] | Record<string, string>): string[] {
+  const list = Array.isArray(headers) ? headers : Object.entries(headers).map(([name, value]) => ({ name, value }))
+  const text = list.filter((h) => /^(in-reply-to|references)$/i.test(h.name)).map((h) => h.value).join(' ')
+  return [...new Set(text.match(/<[^<>\s]+@[^<>\s]+>/g) ?? [])]
 }
 
 /** A message Lawal sent from the outreach mailbox, as its Sent Items folder holds it. */
@@ -159,6 +174,10 @@ export type SentMessage = {
   toAddresses: string[]
   sentAt: string
   text: string
+  /** Outlook's conversation id, as for a message received (InboundMessage.conversationId). */
+  conversationId?: string
+  /** The ids its In-Reply-To and References name, when Graph gives its headers; else none. */
+  threadIds?: string[]
 }
 
 type GraphSentMessage = {
@@ -169,6 +188,8 @@ type GraphSentMessage = {
   toRecipients?: { emailAddress?: { address?: string } }[]
   ccRecipients?: { emailAddress?: { address?: string } }[]
   body?: { content?: string }
+  conversationId?: string
+  internetMessageHeaders?: { name: string; value: string }[]
 }
 
 /**
@@ -184,7 +205,7 @@ export async function graphReadSentItems(cfg: GraphConfig, sinceIso: string, fet
     ['$filter', `sentDateTime ge ${sinceIso}`],
     ['$orderby', 'sentDateTime asc'],
     ['$top', String(INBOX_PAGE_SIZE)],
-    ['$select', 'id,internetMessageId,subject,toRecipients,ccRecipients,sentDateTime,body'],
+    ['$select', 'id,internetMessageId,subject,toRecipients,ccRecipients,sentDateTime,body,conversationId,internetMessageHeaders'],
   ])
   let url: string | null = `${GRAPH}/users/${encodeURIComponent(cfg.mailbox)}/mailFolders/sentitems/messages?${params.toString()}`
   const out: SentMessage[] = []
@@ -203,6 +224,8 @@ export async function graphReadSentItems(cfg: GraphConfig, sinceIso: string, fet
         toAddresses: [...new Set(to)],
         sentAt: m.sentDateTime,
         text: m.body?.content ?? '',
+        conversationId: m.conversationId ?? '',
+        threadIds: idsInHeaders(m.internetMessageHeaders ?? []),
       })
     }
     url = json['@odata.nextLink'] ?? null

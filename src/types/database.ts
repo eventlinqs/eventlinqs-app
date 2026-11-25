@@ -7661,22 +7661,37 @@ export type Database = {
       }
       outreach_message_mailboxes: {
         Row: {
+          contact_id: string | null
+          conversation_id: string | null
+          counterpart_address: string | null
           direction: string
           internet_message_id: string
           mailbox: string
+          message_at: string | null
           recorded_at: string
+          subject: string | null
         }
         Insert: {
+          contact_id?: string | null
+          conversation_id?: string | null
+          counterpart_address?: string | null
           direction: string
           internet_message_id: string
           mailbox: string
+          message_at?: string | null
           recorded_at?: string
+          subject?: string | null
         }
         Update: {
+          contact_id?: string | null
+          conversation_id?: string | null
+          counterpart_address?: string | null
           direction?: string
           internet_message_id?: string
           mailbox?: string
+          message_at?: string | null
           recorded_at?: string
+          subject?: string | null
         }
         Relationships: []
       }
