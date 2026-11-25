@@ -93,9 +93,10 @@ export function ruleFailures(draft: Draft): string[] {
 
   if (draft.channel === 'email') {
     if (!draft.subject || draft.subject.trim().length < 3) failures.push('an email has a subject')
-    // A follow up and a reply sign as Lawal replies, without the ABN block (VOICE-EVENTLINQS.md: "Replies sign 'Kind
-    // regards, Lawal Adams, Founder, EventLinqs' with no ABN block", which the gateway enforces); a first letter signs whole.
-    const followUp = draft.purpose === 'reply' || (draft.purpose === 'cadence' && (draft.step ?? 1) >= 2)
+    // A first letter signs whole; every other message, a follow up, a reply or a relationship message, signs as Lawal
+    // replies, without the ABN block (VOICE-EVENTLINQS.md: "Replies sign 'Kind regards, Lawal Adams, Founder, EventLinqs'
+    // with no ABN block"; the gateway: first_sig for a first contact alone), exactly as renderTemplate signs it.
+    const followUp = !(draft.purpose === 'cadence' && (draft.step ?? 1) <= 1)
     if (!draft.closing.includes(followUp ? REPLY_SIGNATURE : LAWAL_SIGNATURE)) failures.push(followUp ? "Lawal's reply signature on a follow up" : "Lawal's full signature on every email")
     if (!draft.closing.includes('https://www.eventlinqs.com.au/unsubscribe/outreach')) failures.push('an unsubscribe line on every email')
   } else if (!draft.closing.trim().endsWith(DM_SIGN_OFF)) {

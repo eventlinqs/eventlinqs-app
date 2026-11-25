@@ -297,15 +297,17 @@ describe('the run', () => {
 
   // The PM's 07:03 of 25 November 2026, item 1: a reply goes from the address they wrote to, the mailbox of the letter
   // it answers, whatever its own template's category names (reply_existing_ticketing is TKT, hello@).
-  const OUR_ACQ = { id: 't-answered', internet_message_id: '<ours-1@eventlinqs.com>', sent_at: '2026-10-21T20:15:19Z', comms_category: 'ACQ', purpose: 'cadence', provider: 'graph' }
-  const THEIRS = { source_message_id: '<theirs@eventlinqs.com>', received_at: '2026-10-28T18:00:00Z', touch_id: 't-answered' }
+  const OUR_ACQ = { id: 't-answered', internet_message_id: '<ours-1@eventlinqs.com>', sent_at: '2026-11-19T20:15:19Z', comms_category: 'ACQ', purpose: 'cadence', provider: 'graph' }
+  const THEIRS = { source_message_id: '<theirs@eventlinqs.com>', received_at: '2026-11-20T22:02:00Z', touch_id: 't-answered' }
+  // When the message an answer answers arrived, as the sender reads it for the answer's floor: two hours before the run.
+  const RECEIVED = '2026-10-28T18:00:00Z'
   test('a reply to our acquisition letter leaves from lawal@, the address they wrote to; with no conversation, its own address', async () => {
     const reply = { ...QUEUED[0], id: 'q-reply', purpose: 'reply', comms_category: 'TKT', in_reply_to: '<theirs@eventlinqs.com>' }
-    const { db } = standardDb('test', { queued: [reply], conversation: { ours: [OUR_ACQ], theirs: [THEIRS] }, receivedAt: THEIRS.received_at })
+    const { db } = standardDb('test', { queued: [reply], conversation: { ours: [OUR_ACQ], theirs: [THEIRS] }, receivedAt: RECEIVED })
     await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(recordedOutreachMail().map((m) => m.from)).toEqual([LAWAL_MAILBOX])
     clearRecordedOutreachMail()
-    const unread = standardDb('test', { queued: [reply], receivedAt: THEIRS.received_at })
+    const unread = standardDb('test', { queued: [reply], receivedAt: RECEIVED })
     await runOutreachSender(unread.db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(recordedOutreachMail().map((m) => m.from)).toEqual([HELLO_MAILBOX])
   })
@@ -314,7 +316,7 @@ describe('the run', () => {
   // each message type had its own address (#309, 19 November 19:24), when every letter left from hello@.
   test('a reply to a letter sent before the addresses split goes from hello@, whatever that letter is classed now', async () => {
     const reply = { ...QUEUED[0], id: 'q-old', purpose: 'reply', comms_category: 'ACQ', in_reply_to: '<theirs@eventlinqs.com>' }
-    const { db } = standardDb('test', { queued: [reply], conversation: { ours: [{ ...OUR_ACQ, sent_at: '2026-11-18T05:21:00Z' }], theirs: [THEIRS] }, receivedAt: THEIRS.received_at })
+    const { db } = standardDb('test', { queued: [reply], conversation: { ours: [{ ...OUR_ACQ, sent_at: '2026-11-18T05:21:00Z' }], theirs: [THEIRS] }, receivedAt: RECEIVED })
     await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     expect(recordedOutreachMail().map((m) => m.from)).toEqual([HELLO_MAILBOX])
   })
@@ -324,10 +326,10 @@ describe('the run', () => {
   // on hello@: even our acquisition follow up, whose category names lawal@, goes from hello@, in her thread.
   test('the same address is kept: an acquisition letter to a conversation on hello@ goes from hello@, threaded to its newest message', async () => {
     const letter = { ...QUEUED[0], id: 'q-acq', purpose: 'relationship', comms_category: 'ACQ' }
-    const answer = { id: 't-answer', internet_message_id: '<answer@outlook>', sent_at: '2026-10-28T10:00:00Z', comms_category: null, purpose: 'reply', provider: 'by_hand' }
+    const answer = { id: 't-answer', internet_message_id: '<answer@outlook>', sent_at: '2026-11-24T20:01:16Z', comms_category: null, purpose: 'reply', provider: 'by_hand' }
     const { db, calls } = standardDb('test', {
       queued: [letter],
-      conversation: { ours: [OUR_ACQ, answer], theirs: [{ ...THEIRS, received_at: '2026-10-25T00:00:00Z' }], mailboxes: [{ internet_message_id: '<answer@outlook>', mailbox: HELLO_MAILBOX }] },
+      conversation: { ours: [OUR_ACQ, answer], theirs: [THEIRS], mailboxes: [{ internet_message_id: '<answer@outlook>', mailbox: HELLO_MAILBOX }] },
     })
     await runOutreachSender(db, { now: THURSDAY_7_MELBOURNE, origin: 'https://www.eventlinqs.com.au', graph: null })
     const mail = recordedOutreachMail()

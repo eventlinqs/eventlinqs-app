@@ -87,7 +87,7 @@ describe('the seven communication categories (Law 24)', () => {
 
   it('the template map is read from the latest migration that writes it, with the rows added to it in place since', () => {
     expect(MAP_MIGRATION).toBe('20261121150001_lifecycle_letters_take_their_class.sql')
-    expect(IN_PLACE_MIGRATIONS).toEqual(['20261123130001_source_ask_takes_its_class.sql'])
+    expect(IN_PLACE_MIGRATIONS).toEqual(['20261123130001_source_ask_takes_its_class.sql', '20261125170002_law49_follow_ups_take_their_class.sql'])
   })
 
   it('the source ask is PERM-SOURCE: a permission request, from hello@, never toward the 20', () => {

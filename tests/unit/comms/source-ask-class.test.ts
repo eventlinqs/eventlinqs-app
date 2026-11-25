@@ -49,7 +49,9 @@ describe('migration 20261123130001: the source ask takes its class', () => {
     const once = inForce.replace(ANCHOR, () => `${ANCHOR}\n    ${ROW}`)
     const after = mapOf(once)
     expect(after).toEqual({ ...before, source_ask: 'PERM-SOURCE' })
-    expect(Object.fromEntries(Object.entries(TEMPLATE_CLASS).map(([k, c]) => [k, c.subtype]))).toEqual(after)
+    // The code map, less the rows a later in place migration adds (law 49's two follow ups, 20261125170002).
+    const later = new Set(['lifecycle_perm_follow_up', 'lifecycle_acq_follow_up'])
+    expect(Object.fromEntries(Object.entries(TEMPLATE_CLASS).filter(([k]) => !later.has(k)).map(([k, c]) => [k, c.subtype]))).toEqual(after)
     // The row sits right after its anchor, at the anchor's own indent.
     expect(once).toContain(`    ${ANCHOR}\n    ${ROW}\n    ('lifecycle_acq', 'ACQ-FIRST'),`)
   })

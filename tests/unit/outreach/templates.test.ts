@@ -46,12 +46,14 @@ describe('every template row passes every rule once filled from facts', () => {
     expect(r.heldBecause).toEqual([])
     expect(r.body.startsWith('Hi ')).toBe(true)
     if (t.channel === 'email') {
-      // A reply signs as Lawal replies, without the ABN block (the voice gate refuses it in a reply); every other email
-      // carries his full signature (the PM's 07:03 of 25 November 2026: no reply could pass the gate until this).
-      if (t.purpose === 'reply') {
+      // A first letter (cadence, step 1) carries his full signature; every other email, a follow up, a reply or a
+      // relationship message, signs as Lawal replies, without the ABN block (the gateway: first_sig for a first contact
+      // alone; the voice gate refuses the block in a reply; the PM's 07:03 of 25 November 2026 and the law 49 car).
+      if (t.purpose === 'cadence' && (t.step ?? 1) <= 1) expect(r.body).toContain(LAWAL_SIGNATURE)
+      else {
         expect(r.body).toContain(REPLY_SIGNATURE)
         expect(r.body).not.toContain('ABN')
-      } else expect(r.body).toContain(LAWAL_SIGNATURE)
+      }
       expect(r.body).toContain(UNSUB)
     }
   })
