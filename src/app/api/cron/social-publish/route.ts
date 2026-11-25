@@ -16,6 +16,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 import { planAsOf } from '@/lib/social/plan-for'
+import { makeCarouselsNow } from '@/lib/social/carousel-wiring'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,7 +97,13 @@ export async function GET(request: NextRequest) {
     if (week.created > 0) {
       await recordAnonAuditEvent({ action: 'system.social.plan', actorEmail: 'cron/social-publish?plan=now', metadata: { campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, held: week.held } })
     }
-    return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held })
+    // THE WEEKLY CITY CAROUSEL, MADE as the 06:40 run makes it (src/lib/social/carousel-make.ts): finished files handed to
+    // the creative intake, unapproved, for the PM's verify; approved, scheduled and published nowhere here.
+    const carousels = await makeCarouselsNow(db, { now: asOf, siteOrigin: getSiteUrl() })
+    if (carousels.some((c) => c.state !== 'kept')) {
+      await recordAnonAuditEvent({ action: 'system.social.carousel', actorEmail: 'cron/social-publish?plan=now', metadata: { carousels } })
+    }
+    return NextResponse.json({ planned: true, asOf: asOf.toISOString(), campaignId: week.campaignId, weekStart: week.weekStart, created: week.created, existing: week.existing, held: week.held, carousels })
   }
 
   // LAWAL'S APPROVED SETS, DRAWN, THEN APPROVED BY THE PM, NEVER POSTED HERE (the founder, 23 November 2026, 14:34; the
@@ -363,6 +370,18 @@ export async function GET(request: NextRequest) {
         }
       } catch (error) {
         console.error('[cron/social-publish] the week could not be planned:', error instanceof Error ? error.message : error)
+      }
+      // THE WEEKLY CITY CAROUSEL, MADE (src/lib/social/carousel-make.ts): from the Thursday before its Monday, each city's
+      // carousel drawn into finished files and handed to the creative intake, unapproved, for the PM's verify. After the
+      // plan, and its own failure never stops the run.
+      try {
+        const carousels = await makeCarouselsNow(db, { now, siteOrigin: getSiteUrl() })
+        for (const c of carousels) console.log(`[cron/social-publish] carousel: ${c.line}`)
+        if (carousels.some((c) => c.state !== 'kept')) {
+          await recordAnonAuditEvent({ action: 'system.social.carousel', actorEmail: 'cron/social-publish', metadata: { carousels } })
+        }
+      } catch (error) {
+        console.error('[cron/social-publish] the carousel could not be made:', error instanceof Error ? error.message : error)
       }
     }
     // THE TIMETABLE'S SOCIAL PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):

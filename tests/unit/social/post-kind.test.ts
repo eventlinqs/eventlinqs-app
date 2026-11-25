@@ -13,6 +13,11 @@ describe('every piece has its post kind, its goal and its measure', () => {
     expect(got).toMatchObject({ week_ahead: 'city', weekend_carousel: 'city', coming_up: 'event', daily_poster: 'event', organiser_campaign: 'organiser', venue_spotlight: 'organiser', discovery_reel: 'reel' })
     for (const k of KINDS) expect(['city', 'event', 'organiser', 'reel', 'story']).toContain(got[k])
   })
+  test("a creative piece is read from what it shows: the weekly city carousel's nights make a city post, one night an event post", () => {
+    expect(postKindOf({ kind: 'creative', format: 'feed', nights: 8 }).kind).toBe('city')
+    expect(postKindOf({ kind: 'creative', format: 'feed', nights: 1 }).kind).toBe('event')
+    expect(postKindOf({ kind: 'creative', format: 'feed' }).kind).toBe('event')
+  })
   test('a story is a story, whatever it shows', () => {
     for (const k of KINDS) expect(postKindOf({ kind: k, format: 'story' }).kind).toBe('story')
   })

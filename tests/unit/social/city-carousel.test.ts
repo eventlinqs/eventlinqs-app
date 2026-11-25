@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { CAROUSEL_EVENTS, CITY_COVERS, captionWeek, carouselCaption, carouselPiece, carouselPostAt, chooseCarouselNights, cityCoverPhotos, dateStrip, dayOf, iconRow, type CarouselNight } from '@/lib/social/city-carousel'
-import { relationshipOf } from '@/lib/social/campaign'
+import { CAROUSEL_EVENTS, CAROUSEL_LEAD_HOURS, CITY_COVERS, captionWeek, carouselCaption, carouselDesign, carouselPostAt, carouselTimeline, chooseCarouselNights, cityCoverPhotos, dateStrip, dayOf, iconRow, relationshipOf, type CarouselNight } from '@/lib/social/city-carousel'
 import { captionMarkFaults } from '@/lib/social/caption-marks'
+import { goHop } from '@/lib/social/go-hop'
+import { relativeDateWords } from '@/lib/social/playbook'
 
 /*
  * THE WEEKLY CITY CAROUSEL'S RULES (Lawal's yes, 25 November 2026, 00:47; the PM's 01:12 item 2: "every rule a pure
@@ -95,44 +96,62 @@ describe("the cover's words", () => {
 
 describe('the caption', () => {
   const nights = [night({ title: 'Jazz on the Roof', hoursAfter: 12 }), night({ title: 'Kids Science Day', hoursAfter: 60, category: 'Family', free: true })]
-  test('a hook naming the city and the week, a line per event with its day, the question, at most three tags', () => {
-    const ig = carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform: 'instagram', link: 'https://www.eventlinqs.com.au/city/melbourne', tags: ['#Melbourne', 'WhatsOnMelbourne', 'ThingsToDo', 'Extra'] })
+  const hop = goHop('https://www.eventlinqs.com.au', 'facebook')
+  test('a hook naming the city and its dates, a line per event with its day and its place, the question, at most three tags', () => {
+    const ig = carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform: 'instagram', hop, tags: ['#Melbourne', 'WhatsOnMelbourne', 'ThingsToDo', 'Extra'] })
     const lines = ig.split('\n')
-    expect(lines[0]).toMatch(/Things to do in Melbourne this week, 30 Nov to 6 Dec\.$/)
-    expect(ig).toContain('Mon 30 Nov: Jazz on the Roof')
-    expect(ig).toContain('Wed 2 Dec: Kids Science Day (free)')
+    expect(lines[0]).toMatch(/Things to do in Melbourne, 30 Nov to 6 Dec\.$/)
+    expect(ig).toContain('Mon 30 Nov: Jazz on the Roof, A Venue')
+    expect(ig).toContain('Wed 2 Dec: Kids Science Day, A Venue (free)')
     expect(ig).toContain('Which one are you going to?')
-    expect(ig).toContain('link in bio')
-    expect(ig).not.toMatch(/\b(today|tonight|tomorrow|this weekend)\b/i)
+    expect(ig.match(/link in our bio/g)).toHaveLength(1)
+    expect(ig).not.toMatch(/https?:\/\//)
     expect(lines.at(-1)).toBe('#Melbourne #WhatsOnMelbourne #ThingsToDo')
     expect(captionMarkFaults(ig)).toEqual([])
-    const fb = carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform: 'facebook', link: 'https://www.eventlinqs.com.au/city/melbourne', tags: [] })
-    expect(fb).toContain('https://www.eventlinqs.com.au/city/melbourne')
-    expect(fb).not.toContain('link in bio')
+    const fb = carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform: 'facebook', hop, tags: [] })
+    expect(fb.match(/https?:\/\/\S+/g)).toEqual([hop])
+    expect(fb).not.toContain('link in our bio')
+  })
+  test('no relative day anywhere in either caption: the cover says THIS WEEK, the caption names the dates', () => {
+    for (const platform of ['instagram', 'facebook'] as const) {
+      expect(relativeDateWords(carouselCaption({ city: 'Melbourne', postAt: POST, nights, platform, hop, tags: [] }))).toEqual([])
+    }
   })
 })
 
-describe('the carousel as a piece, in the locked look', () => {
-  test("the week's cover over the city's own photograph, the city in the accent, a feature slide per event, then the ask", () => {
-    const nights = Array.from({ length: 9 }, (_, i) => night({ hoursAfter: 3 + i * 17, category: ['Music', 'Comedy', 'Family'][i % 3], free: i === 4 }))
-    const out = carouselPiece({ city: { slug: 'melbourne', name: 'Melbourne' }, nights, postAt: POST, origin: 'https://www.eventlinqs.com.au', cityPhoto: { url: 'https://example.test/melbourne.jpg', credit: null }, tags: ['#MelbourneEvents', '#Melbourne', '#EventLinqs'] })
+describe("the carousel's design, in the locked look", () => {
+  const photo = { url: 'https://www.eventlinqs.com.au/social/cities/melbourne-city-circle-tram.jpg', credit: 'Photo: Dietmar Rabich, CC BY-SA 4.0' }
+  const design = (nights: CarouselNight[], cityPhoto: typeof photo | null = photo) =>
+    carouselDesign({ city: { slug: 'melbourne', name: 'Melbourne' }, nights, postAt: POST, origin: 'https://www.eventlinqs.com.au', cityPhoto, tags: ['#MelbourneEvents', '#Melbourne', '#EventLinqs'] })
+  test("the week's cover over the city's own photograph with its licence credit, the city in the accent, a feature slide per event, then the ask", () => {
+    const out = design(Array.from({ length: 9 }, (_, i) => night({ hoursAfter: 13 + i * 17, category: ['Music', 'Comedy', 'Family'][i % 3], free: i === 4 })))
     expect(out).not.toBeNull()
-    const piece = out!.piece
-    expect(piece.kind).toBe('week_ahead')
-    expect(piece.slides).toHaveLength(1 + CAROUSEL_EVENTS + 1)
-    const cover = piece.slides[0]
-    expect(cover).toMatchObject({ t: 'week_cover', lines: ['THINGS TO DO IN', 'MELBOURNE', 'THIS WEEK'], accentLine: 1, range: '30 NOV to 6 DEC 2026', photo: 'https://example.test/melbourne.jpg', photoEventId: null })
+    expect(out!.slides).toHaveLength(1 + CAROUSEL_EVENTS + 1)
+    const cover = out!.slides[0]
+    expect(cover).toMatchObject({ t: 'week_cover', lines: ['THINGS TO DO IN', 'MELBOURNE', 'THIS WEEK'], accentLine: 1, range: '30 NOV to 6 DEC 2026', photo: photo.url, credit: photo.credit, photoEventId: null })
     expect(String((cover as { draws: string }).draws)).toMatch(/^8 EVENTS · /)
-    expect(piece.slides.slice(1, -1).every((s) => s.t === 'feature')).toBe(true)
-    expect(piece.slides.at(-1)).toMatchObject({ t: 'ask', count: CAROUSEL_EVENTS })
-    expect(piece.versions.instagram.caption).toContain('link in bio')
-    expect(piece.versions.facebook.caption).toContain('https://www.eventlinqs.com.au/city/melbourne')
+    expect(out!.slides.slice(1, -1).every((s) => s.t === 'feature')).toBe(true)
+    expect(out!.slides.at(-1)).toMatchObject({ t: 'ask', count: CAROUSEL_EVENTS })
+    expect(out!.captions.instagram).toContain('link in our bio')
+    expect(out!.captions.facebook).toContain(goHop('https://www.eventlinqs.com.au', 'facebook'))
+    expect(out!.link).toBe('https://www.eventlinqs.com.au/city/melbourne')
     expect(out!.short).toEqual([])
-    // A feature slide with no permitted photograph of its own is drawn in type, never with a borrowed one.
-    expect(piece.slides.slice(1, -1).every((s) => s.t === 'feature' && s.photo === null)).toBe(true)
+    // A feature slide with no permitted photograph of its own is drawn in type, never with a borrowed one; none prints a credit.
+    expect(out!.slides.slice(1, -1).every((s) => s.t === 'feature' && s.photo === null && s.credit === null)).toBe(true)
   })
-  test('a week of fewer than two events makes no carousel', () => {
-    expect(carouselPiece({ city: { slug: 'bendigo', name: 'Bendigo' }, nights: [night({ hoursAfter: 4 })], postAt: POST, origin: 'https://www.eventlinqs.com.au', cityPhoto: null, tags: [] })).toBeNull()
+  test("a night's own permitted photograph is its slide's, printed with no credit (law 17 as narrowed)", () => {
+    const own = { ...night({ hoursAfter: 20 }), approvedPhotoUrl: 'https://x.test/own.jpg', photoCredit: 'Their photographer' }
+    const out = design([own, night({ hoursAfter: 40 })])
+    expect(out!.slides.find((s) => s.t === 'feature' && s.eventId === own.eventId)).toMatchObject({ photo: 'https://x.test/own.jpg', credit: null })
+  })
+  test(`a night starting within ${CAROUSEL_LEAD_HOURS} hours of the post is never chosen, so the timing engine's window holds Monday's bands`, () => {
+    const early = night({ hoursAfter: CAROUSEL_LEAD_HOURS - 1 })
+    const out = design([early, night({ hoursAfter: 20 }), night({ hoursAfter: 40 })])
+    expect(out!.nights.map((n) => n.eventId)).not.toContain(early.eventId)
+  })
+  test('no city photograph of its own, or a week of fewer than two events, makes no carousel', () => {
+    expect(design([night({ hoursAfter: 20 }), night({ hoursAfter: 40 })], null)).toBeNull()
+    expect(design([night({ hoursAfter: 20 })])).toBeNull()
   })
   test('a night leads by its photograph with rights recorded, then EventLinqs ticketing, then an organiser we write to', () => {
     const base = night({ hoursAfter: 4 })
@@ -143,6 +162,18 @@ describe('the carousel as a piece, in the locked look', () => {
   })
   test("it goes at the window's opening, 06:00 on the week's Monday in Melbourne", () => {
     expect(carouselPostAt('2026-11-30').toISOString()).toBe('2026-11-29T19:00:00.000Z')
+  })
+})
+
+describe("the carousel's timeline, as the timing engine holds a piece of nights ahead", () => {
+  const post = carouselPostAt('2026-11-30') // Monday 30 November, 06:00 in Melbourne
+  test('a first night on the Monday evening: useful until two hours before its doors, expired as it starts', () => {
+    // Monday 30 November, 7:00 pm in Melbourne.
+    expect(carouselTimeline(post, [{ startDate: '2026-11-30T08:00:00Z' }])).toEqual({ preferredAt: '2026-11-29T19:00:00.000Z', latestAt: '2026-11-30T06:00:00.000Z', expiresAt: '2026-11-30T08:00:00.000Z' })
+  })
+  test('a first night later in the week: never past the end of the Monday, so a missed Monday is never posted later (law 42)', () => {
+    // Wednesday 2 December, 7:00 pm; the Monday ends at Tuesday 1 December, 00:00 in Melbourne (13:00 UTC on 30 November).
+    expect(carouselTimeline(post, [{ startDate: '2026-12-02T08:00:00Z' }, { startDate: '2026-12-04T08:00:00Z' }])).toEqual({ preferredAt: '2026-11-29T19:00:00.000Z', latestAt: '2026-11-30T13:00:00.000Z', expiresAt: '2026-11-30T13:00:00.000Z' })
   })
 })
 

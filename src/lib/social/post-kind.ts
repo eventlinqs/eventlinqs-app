@@ -22,8 +22,12 @@ export const POST_KINDS: Readonly<Record<PostKind, PostKindPlan>> = {
   story: { kind: 'story', goal: 'habit for people who already follow us (it does not grow reach)', measure: 'replies, taps forward to the next night, and link taps from the story' },
 }
 
-/** Which kind of post each piece kind is, on its format: a story is a story, whatever it shows. */
-const FEED_KIND: Readonly<Record<PieceKind, PostKind>> = {
+/**
+ * Which kind of post each piece kind is, on its format: a story is a story, whatever it shows. A creative piece (a
+ * finished design through the creative intake) is read from what it shows: several nights make a city post (the weekly
+ * city carousel), one night an event post.
+ */
+const FEED_KIND: Readonly<Record<Exclude<PieceKind, 'creative'>, PostKind>> = {
   week_ahead: 'city',
   weekend_carousel: 'city',
   free_week: 'city',
@@ -40,7 +44,9 @@ const FEED_KIND: Readonly<Record<PieceKind, PostKind>> = {
   discovery_reel: 'reel',
 }
 
-/** A piece's post kind, goal and measure, from its own kind and format. Pure. */
-export function postKindOf(piece: { readonly kind: PieceKind; readonly format: 'feed' | 'story' }): PostKindPlan {
-  return POST_KINDS[piece.format === 'story' ? 'story' : FEED_KIND[piece.kind]]
+/** A piece's post kind, goal and measure, from its own kind and format (and, for a creative piece, how many nights it shows). Pure. */
+export function postKindOf(piece: { readonly kind: PieceKind; readonly format: 'feed' | 'story'; readonly nights?: number }): PostKindPlan {
+  if (piece.format === 'story') return POST_KINDS.story
+  if (piece.kind === 'creative') return POST_KINDS[(piece.nights ?? 1) > 1 ? 'city' : 'event']
+  return POST_KINDS[FEED_KIND[piece.kind]]
 }

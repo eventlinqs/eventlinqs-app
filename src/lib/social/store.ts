@@ -41,7 +41,6 @@ import type { BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
 import { intakeFaults, intakeOfRow, intakeRow, planIntakePiece, slidesOf as slidesOfIntake, stateAfter, type GateStage, type IntakeInput, type IntakeRead, type IntakeRecord, type IntakeState, type Network, type RegisterAsset } from '@/lib/creative/intake'
-import { carouselPostAt, cityCoverPhotos } from './city-carousel'
 
 /**
  * THE SOCIAL ENGINE'S READS AND WRITES (item 11; docs/SOCIAL-ENGINE.md), through the service role. The one writer of
@@ -811,6 +810,30 @@ export function timingOfRows(momentKey: string | null, nights: readonly Record<s
   return timingOf({ moment: m?.kind ?? null, day: m?.day ?? null, nights: rows, preferredAt, multiDay }, now)
 }
 
+/** The later of two starts, either of which may be absent: a piece waits for both. Pure. */
+export function laterStart(a: Date | null | undefined, b: Date | null | undefined): Date | null {
+  if (!a) return b ?? null
+  if (!b) return a
+  return a.getTime() >= b.getTime() ? a : b
+}
+
+/**
+ * Each creative piece's preferred time, from its own intake record (creative_intake.preferred_at), so the scheduler never
+ * posts a finished design before it (WINDOW 5C, 25 November 2026). A failed read throws, as the nights' own read does, and
+ * the run holds; a piece with no record is held at publishing anyway (intakeIssuesAtPublish).
+ */
+async function creativePreferredAt(db: Db, pieceIds: readonly string[]): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>()
+  if (pieceIds.length === 0) return out
+  const { data, error } = await db.from('creative_intake').select('piece_id, preferred_at').in('piece_id', [...pieceIds])
+  if (error) throw new Error(`the creative pieces' preferred times could not be read: ${error.message}`)
+  for (const r of (data ?? []) as { piece_id: string | null; preferred_at: string }[]) {
+    const at = Date.parse(r.preferred_at)
+    if (r.piece_id && Number.isFinite(at)) out.set(r.piece_id, new Date(at))
+  }
+  return out
+}
+
 /** A piece's timing read now: its moment key and its newest version's nights. A failed read is said, never a pass. */
 async function timingOfPiece(db: Db, pieceId: string, preferredAt: Date | null, now: Date): Promise<Timing> {
   const { data: piece, error } = await db.from('social_pieces').select('moment_key').eq('id', pieceId).maybeSingle()
@@ -1246,10 +1269,7 @@ async function planNow(db: Db, campaignId: string, weekStart: string, now: Date)
     nights.map((n) => ({ eventId: n.eventId, venueId: n.venueId ?? null })),
     await venuesOff('our_posts', distributionDeps(db)),
   )])
-  // THE WEEKLY CITY CAROUSEL (the PM's 01:12; ./city-carousel.ts): Monday's week ahead as the carousel, posted from the
-  // window's opening on the week's Monday, its cover over each city's own licensed photograph (cityCoverPhotos).
-  const carousel = { postAt: carouselPostAt(weekStart), cityPhotos: cityCoverPhotos(cities, ORIGIN) }
-  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN, carousel })
+  const week = planCampaign({ nights, cities, weekStart, origin: ORIGIN, excluded, brandPhoto: brand ? { url: brand.url, credit: brand.credit } : null, spotlightsFrom: spotlightsFromDay(now, weekStart), standIns: STAND_INS_IN_PLAN })
   /* Family F: one daily poster per city per day (daily-posters.ts), beside the week's pieces. */
   // The PM's 20:40 fix 6: the daily posters are still the old planner look (a seller's pill, a raw address, a calendar
   // block), so they are held out of the week's plan, and so out of the publishing queue, until they are in the locked
@@ -1598,7 +1618,9 @@ export async function approveApprovedSet(db: Db, input: { readonly pieceId: stri
 
 /** The register's assets a record's images rest on, read now, each with the record's nights it is usable for this minute. */
 async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<string, RegisterAsset>> {
-  const ids = [...new Set(r.images.flatMap((i) => (i.restsOn.kind === 'asset' || i.restsOn.kind === 'organiser_artwork' ? [i.restsOn.assetId] : [])))]
+  const ids = [...new Set(r.images.flatMap((i) => (i.restsOn.kind === 'asset' || i.restsOn.kind === 'organiser_artwork' || i.restsOn.kind === 'city_photo' ? [i.restsOn.assetId] : [])))]
+  // A city's own photograph is asked of the register with no night (WINDOW 5C, 25 November 2026: the carousel's cover).
+  const alone = new Set(r.images.flatMap((i) => (i.restsOn.kind === 'city_photo' ? [i.restsOn.assetId] : [])))
   const out = new Map<string, RegisterAsset>()
   if (ids.length === 0) return out
   const { data, error } = await db.from('social_assets').select('id, asset_url, asset_type, event_id, source_width, source_height').in('id', ids)
@@ -1611,6 +1633,12 @@ async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<st
       if (uerr) throw new Error(`whether the asset ${String(a.id)} may be used could not be read: ${uerr.message}`)
       if (ok === true) usableFor.add(id)
     }
+    let usableAlone = false
+    if (alone.has(String(a.id))) {
+      const { data: ok, error: aerr } = await db.rpc('social_asset_usable', { p_url: String(a.asset_url), p_event: null, p_at: now.toISOString() })
+      if (aerr) throw new Error(`whether the asset ${String(a.id)} may be used for EventLinqs' own promotion could not be read: ${aerr.message}`)
+      usableAlone = ok === true
+    }
     out.set(String(a.id), {
       id: String(a.id),
       assetUrl: String(a.asset_url),
@@ -1619,6 +1647,7 @@ async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<st
       width: (a.source_width as number | null) ?? null,
       height: (a.source_height as number | null) ?? null,
       usableFor,
+      usableAlone,
     })
   }
   return out
@@ -2760,6 +2789,9 @@ export async function scheduleApprovedPieces(
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)), startDate: String(n.start_date), endDate: (n.end_date as string | null) ?? null, zone: (n.timezone as string | null)?.trim() || LIFECYCLE_ZONE }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
   const firstStarting = new Map<string, { title: string; start: Date }>()
+  // A CREATIVE PIECE'S OWN PREFERRED TIME (WINDOW 5C, 25 November 2026): a finished design verified early (the weekly city
+  // carousel, drawn from the Thursday before its Monday) never goes before the time its intake record prefers.
+  const preferred = await creativePreferredAt(db, due.filter((d) => d.kind === 'creative').map((d) => d.id))
   // The operating model's A2 (the PM's 01:39 of 19 November 2026): each family leans to its day of the week, only where
   // that day falls inside its own window (rhythmDays), so law 18's tiers always win and the lean never makes it late.
   const pieces: FloorPiece[] = due.map((d) => {
@@ -2783,7 +2815,7 @@ export async function scheduleApprovedPieces(
       const { notBefore, latestUseful } = lifecycleWindow(d.format, moment.day, onNow, own)
       return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful, notBefore, days: null }
     }
-    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful: window.latestUseful, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
+    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful: window.latestUseful, notBefore: laterStart(window.notBefore, preferred.get(d.id) ?? null), days: rhythmDays(d.kind, window, now) }
   })
 
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).

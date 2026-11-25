@@ -1,6 +1,6 @@
-import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type PiecePlan, type Slide } from './campaign'
+import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type Slide } from './campaign'
 import { midnightIn } from '@/lib/dates/zone-midnight'
-import { postKindOf } from './post-kind'
+import { goHop } from './go-hop'
 import { getCityBanner } from '@/lib/images/city-photo'
 
 /**
@@ -133,24 +133,36 @@ export function captionDay(n: Pick<CampaignNight, 'startDate' | 'timezone'>): st
   return new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(n.startDate)).replace(/,/g, '')
 }
 
+/** A night's place as its caption line names it: the place the listing gives, else its venue, else none. Pure. */
+export function placeOfNight(n: Pick<CampaignNight, 'placeName' | 'venueName'>): string | null {
+  return n.placeName?.trim() || n.venueName?.trim() || null
+}
+
 /**
- * The caption (section 5): one hook line naming the city and the week, one line per event with its day, the question,
- * then at most three tags. No relative dates. Facebook carries the link; Instagram says "link in bio" (the bio reaches
- * /ig). Pure.
+ * The caption (section 5): one hook line naming the city and the week's dates, one line per event with its day and its
+ * place, the question, the one action, then at most three tags. No relative day anywhere, so the hook names the dates and
+ * never says "this week" (the playbook's no-relative-date; the cover's own words say it). Each line names its night and
+ * its venue, as the creative intake's fact gate reads every caption. Facebook carries the piece's own counted /go hop
+ * (./go-hop.ts, its mark replaced by the piece's id at the handoff); Instagram carries no link and says "link in our bio"
+ * once (the bio reaches /ig). Pure.
  */
 export function carouselCaption(input: {
   readonly city: string
   readonly postAt: Date
   readonly nights: readonly CarouselNight[]
   readonly platform: 'facebook' | 'instagram'
-  readonly link: string
+  /** Facebook's one link: the piece's counted /go hop. */
+  readonly hop: string
   readonly tags: readonly string[]
 }): string {
   // Caption standard version 2 (caption-marks.ts): it leads with the nights' own emoji (campaign.ts listEmoji), one only.
-  const lines = [`${listEmoji(input.nights, false)} Things to do in ${input.city} this week, ${captionWeek(input.postAt)}.`, '']
-  for (const n of input.nights) lines.push(`${captionDay(n)}: ${n.title}${n.free ? ' (free)' : ''}`)
+  const lines = [`${listEmoji(input.nights, false)} Things to do in ${input.city}, ${captionWeek(input.postAt)}.`, '']
+  for (const n of input.nights) {
+    const place = placeOfNight(n)
+    lines.push(`${captionDay(n)}: ${n.title}${place ? `, ${place}` : ''}${n.free ? ' (free)' : ''}`)
+  }
   lines.push('', 'Which one are you going to?', '')
-  lines.push(input.platform === 'instagram' ? 'Every event and where to book: link in bio.' : `Every event and where to book: ${input.link}`)
+  lines.push(input.platform === 'instagram' ? 'Every event and where to book: link in our bio.' : `Every event and where to book: ${input.hop}`)
   const tags = input.tags.slice(0, 3)
   if (tags.length) lines.push('', tags.map((t) => (t.startsWith('#') ? t : `#${t}`)).join(' '))
   return lines.join('\n')
@@ -178,20 +190,59 @@ export const CITY_COVERS: Readonly<Record<string, { src: string; author: string;
 }
 
 /**
- * THE CAROUSEL AS A PIECE, IN THE LOCKED LOOK (the 9.5 look's own slides, src/lib/broadcast/day-cards.ts): the week's
- * cover over the city's own licensed photograph ("THINGS TO DO IN" / the city, in the accent / "THIS WEEK", the date strip,
- * the icon row), one feature slide per event (its own permitted photograph whole, else in type; its day, time and place,
- * its name, its entry line, its category or FREE), and the ask. Null when the week holds fewer than two events. Pure.
+ * A night's organiser's relationship with us, as the carousel ranks it (the playbook's section 5): a photograph with its
+ * rights recorded, then a night on EventLinqs ticketing, then an organiser we are writing to, when the reader names those
+ * nights. Pure.
  */
-export function carouselPiece(input: {
+export function relationshipOf(n: Pick<CampaignNight, 'eventId' | 'approvedPhotoUrl' | 'cta'>, writing?: ReadonlySet<string>): Relationship | null {
+  if (n.approvedPhotoUrl) return 'permission'
+  if (n.cta.ticketingByEventLinqs) return 'ticketing'
+  return writing?.has(n.eventId) ? 'writing' : null
+}
+
+/** A guide night as the carousel reads it: whether it is free, its category's own name, its organiser's relationship. Pure. */
+export function carouselNightOf(n: CampaignNight, writing?: ReadonlySet<string>): CarouselNight {
+  return { ...n, free: n.cta.state === 'free_open' || n.cta.state === 'free_registration', categoryName: n.categoryName ?? null, relationship: relationshipOf(n, writing) }
+}
+
+/**
+ * The first night starts at least this long after the post: the timing engine holds a piece of nights still ahead until two
+ * hours before the first one's doors (timing.ts AHEAD_LEAD_MINUTES), so a first night from 6pm keeps Monday's daytime
+ * bands open to the carousel.
+ */
+export const CAROUSEL_LEAD_HOURS = 12
+
+export type CarouselDesign = {
+  readonly nights: CarouselNight[]
+  readonly slides: Slide[]
+  readonly captions: { readonly instagram: string; readonly facebook: string }
+  /** The page the post sends people to: the city's guide, which lists every night it shows. */
+  readonly link: string
+  readonly picks: { readonly eventId: string; readonly reason: string }[]
+  /** Each rule the week could not meet, said plainly; empty when every rule is met. */
+  readonly short: string[]
+}
+
+/**
+ * THE CAROUSEL'S DESIGN, IN THE LOCKED LOOK (the 9.5 look's own slides, src/lib/broadcast/day-cards.ts): the cover over the
+ * city's own licensed photograph ("THINGS TO DO IN" / the city, in the accent / "THIS WEEK", the date strip, the icon row,
+ * and the photograph's licence credit, which law 17 as narrowed keeps), one feature slide per event (its own permitted
+ * photograph, the organiser's, printed with no credit; else drawn in type: its day, time and place, its name, its entry
+ * line, its category or FREE), and the ask. It is the brief the make step renders into finished files for the creative
+ * intake (./carousel-make.ts), never a piece planned by itself: law 37 posts only a photograph whole or a finished file
+ * (law37.ts). Null when the city has no licensed photograph of its own, or the week holds fewer than two events. Pure.
+ */
+export function carouselDesign(input: {
   readonly city: { readonly slug: string; readonly name: string }
   readonly nights: readonly CarouselNight[]
   readonly postAt: Date
   readonly origin: string
   readonly cityPhoto: CityPhoto | null
   readonly tags: readonly string[]
-}): { readonly piece: PiecePlan; readonly short: string[] } | null {
-  const choice = chooseCarouselNights(input.nights, input.postAt)
+}): CarouselDesign | null {
+  if (!input.cityPhoto) return null
+  const from = input.postAt.getTime() + CAROUSEL_LEAD_HOURS * 3_600_000
+  const choice = chooseCarouselNights(input.nights.filter((n) => Date.parse(n.startDate) >= from), input.postAt)
   const nights = choice.nights
   if (nights.length < 2) return null
   const cover: Slide = {
@@ -203,52 +254,44 @@ export function carouselPiece(input: {
     draws: iconRow(nights),
     line: '',
     photoEventId: null,
-    photo: input.cityPhoto?.url ?? null,
-    credit: input.cityPhoto?.credit ?? null,
+    photo: input.cityPhoto.url,
+    credit: input.cityPhoto.credit,
   }
-  const features: Slide[] = nights.map((n) => {
-    const f = featureSlideOf(n)
-    return {
-      ...f,
-      photo: n.approvedPhotoUrl ?? null,
-      credit: n.approvedPhotoUrl ? f.credit : null,
-      chip: n.free ? 'FREE' : n.categoryName ? n.categoryName.toUpperCase() : null,
-    }
-  })
+  const features: Slide[] = nights.map((n) => ({
+    ...featureSlideOf(n),
+    photo: n.approvedPhotoUrl ?? null,
+    credit: null,
+    chip: n.free ? 'FREE' : n.categoryName ? n.categoryName.toUpperCase() : null,
+  }))
   const ask: Slide = { t: 'ask', composition: 'close', count: nights.length, three: nights.slice(0, 3).map((n) => dayRowOf(n)) }
-  const link = `${input.origin}/city/${input.city.slug}`
-  const instagram = carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform: 'instagram', link, tags: input.tags })
-  const facebook = carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform: 'facebook', link, tags: input.tags })
-  const hook = instagram.split('\n')[0]
+  const caption = (platform: 'instagram' | 'facebook') =>
+    carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform, hop: goHop(input.origin, 'facebook'), tags: input.tags })
   const why = (n: CarouselNight) =>
     [`on ${captionDay(n)}`, n.categoryName ?? null, n.free ? 'free' : null, n.relationship ? `its organiser ${n.relationship === 'permission' ? 'gave photo permission' : n.relationship === 'ticketing' ? 'sells on EventLinqs' : 'is one we write to'}` : null]
       .filter((x): x is string => Boolean(x))
       .join(', ')
-  const piece: PiecePlan = {
-    kind: 'week_ahead',
-    city: input.city.slug,
-    audience: 'attendees',
-    objective: 'audience_growth',
-    purpose: `Things to do in ${input.city.name} this week`,
-    nextStep: `Open the week at ${link.replace(/^https?:\/\//, '')}`,
-    // Its post kind's own measure (post-kind.ts, the playbook's sections 3a and 4): a city post is judged by saves and shares.
-    outcome: postKindOf({ kind: 'week_ahead', format: 'feed' }).measure,
-    link,
-    format: 'feed',
-    eventIds: nights.map((n) => n.eventId),
-    picks: nights.map((n) => ({ eventId: n.eventId, reason: why(n) })),
-    mode: nights.some((n) => n.approvedPhotoUrl) ? 'photo_led' : 'type_led',
+  return {
+    nights,
     slides: [cover, ...features, ask],
-    caption: instagram,
-    versions: {
-      instagram: { hook, caption: instagram, crop: '4:5', cta: 'link in our bio' },
-      facebook: { hook: facebook.split('\n')[0], caption: facebook, crop: '4:5', cta: link },
-    },
-    partnerName: null,
-    partnerEventId: null,
-    message: null,
+    captions: { instagram: caption('instagram'), facebook: caption('facebook') },
+    link: `${input.origin.replace(/\/+$/, '')}/city/${input.city.slug}`,
+    picks: nights.map((n) => ({ eventId: n.eventId, reason: `Picked: ${why(n)}.` })),
+    short: choice.short,
   }
-  return { piece, short: choice.short }
+}
+
+/**
+ * The carousel's timeline as the timing engine holds a piece of nights still ahead (timing.ts timingOf, and the intake's
+ * timing gate): preferred at the post's own time; useful until two hours before its first night's doors and never past the
+ * end of the post's day; expired when its first night starts, or at the end of the post's day. A missed Monday is never
+ * posted later (law 42). Pure.
+ */
+export function carouselTimeline(postAt: Date, nights: readonly Pick<CampaignNight, 'startDate'>[]): { readonly preferredAt: string; readonly latestAt: string; readonly expiresAt: string } {
+  const first = Math.min(...nights.map((n) => Date.parse(n.startDate)))
+  const dayEnd = midnightIn(new Date(midnightIn(postAt, ZONE).getTime() + 36 * 3_600_000), ZONE).getTime()
+  const latest = Math.min(dayEnd, first - 2 * 3_600_000)
+  const expires = Math.max(latest, Math.min(dayEnd, first))
+  return { preferredAt: postAt.toISOString(), latestAt: new Date(latest).toISOString(), expiresAt: new Date(expires).toISOString() }
 }
 
 /** When the week's carousel goes out: the window's opening, 06:00 on the week's Monday in Melbourne (law 44). */

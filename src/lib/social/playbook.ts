@@ -208,7 +208,7 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
   },
   {
     id: 'city-carousel-weekly',
-    rule: "Monday's week ahead is the weekly city carousel: 'THINGS TO DO IN' the city 'THIS WEEK' over a licensed photograph of the city itself, the dates written with 'to', an icon row from the week's real events, then eight events (seven days from the post, none started, one per title, at least three categories and four days, a free one when the week has one, organisers with a relationship first), then the ask; its caption names the city and the week, a line per event with its day, and the question.",
+    rule: "Each Monday the weekly city carousel: 'THINGS TO DO IN' the city 'THIS WEEK' over a licensed photograph of the city itself, the dates written with 'to', an icon row from the week's real events, then eight events (seven days from the post, none starting before its evening, one per title, at least three categories and four days, a free one when the week has one, organisers with a relationship first), then the ask. It is EventLinqs' own designed artwork, made from the Thursday before into finished files for the creative intake and posted only after the PM's verify; its caption names the city and the dates, a line per event with its day and its place, and the question.",
     reason: "Lawal's yes to the 'Things to do in [city] this week' format, the benchmark's best performing post shape for a city account.",
     source: "Lawal, 25 November 2026, 00:47; the PM's 01:12; SOCIAL-BENCHMARK-PLAYBOOK-25NOV.md section 5",
     date: '2026-11-25',

@@ -15,7 +15,6 @@ import { igHref } from '@/lib/growth/ig-math'
 import { nightTimes } from './lifecycle'
 import { getSupabaseUrl } from '@/lib/supabase/env'
 import type { ApprovedSet } from './approved-sets'
-import { carouselPiece, type CityPhoto, type Relationship } from './city-carousel'
 
 /**
  * THE WEEKLY CAMPAIGN, PLANNED (the release checklist of 28 October 2026, sections B, C and J; Lawal's 13:53: strategy
@@ -958,17 +957,6 @@ function shortDay(iso: string, tz: string | null): string {
 const isFree = (n: Pick<CampaignNight, 'cta'>) => n.cta.state === 'free_open' || n.cta.state === 'free_registration'
 
 /**
- * A night's organiser's relationship with us, as the city carousel ranks it (the playbook's section 5): a photograph with
- * its rights recorded (an organiser's grant or an official seller's licence, ./media-rights), then a night on EventLinqs
- * ticketing, then an organiser we are writing to, when the planner names those nights. Pure.
- */
-export function relationshipOf(n: Pick<CampaignNight, 'eventId' | 'approvedPhotoUrl' | 'cta'>, writing?: ReadonlySet<string>): Relationship | null {
-  if (n.approvedPhotoUrl) return 'permission'
-  if (n.cta.ticketingByEventLinqs) return 'ticketing'
-  return writing?.has(n.eventId) ? 'writing' : null
-}
-
-/**
  * Law 18 (a)'s headline weight inside tier 1: "stadium, arena, estate concert, major theatre or concert hall, festival",
  * read from the venue's own name, so an arena show leads a talk at a concert hall (the week of 16 November 2026).
  */
@@ -1900,18 +1888,6 @@ export function planCampaign(input: {
   spotlightsFrom?: number
   /** False draws no stock stand-in anywhere in the week (stand-ins.ts STAND_INS_IN_PLAN); true or absent, as before. */
   standIns?: boolean
-  /**
-   * THE WEEKLY CITY CAROUSEL (Lawal's yes of 25 November 2026, 00:47; the PM's 01:12; ./city-carousel.ts): when given,
-   * Monday's week ahead is the carousel, its events chosen by the playbook's rules (relationshipOf: a photograph with its
-   * rights recorded, then EventLinqs ticketing, then the organisers we write to), its cover over the city's own licensed
-   * photograph, posted at postAt. Absent, the week ahead is planned as before.
-   */
-  carousel?: {
-    readonly postAt: Date
-    readonly cityPhotos: ReadonlyMap<string, CityPhoto>
-    /** The nights whose organiser we are writing to (a relationship, the playbook's third rank), when the planner reads it. */
-    readonly writing?: ReadonlySet<string>
-  }
 }): CampaignPlan {
   const { origin, weekStart } = input
   const spotlightsFrom = input.spotlightsFrom ?? 0
@@ -1944,24 +1920,9 @@ export function planCampaign(input: {
     const week = inWeek.filter((x) => x.n.citySlug === city.slug).map((x) => x.n)
     /* Two list posts in one city and one week share at most one night (the PM's 16:40, fix 3). */
     const listed = new Set<string>()
-    /* Monday: the week ahead, to the city page; the weekly city carousel when the planner gives its facts. */
-    const carousel = input.carousel
-      ? carouselPiece({
-          city,
-          nights: week.map((n) => ({ ...n, free: isFree(n), categoryName: n.categoryName ?? null, relationship: relationshipOf(n, input.carousel?.writing) })),
-          postAt: input.carousel.postAt,
-          origin,
-          cityPhoto: input.carousel.cityPhotos.get(city.slug) ?? null,
-          tags: standardTags(city, tagWord(city.name)).split(/\s+/).filter((t) => t.startsWith('#')),
-        })
-      : null
-    if (carousel) {
-      for (const id of carousel.piece.eventIds) listed.add(id)
-      pieces.push(carousel.piece)
-      feature(week.filter((n) => carousel.piece.eventIds.includes(n.eventId)))
-    }
+    /* Monday: the week ahead, to the city page. */
     const { nights: ahead, picks: aheadPicks } = selectNights(week, MAX_NIGHTS)
-    if (!carousel && ahead.length >= 2) {
+    if (ahead.length >= 2) {
       for (const n of ahead) listed.add(n.eventId)
       const aheadSlides = lockedListSlides(ahead, [`${ahead.length} ${countNoun(ahead)} on`, `in ${city.name}`, 'this week'], origin, (n) => sessionsOf(n), weekPick)
       const aheadWords = listCaptions({ sessionsOf: (n) => sessionsOf(n), hook: `${listEmoji(ahead, false)} ${countPhrase(ahead)} in ${city.name} this week.`, nights: ahead, rows: oncePerTitle(ahead).map((n) => rowLine(n, ahead)), pictured: picturedLine(aheadSlides), place: null, link: `${origin}/city/${city.slug}`, share: 'Tag who you are going with.', tags: standardTags(city, tagWord(city.name)), crop: '4:5' })
