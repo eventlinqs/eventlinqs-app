@@ -4388,6 +4388,7 @@ export type Database = {
           permits_facts: boolean
           permits_images: boolean
           permits_links: boolean
+          read_at_most_every_days: number | null
           refresh_interval_hours: number
           refresh_interval_reason: string | null
           source_type: string
@@ -4454,6 +4455,7 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          read_at_most_every_days?: number | null
           refresh_interval_hours?: number
           refresh_interval_reason?: string | null
           source_type?: string
@@ -4520,6 +4522,7 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          read_at_most_every_days?: number | null
           refresh_interval_hours?: number
           refresh_interval_reason?: string | null
           source_type?: string

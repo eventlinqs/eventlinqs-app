@@ -49,7 +49,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
       const { data, error } = await db
         .from('listing_sources')
         .select(
-          'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, last_etag, last_modified_header, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
+          'id, name, page_url, city_slug, collection, changes, last_checked_at, last_success_at, last_etag, last_modified_header, permits_facts, permits_descriptions, permits_images, permits_links, verification, source_type, category_id, venue_id, read_at_most_every_days, organisation:organisations(slug), venue:venues(name, address, claimed_at, city_slug)',
         )
       if (error) throw new Error(`the register could not be read: ${error.message}`)
       /* LAW 19 section 7.4, each source's open canary (migration 20261106170001). Read on its own, so a database without
@@ -92,6 +92,7 @@ export function collectionStore(db: SupabaseClient): CollectionStore {
           ownProgramme: ownProgrammeFor(s.page_url as string),
           canary: canaries.get(s.id as string) ?? null,
           categorySlug: s.category_id ? (categorySlugs.get(s.category_id as string) ?? null) : null,
+          readAtMostEveryDays: (s.read_at_most_every_days as number | null) ?? null,
         }
       })
     },
