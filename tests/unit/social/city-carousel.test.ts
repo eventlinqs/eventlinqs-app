@@ -132,6 +132,9 @@ describe("the carousel's design, in the locked look", () => {
     expect(String((cover as { draws: string }).draws)).toMatch(/^8 EVENTS · /)
     expect(out!.slides.slice(1, -1).every((s) => s.t === 'feature')).toBe(true)
     expect(out!.slides.at(-1)).toMatchObject({ t: 'ask', count: CAROUSEL_EVENTS })
+    // The ask's three rows fall on different days, so each time carries its weekday, never a time alone.
+    const ask = out!.slides.at(-1) as { three: { when: string }[] }
+    expect(ask.three.map((r) => r.when.split(' ')[0])).toEqual(['Mon', 'Tue', 'Wed'])
     expect(out!.captions.instagram).toContain('link in our bio')
     expect(out!.captions.facebook).toContain(goHop('https://www.eventlinqs.com.au', 'facebook'))
     expect(out!.link).toBe('https://www.eventlinqs.com.au/city/melbourne')

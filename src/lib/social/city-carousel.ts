@@ -133,6 +133,11 @@ export function captionDay(n: Pick<CampaignNight, 'startDate' | 'timezone'>): st
   return new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(n.startDate)).replace(/,/g, '')
 }
 
+/** A night's weekday on its own clock, short ('Mon'). Pure. */
+export function weekdayOf(n: Pick<CampaignNight, 'startDate' | 'timezone'>): string {
+  return new Intl.DateTimeFormat('en-AU', { timeZone: n.timezone ?? ZONE, weekday: 'short' }).format(new Date(n.startDate))
+}
+
 /** A night's place as its caption line names it: the place the listing gives, else its venue, else none. Pure. */
 export function placeOfNight(n: Pick<CampaignNight, 'placeName' | 'venueName'>): string | null {
   return n.placeName?.trim() || n.venueName?.trim() || null
@@ -263,7 +268,9 @@ export function carouselDesign(input: {
     credit: null,
     chip: n.free ? 'FREE' : n.categoryName ? n.categoryName.toUpperCase() : null,
   }))
-  const ask: Slide = { t: 'ask', composition: 'close', count: nights.length, three: nights.slice(0, 3).map((n) => dayRowOf(n)) }
+  // The ask's three rows fall on different days of the week, and the ask draws only each row's time and name, so its time
+  // carries its weekday ('Mon 7:00 PM'); a time alone would read as one evening (looked at in the 13:21 render).
+  const ask: Slide = { t: 'ask', composition: 'close', count: nights.length, three: nights.slice(0, 3).map((n) => ({ ...dayRowOf(n), when: `${weekdayOf(n)} ${dayRowOf(n).when}` })) }
   const caption = (platform: 'instagram' | 'facebook') =>
     carouselCaption({ city: input.city.name, postAt: input.postAt, nights, platform, hop: goHop(input.origin, 'facebook'), tags: input.tags })
   const why = (n: CarouselNight) =>

@@ -36,7 +36,6 @@ const FEED_KIND: Readonly<Record<Exclude<PieceKind, 'creative'>, PostKind>> = {
   tonight: 'city',
   coming_up: 'event',
   daily_poster: 'event',
-  creative: 'event',
   venue_spotlight: 'organiser',
   organiser_campaign: 'organiser',
   partner_kit: 'organiser',
