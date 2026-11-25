@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
+import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, setAsideUnpostable, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -382,6 +382,23 @@ export async function GET(request: NextRequest) {
         }
       } catch (error) {
         console.error('[cron/social-publish] the carousel could not be made:', error instanceof Error ? error.message : error)
+      }
+      // THE QUEUE KEPT HONEST (store.ts setAsideUnpostable; the PM's 12:11 item 2 of 25 November 2026): each unapproved
+      // piece nothing can approve (its nights over, or a format law 37 no longer posts) is set aside with its reason, in
+      // the founder's name as the standing policy's approvals are, so nothing stands pending until its night has passed.
+      try {
+        const founder = await founderAccount(db)
+        if (founder.id) {
+          const aside = await setAsideUnpostable(db, { now, by: founder.id })
+          for (const line of [...aside.setAside, ...aside.refused]) console.log(`[cron/social-publish] set aside: ${line}`)
+          if (aside.setAside.length > 0 || aside.refused.length > 0) {
+            await recordAnonAuditEvent({ action: 'system.social.set_aside', actorEmail: 'cron/social-publish', metadata: { setAside: aside.setAside, refused: aside.refused } })
+          }
+        } else {
+          console.error('[cron/social-publish] nothing set aside: no founder account to decide in the standing policy\'s name')
+        }
+      } catch (error) {
+        console.error('[cron/social-publish] the unpostable pieces could not be set aside:', error instanceof Error ? error.message : error)
       }
     }
     // THE TIMETABLE'S SOCIAL PHASES, MEASURED (the daily timetable, locked 20 November 2026; src/lib/ops/phase-runs.ts):

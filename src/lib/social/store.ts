@@ -2283,6 +2283,73 @@ export async function rejectPiece(db: Db, input: { readonly pieceId: string; rea
   return { state: 'done' }
 }
 
+/**
+ * WHY A PIECE NOTHING CAN APPROVE IS SET ASIDE (WINDOW 5C, 25 November 2026; the PM's 12:11 item 2: of 136 discarded
+ * pieces, 69 of the 70 that expired were drawn 9 to 16 November in families law 37 then switched off, and stood pending
+ * until their nights passed). The reason an unapproved piece can never post, or null: every night it shows has ended
+ * (never merely started: a night on now may still be posted while it runs), or, for a piece of our own account, its
+ * slides are in a format law 37 no longer posts. A partner kit is a card for a partner's own account, so only its nights
+ * set it aside. Pure.
+ */
+export function unpostableReason(p: { readonly kind: string; readonly slides: readonly Pick<Slide, 't'>[]; readonly ends: readonly number[] }, now: Date): string | null {
+  if (p.ends.length > 0 && p.ends.every((end) => Number.isFinite(end) && end <= now.getTime())) {
+    return `Set aside by the daily run: every night it shows had ended by ${now.toISOString()}; a piece never posts once its night is over.`
+  }
+  if (p.kind === 'partner_kit') return null
+  const refusal = law37Refusal(p.slides)
+  return refusal ? `Set aside by the daily run: ${refusal}` : null
+}
+
+/**
+ * THE DAILY RUN SETS ASIDE WHAT NOTHING CAN APPROVE (unpostableReason): each piece drawn in the last 60 days whose newest
+ * version is neither approved nor rejected gets one 'rejected' decision on that version, with its reason, as a person's
+ * rejection is kept (rejectPiece), so the queue and the communications centre never count it as waiting. Nothing deleted;
+ * a piece drawn again is a new version and is judged afresh. A failed read throws and the run says so.
+ */
+export async function setAsideUnpostable(db: Db, input: { readonly now: Date; readonly by: string }): Promise<{ readonly setAside: readonly string[]; readonly refused: readonly string[] }> {
+  const since = new Date(input.now.getTime() - 60 * DAY_MS).toISOString()
+  const { data: pieces, error } = await db.from('social_pieces').select('id, kind').gte('planned_at', since).limit(2000)
+  if (error) throw new Error(`the pieces could not be read: ${error.message}`)
+  const ids = ((pieces ?? []) as { id: string; kind: string }[]).map((p) => p.id)
+  const kindOf = new Map(((pieces ?? []) as { id: string; kind: string }[]).map((p) => [p.id, p.kind]))
+  const newest = new Map<string, number>()
+  const approved = new Set<string>()
+  const rejected = new Set<string>()
+  for (let i = 0; i < ids.length; i += 150) {
+    const chunk = ids.slice(i, i + 150)
+    const [revs, apps, decs] = await Promise.all([
+      db.from('social_piece_revisions').select('piece_id, version').in('piece_id', chunk).limit(20000),
+      db.from('social_piece_approvals').select('piece_id, revision').in('piece_id', chunk).limit(20000),
+      db.from('social_piece_decisions').select('piece_id, revision').eq('decision', 'rejected').in('piece_id', chunk).limit(20000),
+    ])
+    const fault = revs.error ?? apps.error ?? decs.error
+    if (fault) throw new Error(`the pieces' versions, approvals or decisions could not be read: ${fault.message}`)
+    for (const r of (revs.data ?? []) as { piece_id: string; version: number }[]) newest.set(r.piece_id, Math.max(newest.get(r.piece_id) ?? 0, r.version))
+    for (const a of (apps.data ?? []) as { piece_id: string; revision: number }[]) approved.add(`${a.piece_id}|${a.revision}`)
+    for (const d of (decs.data ?? []) as { piece_id: string; revision: number }[]) rejected.add(`${d.piece_id}|${d.revision}`)
+  }
+  const waiting = [...newest.entries()].filter(([id, v]) => !approved.has(`${id}|${v}`) && !rejected.has(`${id}|${v}`))
+  if (waiting.length === 0) return { setAside: [], refused: [] }
+  const revisions = await newestRevisions(db, waiting)
+  const nightIds = [...new Set([...revisions.values()].flatMap((r) => r.eventIds))]
+  const ends = new Map<string, number>()
+  for (let i = 0; i < nightIds.length; i += 150) {
+    const { data, error: nerr } = await db.from('events').select('id, start_date, end_date').in('id', nightIds.slice(i, i + 150))
+    if (nerr) throw new Error(`the pieces' nights could not be read: ${nerr.message}`)
+    for (const e of (data ?? []) as { id: string; start_date: string; end_date: string | null }[]) ends.set(e.id, Date.parse(e.end_date ?? e.start_date))
+  }
+  const setAside: string[] = []
+  const refused: string[] = []
+  for (const [id, rev] of revisions) {
+    const reason = unpostableReason({ kind: kindOf.get(id) ?? '', slides: rev.slides, ends: rev.eventIds.map((e) => ends.get(e) ?? Number.NaN) }, input.now)
+    if (!reason) continue
+    const { error: werr } = await db.from('social_piece_decisions').insert({ piece_id: id, revision: rev.version, decision: 'rejected', reason, decided_by: input.by, decided_at: input.now.toISOString() })
+    if (werr) refused.push(`${id}: ${refusalOf(werr.message) ?? werr.message}`)
+    else setAside.push(`${id} (${kindOf.get(id)}): ${reason}`)
+  }
+  return { setAside, refused }
+}
+
 /** K7: the founder edits one platform's words; the edit is a new revision, kept beside every earlier one. */
 export async function editPiece(db: Db, input: { readonly pieceId: string; readonly platform: 'instagram' | 'facebook'; readonly caption: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
