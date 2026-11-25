@@ -1,5 +1,6 @@
 import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type PiecePlan, type Slide } from './campaign'
 import { midnightIn } from '@/lib/dates/zone-midnight'
+import { postKindOf } from './post-kind'
 import { getCityBanner } from '@/lib/images/city-photo'
 
 /**
@@ -230,7 +231,8 @@ export function carouselPiece(input: {
     objective: 'audience_growth',
     purpose: `Things to do in ${input.city.name} this week`,
     nextStep: `Open the week at ${link.replace(/^https?:\/\//, '')}`,
-    outcome: `Saves and shares of the carousel, then visits to /city/${input.city.slug} through its own link`,
+    // Its post kind's own measure (post-kind.ts, the playbook's sections 3a and 4): a city post is judged by saves and shares.
+    outcome: postKindOf({ kind: 'week_ahead', format: 'feed' }).measure,
     link,
     format: 'feed',
     eventIds: nights.map((n) => n.eventId),
