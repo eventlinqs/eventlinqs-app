@@ -28,6 +28,8 @@ export type SentSynced =
       readonly alreadyRecorded: number
       readonly notContacts: number
       readonly refused: readonly { readonly contactId: string; readonly why: string }[]
+      /** Said when the mailbox each message left from could not be recorded (./conversation.ts). */
+      readonly mailboxNotRecorded?: string
     }
 
 const chunks = <T,>(xs: readonly T[], n = 200): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
@@ -70,7 +72,10 @@ export async function syncSentItems(db: Admin, cfg: GraphConfig, input: { readon
     if (a.kind === 'mark') {
       const r = await db.from('outreach_touches').update(sent).eq('id', a.touchId).eq('state', 'held').select('id').maybeSingle()
       if (r.error || !r.data) refused.push({ contactId: a.contactId, why: r.error ? refusalFromError(r.error) : 'the draft was no longer waiting' })
-      else marked += 1
+      else {
+        marked += 1
+        recorded.add(a.mail.internetMessageId)
+      }
       continue
     }
     // A message he wrote himself: a reply to a contact who wrote to us, otherwise the next cadence step while there is
@@ -93,7 +98,22 @@ export async function syncSentItems(db: Admin, cfg: GraphConfig, input: { readon
       .select('id')
       .single()
     if (r.error) refused.push({ contactId: a.contactId, why: refusalFromError(r.error) })
-    else recordedNow += 1
+    else {
+      recordedNow += 1
+      recorded.add(a.mail.internetMessageId)
+    }
   }
-  return { state: 'synced', read: mail.length, marked, recorded: recordedNow, alreadyRecorded: plan.alreadyRecorded, notContacts: plan.notContacts, refused }
+  // THE MAILBOX EACH LEFT FROM (Lawal, 25 November 2026, 14:41 and 14:43; ./conversation.ts): every message of this
+  // mailbox's Sent Items that is on an organiser's record, whether the engine sent it or a person did by hand, so the
+  // conversation keeps to it. Insert only: a message already recorded keeps its row.
+  const mailbox = cfg.mailbox.trim().toLowerCase()
+  const rows = mail.filter((m) => m.internetMessageId && recorded.has(m.internetMessageId)).map((m) => ({ internet_message_id: m.internetMessageId, mailbox, direction: 'sent' }))
+  let mailboxNotRecorded: string | undefined
+  for (const part of chunks(rows)) {
+    const k = await Promise.resolve()
+      .then(() => db.from('outreach_message_mailboxes').upsert(part, { onConflict: 'internet_message_id', ignoreDuplicates: true }))
+      .catch((err: unknown) => ({ error: { message: err instanceof Error ? err.message : String(err) } }))
+    if (k.error) mailboxNotRecorded = `the mailbox of the messages sent could not be recorded: ${k.error.message}`
+  }
+  return { state: 'synced', read: mail.length, marked, recorded: recordedNow, alreadyRecorded: plan.alreadyRecorded, notContacts: plan.notContacts, refused, ...(mailboxNotRecorded ? { mailboxNotRecorded } : {}) }
 }

@@ -18,9 +18,12 @@ describe('the one table', () => {
     expect(mailboxFor({ category: 'RET', purpose: 'relationship' })).toEqual({ mailbox: LAWAL_MAILBOX })
     for (const c of ['PERM', 'LIST', 'TKT', 'SOC', 'SYS']) expect(mailboxFor({ category: c, purpose: 'cadence' })).toEqual({ mailbox: HELLO_MAILBOX })
   })
-  it('a reply goes from the address they wrote to', () => {
-    expect(mailboxFor({ category: 'ACQ', purpose: 'reply', wroteTo: 'Hello@EventLinqs.com' })).toEqual({ mailbox: HELLO_MAILBOX })
-    expect(mailboxFor({ category: 'PERM', purpose: 'reply', wroteTo: LAWAL_MAILBOX })).toEqual({ mailbox: LAWAL_MAILBOX })
+  // ONE CHANNEL PER CONVERSATION (Lawal, 25 November 2026, 14:41 and 14:43): not a reply alone, every message to someone
+  // already in conversation with us goes from that conversation's mailbox (./conversation.test.ts).
+  it('a reply, and every message after it, goes from the conversation they are in', () => {
+    expect(mailboxFor({ category: 'ACQ', purpose: 'reply', conversation: 'Hello@EventLinqs.com' })).toEqual({ mailbox: HELLO_MAILBOX })
+    expect(mailboxFor({ category: 'PERM', purpose: 'reply', conversation: LAWAL_MAILBOX })).toEqual({ mailbox: LAWAL_MAILBOX })
+    expect(mailboxFor({ category: 'PERM', purpose: 'cadence', conversation: LAWAL_MAILBOX })).toEqual({ mailbox: LAWAL_MAILBOX })
   })
   it('a type with no address is refused, never guessed', () => {
     const a = mailboxFor({ category: null, purpose: 'cadence' })

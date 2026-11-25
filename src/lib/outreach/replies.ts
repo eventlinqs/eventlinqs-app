@@ -23,6 +23,8 @@ import { objectionOf } from './objections'
 import type { MediaDeps } from '@/lib/listings/organiser-media'
 import { keepEmailedImages, recordEmailedYes, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
+import { OUR_MAILBOXES } from './addresses'
+import { asksToBePhoned, PHONE_HELD, statedAddressIn } from './conversation'
 
 type Admin = SupabaseClient<Database>
 
@@ -314,6 +316,8 @@ export async function handleInbox(
     report.matched++
     await recordSenderName(db, contactId, m)
     const clear = kind.confidence >= CLEAR && kind.outcome !== 'unclear' && kind.outcome !== 'referred'
+    // A REQUEST TO BE PHONED OR TEXTED (Lawal, 25 November 2026, 14:43, item 3): held for the PM, never answered by machine.
+    const phoned = asksToBePhoned(stripQuoted(m.text))
     const logged = await db
       .from('outreach_replies')
       .insert({
@@ -325,12 +329,21 @@ export async function handleInbox(
         objection: objectionOf(kind),
         classified_by: 'rules',
         confidence: kind.confidence,
-        needs_lawal: !clear || kind.outcome === 'take_down' || DECISION_CLASSES.includes(kind.outcome),
+        needs_lawal: phoned || !clear || kind.outcome === 'take_down' || DECISION_CLASSES.includes(kind.outcome),
         source_message_id: m.internetMessageId || null,
         logged_by: deps.actingUser,
       })
       .select('id')
       .single()
+    // THE MAILBOX IT ARRIVED IN (Lawal, 25 November 2026, 14:41 and 14:43; ./conversation.ts): recorded once, so the
+    // answer and every message after go from it, in its thread. Also for a message logged before the record began.
+    // A record that fails is said, and never stops the reply being handled.
+    if (m.internetMessageId) {
+      const kept = await Promise.resolve()
+        .then(() => db.from('outreach_message_mailboxes').upsert({ internet_message_id: m.internetMessageId, mailbox: deps.mailbox.trim().toLowerCase(), direction: 'received' }, { onConflict: 'internet_message_id', ignoreDuplicates: true }))
+        .catch((err: unknown) => ({ error: { message: err instanceof Error ? err.message : String(err) } }))
+      if (kept.error) console.error(`[outreach/replies] ${deps.mailbox}: message ${m.internetMessageId}: its mailbox was not recorded:`, kept.error.message)
+    }
     // THEIR ATTACHMENTS (src/lib/comms/emailed-media.ts): taken from a reply that is not a stop, a take down or a no.
     const thread: ThreadTouch = touch ? { subject: (touch.subject as string | null) ?? null, context_key: (touch.context_key as string | null) ?? null } : null
     const message: EmailedMessage = { internetMessageId: m.internetMessageId, fromAddress: m.fromAddress, receivedAt: m.receivedAt, ownWords: stripQuoted(m.text) }
@@ -354,7 +367,7 @@ export async function handleInbox(
     }
 
     // A reply held for money or a contract says so; any other held reply waits as before (the leads watch reads both).
-    let action = kind.kind === 'reply' && kind.held ? kind.held : 'waits for Lawal'
+    let action = phoned ? PHONE_HELD : kind.kind === 'reply' && kind.held ? kind.held : 'waits for Lawal'
     if (clear && kind.outcome === 'take_down') {
       const contact = await db.from('organiser_contacts').select('organiser_id, address, person_name').eq('id', contactId).single()
       const link = contact.data ? await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id).limit(1) : null
@@ -373,7 +386,7 @@ export async function handleInbox(
       } else {
         action = 'suppressed; no venue is linked to this organiser, so the listing to remove waits for Lawal'
       }
-    } else if (clear && kind.answerKey) {
+    } else if (clear && kind.answerKey && !phoned) {
       const purpose = kind.outcome === 'yes' ? 'relationship' : 'reply'
       const drafted = await draftFromTemplate(db, {
         contactId,
@@ -404,6 +417,16 @@ export async function handleInbox(
       action = `${action}; ${yes.state === 'recorded' ? `their yes is recorded from their own words for ${yes.nights.join(', ')}` : `their yes is not recorded: ${yes.why}`}`
     }
     if (takes) action = `${action}; ${await takeAttachments(db, m, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }, takes)}`
+    // THE ONE CHANGE OF CHANNEL IS THEIRS (Lawal, 25 November 2026, 14:43, item 2): an address their own words ask us to
+    // use instead is kept on the contact, with when and this reply, and every message after goes to it.
+    const stated = kind.outcome === 'stop' || kind.outcome === 'take_down' ? null : statedAddressIn(message.ownWords, { from: m.fromAddress, ours: OUR_MAILBOXES })
+    if (stated) {
+      const moved = await db
+        .from('organiser_contacts')
+        .update({ stated_address: stated, stated_address_at: m.receivedAt, stated_address_reply: logged.data.id })
+        .eq('id', contactId)
+      action = `${action}; ${moved.error ? `their stated address ${stated} was not recorded: ${moved.error.message}` : `their stated address ${stated} is kept for every message after (their own words)`}`
+    }
     await db.from('outreach_replies').update({ action_taken: action }).eq('id', logged.data.id)
     report.replies.push({ id: logged.data.id, outcome: kind.outcome, confidence: kind.confidence, action })
     } catch (err) {

@@ -30,7 +30,9 @@ import { graphSendMime, type GraphConfig } from './graph'
 import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 import { firstLetterBlocked } from './one-first-letter'
 import { FIRST_LETTER_SENT, readFirstLetterRecord } from './first-letter-record'
-import { HELLO_MAILBOX, mailboxFor } from './addresses'
+import { HELLO_MAILBOX, mailboxFor, OUR_MAILBOXES } from './addresses'
+import { answerMayLeave } from './answer-timing'
+import { conversationOf, type ConversationMessage } from './conversation'
 import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
 import { eventSlugOf, letterExpiry } from './event-validity'
 import { decisionWords, readContactPolicy, type PolicyRule } from './contact-policy'
@@ -136,6 +138,10 @@ export function sendWindowWords(w: SendWindow): string {
 }
 
 export type SenderReport = {
+  /** Answers not yet 50 minutes old (./answer-timing.ts): left queued for a later run. */
+  tooSoon?: number
+  /** A sent message whose mailbox could not be recorded, with why. */
+  mailboxNotRecorded?: string[]
   mode: SenderMode
   transport: OutreachTransport['kind'] | 'none'
   closedStuck: number
@@ -221,39 +227,61 @@ export async function recipientZone(db: Admin, contactId: string): Promise<strin
   return city.data?.timezone ?? 'Australia/Melbourne'
 }
 
-/** The earlier messages to this contact, oldest first, so a reply sits in the thread. */
-async function threadIds(db: Admin, contactId: string, excludeId: string): Promise<string[]> {
-  const r = await db
+/**
+ * THE CONVERSATION (./conversation.ts; Lawal, 25 November 2026, 14:41 and 14:43): every message between us and this
+ * contact, ours sent and theirs received, oldest first, with the mailbox of ours each went through. That mailbox is
+ * read from its record (outreach_message_mailboxes, kept from 25 November 2026: the inbox run, the sender and the Sent
+ * Items sync write it); for an older message it is the one the engine chose then: before the addresses split (#309)
+ * every letter left from hello@, an engine send went from its category's address, and their message reached the mailbox
+ * of our letter it answered. A message sent by hand before the record began has none and is passed over. A read that
+ * fails is said, and the message is not sent from a guessed address.
+ */
+export async function readConversation(
+  db: Admin,
+  contactId: string,
+  excludeTouchId: string,
+): Promise<{ readonly ids: readonly string[]; readonly mailbox: string | null } | { readonly unread: string }> {
+  const sent = await db
     .from('outreach_touches')
-    .select('internet_message_id, sent_at')
+    .select('id, internet_message_id, sent_at, comms_category, purpose, provider')
     .eq('contact_id', contactId)
     .eq('state', 'sent')
-    .neq('id', excludeId)
+    .neq('id', excludeTouchId)
     .not('internet_message_id', 'is', null)
     .order('sent_at', { ascending: true })
-  return (r.data ?? []).map((x) => x.internet_message_id as string)
-}
-
-/**
- * THE ADDRESS THEY WROTE TO (law 33 (a): "a reply goes from the address the organiser wrote to, in thread"; the PM's 07:03
- * of 25 November 2026, item 1): an organiser answers the letter they were sent, so they wrote to the mailbox that letter
- * went from. Read from their reply (outreach_replies, by the message id the answer is threaded to) and the letter it
- * answers, whose category names its mailbox. Null when either cannot be read: the reply then goes from its own category's
- * address, as before.
- */
-async function wroteToFor(db: Admin, inReplyTo: string | null | undefined): Promise<string | null> {
-  if (!inReplyTo) return null
-  const reply = await db.from('outreach_replies').select('touch_id').eq('source_message_id', inReplyTo).maybeSingle()
-  const touchId = reply.data?.touch_id as string | null | undefined
-  if (reply.error || !touchId) return null
-  const answered = await db.from('outreach_touches').select('comms_category, purpose, sent_at').eq('id', touchId).maybeSingle()
-  if (answered.error || !answered.data) return null
-  // Before each message type had its own address, every letter left from hello@ (Festival Indonesia's reply of 25
-  // November answers our letter of 18 November, which their own quote shows came from hello@; the PM's 09:39).
-  const sentAt = answered.data.sent_at ? Date.parse(answered.data.sent_at as string) : NaN
-  if (Number.isFinite(sentAt) && sentAt < ONE_ADDRESS_UNTIL) return HELLO_MAILBOX
-  const from = mailboxFor({ category: answered.data.comms_category as string | null, purpose: (answered.data.purpose as string | null) ?? '' })
-  return 'mailbox' in from ? from.mailbox : null
+  if (sent.error) return { unread: `our messages to them could not be read: ${sent.error.message}` }
+  const theirs = await db.from('outreach_replies').select('source_message_id, received_at, touch_id').eq('contact_id', contactId).not('source_message_id', 'is', null)
+  if (theirs.error) return { unread: `their messages could not be read: ${theirs.error.message}` }
+  type Ours = { id: string; internet_message_id: string | null; sent_at: string | null; comms_category: string | null; purpose: string | null; provider: string | null }
+  type Theirs = { source_message_id: string | null; received_at: string | null; touch_id: string | null }
+  const ours = ((sent.data ?? []) as Ours[]).filter((t) => t.internet_message_id)
+  const replies = ((theirs.data ?? []) as Theirs[]).filter((r) => r.source_message_id)
+  const ids = [...ours.map((t) => t.internet_message_id as string), ...replies.map((r) => r.source_message_id as string)]
+  const recorded = new Map<string, string>()
+  if (ids.length > 0) {
+    const r = await db.from('outreach_message_mailboxes').select('internet_message_id, mailbox').in('internet_message_id', ids)
+    if (r.error) return { unread: `the mailboxes of their conversation could not be read: ${r.error.message}` }
+    for (const m of (r.data ?? []) as { internet_message_id: string; mailbox: string }[]) recorded.set(m.internet_message_id, m.mailbox)
+  }
+  const engineChose = (t: Ours): string | null => {
+    const at = t.sent_at ? Date.parse(t.sent_at) : NaN
+    if (Number.isFinite(at) && at < ONE_ADDRESS_UNTIL) return HELLO_MAILBOX
+    if (t.provider !== 'graph') return null
+    const f = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '' })
+    return 'mailbox' in f ? f.mailbox : null
+  }
+  const ofTouch = new Map<string, string | null>()
+  const messages: ConversationMessage[] = []
+  for (const t of ours) {
+    const mailbox = recorded.get(t.internet_message_id as string) ?? engineChose(t)
+    ofTouch.set(t.id, mailbox)
+    messages.push({ id: t.internet_message_id as string, at: t.sent_at ?? '', mailbox })
+  }
+  for (const r of replies) {
+    const mailbox = recorded.get(r.source_message_id as string) ?? (r.touch_id ? ofTouch.get(r.touch_id) ?? null : null)
+    messages.push({ id: r.source_message_id as string, at: r.received_at ?? '', mailbox })
+  }
+  return conversationOf(messages, OUR_MAILBOXES)
 }
 
 /**
@@ -323,7 +351,24 @@ export async function runOutreachSender(
       await db.from('outreach_touches').update({ scheduled_for: deps.now.toISOString() }).eq('id', t.id).eq('state', 'queued')
       report.replanned.push(`${t.id}: its slot of ${missed} passed unsent; re planned from today (law 42)`)
     }
-    if (hoursApply && !inBusinessHours(deps.now, zone, sendWindowOf(sender.data))) {
+    // AN ANSWER IS NOT OUTREACH (Lawal, 25 November 2026, 14:38 and 15:14; ./answer-timing.ts): a message answering one
+    // of theirs keeps the answering hours, 07:00 to 21:00 in Melbourne every day, and never leaves before it is 50
+    // minutes old (a confirmation the law asks for excepted); every other letter keeps law 44's window in its city.
+    const answered = t.in_reply_to
+      ? await db.from('outreach_replies').select('received_at').eq('source_message_id', t.in_reply_to).maybeSingle()
+      : null
+    const receivedAt = (answered?.data as { received_at?: string | null } | null | undefined)?.received_at ?? null
+    if (receivedAt) {
+      const leave = hoursApply ? answerMayLeave({ receivedAt: new Date(receivedAt), templateKey: t.outreach_templates?.key ?? null, now: deps.now }) : 'now'
+      if (leave === 'outside hours') {
+        report.outsideHours++
+        continue
+      }
+      if (leave === 'too soon') {
+        report.tooSoon = (report.tooSoon ?? 0) + 1
+        continue
+      }
+    } else if (hoursApply && !inBusinessHours(deps.now, zone, sendWindowOf(sender.data))) {
       report.outsideHours++
       continue
     }
@@ -395,12 +440,40 @@ export async function runOutreachSender(
     // The claim: the database runs every check here, or refuses and the message stays queued.
     // ITS ADDRESS FIRST (law 33 (a)): a message whose type has no address is refused before it is claimed, never sent
     // from a guessed mailbox; it stays queued with the refusal said.
-    const wroteTo = t.purpose === 'reply' ? await wroteToFor(db, t.in_reply_to) : null
-    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '', wroteTo })
+    // ONE CHANNEL PER CONVERSATION (Lawal, 25 November 2026, 14:41 and 14:43): from the mailbox of the newest message
+    // between us, in that thread; only a first message goes from its category's address.
+    const conversation = await readConversation(db, t.contact_id, t.id)
+    if ('unread' in conversation) {
+      report.refused.push({ id: t.id, reason: `${conversation.unread}; not sent from a guessed address` })
+      continue
+    }
+    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '', conversation: conversation.mailbox })
     if ('refused' in from) {
       report.refused.push({ id: t.id, reason: from.refused })
       continue
     }
+    // THEIR STATED ADDRESS (Lawal's 14:43, item 2): an address they asked us to use instead, in their own words, is
+    // written to from then on; one that has asked to stop is never written to.
+    const contact = await db.from('organiser_contacts').select('address, unsubscribe_token, stated_address').eq('id', t.contact_id).single()
+    if (contact.error) {
+      report.refused.push({ id: t.id, reason: `the contact could not be read: ${contact.error.message}` })
+      continue
+    }
+    const stated = ((contact.data as { stated_address?: string | null }).stated_address ?? '').trim().toLowerCase() || null
+    if (stated) {
+      const stopped = await db.from('outreach_unsubscribes').select('email').eq('email', stated).limit(1)
+      if (stopped.error) {
+        report.refused.push({ id: t.id, reason: `whether their stated address asked to stop could not be read: ${stopped.error.message}; not sent on a guess` })
+        continue
+      }
+      if ((stopped.data ?? []).length > 0) {
+        const why = `their stated address ${stated} asked to stop: nothing goes to it`
+        await db.from('outreach_touches').update({ state: 'void', void_reason: why }).eq('id', t.id).eq('state', 'queued')
+        report.refused.push({ id: t.id, reason: why })
+        continue
+      }
+    }
+    const to = stated ?? contact.data.address
     // ONE MESSAGE, HOWEVER OFTEN IT IS TRIED (the PM's 01:52 of 23 November 2026, item 4): the claim moves the row from
     // queued to sending only where it is still queued, so of two runs, a retried run or Lawal's press racing the cron, one
     // takes it and the other is told 'taken by another run'; the database refuses any other move into sending
@@ -411,16 +484,14 @@ export async function runOutreachSender(
       report.refused.push({ id: t.id, reason: claim.error?.message.replace(/^refused: /, '') ?? 'taken by another run' })
       continue
     }
-    const contact = await db.from('organiser_contacts').select('address, unsubscribe_token').eq('id', t.contact_id).single()
-    const thread = await threadIds(db, t.contact_id, t.id)
+    const thread = [...conversation.ids]
     const inReplyTo = t.in_reply_to ?? thread.at(-1) ?? null
     const messageId = newMessageId()
     try {
-      if (contact.error) throw new Error(`the contact: ${contact.error.message}`)
       const mime = buildOutreachMime({
         fromAddress: from.mailbox,
         fromName: deps.fromName ?? 'Lawal Adams',
-        to: contact.data.address,
+        to,
         subject: t.subject ?? '',
         text: t.body,
         messageId,
@@ -430,7 +501,7 @@ export async function runOutreachSender(
         origin: deps.origin,
         unsubscribeToken: contact.data.unsubscribe_token,
       })
-      await transport.send({ to: contact.data.address, base64Mime: mimeForGraph(mime), messageId, from: from.mailbox })
+      await transport.send({ to, base64Mime: mimeForGraph(mime), messageId, from: from.mailbox })
     } catch (error) {
       const reason = (error as Error).message.slice(0, 500)
       await db.from('outreach_touches').update({ state: 'failed', failed_reason: reason }).eq('id', t.id).eq('state', 'sending')
@@ -450,6 +521,14 @@ export async function runOutreachSender(
     // Sent but not recorded: left sending, so outreach_close_stuck_sends closes it as outcome unknown and it is never resent.
     if (done.error || !done.data) report.failed.push({ id: t.id, reason: `sent, but the record failed: ${done.error?.message ?? 'no row'}` })
     else report.sent.push(t.id)
+    // Its mailbox, recorded once, so the conversation keeps to it (insert only; a retry finds it there).
+    // A record that fails is said, and never undoes or repeats the send.
+    try {
+      const kept = await db.from('outreach_message_mailboxes').upsert({ internet_message_id: messageId, mailbox: from.mailbox, direction: 'sent' }, { onConflict: 'internet_message_id', ignoreDuplicates: true })
+      if (kept.error) (report.mailboxNotRecorded ??= []).push(`${t.id}: ${kept.error.message}`)
+    } catch (err) {
+      ;(report.mailboxNotRecorded ??= []).push(`${t.id}: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
   return report
 }

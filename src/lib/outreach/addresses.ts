@@ -35,12 +35,14 @@ const ADDRESS: Record<FromMailbox, string> = { lawal: LAWAL_MAILBOX, hello: HELL
 export type MailboxAnswer = { readonly mailbox: string } | { readonly refused: string }
 
 /**
- * The address a message goes from. A reply goes from the address they wrote to, when it is one of ours; anything else
- * from its category's address; a message with no category on its record is refused, never sent from a guess.
+ * The address a message goes from. ONE CHANNEL PER CONVERSATION (Lawal, 25 November 2026, 14:41 and 14:43; ./conversation.ts):
+ * a message to someone already in conversation with us goes from that conversation's mailbox, the one they last wrote
+ * to or we last wrote from, whatever its purpose or category; only a first message goes from its category's address;
+ * a message with no category and no conversation is refused, never sent from a guess.
  */
-export function mailboxFor(input: { readonly category: string | null | undefined; readonly purpose: string; readonly wroteTo?: string | null }): MailboxAnswer {
-  const wrote = (input.wroteTo ?? '').trim().toLowerCase()
-  if (input.purpose === 'reply' && (wrote === LAWAL_MAILBOX || wrote === HELLO_MAILBOX)) return { mailbox: wrote }
+export function mailboxFor(input: { readonly category: string | null | undefined; readonly purpose: string; readonly conversation?: string | null }): MailboxAnswer {
+  const wrote = (input.conversation ?? '').trim().toLowerCase()
+  if (wrote === LAWAL_MAILBOX || wrote === HELLO_MAILBOX) return { mailbox: wrote }
   const category = (input.category ?? '').trim() as CommsCategory
   const which = (ADDRESS_OF_CATEGORY as Record<string, FromMailbox | undefined>)[category]
   if (!which) return { refused: `no address is set for the message type '${input.category ?? 'none'}' (law 33 (a)); nothing is sent from a guessed address` }
