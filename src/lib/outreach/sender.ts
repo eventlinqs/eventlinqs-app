@@ -170,6 +170,8 @@ type Queued = {
   body: string
   in_reply_to: string | null
   scheduled_for?: string | null
+  /** What the letter is about (./contact-policy.ts contextKeys): 'event:<events.id>' names its night. */
+  context_key?: string | null
   outreach_templates: { key: string } | null
 }
 
@@ -194,9 +196,16 @@ async function segmentATooClose(db: Admin, t: Queued, now: Date): Promise<string
     const row = ev.data as { start_date: string; end_date: string | null; status: string | null; timezone: string | null } | null
     return letterExpiry(key, row ? { startDate: row.start_date, endDate: row.end_date, status: row.status, timezone: row.timezone } : null, now)
   }
-  const slug = t.body.match(/\/events\/([a-z0-9-]+)/)?.[1]
-  if (!slug) return 'it names no night of theirs to check the timing against'
-  const ev = await db.from('events').select('start_date, timezone').eq('slug', slug).maybeSingle()
+  // THE NIGHT IT NAMES: its own context first ('event:<events.id>', as law 49's and segment A's plays write it), then the
+  // /events/ link in its words. Lawal's approved photo request of 22 November (lifecycle_perm version 2) names its night in
+  // words and carries no link, so reading the words alone set aside every one at send and the clock drafted it again each
+  // run (26 November 2026, 06:00: The JazzLab's, read on production; no version 2 request had ever gone).
+  const eventId = /^event:([0-9a-f-]{36})$/.exec(t.context_key ?? '')?.[1] ?? null
+  const slug = eventId ? null : t.body.match(/\/events\/([a-z0-9-]+)/)?.[1]
+  if (!eventId && !slug) return 'it names no night of theirs to check the timing against'
+  const ev = eventId
+    ? await db.from('events').select('start_date, timezone').eq('id', eventId).maybeSingle()
+    : await db.from('events').select('start_date, timezone').eq('slug', slug as string).maybeSingle()
   if (ev.error || !ev.data) return `its night could not be read again: ${ev.error?.message ?? 'no such night'}`
   // A law 49 letter goes only while its night is more than 7 days ahead (no new ask inside T-7), by the event's clock.
   if (isLifecycleKey(key)) {
@@ -331,7 +340,7 @@ export async function runOutreachSender(
 
   const queued = db
     .from('outreach_touches')
-    .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, scheduled_for, outreach_templates(key)')
+    .select('id, contact_id, step, purpose, comms_category, subject, body, in_reply_to, scheduled_for, context_key, outreach_templates(key)')
     .eq('state', 'queued')
     .lte('scheduled_for', deps.now.toISOString())
   const due = await (deps.only ? queued.in('id', [...deps.only]) : queued).order('scheduled_for', { ascending: true }).limit(SEND_BATCH)
