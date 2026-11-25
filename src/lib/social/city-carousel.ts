@@ -159,6 +159,24 @@ export function carouselCaption(input: {
 export type CityPhoto = { readonly url: string; readonly credit: string | null }
 
 /**
+ * A CITY'S OWN COVER PHOTOGRAPH FOR THE CAROUSEL, where its guide's banner cannot serve (WINDOW 5C, 25 November 2026):
+ * Melbourne's guide shows the photo-day spine's skyline, which the media register refuses for a post. Chosen by looking
+ * at four Wikimedia Commons quality images of the city (C:\dev\EVIDENCE\EL-25NOV\city-carousel\melbourne-photo): a City
+ * Circle tram on a spring street, the playbook's "bright and in season" with one of its named subjects; the night shots
+ * of Flinders Street Station and the Northbank were not bright. Kept at 1920 wide in public/social/cities. CC BY-SA 4.0
+ * asks for the author, the licence and the source wherever it is shown: the credit says the first two, the register's
+ * row holds the page.
+ */
+export const CITY_COVERS: Readonly<Record<string, { src: string; author: string; licence: 'CC BY-SA 4.0'; page: string }>> = {
+  melbourne: {
+    src: '/social/cities/melbourne-city-circle-tram.jpg',
+    author: 'Dietmar Rabich',
+    licence: 'CC BY-SA 4.0',
+    page: 'https://commons.wikimedia.org/wiki/File:Melbourne_(AU),_City_Circle_Tram_--_2019_--_1547.jpg',
+  },
+}
+
+/**
  * THE CAROUSEL AS A PIECE, IN THE LOCKED LOOK (the 9.5 look's own slides, src/lib/broadcast/day-cards.ts): the week's
  * cover over the city's own licensed photograph ("THINGS TO DO IN" / the city, in the accent / "THIS WEEK", the date strip,
  * the icon row), one feature slide per event (its own permitted photograph whole, else in type; its day, time and place,
@@ -242,13 +260,17 @@ export function carouselPostAt(weekStart: string): Date {
  * Ballarat, Bendigo: Wikimedia Commons, author and licence on record, credited where its licence asks). Never the site's
  * photo-day spine: the media register refuses any photograph from the stock library for a post
  * (social_assets_never_the_library, read on production 25 November 2026), so Melbourne, whose guide shows the spine's
- * skyline, has no cover photograph until one of its own is licensed and registered, and its cover is drawn in type. The
- * cover draws one only when the media register holds it as EventLinqs' own photograph (store.ts slideImagesNow,
- * social_brand_images).
+ * skyline, takes its own (CITY_COVERS) first. A city with neither has its cover drawn in type. The cover draws one only
+ * when the media register holds it as EventLinqs' own photograph (store.ts slideImagesNow, social_brand_images).
  */
 export function cityCoverPhotos(cities: readonly { readonly slug: string }[], origin: string): Map<string, CityPhoto> {
   const out = new Map<string, CityPhoto>()
   for (const c of cities) {
+    const own = CITY_COVERS[c.slug]
+    if (own) {
+      out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${own.src}`, credit: `Photo: ${own.author}, ${own.licence}` })
+      continue
+    }
     const banner = getCityBanner(c.slug)
     if (banner) out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? `Photo: ${banner.credit.author}, ${banner.licence}` : null })
   }

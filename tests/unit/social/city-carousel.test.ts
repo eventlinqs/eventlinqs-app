@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CAROUSEL_EVENTS, captionWeek, carouselCaption, carouselPiece, carouselPostAt, chooseCarouselNights, dateStrip, dayOf, iconRow, type CarouselNight } from '@/lib/social/city-carousel'
+import { CAROUSEL_EVENTS, CITY_COVERS, captionWeek, carouselCaption, carouselPiece, carouselPostAt, chooseCarouselNights, cityCoverPhotos, dateStrip, dayOf, iconRow, type CarouselNight } from '@/lib/social/city-carousel'
 import { relationshipOf } from '@/lib/social/campaign'
 import { captionMarkFaults } from '@/lib/social/caption-marks'
 
@@ -143,5 +143,17 @@ describe('the carousel as a piece, in the locked look', () => {
   })
   test("it goes at the window's opening, 06:00 on the week's Monday in Melbourne", () => {
     expect(carouselPostAt('2026-11-30').toISOString()).toBe('2026-11-29T19:00:00.000Z')
+  })
+})
+
+describe("each city's cover photograph", () => {
+  test("Melbourne's own (the register refuses the stock library), the guide's licensed banner for the others, credited as each licence asks", () => {
+    const photos = cityCoverPhotos([{ slug: 'melbourne' }, { slug: 'geelong' }, { slug: 'ballarat' }, { slug: 'bendigo' }, { slug: 'perth' }], 'https://www.eventlinqs.com.au')
+    expect(photos.get('melbourne')).toEqual({ url: 'https://www.eventlinqs.com.au/social/cities/melbourne-city-circle-tram.jpg', credit: 'Photo: Dietmar Rabich, CC BY-SA 4.0' })
+    expect(photos.get('geelong')).toEqual({ url: 'https://www.eventlinqs.com.au/images/library/city-banner-geelong.jpg', credit: 'Photo: Mattplaysthedrums, CC BY-SA 4.0' })
+    expect(photos.get('bendigo')).toEqual({ url: 'https://www.eventlinqs.com.au/images/library/city-banner-bendigo.jpg', credit: null })
+    expect(photos.has('perth')).toBe(false)
+    for (const p of photos.values()) expect(p.url).not.toContain('/storage/v1/object/public/event-images/stock/')
+    expect(CITY_COVERS.melbourne.page).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
   })
 })
