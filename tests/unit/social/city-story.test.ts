@@ -80,7 +80,7 @@ describe("tonight's picks", () => {
     expect(d!.picks.map((p) => p.eventId)).toEqual([late.eventId, permitted.eventId])
     const cover = d!.slides[0]
     expect(d!.slides).toHaveLength(1)
-    expect(cover).toMatchObject({ t: 'week_cover', lines: ['TONIGHT IN', 'MELBOURNE', 'THU 26 NOV'], accentLine: 1, photo: null, credit: null })
+    expect(cover).toMatchObject({ t: 'week_cover', lines: ['TONIGHT IN', 'MELBOURNE', 'THU 26 NOV'], accentLine: 1, photo: CITY_URL, credit: CITY_PHOTO.credit })
     expect((cover as { lead: unknown[] }).lead).toHaveLength(2)
   })
   it("drawn on the city's own licensed photograph, its credit with it; no photograph, no story", () => {
