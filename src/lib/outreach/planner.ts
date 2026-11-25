@@ -14,7 +14,10 @@
  * The database judges every draft again and refuses what it must; a refusal is reported in its words and the planner
  * moves on. Nothing here sends.
  */
-import { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
+import { AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, afterYourNightResults } from './after-your-night'
+import { ownHost, onOwnHost } from './own-host'
+import { readTheirNights } from './their-nights'
+import { dayWords } from './twenty-letters'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
@@ -461,30 +464,53 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     else report.queued++
   }
 
-  // Message 8: each night report from two to seven days old, not sent by hand, to the partner whose venue held the night.
+  // MESSAGE 8, THE RESULTS NOTE (law 49: T+1 to T+3, "a results note (views, clicks, tickets sold through EventLinqs) and
+  // the invite to list their next event natively"; after_your_night version 2, the PM's 12:11 of 25 November 2026, item
+  // 1): each night report of a night that ended in the last four days, not sent by hand, to the PARTNER whose night it
+  // was, found by the three roads ./their-nights.ts reads (a venue they run, their own organisation, a booking page on
+  // their own website's host), never by the venue alone. Its figures only when read and above zero; nothing counted,
+  // no note.
+  const partnerRows = byOrganiser.size > 0 ? await db.from('organisers').select('id, name, organisation_id, website_url').in('id', [...byOrganiser.keys()]) : { data: [], error: null }
+  if (partnerRows.error) throw new Error(`organisers: ${partnerRows.error.message}`)
+  const partnersById = new Map((partnerRows.data ?? []).map((o) => [o.id as string, o]))
   const reports = await db
     .from('organiser_night_reports')
     .select('id, event_id, figures, night_ended_at')
     .is('sent_at', null)
-    .lte('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_DUE_DAYS * 86_400_000).toISOString())
+    .lte('night_ended_at', deps.now.toISOString())
     .gt('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_STALE_DAYS * 86_400_000).toISOString())
     .order('night_ended_at')
-    .limit(200)
+    .limit(300)
   if (reports.error) throw new Error(`organiser_night_reports: ${reports.error.message}`)
   for (const night of reports.data ?? []) {
     const already = await db.from('outreach_touches').select('id').eq('night_report_id', night.id).neq('state', 'void').limit(1)
     if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
     if ((already.data ?? []).length > 0) continue
-    const event = await db.from('events').select('title, venue_id').eq('id', night.event_id).maybeSingle()
+    const event = await db.from('events').select('title, start_date, timezone, venue_id, organisation_id, external_ticket_url').eq('id', night.event_id).maybeSingle()
     if (event.error) throw new Error(`events: ${event.error.message}`)
-    if (!event.data?.venue_id) continue
-    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (!event.data) continue
+    const links = await db.from('event_booking_links').select('url').eq('event_id', night.event_id)
+    if (links.error) throw new Error(`event_booking_links: ${links.error.message}`)
+    const owners = event.data.venue_id ? await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id) : { data: [], error: null }
     if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
-    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
-    if (!organiserId) continue
-    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now)
+    const pages = [(event.data.external_ticket_url as string | null) ?? null, ...(links.data ?? []).map((l) => l.url as string)].filter((u): u is string => Boolean(u))
+    const organiserId = nightPartner(
+      { venueOwners: (owners.data ?? []).map((o) => o.organiser_id as string), organisationId: (event.data.organisation_id as string | null) ?? null, bookingPages: pages },
+      [...partnersById.values()].map((o) => ({ id: o.id as string, organisationId: (o.organisation_id as string | null) ?? null, websiteUrl: (o.website_url as string | null) ?? null })),
+    )
+    if (!organiserId || (deps.organisers && !deps.organisers.includes(organiserId))) continue
+    const zone = ((event.data.timezone as string | null) ?? '').trim() || 'Australia/Melbourne'
+    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now, zone)
     if (why) {
       report.afterNight.notDue.push({ organiserId, why })
+      continue
+    }
+    const org = partnersById.get(organiserId)!
+    const ahead = await readTheirNights(db, { id: organiserId, organisation_id: (org.organisation_id as string | null) ?? null, website_url: (org.website_url as string | null) ?? null }, deps.now, 1)
+    const next = ahead[0] ? { title: ahead[0].title, day: dayWords(ahead[0].startDate, ahead[0].timezone), link: `${deps.origin.replace(/\/+$/, '')}/events/${ahead[0].slug}` } : null
+    const results = afterYourNightResults(night.figures, next)
+    if (!results) {
+      report.afterNight.notDue.push({ organiserId, why: 'nothing above zero was counted for that night, so there is no results note to send' })
       continue
     }
     const contactId = byOrganiser.get(organiserId)!
@@ -492,7 +518,13 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
       contactId,
       templateKey: 'after_your_night',
       purpose: 'relationship',
-      extraFields: afterYourNightFields(night.figures, event.data.title),
+      extraFields: {
+        night: event.data.title as string,
+        'night day': dayWords(event.data.start_date as string, zone),
+        results,
+        // Where they add their next night: the public page that answers 200 (/submit-event), never a guessed one.
+        link: `${deps.origin.replace(/\/+$/, '')}/submit-event`,
+      },
       nightReportId: night.id,
       contextKey: contextKeys.report(night.id),
       scheduledFor: deps.now,
@@ -701,6 +733,23 @@ export function featuredFields(k: { title: string; cityName: string | null; went
  */
 // Message 8's own window lives in after-your-night.ts, read by the planner here and by the sender at send time.
 export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
+
+/**
+ * The partner a night was theirs, by the three roads ./their-nights.ts reads an organiser's nights by: a venue they run,
+ * their own organisation, or a booking page on their own website's host; the first partner found, or null. Pure.
+ */
+export function nightPartner(
+  night: { readonly venueOwners: readonly string[]; readonly organisationId: string | null; readonly bookingPages: readonly string[] },
+  partners: readonly { readonly id: string; readonly organisationId: string | null; readonly websiteUrl: string | null }[],
+): string | null {
+  for (const p of partners) {
+    if (night.venueOwners.includes(p.id)) return p.id
+    if (night.organisationId !== null && p.organisationId === night.organisationId) return p.id
+    const host = ownHost(p.websiteUrl)
+    if (host && night.bookingPages.some((u) => onOwnHost(u, host))) return p.id
+  }
+  return null
+}
 
 const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
 

@@ -1,3 +1,4 @@
+import { afterYourNightResults, sellerWords } from '@/lib/outreach/after-your-night'
 import { describe, expect, test } from 'vitest'
 import {
   AFTER_YOUR_NIGHT_DUE_DAYS,
@@ -5,6 +6,7 @@ import {
   ANYTHING_COMING_UP_DAYS,
   afterYourNightFields,
   afterYourNightRefusal,
+  nightPartner,
   featuredFields,
   kitImages,
   anythingComingUpRefusal,
@@ -55,14 +57,42 @@ const ended = new Date('2026-10-25T12:00:00Z')
 const figures = { viewers: 42, pressesOut: { people: 9, bySite: [] }, ownLink: { arrivals: 3 } }
 
 describe('message 8, after your night', () => {
-  test('due two days after the night ended, and not before', () => {
-    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + 2 * day))).toBeNull()
-    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + 2 * day - 60_000))).toMatch(/two days/)
+  // Law 49's results note: T+1 to T+3, in the night's own calendar days. The night ended Sunday 25 October 2026, 11pm
+  // in Melbourne (12:00 UTC).
+  test('due from the day after the night (T+1), and not on its own day', () => {
+    expect(afterYourNightRefusal(ended, new Date('2026-10-25T12:30:00Z'))).toMatch(/T\+1/) // 11:30pm the same night
+    expect(afterYourNightRefusal(ended, new Date('2026-10-25T20:00:00Z'))).toBeNull() // Monday 26, 7am: T+1
+    expect(afterYourNightRefusal(ended, new Date('2026-10-27T20:00:00Z'))).toBeNull() // Wednesday 28, 7am: T+3
   })
 
-  test('a report a week old or more is not sent late', () => {
-    expect(afterYourNightRefusal(ended, new Date(ended.getTime() + AFTER_YOUR_NIGHT_STALE_DAYS * day))).toMatch(/late/)
-    expect([AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS]).toEqual([2, 7])
+  test('from T+4 it is too late, never sent late (law 42)', () => {
+    expect(afterYourNightRefusal(ended, new Date('2026-10-28T20:00:00Z'))).toMatch(/too late/) // Thursday 29: T+4
+    expect([AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS]).toEqual([1, 4])
+  })
+
+  test('version 2: only figures read and above zero, the seller named, tickets on EventLinqs, and the next night only when listed', () => {
+    const full = { viewers: 41, pressesOut: { people: 9, bySite: [{ provider: 'gotix', people: 2 }, { provider: 'humanitix', people: 7 }] }, onEventLinqs: { orders: 2, tickets: 3 } }
+    expect(sellerWords(full)).toBe('Humanitix')
+    expect(sellerWords({ pressesOut: { people: 1, bySite: [{ provider: 'other', people: 1 }] } })).toBe('its booking page')
+    expect(afterYourNightResults(full, { title: 'Continuum Aerial', day: 'Saturday 5 December', link: 'https://www.eventlinqs.com.au/events/continuum-aerial' })).toBe(
+      '41 people viewed its listing, and 9 clicked through to Humanitix for tickets. 3 tickets were bought on EventLinqs.\n\nYour next one, Continuum Aerial on Saturday 5 December, is listed too: https://www.eventlinqs.com.au/events/continuum-aerial',
+    )
+    // A zero is never written: a night with no views says only its clicks; one with nothing counted has no note.
+    expect(afterYourNightResults({ viewers: 0, pressesOut: { people: 1, bySite: [] }, onEventLinqs: null }, null)).toBe('1 clicked through to its booking page for tickets.')
+    expect(afterYourNightResults({ viewers: 0, pressesOut: { people: 0, bySite: [] }, onEventLinqs: { orders: 0, tickets: 0 } }, null)).toBeNull()
+    expect(afterYourNightResults({}, null)).toBeNull()
+  })
+
+  test("the partner whose night it was, by the three roads their nights are read by, never the venue alone", () => {
+    const partners = [
+      { id: 'stage29', organisationId: null, websiteUrl: 'https://www.stage29studios.com.au' },
+      { id: 'org-own', organisationId: 'org-1', websiteUrl: null },
+      { id: 'venue-runner', organisationId: null, websiteUrl: null },
+    ]
+    expect(nightPartner({ venueOwners: [], organisationId: null, bookingPages: ['https://stage29studios.com.au/tickets/continuum'] }, partners)).toBe('stage29')
+    expect(nightPartner({ venueOwners: [], organisationId: 'org-1', bookingPages: [] }, partners)).toBe('org-own')
+    expect(nightPartner({ venueOwners: ['venue-runner'], organisationId: null, bookingPages: [] }, partners)).toBe('venue-runner')
+    expect(nightPartner({ venueOwners: ['someone-else'], organisationId: 'org-2', bookingPages: ['https://www.gotix.com.au/e/1'] }, partners)).toBeNull()
   })
 
   test('the counted figures fill the message: views, people sent on, own-link arrivals', () => {
