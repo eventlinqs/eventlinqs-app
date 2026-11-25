@@ -21,6 +21,8 @@ export function morningReportEmail(
     readonly answers?: string
     /** Every morning: messages per contact in the last seven days (src/lib/outreach/frequency-report.ts; the PM's 00:02 of 26 November 2026, item A). */
     readonly perContact?: string
+    /** Every morning: yesterday's first letters against law 38's floor, and the cause when under it (src/lib/outreach/first-letter-floor.ts). */
+    readonly floor?: string
   },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
@@ -46,6 +48,7 @@ export function morningReportEmail(
     // What the engine learned, from production (Lawal's 06:07 of 20 November 2026): the timetable, yesterday's lessons, today's changes.
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     ...(when.answers ? [`How fast we answered last week: ${when.answers}`, ''] : []),
+    ...(when.floor ? [`First letters: ${when.floor}`, ''] : []),
     ...(when.perContact ? [`Messages per contact, last 7 days: ${when.perContact}`, ''] : []),
     `Everything above is read from production at the time of sending. The admin: ${when.adminUrl}`,
   ].join('\n')
@@ -74,6 +77,7 @@ export function morningReportEmail(
       ? `<p><strong>Today's timetable:</strong> ${escape(when.learned.timetable)}<br/><strong>Learned yesterday:</strong> ${escape(when.learned.learned)}<br/><strong>Changed today because of it:</strong> ${escape(when.learned.changed)}</p>`
       : '') +
     (when.answers ? `<p><strong>How fast we answered last week:</strong> ${escape(when.answers)}</p>` : '') +
+    (when.floor ? `<p><strong>First letters:</strong> ${escape(when.floor)}</p>` : '') +
     (when.perContact ? `<p><strong>Messages per contact, last 7 days:</strong> ${escape(when.perContact)}</p>` : '') +
     `<p style="color:#666">Everything above is read from production at the time of sending. <a href="${when.adminUrl}">The admin</a></p>` +
     `</div>`

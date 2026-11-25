@@ -15,6 +15,7 @@ import { melbourneMinutes, type PhaseKey } from '@/lib/ops/timetable'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isReportWeekday, readAnswerTiming } from '@/lib/outreach/answer-report'
 import { readMessagesPerContact } from '@/lib/outreach/frequency-report'
+import { readFirstLetterFloor } from '@/lib/outreach/first-letter-floor'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -87,7 +88,10 @@ export async function GET(request: NextRequest) {
       // EVERY MORNING, MESSAGES PER CONTACT IN THE LAST SEVEN DAYS (the PM's 00:02 of 26 November 2026, item A: "The
       // 08:00 report counts messages per contact per week"); a read that fails says so in the line.
       const perContact = await readMessagesPerContact(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
-      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact })
+      // EVERY MORNING, YESTERDAY'S FIRST LETTERS AGAINST THE FLOOR, WITH THE CAUSE WHEN UNDER IT (the PM's 00:17 of
+      // 26 November 2026, item D); a read that fails says so in the line.
+      const floor = await readFirstLetterFloor(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
+      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor })
       const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
       reportId = sentReport.id
       report = 'sent'
