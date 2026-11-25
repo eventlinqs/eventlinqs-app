@@ -1,0 +1,24 @@
+{
+  "source": "The PM's 14:15 of 25 November 2026, item D (under Lawal's master directive, section 2, and his standing rule of 12:10): law 49's two follow ups APPROVED by the PM, the wording of src/lib/outreach/perm-follow-up.ts and acq-follow-up.ts, validated through the gateway (C:\\dev\\EVIDENCE\\EL-25NOV\\law49-steps\\car)",
+  "readings": "Version 1 of each law 49 follow up, step 2 of its play, in its first letter's thread ('Re: [thread subject]'), signed as Lawal replies ([signature] is the reply signature at step 2, src/lib/outreach/rules.ts). tests/unit/outreach/law49-template-data.test.ts holds these words to the code's letters, word for word. Written after migration 20261125170002 gives both keys their class.",
+  "templates": [
+    {
+      "key": "lifecycle_perm_follow_up",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 2,
+      "message": "law 49, the photo permission request's one follow up (PERM-REMINDER)",
+      "subject": "Re: [thread subject]",
+      "body": "Hi [greeting],\n\nJust following up on our request to use the event image for [event] in our EventLinqs promotions.\n\nIf you're happy for us to use it, you can confirm here: [approval link].\n\nOtherwise, no problem at all. We'll leave the image out.\n\nThanks for your time.\n\nKind regards,\n[signature]\n\n[unsubscribe]"
+    },
+    {
+      "key": "lifecycle_acq_follow_up",
+      "channel": "email",
+      "purpose": "cadence",
+      "step": 2,
+      "message": "law 49, the free listing offer's one follow up (ACQ-FOLLOWUP)",
+      "subject": "Re: [thread subject]",
+      "body": "Hi [greeting],\n\nA quick follow up on [event] on [event day], listed on EventLinqs: [event link]\n\nIf you'd like to claim the listing for free, keep its details up to date and sell tickets directly, just reply and I'll set it up.\n\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}
