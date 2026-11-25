@@ -2,6 +2,7 @@ import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type Slide } f
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { goHop } from './go-hop'
 import { getCityBanner } from '@/lib/images/city-photo'
+import { creditLine } from '@/lib/media/photo-credits'
 
 /**
  * "THINGS TO DO IN [CITY] THIS WEEK", THE WEEKLY CITY CAROUSEL (Lawal's yes, 25 November 2026, 00:47; the PM's 01:12 and
@@ -320,11 +321,12 @@ export function cityCoverPhotos(cities: readonly { readonly slug: string }[], or
   for (const c of cities) {
     const own = CITY_COVERS[c.slug]
     if (own) {
-      out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${own.src}`, credit: `Photo: ${own.author}, ${own.licence}` })
+      // The one credit line (src/lib/media/photo-credits.ts creditLine), so 'Photo:' is printed once.
+      out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${own.src}`, credit: creditLine(`${own.author}, ${own.licence}`) })
       continue
     }
     const banner = getCityBanner(c.slug)
-    if (banner) out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? `Photo: ${banner.credit.author}, ${banner.licence}` : null })
+    if (banner) out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? creditLine(`${banner.credit.author}, ${banner.licence}`) : null })
   }
   return out
 }
