@@ -240,11 +240,14 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     }
 
     // 1. Follow-ups that are due. A LAW 49 PLAY'S ONE FOLLOW UP (the PM's 12:11 of 25 November 2026, item 1; law 49's
-    // 'follow ups once'): each first letter it sent in the last 35 days, on its own night's clock, from the play's step 2
-    // template (./lifecycle-follow-up.ts); a play with no step 2 template drafts none.
+    // 'follow ups once'): each first letter of its law 49 kind sent in the last 35 days, on its own night's clock, from
+    // the play's step 2 template (./lifecycle-follow-up.ts); a play with no step 2 template drafts none. Read by the
+    // letter's template key, every version, not by the play: a play's terms never change (outreach_play_terms_hold), so
+    // the step 2 comes as a new version of the play, and the letters its earlier versions sent (on lifecycle_perm and
+    // lifecycle_acq versions 1 and 2, since 21 November 2026) are followed up too, once each.
     if (lifecycle && play.step2_template_id && base) {
       const since = new Date(deps.now.getTime() - 35 * 86_400_000).toISOString()
-      const sentFirsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key').eq('play_id', play.id).eq('step', 1).eq('state', 'sent').gte('sent_at', since).order('sent_at', { ascending: true }).limit(500)
+      const sentFirsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key, outreach_templates!inner(key)').eq('outreach_templates.key', lifecycle).eq('step', 1).eq('state', 'sent').gte('sent_at', since).order('sent_at', { ascending: true }).limit(500)
       if (sentFirsts.error) throw new Error(`the play's first letters could not be read: ${sentFirsts.error.message}`)
       for (const first of sentFirsts.data ?? []) {
         if (room <= 0) break

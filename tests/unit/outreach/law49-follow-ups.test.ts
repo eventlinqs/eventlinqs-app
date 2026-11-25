@@ -144,5 +144,7 @@ describe('3. each in its first letter\'s class, and the planner drafts them for 
     expect(planner).toContain('if (lifecycle && play.step2_template_id && base) {')
     expect(planner).toContain('draftLifecycleFollowUp(db, {')
     expect(planner).toContain('templateId: play.step2_template_id,')
+    // The letters an earlier version of the play sent are followed up too: read by the letter's template key, every version.
+    expect(planner).toContain("outreach_templates!inner(key)').eq('outreach_templates.key', lifecycle).eq('step', 1).eq('state', 'sent')")
   })
 })
