@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventClock, type ClockInput, type ClockStage, type ClockStep } from '@/lib/events/event-clock'
+import { eventClock, PERM_LAST_ON, type ClockInput, type ClockStage, type ClockStep } from '@/lib/events/event-clock'
 import { startOfLocalDayUtcOffset } from '@/lib/events/listing-window'
 
 /*
@@ -31,6 +31,7 @@ const SENT_FIELD: Record<ClockStep, keyof ClockInput['sent']> = {
   acq_offer: 'acq',
   perm_follow_up: 'permFollowUp',
   perm_last: 'permLast',
+  acq_follow_up: 'acqFollowUp',
   results_note: 'results',
 }
 
@@ -61,7 +62,7 @@ describe('an event found five weeks out, the organiser never answering', () => {
       { step: 'perm_request', daysToStart: 28 },
       { step: 'acq_offer', daysToStart: 21 },
       { step: 'perm_follow_up', daysToStart: 17 },
-      { step: 'perm_last', daysToStart: 10 },
+      { step: 'acq_follow_up', daysToStart: 14 },
       { step: 'results_note', daysToStart: -1 },
     ])
   })
@@ -80,7 +81,28 @@ describe('the organiser answers the permission request', () => {
   })
   it('an organiser photograph already granted needs no permission request at all', () => {
     const { letters } = drive(base({ granted: true, picture: 'organiser' }), 35)
-    expect(letters.map((l) => l.step)).toEqual(['acq_offer', 'results_note'])
+    expect(letters.map((l) => l.step)).toEqual(['acq_offer', 'acq_follow_up', 'results_note'])
+  })
+})
+
+describe('the follow ups: one each, never a second (the standard Lawal adopted on 22 November 2026)', () => {
+  it('the last PERM touch at T-10 is switched off, superseded by the one follow up', () => {
+    expect(PERM_LAST_ON).toBe(false)
+    expect(drive(base(), 35).letters.map((l) => l.step)).not.toContain('perm_last')
+  })
+  it('the ACQ follow up waits four days after its offer, and both follow ups go once', () => {
+    const { letters } = drive(base(), 17)
+    expect(letters).toEqual([
+      { step: 'perm_request', daysToStart: 17 },
+      { step: 'acq_offer', daysToStart: 17 },
+      { step: 'perm_follow_up', daysToStart: 13 },
+      { step: 'acq_follow_up', daysToStart: 13 },
+      { step: 'results_note', daysToStart: -1 },
+    ])
+  })
+  it('a reply after the offer stops its follow up', () => {
+    const { letters } = drive(base(), 35, (d, s) => (d === 16 ? { ...s, replied: true } : s))
+    expect(letters.map((l) => l.step)).toEqual(['perm_request', 'acq_offer', 'perm_follow_up', 'results_note'])
   })
 })
 

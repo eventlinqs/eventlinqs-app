@@ -21,6 +21,7 @@ import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 import { contextKeys } from './contact-policy'
 import { draftSegmentALetter } from './segment-a-play'
+import { draftLifecycleFollowUp } from './lifecycle-follow-up'
 import { draftLifecycleLetter, lifecycleSlotBase } from './lifecycle-play'
 import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
 import { organiserCitySlugs } from './organiser-city'
@@ -236,8 +237,35 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       }
     }
 
-    // 1. Follow-ups that are due. A law 49 play has none: the event's clock owns its follow ups, and their words wait on
-    // Lawal's one template approval.
+    // 1. Follow-ups that are due. A LAW 49 PLAY'S ONE FOLLOW UP (the PM's 12:11 of 25 November 2026, item 1; law 49's
+    // 'follow ups once'): each first letter it sent in the last 35 days, on its own night's clock, from the play's step 2
+    // template (./lifecycle-follow-up.ts); a play with no step 2 template drafts none.
+    if (lifecycle && play.step2_template_id && base) {
+      const since = new Date(deps.now.getTime() - 35 * 86_400_000).toISOString()
+      const sentFirsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key').eq('play_id', play.id).eq('step', 1).eq('state', 'sent').gte('sent_at', since).order('sent_at', { ascending: true }).limit(500)
+      if (sentFirsts.error) throw new Error(`the play's first letters could not be read: ${sentFirsts.error.message}`)
+      for (const first of sentFirsts.data ?? []) {
+        if (room <= 0) break
+        const f = await draftLifecycleFollowUp(db, {
+          play: { id: play.id, name: play.name },
+          key: lifecycle,
+          first: { id: first.id as string, contactId: first.contact_id as string, subject: (first.subject as string | null) ?? null, contextKey: (first.context_key as string | null) ?? null, sentAt: first.sent_at as string },
+          templateId: play.step2_template_id,
+          // As the first letters are slotted: the night before, after the morning's letters already scheduled.
+          scheduledFor: base.getTime() > deps.now.getTime()
+            ? new Date(base.getTime() + (report.usedToday + slot) * SPACING_MINUTES * 60_000)
+            : new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
+          origin: deps.origin,
+          actingUser: deps.actingUser,
+        })
+        if (f.state === 'queued') {
+          report.queued++
+          room--
+          slot++
+        } else if (f.state === 'held') report.held.push({ contactId: first.contact_id as string, why: [...f.why] })
+        else if (f.state === 'refused') report.refused.push({ contactId: first.contact_id as string, why: f.why })
+      }
+    }
     const firsts = lifecycle ? { data: [] } : await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
     for (const first of firsts.data ?? []) {
       if (room <= 0) break

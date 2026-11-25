@@ -69,6 +69,9 @@ export const TEMPLATE_CLASS: Readonly<Record<string, CommsClass>> = {
   lifecycle_perm: { category: 'PERM', subtype: 'PERM-IMAGE' },
   source_ask: { category: 'PERM', subtype: 'PERM-SOURCE' },
   lifecycle_acq: { category: 'ACQ', subtype: 'ACQ-FIRST' },
+  // Law 49's two follow ups (src/lib/outreach/perm-follow-up.ts, acq-follow-up.ts), each in its first letter's class.
+  lifecycle_perm_follow_up: { category: 'PERM', subtype: 'PERM-REMINDER' },
+  lifecycle_acq_follow_up: { category: 'ACQ', subtype: 'ACQ-FOLLOWUP' },
   featured: { category: 'LIST', subtype: 'LIST-FEATURED' },
   reply_why_listed: { category: 'LIST', subtype: 'LIST-REPLY' },
   reply_take_down: { category: 'LIST', subtype: 'LIST-REPLY' },

@@ -14,8 +14,11 @@ import { startOfLocalDayUtc, startOfLocalDayUtcOffset } from '@/lib/events/listi
  * - PERM (one photo permission request, from hello@) from T-28; ACQ (the free promotion offer, from lawal@, never in the
  *   same letter) from T-21. An event found late starts at its current stage: found at T-10, PERM and ACQ fall due the
  *   same day, as two letters.
- * - The PERM follow up, once, from T-17, only with no reply and at least four days after the request; the last PERM
- *   touch, once, from T-10, at least three days after the touch before it.
+ * - The PERM follow up, once, from T-17, only with no reply and at least four days after the request. The last PERM
+ *   touch at T-10 is switched off (PERM_LAST_ON, law 13: kept, never deleted): the communication standard Lawal
+ *   adopted on 22 November 2026, a day after this table, allows 'one appropriate follow-up' (COMMS-STANDARD-REVIEW-22NOV.md).
+ * - The ACQ follow up, once, from T-14 (the end of the offer's window), only with no reply and at least four days after
+ *   the offer (law 49's 'follow ups once'; the PM's 12:11 of 25 November 2026, item 1).
  * - No ask inside T-7: from T-7 to the event's day nothing new goes to the organiser; on its day nothing at all.
  * - RET: the results note from the day after the event ends to three days after; then the clock is closed.
  * - COMPLETE at T-7: a lawful picture (the organiser's grant, an official seller API, else licensed illustrative),
@@ -23,7 +26,7 @@ import { startOfLocalDayUtc, startOfLocalDayUtcOffset } from '@/lib/events/listi
  */
 
 export type ClockStage = 'early' | 'perm' | 'acq' | 'chase' | 'final_week' | 'quiet' | 'day' | 'results' | 'closed'
-export type ClockStep = 'perm_request' | 'acq_offer' | 'perm_follow_up' | 'perm_last' | 'results_note'
+export type ClockStep = 'perm_request' | 'acq_offer' | 'perm_follow_up' | 'perm_last' | 'acq_follow_up' | 'results_note'
 export type PictureBasis = 'organiser' | 'official_api' | 'illustrative' | 'none'
 
 export type ClockInput = {
@@ -48,6 +51,7 @@ export type ClockInput = {
     readonly permFollowUp?: string | null
     readonly permLast?: string | null
     readonly acq?: string | null
+    readonly acqFollowUp?: string | null
     readonly results?: string | null
   }
 }
@@ -70,6 +74,10 @@ export const PERM_FROM = 28
 export const ACQ_FROM = 21
 export const FOLLOW_UP_FROM = 17
 export const LAST_TOUCH_FROM = 10
+/** The last PERM touch, OFF: superseded by the standard's one follow up (Lawal, 22 November 2026). Only his word turns it on. */
+export const PERM_LAST_ON = false
+/** The ACQ follow up's first day, T-14: the end of the offer's window (law 49's table, 'T-21 to T-14'). */
+export const ACQ_FOLLOW_UP_FROM = 14
 export const COMPLETE_BY = 7
 export const QUIET_FROM = 3
 export const RESULTS_DAYS = 3
@@ -114,6 +122,7 @@ export function eventClock(input: ClockInput, now: Date): EventClock {
   const permSent = at(input.sent.perm)
   const followSent = at(input.sent.permFollowUp)
   const lastBefore = followSent ?? permSent
+  const acqSent = at(input.sent.acq)
   type Rule = { step: ClockStep; applies: boolean; firstDay: Date }
   const dayBefore = (n: number) => startOfLocalDayUtcOffset(start, zone, -n)
   const rules: Rule[] = [
@@ -126,8 +135,13 @@ export function eventClock(input: ClockInput, now: Date): EventClock {
     },
     {
       step: 'perm_last',
-      applies: !input.granted && !input.replied && lastBefore !== null && !at(input.sent.permLast),
+      applies: PERM_LAST_ON && !input.granted && !input.replied && lastBefore !== null && !at(input.sent.permLast),
       firstDay: lastBefore ? latest(dayBefore(LAST_TOUCH_FROM), startOfLocalDayUtcOffset(lastBefore, zone, LAST_TOUCH_GAP)) : dayBefore(LAST_TOUCH_FROM),
+    },
+    {
+      step: 'acq_follow_up',
+      applies: !input.replied && acqSent !== null && !at(input.sent.acqFollowUp),
+      firstDay: acqSent ? latest(dayBefore(ACQ_FOLLOW_UP_FROM), startOfLocalDayUtcOffset(acqSent, zone, FOLLOW_UP_GAP)) : dayBefore(ACQ_FOLLOW_UP_FROM),
     },
   ]
   const askDeadline = dayBefore(COMPLETE_BY) // from this day on, no ask
@@ -144,6 +158,7 @@ export function eventClock(input: ClockInput, now: Date): EventClock {
     // A follow up cannot share the day of the request it follows, nor the last touch the day of the follow up.
     if (due.includes('perm_request')) for (const s of ['perm_follow_up', 'perm_last'] as const) remove(due, s)
     if (due.includes('perm_follow_up')) remove(due, 'perm_last')
+    if (due.includes('acq_offer')) remove(due, 'acq_follow_up')
   }
   const resultsFrom = startOfLocalDayUtcOffset(end, zone, 1)
   if (input.organiserContact && !at(input.sent.results) && stage !== 'closed') {
