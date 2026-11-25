@@ -16,7 +16,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 import { planAsOf } from '@/lib/social/plan-for'
-import { makeCarouselsNow } from '@/lib/social/carousel-wiring'
+import { makeCarouselsNow, makeStoriesNow } from '@/lib/social/carousel-wiring'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     }
     // THE WEEKLY CITY CAROUSEL, MADE as the 06:40 run makes it (src/lib/social/carousel-make.ts): finished files handed to
     // the creative intake, unapproved, for the PM's verify; approved, scheduled and published nowhere here.
-    const carousels = await makeCarouselsNow(db, { now: asOf, siteOrigin: getSiteUrl() })
+    const carousels = [...(await makeCarouselsNow(db, { now: asOf, siteOrigin: getSiteUrl() })), ...(await makeStoriesNow(db, { now: asOf, siteOrigin: getSiteUrl() }))]
     if (carousels.some((c) => c.state !== 'kept')) {
       await recordAnonAuditEvent({ action: 'system.social.carousel', actorEmail: 'cron/social-publish?plan=now', metadata: { carousels } })
     }
@@ -375,7 +375,8 @@ export async function GET(request: NextRequest) {
       // carousel drawn into finished files and handed to the creative intake, unapproved, for the PM's verify. After the
       // plan, and its own failure never stops the run.
       try {
-        const carousels = await makeCarouselsNow(db, { now, siteOrigin: getSiteUrl() })
+        // And the day's city story, tonight's picks (src/lib/social/city-story.ts), made the same way.
+        const carousels = [...(await makeCarouselsNow(db, { now, siteOrigin: getSiteUrl() })), ...(await makeStoriesNow(db, { now, siteOrigin: getSiteUrl() }))]
         for (const c of carousels) console.log(`[cron/social-publish] carousel: ${c.line}`)
         if (carousels.some((c) => c.state !== 'kept')) {
           await recordAnonAuditEvent({ action: 'system.social.carousel', actorEmail: 'cron/social-publish', metadata: { carousels } })

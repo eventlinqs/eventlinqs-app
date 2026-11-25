@@ -4,6 +4,8 @@ import type { IntakeImage, IntakeInput, RestsOn } from '@/lib/creative/intake'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { standardTags, tagWord, weekStartOf, type CampaignCity, type CampaignNight, type Slide } from './campaign'
 import { carouselDesign, carouselNightOf, carouselPostAt, carouselTimeline, cityCoverPhotos, placeOfNight, type CarouselDesign } from './city-carousel'
+import { cityStoryDesign, storyDayToDraw, storyTimeline } from './city-story'
+import { goHop } from './go-hop'
 
 type Db = SupabaseClient
 
@@ -125,7 +127,7 @@ export type CarouselDeps = {
   readonly readCities: (db: Db) => Promise<CampaignCity[]>
   readonly readNights: (db: Db, cities: readonly CampaignCity[], weekStart: string, now: Date) => Promise<CampaignNight[]>
   readonly pictures: (db: Db, slides: readonly Slide[], now: Date) => Promise<ReadonlyMap<number, SlidePicture>>
-  readonly render: (slide: Slide, n: number, total: number, picture: SlidePicture, next: Slide | null) => Promise<Uint8Array>
+  readonly render: (slide: Slide, n: number, total: number, picture: SlidePicture, next: Slide | null, format: 'feed' | 'story') => Promise<Uint8Array>
   readonly store: (path: string, bytes: Uint8Array) => Promise<string>
   readonly intake: (input: IntakeInput) => Promise<{ readonly state: string; readonly pieceId?: string | null; readonly faults?: readonly string[]; readonly reason?: string }>
 }
@@ -179,7 +181,7 @@ export async function makeWeeklyCarousels(db: Db, input: { readonly now: Date; r
       const images: IntakeImage[] = []
       for (const [i, slide] of rests.slides.entries()) {
         const picture = rests.restsOn[i].kind === 'own_design' ? null : (pictures.get(i) ?? null)
-        const bytes = await deps.render(slide, i + 1, rests.slides.length, picture, rests.slides[i + 1] ?? null)
+        const bytes = await deps.render(slide, i + 1, rests.slides.length, picture, rests.slides[i + 1] ?? null, 'feed')
         const url = await deps.store(`creative/${folder}/${slideFileName(city.slug, week.weekStart, i + 1)}`, bytes)
         images.push({ url, restsOn: rests.restsOn[i] })
       }
@@ -188,6 +190,73 @@ export async function makeWeeklyCarousels(db: Db, input: { readonly now: Date; r
       const short = design.short.length > 0 ? ` The week fell short of the playbook: ${design.short.join('; ')}.` : ''
       if (r.state === 'handed_off') say('made', `made as ${images.length} finished slides and handed to publishing as piece ${r.pieceId}, UNAPPROVED, for the PM's verify.${short}`)
       else say('refused', `made as ${images.length} finished slides and HELD by the creative intake (${r.state}): ${(r.faults ?? []).join(' ') || r.reason || 'no reason given'}${short}`)
+    } catch (error) {
+      say('refused', `not made: ${error instanceof Error ? error.message : String(error)}.`)
+    }
+  }
+  return out
+}
+
+/** The one brief a city's story of a day is made under, the same on every run. Pure. */
+export function storyBriefIdOf(city: string, day: string): string {
+  const h = createHash('sha256').update(`city-story|${city}|${day}`).digest('hex')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`
+}
+
+/**
+ * THE DAILY CITY STORY, MADE (the PM's 01:02 item 4 of 25 November 2026; ./city-story.ts): each morning, for each city
+ * the carousel is made for, tonight's picks drawn as one 9:16 frame in the locked look (in type, our own design alone),
+ * stored once as a finished file and handed to the creative intake as a story, preferred at the story band (18:00). One
+ * record a city a day, never made twice; a held one is made again on the next run that day. Never approved, scheduled
+ * or published here: the PM's verify approves it.
+ */
+export async function makeDailyStories(db: Db, input: { readonly now: Date; readonly deps: CarouselDeps }): Promise<CarouselMade[]> {
+  const day = storyDayToDraw(input.now)
+  if (!day) return []
+  const { deps } = input
+  const cities = (await deps.readCities(db)).filter((c) => CAROUSEL_CITIES.includes(c.slug))
+  const out: CarouselMade[] = []
+  for (const city of cities) {
+    const say = (state: CarouselMade['state'], line: string) => out.push({ city: city.slug, weekStart: day, state, line: `${city.name}'s story of ${day}: ${line}` })
+    try {
+      const briefId = storyBriefIdOf(city.slug, day)
+      const { data: had, error: herr } = await db.from('creative_intake').select('state, piece_id').eq('brief_id', briefId)
+      if (herr) throw new Error(`its earlier records could not be read: ${herr.message}`)
+      const live = ((had ?? []) as { state: string; piece_id: string | null }[]).find((r) => r.state === 'received' || r.state === 'passed' || r.state === 'handed_off')
+      if (live) {
+        say('kept', `made already (${live.state}${live.piece_id ? `, piece ${live.piece_id}` : ''}); never made twice.`)
+        continue
+      }
+      const nights = await deps.readNights(db, [city], weekStartOf(input.now), input.now)
+      const design = cityStoryDesign({
+        city,
+        nights,
+        day,
+        origin: ORIGIN,
+        hop: goHop(ORIGIN, 'facebook'),
+        tags: standardTags(city, tagWord(city.name)).split(/\s+/).filter((t) => t.startsWith('#')),
+      })
+      if (!design) {
+        say('refused', 'not made: tonight holds fewer than two picks starting two hours after the story band.')
+        continue
+      }
+      const bytes = await deps.render(design.slides[0], 1, 1, null, null, 'story')
+      const url = await deps.store(`creative/${randomUUID()}/${city.slug}-story-${day}-01.jpg`, bytes)
+      const record: IntakeInput = {
+        briefId,
+        eventIds: design.picks.map((n) => n.eventId),
+        format: 'story',
+        images: [{ url, restsOn: { kind: 'own_design' } }],
+        captions: design.captions,
+        destinations: ['instagram', 'facebook'],
+        facts: design.picks.map((n) => ({ eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate ?? null, venue: placeOfNight(n), organiser: n.organiser ?? null })),
+        link: design.link,
+        objective: 'engagement',
+        ...storyTimeline(day, design.picks),
+      }
+      const r = await deps.intake(record)
+      if (r.state === 'handed_off') say('made', `made as one finished frame and handed to publishing as piece ${r.pieceId}, UNAPPROVED, for the PM's verify.`)
+      else say('refused', `made as one finished frame and HELD by the creative intake (${r.state}): ${(r.faults ?? []).join(' ') || r.reason || 'no reason given'}`)
     } catch (error) {
       say('refused', `not made: ${error instanceof Error ? error.message : String(error)}.`)
     }
