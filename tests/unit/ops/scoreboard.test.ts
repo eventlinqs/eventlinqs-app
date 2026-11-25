@@ -35,7 +35,7 @@ describe('the line', () => {
   it('takes its targets only from the approved ones: law 38 ten, one post per open city', () => {
     expect(ACQ_DAILY_TARGET).toBe(10)
     expect(POSTS_PER_OPEN_CITY * ACQ_GUIDE_CITIES.length).toBe(4)
-    // The plan lives on the build machine, outside the repository (C:devCLAUDE.md law 8); where it is present it is read.
+    // The plan lives on the build machine, outside the repository (law 8 of the build machine's own CLAUDE.md); where it is present it is read.
     const PLAN = 'C:/dev/GROWTH/plan.json'
     if (!existsSync(PLAN)) return
     const raw = readFileSync(PLAN, 'utf8')
