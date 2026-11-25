@@ -1,7 +1,6 @@
 import { dayRowOf, featureSlideOf, listEmoji, type CampaignNight, type PiecePlan, type Slide } from './campaign'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { getCityBanner } from '@/lib/images/city-photo'
-import { getSpineCity } from '@/lib/images/spine'
 
 /**
  * "THINGS TO DO IN [CITY] THIS WEEK", THE WEEKLY CITY CAROUSEL (Lawal's yes, 25 November 2026, 00:47; the PM's 01:12 and
@@ -240,21 +239,18 @@ export function carouselPostAt(weekStart: string): Date {
 /**
  * Each city's own licensed photograph for its cover (the playbook's section 5: "a real, professional photograph of the
  * city itself ... licensed stock with its licence recorded"): the city guide's banner where one is ruled (Geelong,
- * Ballarat, Bendigo: Wikimedia Commons, author and licence on record, credited where its licence asks), else Lawal's own
- * licensed photograph of the city from the photo-day spine (Melbourne's skyline at sunrise). A city with neither has no
- * cover photograph, and its cover is drawn in type. The cover draws one only when the media register holds it as
- * EventLinqs' own photograph (store.ts slideImagesNow, social_brand_images).
+ * Ballarat, Bendigo: Wikimedia Commons, author and licence on record, credited where its licence asks). Never the site's
+ * photo-day spine: the media register refuses any photograph from the stock library for a post
+ * (social_assets_never_the_library, read on production 25 November 2026), so Melbourne, whose guide shows the spine's
+ * skyline, has no cover photograph until one of its own is licensed and registered, and its cover is drawn in type. The
+ * cover draws one only when the media register holds it as EventLinqs' own photograph (store.ts slideImagesNow,
+ * social_brand_images).
  */
 export function cityCoverPhotos(cities: readonly { readonly slug: string }[], origin: string): Map<string, CityPhoto> {
   const out = new Map<string, CityPhoto>()
   for (const c of cities) {
     const banner = getCityBanner(c.slug)
-    if (banner) {
-      out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? `Photo: ${banner.credit.author}, ${banner.licence}` : null })
-      continue
-    }
-    const spine = getSpineCity(c.slug)
-    if (spine) out.set(c.slug, { url: spine.src, credit: null })
+    if (banner) out.set(c.slug, { url: `${origin.replace(/\/+$/, '')}${banner.src}`, credit: banner.credit ? `Photo: ${banner.credit.author}, ${banner.licence}` : null })
   }
   return out
 }
