@@ -6995,6 +6995,9 @@ export type Database = {
           relevance: string | null
           role: string
           seen_on: string | null
+          stated_address: string | null
+          stated_address_at: string | null
+          stated_address_reply: string | null
           unsubscribe_token: string
         }
         Insert: {
@@ -7019,6 +7022,9 @@ export type Database = {
           relevance?: string | null
           role: string
           seen_on?: string | null
+          stated_address?: string | null
+          stated_address_at?: string | null
+          stated_address_reply?: string | null
           unsubscribe_token?: string
         }
         Update: {
@@ -7043,6 +7049,9 @@ export type Database = {
           relevance?: string | null
           role?: string
           seen_on?: string | null
+          stated_address?: string | null
+          stated_address_at?: string | null
+          stated_address_reply?: string | null
           unsubscribe_token?: string
         }
         Relationships: [
@@ -7646,6 +7655,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outreach_message_mailboxes: {
+        Row: {
+          direction: string
+          internet_message_id: string
+          mailbox: string
+          recorded_at: string
+        }
+        Insert: {
+          direction: string
+          internet_message_id: string
+          mailbox: string
+          recorded_at?: string
+        }
+        Update: {
+          direction?: string
+          internet_message_id?: string
+          mailbox?: string
+          recorded_at?: string
+        }
+        Relationships: []
       }
       outreach_play_judgements: {
         Row: {
