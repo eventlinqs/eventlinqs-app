@@ -22,6 +22,7 @@ import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
 import type { MediaDeps } from '@/lib/listings/organiser-media'
 import { keepEmailedImages, recordEmailedYes, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 type Admin = SupabaseClient<Database>
 
@@ -209,7 +210,11 @@ async function recordSenderName(db: Admin, contactId: string, m: InboundMessage)
     const contact = await db.from('organiser_contacts').select('address, person_name, organiser_id').eq('id', contactId).maybeSingle()
     if (contact.error || !contact.data || (contact.data.person_name ?? '').trim()) return
     if (String(contact.data.address ?? '').toLowerCase() !== m.fromAddress.toLowerCase()) return
-    const organiser = contact.data.organiser_id ? await db.from('organisers').select('name').eq('id', contact.data.organiser_id as string).maybeSingle() : null
+    // The organisation's own words are left out of their name; the platform's own listings organisation is no sender's
+    // organisation (src/lib/growth/platform-organiser.ts), so its name is never read for that.
+    const orgId = (contact.data.organiser_id as string | null) ?? null
+    const platform = orgId ? await readPlatformOrganiserIds(db) : new Set<string>()
+    const organiser = orgId && !platform.has(orgId) ? await db.from('organisers').select('name').eq('id', orgId).maybeSingle() : null
     const name = personNameFrom(m.fromName, (organiser?.data?.name as string | undefined) ?? null)
     if (!name) return
     const saved = await db.from('organiser_contacts').update({ person_name: name }).eq('id', contactId).is('person_name', null)
