@@ -229,18 +229,21 @@ describe('4. no claim link and no "listed free" in a permission letter: the clai
   })
 })
 
+/** The request's subject as it went (lifecycle_perm version 2); its follow up answers it in its own thread. */
+const REQUEST_SUBJECT = 'Promoting A Ceremony of Carols on EventLinqs'
+
 /** A request sent on Monday 23 November, nothing heard since, the contact still eligible. */
 const QUIET = { eligible: true, replied: false, approved: false, declined: false, requestSentAt: '2026-11-22T20:05:00Z', followUpSentAt: null }
 
 describe('5. an expired event: no letter names an event on or after its day, or one no longer published', () => {
   it('the follow up for an event that has passed, is on its day, or was cancelled is never drafted', async () => {
     const { draftPermFollowUp } = await import('@/lib/outreach/perm-follow-up')
-    const after = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: new Date('2026-12-13T20:00:00Z') })
+    const after = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: new Date('2026-12-13T20:00:00Z') })
     expect(after).toMatchObject({ state: 'not drafted' })
     expect(after.state === 'not drafted' ? after.why : '').toMatch(/^expired/)
-    const onTheDay = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: new Date('2026-12-11T20:00:00Z') })
+    const onTheDay = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: new Date('2026-12-11T20:00:00Z') })
     expect(onTheDay.state === 'not drafted' ? onTheDay.why : '').toMatch(/^expired/)
-    const cancelled = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: { ...CAROLS_EVENT, status: 'cancelled' }, unsubscribeUrl: UNSUB, now: SAT_28_7AM })
+    const cancelled = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: { ...CAROLS_EVENT, status: 'cancelled' }, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM })
     expect(cancelled.state === 'not drafted' ? cancelled.why : '').toMatch(/^expired: the event it names is cancelled/)
     // The request itself, at the send press (sender.ts, event-validity.ts): never on or after its day.
     expect(letterExpiry('lifecycle_perm', CAROLS_EVENT, new Date('2026-12-12T01:00:00Z'))).toMatch(/^expired/)
@@ -251,16 +254,16 @@ describe('6. a follow up after a reply: one follow up, only to an eligible conta
   it('a reply, an approval or a decline recorded means no follow up; silence is never permission', async () => {
     const { draftPermFollowUp } = await import('@/lib/outreach/perm-follow-up')
     for (const heard of [{ replied: true }, { approved: true }, { declined: true }]) {
-      const r = draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, ...heard }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: SAT_28_7AM })
+      const r = draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, ...heard }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM })
       expect(r.state, JSON.stringify(heard)).toBe('not drafted')
     }
-    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, eligible: false }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: SAT_28_7AM }).state).toBe('not drafted')
-    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, followUpSentAt: '2026-11-27T20:00:00Z' }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: SAT_28_7AM }).state).toBe('not drafted')
-    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, requestSentAt: null }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: SAT_28_7AM }).state).toBe('not drafted')
+    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, eligible: false }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM }).state).toBe('not drafted')
+    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, followUpSentAt: '2026-11-27T20:00:00Z' }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM }).state).toBe('not drafted')
+    expect(draftPermFollowUp({ facts: CAROLS, record: { ...QUIET, requestSentAt: null }, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM }).state).toBe('not drafted')
   })
   it('the drill: with nothing recorded it is drafted, in the approved wording, in the request thread, and passes every rule and the gateway', async () => {
     const { draftPermFollowUp } = await import('@/lib/outreach/perm-follow-up')
-    const r = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, now: SAT_28_7AM })
+    const r = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject: REQUEST_SUBJECT, now: SAT_28_7AM })
     expect(r.state).toBe('drafted')
     if (r.state !== 'drafted') return
     expect(r.letter.heldBecause).toEqual([])
@@ -276,5 +279,15 @@ describe('6. a follow up after a reply: one follow up, only to an eligible conta
     )
     expect(r.letter.closing).toBe(`Kind regards,\nLawal Adams\nFounder, EventLinqs\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: ${UNSUB}`)
     expect(gate('PERM-REMINDER', 2, r.letter.subject, r.letter.body, '2026-11-28')).toEqual([])
+  })
+  it('answers the request in its own thread, whichever version of the request went, and never Re: Re:', async () => {
+    const { draftPermFollowUp } = await import('@/lib/outreach/perm-follow-up')
+    const v1 = 'Your A Ceremony of Carols listing on EventLinqs: may we use your photo?'
+    const subjectOf = (threadSubject: string) => {
+      const r = draftPermFollowUp({ facts: CAROLS, record: QUIET, event: CAROLS_EVENT, unsubscribeUrl: UNSUB, threadSubject, now: SAT_28_7AM })
+      return r.state === 'drafted' ? r.letter.subject : r.why
+    }
+    expect(subjectOf(v1)).toBe(`Re: ${v1}`)
+    expect(subjectOf(`Re: ${REQUEST_SUBJECT}`)).toBe(`Re: ${REQUEST_SUBJECT}`)
   })
 })

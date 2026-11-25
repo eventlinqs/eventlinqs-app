@@ -167,6 +167,7 @@ export async function draftLifecycleFollowUp(
           record: { eligible: read.eligible, replied: read.replied, approved: read.granted, declined: false, requestSentAt: input.first.sentAt, followUpSentAt: read.followUpAt },
           event: read.event,
           unsubscribeUrl: read.unsubscribeUrl,
+          threadSubject: input.first.subject,
           now: input.scheduledFor,
         })
       : draftAcqFollowUp({
