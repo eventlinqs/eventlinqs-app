@@ -23,6 +23,8 @@ export function morningReportEmail(
     readonly perContact?: string
     /** Every morning: yesterday's first letters against law 38's floor, and the cause when under it (src/lib/outreach/first-letter-floor.ts). */
     readonly floor?: string
+    /** Every morning: every active record's next action, and those without one or past their time (src/lib/ops/next-actions.ts). */
+    readonly nextActions?: string
   },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
@@ -49,6 +51,7 @@ export function morningReportEmail(
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     ...(when.answers ? [`How fast we answered last week: ${when.answers}`, ''] : []),
     ...(when.floor ? [`First letters: ${when.floor}`, ''] : []),
+    ...(when.nextActions ? [`Next actions: ${when.nextActions}`, ''] : []),
     ...(when.perContact ? [`Messages per contact, last 7 days: ${when.perContact}`, ''] : []),
     `Everything above is read from production at the time of sending. The admin: ${when.adminUrl}`,
   ].join('\n')
@@ -78,6 +81,7 @@ export function morningReportEmail(
       : '') +
     (when.answers ? `<p><strong>How fast we answered last week:</strong> ${escape(when.answers)}</p>` : '') +
     (when.floor ? `<p><strong>First letters:</strong> ${escape(when.floor)}</p>` : '') +
+    (when.nextActions ? `<p><strong>Next actions:</strong> ${escape(when.nextActions)}</p>` : '') +
     (when.perContact ? `<p><strong>Messages per contact, last 7 days:</strong> ${escape(when.perContact)}</p>` : '') +
     `<p style="color:#666">Everything above is read from production at the time of sending. <a href="${when.adminUrl}">The admin</a></p>` +
     `</div>`

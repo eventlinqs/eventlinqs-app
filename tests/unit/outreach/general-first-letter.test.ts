@@ -86,6 +86,6 @@ describe('the wiring, as the planner and the report run it', () => {
 
   it('the 08:00 report reads the floor line every morning, and a failed read is named in it', () => {
     expect(route).toMatch(/const floor = await readFirstLetterFloor\(db, now\)\.catch\(\(err: unknown\) => `not read: /)
-    expect(route).toContain('answers, perContact, floor })')
+    expect(route).toMatch(/answers, perContact, floor(, nextActions)? \}\)/)
   })
 })

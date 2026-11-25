@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isReportWeekday, readAnswerTiming } from '@/lib/outreach/answer-report'
 import { readMessagesPerContact } from '@/lib/outreach/frequency-report'
 import { readFirstLetterFloor } from '@/lib/outreach/first-letter-floor'
+import { nextActionsLine, readNextActions } from '@/lib/ops/next-actions'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -91,7 +92,10 @@ export async function GET(request: NextRequest) {
       // EVERY MORNING, YESTERDAY'S FIRST LETTERS AGAINST THE FLOOR, WITH THE CAUSE WHEN UNDER IT (the PM's 00:17 of
       // 26 November 2026, item D); a read that fails says so in the line.
       const floor = await readFirstLetterFloor(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
-      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor })
+      // EVERY MORNING, EVERY ACTIVE RECORD'S NEXT ACTION, AND THOSE WITHOUT ONE OR PAST THEIR TIME (Lawal's directive of
+      // 26 November 2026, items H and I); a read that fails says so in the line.
+      const nextActions = await readNextActions(db, now).then(nextActionsLine).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
+      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor, nextActions })
       const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
       reportId = sentReport.id
       report = 'sent'
