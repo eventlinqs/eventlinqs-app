@@ -30,7 +30,7 @@ import { graphSendMime, type GraphConfig } from './graph'
 import { isSegmentANight, melbourneDayOf } from './segment-a-letter'
 import { firstLetterBlocked } from './one-first-letter'
 import { FIRST_LETTER_SENT, readFirstLetterRecord } from './first-letter-record'
-import { mailboxFor } from './addresses'
+import { HELLO_MAILBOX, mailboxFor } from './addresses'
 import { isLifecycleKey, lifecycleStillAsks } from './lifecycle-letters'
 import { eventSlugOf, letterExpiry } from './event-validity'
 import { decisionWords, readContactPolicy, type PolicyRule } from './contact-policy'
@@ -234,6 +234,35 @@ async function threadIds(db: Admin, contactId: string, excludeId: string): Promi
   return (r.data ?? []).map((x) => x.internet_message_id as string)
 }
 
+/**
+ * THE ADDRESS THEY WROTE TO (law 33 (a): "a reply goes from the address the organiser wrote to, in thread"; the PM's 07:03
+ * of 25 November 2026, item 1): an organiser answers the letter they were sent, so they wrote to the mailbox that letter
+ * went from. Read from their reply (outreach_replies, by the message id the answer is threaded to) and the letter it
+ * answers, whose category names its mailbox. Null when either cannot be read: the reply then goes from its own category's
+ * address, as before.
+ */
+async function wroteToFor(db: Admin, inReplyTo: string | null | undefined): Promise<string | null> {
+  if (!inReplyTo) return null
+  const reply = await db.from('outreach_replies').select('touch_id').eq('source_message_id', inReplyTo).maybeSingle()
+  const touchId = reply.data?.touch_id as string | null | undefined
+  if (reply.error || !touchId) return null
+  const answered = await db.from('outreach_touches').select('comms_category, purpose, sent_at').eq('id', touchId).maybeSingle()
+  if (answered.error || !answered.data) return null
+  // Before each message type had its own address, every letter left from hello@ (Festival Indonesia's reply of 25
+  // November answers our letter of 18 November, which their own quote shows came from hello@; the PM's 09:39).
+  const sentAt = answered.data.sent_at ? Date.parse(answered.data.sent_at as string) : NaN
+  if (Number.isFinite(sentAt) && sentAt < ONE_ADDRESS_UNTIL) return HELLO_MAILBOX
+  const from = mailboxFor({ category: answered.data.comms_category as string | null, purpose: (answered.data.purpose as string | null) ?? '' })
+  return 'mailbox' in from ? from.mailbox : null
+}
+
+/**
+ * Until law 33 (a)'s addresses reached main (#309, squash 978718d63, 19 November 2026 at 19:24:06 in Melbourne), every
+ * letter left from the one sender address, hello@ (outreach_sender.from_address); a letter sent before it was answered
+ * at hello@ whatever its category now says.
+ */
+export const ONE_ADDRESS_UNTIL = Date.parse('2026-11-19T08:24:06Z')
+
 export async function runOutreachSender(
   db: Admin,
   deps: {
@@ -366,7 +395,8 @@ export async function runOutreachSender(
     // The claim: the database runs every check here, or refuses and the message stays queued.
     // ITS ADDRESS FIRST (law 33 (a)): a message whose type has no address is refused before it is claimed, never sent
     // from a guessed mailbox; it stays queued with the refusal said.
-    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '' })
+    const wroteTo = t.purpose === 'reply' ? await wroteToFor(db, t.in_reply_to) : null
+    const from = mailboxFor({ category: t.comms_category, purpose: t.purpose ?? '', wroteTo })
     if ('refused' in from) {
       report.refused.push({ id: t.id, reason: from.refused })
       continue

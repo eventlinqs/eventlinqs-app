@@ -141,6 +141,12 @@ const FIELD_FORMS: Readonly<Record<string, string>> = {
   listings: '[A-Za-z0-9][^\\n\\[\\]]{0,79}',
   site: '[A-Za-z0-9][^\\n\\[\\]]{0,79}',
   ask: '[A-Z][^\\n\\[\\]]{19,599}\\?',
+  // The reply templates' fields (Lawal's 07:02 and 07:03 of 25 November 2026, replies go by themselves): the name the
+  // greeting takes (the voice gate holds it to the verified recipient), the subject of the thread it answers, and the
+  // ticketing provider their own words named (replies.ts providerNamed: one of the listing page's own names).
+  'first name': '[A-Z][^\\n\\[\\],]{0,80}',
+  'thread subject': '[^\\n\\[\\]]{1,200}',
+  provider: '[A-Z][A-Za-z0-9 .]{1,30}',
 }
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`)
@@ -303,4 +309,75 @@ export async function queueApprovedHeldLetters(
     if (!moved.error && moved.data) replanned.push({ id: q.id, from: q.scheduled_for, to: opens.toISOString() })
   }
   return replanned.length > 0 ? { ...report, replanned } : report
+}
+
+/**
+ * REPLIES GO BY THEMSELVES (Lawal, 25 November 2026, 07:02, verbatim through the PM's 07:03: "The system should be able
+ * to send it from my mailbox and not have to have me approve it. That needs changing right now."; 07:03: "Change that
+ * rule. It doesn't work ... It has to make my system convenient."). An answer to an organiser's own message, drafted in
+ * their thread from one of the reply templates, queues itself into the next sending window, with no founder tap, when
+ * every one of these holds, read now:
+ *   1. the sender is live;
+ *   2. it answers a message of theirs (in_reply_to): the database holds a reply only where they wrote to us;
+ *   3. its words pass every rule of the voice policy in force, and its draft carries no rule it failed (held_because);
+ *   4. it clears under Lawal's standing approval of its exact template, with only its fields filled (standingClear):
+ *      a template whose words are not true today stays off in the approvals record, so its drafts stay held.
+ * The CRM directive's section 9 is kept before this: a reply that speaks of money or a contract is never drafted
+ * (./replies.ts MONEY_OR_CONTRACT), and goes to the PM. The sender then sends it from the address the letter it answers
+ * went from, in their thread (./sender.ts wroteToFor), and records the provider's own confirmation.
+ */
+export const REPLY_TEMPLATE_KEYS: readonly string[] = [
+  'reply_cost', 'reply_existing_ticketing', 'reply_who_are_you', 'reply_why_listed', 'reply_not_now', 'reply_change', 'reply_stop', 'reply_take_down',
+  'thank_you', 'withdrawal_confirmed',
+]
+
+type HeldReply = { id: string; contact_id: string; subject: string | null; body: string; held_because: string[] | null; outreach_templates: { key: string; version: number } | null }
+
+export async function queueApprovedReplies(
+  db: Admin,
+  deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[] },
+): Promise<SelfQueueReport> {
+  const report: SelfQueueReport = { queued: [], waiting: [] }
+  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_minute, send_until_minute').eq('id', true).single()
+  if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
+  if (sender.data.mode !== 'live') return { ...report, note: `the sender is ${sender.data.mode}: no reply queues itself` }
+  let policy: VoicePolicy
+  try {
+    policy = deps.policy ?? readVoicePolicy()
+  } catch (error) {
+    return { ...report, note: error instanceof Error ? error.message : String(error) }
+  }
+  const held = await db
+    .from('outreach_touches')
+    .select('id, contact_id, subject, body, held_because, outreach_templates(key, version)')
+    .eq('state', 'held')
+    .in('purpose', ['reply', 'relationship'])
+    .not('in_reply_to', 'is', null)
+    .limit(200)
+  if (held.error) throw new Error(`the held replies: ${held.error.message}`)
+  for (const t of (held.data ?? []) as unknown as HeldReply[]) {
+    const key = t.outreach_templates?.key ?? ''
+    if (!REPLY_TEMPLATE_KEYS.includes(key)) continue
+    const reasons: string[] = [...(t.held_because ?? [])]
+    const voice = await readTouchVoice(db, t.id)
+    if (!voice) {
+      report.waiting.push({ id: t.id, reasons: ['it is no longer waiting'] })
+      continue
+    }
+    reasons.push(...voiceProblems(voice, policy))
+    const clear = standingClear({ template: `${key} v${t.outreach_templates?.version}`, subject: t.subject ?? '', body: t.body }, policy.version, deps.approvals ?? standingApprovals())
+    if (!clear.cleared) reasons.push(clear.reason)
+    if (reasons.length > 0) {
+      report.waiting.push({ id: t.id, reasons })
+      continue
+    }
+    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id), sendWindowOf(sender.data)).toISOString()
+    const moved = await db.from('outreach_touches').update({ state: 'queued', scheduled_for: at }).eq('id', t.id).eq('state', 'held').select('id').maybeSingle()
+    if (moved.error || !moved.data) {
+      report.waiting.push({ id: t.id, reasons: [moved.error?.message.replace(/^refused: /, '') ?? 'it was no longer held'] })
+      continue
+    }
+    report.queued.push({ id: t.id, at, why: clear.reason })
+  }
+  return report
 }

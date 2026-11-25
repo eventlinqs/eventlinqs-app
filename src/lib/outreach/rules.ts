@@ -167,7 +167,10 @@ export type Rendered = Draft & { body: string; heldBecause: string[] }
 export function renderTemplate(template: TemplateRow, fields: Record<string, string | null | undefined>, unsubscribeUrl: string | null): Rendered {
   const all: Record<string, string | null | undefined> = {}
   for (const [k, v] of Object.entries(fields)) all[k.trim().toLowerCase()] = v
-  all.signature = LAWAL_SIGNATURE
+  // A reply signs as Lawal replies, without the ABN block (VOICE-EVENTLINQS.md; voice-gate.ts: 'replies sign without the
+  // ABN block'). Until 25 November 2026 every reply template rendered the full signature, so no reply ever passed the
+  // voice gate and every one waited for a person (the PM's 07:00 and 07:03).
+  all.signature = template.purpose === 'reply' ? REPLY_SIGNATURE : LAWAL_SIGNATURE
   all.unsubscribe = unsubscribeUrl ? unsubscribeLine(unsubscribeUrl) : null
   // A template that writes its own unsubscribe line (acq_first v1) names only the address: '[unsubscribe link]'.
   all['unsubscribe link'] = unsubscribeUrl

@@ -1,5 +1,5 @@
 {
-  "_generated": "Copied unchanged from C:\\dev\\comms-gateway\\standing-approvals.json by C:\\dev\\EVIDENCE\\EL-25NOV\\source-ask-v2\\standing-v2.py, as C:\\dev\\EVIDENCE\\EL-21NOV\\pm\\make-standing-copy.py does; never edited by hand.",
+  "_generated": "Copied unchanged from C:\\dev\\comms-gateway\\standing-approvals.json by C:\\dev\\EVIDENCE\\EL-25NOV\\replies-auto\\standing-replies.py, as C:\\dev\\EVIDENCE\\EL-21NOV\\pm\\make-standing-copy.py does; never edited by hand.",
   "templates": [
     {
       "key": "acq_first",
@@ -44,6 +44,28 @@
       "subject": "[listings] events on EventLinqs",
       "body": "Hi [organiser] team,\n\nWe'd like your permission to feature upcoming events from [site] on EventLinqs, our Australian event discovery platform, so more people discover events in [city].\n\nOur proposed process is to check [site]'s public event listings about once a week, with a person on our team reviewing each event before it appears. Each EventLinqs listing would show the event's title, date, venue and organiser, with a direct link to its page on [site] for full details and bookings. We would not copy any event photos or descriptions.\n\nYou wouldn't need to prepare or send us anything. If you'd rather provide an event list or a feed, we're happy to work that way.\n\n[ask]\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\neventlinqs.com.au\nABN 30 837 447 587\nGeelong, VIC, Australia\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
       "basis": "Lawal, 24 November 2026 (PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md): at 20:42 he approved source_ask version 2 with the review he adopted (\"have a review of what ChatGPT has brought up, and let's finish up. I think that answers your question.\"; the PM's 20:55 gives the wording as final), and at 20:52 \"Lock it in ... It is ready for the next day, for tomorrow's message.\" (the PM's 20:56 item 2). Recorded by WINDOW 5C on 25 November 2026: the template of src/lib/outreach/source-asks.ts SOURCE_ASK_EMAIL (version 2), each field in its one form (gateway.py FIELD_FORMS: listings, organiser, city, site, ask, unsubscribe link). Version 1 is switched off the same minute."
+    },
+    {
+      "key": "reply_cost",
+      "version": 1,
+      "on": true,
+      "words": "Who actually made the rule that I have to approve for me to send? That has to stop. From me to go through my own mailbox, no. The system should be able to send it from my mailbox and not have to have me approve it. That needs changing right now. This is not right. ... I don't care. Change that rule. It doesn't work ... It has to make my system convenient.",
+      "quoted_at": "2026-11-25T07:02:00+11:00",
+      "policy_version": "3b9210ea627603c6",
+      "subject": "Re: [thread subject]",
+      "body": "Hi [first name],\nNothing. Listing and featuring are free. If you ever want to sell tickets through EventLinqs, that's optional and I can send the details then.\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
+      "basis": "Lawal, 25 November 2026, 07:02 and 07:03, verbatim in the PM's 07:03 section of PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md: a reply to an organiser's message goes automatically, with no founder tap, from the address they wrote to, in their thread, when it is one of the approved reply templates filled only from facts (the PM's item 1). Recorded by WINDOW 5C on 25 November 2026 for this template because every sentence of it is true today; production's outreach_templates reply_cost version 1 (id 935992fd-5543-492d-8b02-8d398e059b4f) as rules.ts renders a reply: the reply signature, the unsubscribe line. A reply that speaks of money or a contract is never drafted (CRM directive section 9; replies.ts MONEY_OR_CONTRACT)."
+    },
+    {
+      "key": "reply_existing_ticketing",
+      "version": 1,
+      "on": true,
+      "words": "Who actually made the rule that I have to approve for me to send? That has to stop. From me to go through my own mailbox, no. The system should be able to send it from my mailbox and not have to have me approve it. That needs changing right now. This is not right. ... I don't care. Change that rule. It doesn't work ... It has to make my system convenient.",
+      "quoted_at": "2026-11-25T07:02:00+11:00",
+      "policy_version": "3b9210ea627603c6",
+      "subject": "Re: [thread subject]",
+      "body": "Hi [first name],\nPerfect, keep it. Your listing links straight to your [provider] page, so nothing changes on your side.\n\nKind regards,\nLawal Adams\nFounder, EventLinqs\n\nIf you'd rather I didn't write again, just reply and say so, or unsubscribe here: [unsubscribe link]",
+      "basis": "Lawal, 25 November 2026, 07:02 and 07:03, verbatim in the PM's 07:03 section of PM-ORDER-EVENTLINQS-2-LAUNCH-8NOV.md: a reply to an organiser's message goes automatically, with no founder tap, from the address they wrote to, in their thread, when it is one of the approved reply templates filled only from facts (the PM's item 1). Recorded by WINDOW 5C on 25 November 2026 for this template because every sentence of it is true today; production's outreach_templates reply_existing_ticketing version 1 (id 9f4b1eca-1f76-42a5-8828-0f88f6ffd99f) as rules.ts renders a reply: the reply signature, the unsubscribe line. A reply that speaks of money or a contract is never drafted (CRM directive section 9; replies.ts MONEY_OR_CONTRACT)."
     }
   ]
 }

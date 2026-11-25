@@ -22,6 +22,7 @@ import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
 import type { MediaDeps } from '@/lib/listings/organiser-media'
 import { keepEmailedImages, recordEmailedYes, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 
 type Admin = SupabaseClient<Database>
 
@@ -52,7 +53,30 @@ export function grantsInWords(ownWords: string): boolean {
 export type ReplyKind =
   | { kind: 'bounce'; hard: boolean }
   | { kind: 'auto_reply' }
-  | { kind: 'reply'; outcome: ReplyOutcome; confidence: number; answerKey: string | null }
+  | { kind: 'reply'; outcome: ReplyOutcome; confidence: number; answerKey: string | null; held?: string }
+
+/**
+ * A YES WRITTEN AFTER A GREETING, OR ON A CONDITION OUR OFFER MEETS (the PM's 01:20 item 4 and 07:03 of 25 November 2026):
+ * Stage 29 Studios answered our complimentary listing letter "Hi Lawal, if it's free then yes this would be great thank
+ * you" and was read as unclear at 0.3, because the yes opener was looked for only at a line's start. A yes may follow a
+ * greeting on the same line, and a yes on the condition that it is free is a yes, because what we offer is free
+ * (reply_cost: "Listing and featuring are free"). Any other condition stays unclear.
+ */
+const GREETING = String.raw`(?:(?:hi|hello|hey|dear|good (?:morning|afternoon|evening))\b[^,\n]{0,30},?\s*)?`
+const YES_OPENER = new RegExp(String.raw`^\s*${GREETING}(yes|yep|yeah|yes please|sure|sounds (good|great)|happy (to|for you)|go ahead|that works|absolutely|of course|love to)\b`, 'im')
+const YES_IF_FREE =
+  /\bif (it|this|that|the listing)(['’]s| is| will be)( (completely|totally|all))? (free|complimentary|at no cost|no cost|no charge)\b[^.?!\n]{0,30}?\b(then )?(yes|sure|happy|great|keen|love|go ahead|count us in|we['’]re in)\b/i
+
+/**
+ * MONEY OR A CONTRACT IS NEVER ANSWERED BY ITSELF (the CRM directive of 19 November 2026, section 9, as Lawal wrote it: no
+ * reply promises what is not true, agrees a contract, or commits money; the PM's 07:03 of 25 November 2026, item 2): a
+ * reply that asks us to pay, names a price of theirs, or asks for a contract, an agreement, an invoice, a sponsorship or a
+ * commission is held whatever else it says, and goes to the PM, who shows Lawal the words. A question about OUR cost is
+ * not this: reply_cost answers it (listing is free).
+ */
+export const MONEY_OR_CONTRACT =
+  /\b(invoices?|contracts?|agreements?|sign(ed|ing)? (the|an|our|a|any)\b|terms and conditions|pay (us|you|for (the|a|an|our) (listing|feature|post|spot|placement))|payment (of|for|to)|our (fee|fees|rate|rates|price|prices|charge|charges) (is|are|for|start)|sponsor(s|ship)?|commission|advertising (fee|rate|package)s?|media kit|rate card)\b|[$]\s?\d/i
+export const HELD_MONEY_OR_CONTRACT = 'it speaks of money or a contract, which no reply answers by itself (CRM directive section 9): held for the PM'
 
 /** The reply without the thread it quotes: lines from the first "On ... wrote:", "From:" block or ">" quote are dropped. */
 export function stripQuoted(text: string): string {
@@ -85,6 +109,15 @@ const ACK_OPEN = /^\s*(thank you|thanks) for (contacting|your (e-?mail|message|e
 const ACK_BODY = /\b(has been (forwarded|passed on|received|sent on)|we have received your|we('ll| will) (respond|get back|be in touch|reply)|this is an automated|do not reply to this (e-?mail|message)|one of our team will)\b/i
 
 export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text' | 'headers' | 'hasAttachments'>): ReplyKind {
+  const kind = classifyWords(m)
+  // Money or a contract holds any answer but a stop or a take down, which are honoured whatever else is said.
+  if (kind.kind === 'reply' && kind.outcome !== 'stop' && kind.outcome !== 'take_down' && MONEY_OR_CONTRACT.test(stripQuoted(m.text))) {
+    return { ...kind, confidence: Math.min(kind.confidence, 0.5), answerKey: null, held: HELD_MONEY_OR_CONTRACT }
+  }
+  return kind
+}
+
+function classifyWords(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text' | 'headers' | 'hasAttachments'>): ReplyKind {
   const auto = (m.headers['auto-submitted'] ?? '').toLowerCase()
   const isDaemon = /^(mailer-daemon|postmaster)@/i.test(m.fromAddress)
   if (isDaemon || /^(undeliverable|delivery status notification \(failure\)|mail delivery failed|returned mail)/i.test(m.subject)) {
@@ -102,8 +135,9 @@ export function classifyInbound(m: Pick<InboundMessage, 'subject' | 'fromAddress
   if (/\b(unsubscribe|stop (emailing|contacting|messaging)|remove me|take me off|do ?n[o']t (contact|email|message)|no more emails|please stop)\b|^\s*stop\.?\s*$/im.test(text)) hits.push({ outcome: 'stop', key: 'reply_stop' })
   if (/\b(take (it|this|us|that|the listing|our listing) (down|off)|remove (the|our|my) (listing|venue|page)|delete (the|our) (listing|page)|unlist)\b/i.test(text)) hits.push({ outcome: 'take_down', key: 'reply_take_down' })
   if (/^\s*(no thanks|no thank you|not interested|we('re| are) not interested|we('ll| will) pass|no,? (we('re| are)|not for us))/im.test(text)) hits.push({ outcome: 'no', key: null })
-  if (/^\s*(yes|yep|yeah|yes please|sure|sounds (good|great)|happy (to|for you)|go ahead|that works|absolutely|of course|love to)\b/im.test(text) && !/\b(not|no|don'?t)\b/i.test(text.split('\n')[0] ?? '')) hits.push({ outcome: 'yes', key: 'thank_you' })
-  for (const a of ANSWERS) if (a.pattern.test(text)) hits.push({ outcome: a.outcome, key: a.key })
+  if ((YES_OPENER.test(text) || YES_IF_FREE.test(text)) && !/\b(not|no|don'?t)\b/i.test((text.split('\n')[0] ?? '').replace(/\bno (cost|charge)\b/gi, ''))) hits.push({ outcome: 'yes', key: 'thank_you' })
+  // A cost named as the condition of a yes ("if it is at no cost, yes please") is answered by our offer, not a question.
+  for (const a of ANSWERS) if (a.pattern.test(text) && !(a.key === 'reply_cost' && YES_IF_FREE.test(text))) hits.push({ outcome: a.outcome, key: a.key })
   if (/\b(talk to|speak (to|with)|contact|email|reach out to)\s+[A-Z][a-z]+\b/.test(text) || /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/.test(text)) hits.push({ outcome: 'referred', key: null })
 
   // AN ACKNOWLEDGEMENT WITH NO AUTO HEADER (Bendigo Symphony Orchestra's of 21 November 2026, 7.01 am: 'Thank you for
@@ -142,6 +176,52 @@ const PROVIDERS = Object.values(PROVIDER_NAMES).filter((n): n is string => n !==
 /** The ticketing provider their own reply names, in its own spelling, or null: the answer is then held for Lawal. */
 export function providerNamed(text: string): string | null {
   return PROVIDERS.find((p) => new RegExp(`\\b${p}\\b`, 'i').test(text)) ?? null
+}
+
+/** Words a mailbox's display name holds when it names a role, a team or an organisation rather than a person. */
+const NOT_A_PERSON = /\b(info|admin|administration|team|events?|bookings?|office|enquiries|inquiries|reception|hello|contact|marketing|manager|management|festival|studios?|club|bar|cafe|theatre|gallery|venue|centre|center|council|committee|inc|pty|ltd|group|music|productions?|entertainment|presents|the)\b/i
+
+/**
+ * THE NAME A PERSON SIGNS THEIR OWN MAIL WITH (the PM's 07:09 item 2 of 25 November 2026: no reply may greet a team "when
+ * the sender gave a first name"; Jennifer Turner of Stage 29 Studios wrote from info@ and was greeted "Stage 29 Studios
+ * team"). Their mailbox's display name, when it is a person's: two or three capitalised words, none naming a role, a team
+ * or an organisation, and none a word of their organisation's own name. Null otherwise. Pure.
+ */
+export function personNameFrom(displayName: string | null | undefined, organiser: string | null | undefined): string | null {
+  const name = (displayName ?? '').replace(/["'`]/g, '').trim().replace(/\s+/g, ' ')
+  if (!name || name.includes('@')) return null
+  const words = name.split(' ')
+  if (words.length < 2 || words.length > 3) return null
+  if (!words.every((w) => /^[A-Z][A-Za-z’-]{1,30}$/.test(w))) return null
+  if (NOT_A_PERSON.test(name)) return null
+  const orgWords = new Set((organiser ?? '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2))
+  if (words.some((w) => orgWords.has(w.toLowerCase()))) return null
+  return name
+}
+
+/**
+ * Their own name, recorded on their contact when it holds none, from the message they sent from that same address (a
+ * colleague answering in the thread is never named for the contact). The greeting then names them ("Hi Jennifer,"), as
+ * the gateway's verified recipient rule reads person_name first. A refusal is said in the log and changes nothing else.
+ */
+async function recordSenderName(db: Admin, contactId: string, m: InboundMessage): Promise<void> {
+  // Never a reason the reply itself is not logged: any fault here is said in the log and the run goes on.
+  try {
+    const contact = await db.from('organiser_contacts').select('address, person_name, organiser_id').eq('id', contactId).maybeSingle()
+    if (contact.error || !contact.data || (contact.data.person_name ?? '').trim()) return
+    if (String(contact.data.address ?? '').toLowerCase() !== m.fromAddress.toLowerCase()) return
+    // The organisation's own words are left out of their name; the platform's own listings organisation is no sender's
+    // organisation (src/lib/growth/platform-organiser.ts), so its name is never read for that.
+    const orgId = (contact.data.organiser_id as string | null) ?? null
+    const platform = orgId ? await readPlatformOrganiserIds(db) : new Set<string>()
+    const organiser = orgId && !platform.has(orgId) ? await db.from('organisers').select('name').eq('id', orgId).maybeSingle() : null
+    const name = personNameFrom(m.fromName, (organiser?.data?.name as string | undefined) ?? null)
+    if (!name) return
+    const saved = await db.from('organiser_contacts').update({ person_name: name }).eq('id', contactId).is('person_name', null)
+    if (saved.error) console.error(`[outreach/replies] the name ${name} could not be recorded for contact ${contactId}:`, saved.error.message)
+  } catch (err) {
+    console.error(`[outreach/replies] their own name was not read for contact ${contactId}:`, err instanceof Error ? err.message : String(err))
+  }
 }
 
 export type InboxReport = { read: number; matched: number; unmatched: number; autoReplies: number; bounces: number; replies: { id: string; outcome: string; confidence: number; action: string }[]; failed: { messageId: string | null; error: string }[] }
@@ -232,6 +312,7 @@ export async function handleInbox(
       continue
     }
     report.matched++
+    await recordSenderName(db, contactId, m)
     const clear = kind.confidence >= CLEAR && kind.outcome !== 'unclear' && kind.outcome !== 'referred'
     const logged = await db
       .from('outreach_replies')
@@ -272,7 +353,8 @@ export async function handleInbox(
       throw new Error(`logging a reply: ${logged.error.message}`)
     }
 
-    let action = 'waits for Lawal'
+    // A reply held for money or a contract says so; any other held reply waits as before (the leads watch reads both).
+    let action = kind.kind === 'reply' && kind.held ? kind.held : 'waits for Lawal'
     if (clear && kind.outcome === 'take_down') {
       const contact = await db.from('organiser_contacts').select('organiser_id, address, person_name').eq('id', contactId).single()
       const link = contact.data ? await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id).limit(1) : null

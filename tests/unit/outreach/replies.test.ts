@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CLEAR, classifyInbound, providerNamed, stripQuoted } from '@/lib/outreach/replies'
+import { CLEAR, HELD_MONEY_OR_CONTRACT, classifyInbound, providerNamed, stripQuoted } from '@/lib/outreach/replies'
 import { nightsOf, trueLine, whenItRuns } from '@/lib/outreach/facts'
 import { addressRank } from '@/lib/outreach/planner'
 
@@ -166,5 +166,60 @@ describe('the true line holds only the listing facts', () => {
   test('a series before 5 pm is sessions, not nights', () => {
     expect(nightsOf('Baby Rhyme Time', '10:30:00')).toBe('Baby Rhyme Time sessions')
     expect(nightsOf('Saturday Live Music', '20:00:00')).toBe('Saturday Live Music nights')
+  })
+})
+
+/*
+ * A YES AFTER A GREETING, OR ON THE CONDITION OUR OFFER MEETS (the PM's 01:20 item 4 and 07:03 of 25 November 2026):
+ * Stage 29 Studios' answer to our complimentary listing letter was read as unclear at 0.3 and waited four days for a tap.
+ * Her words, exactly as the mailbox held them (21 November 2026, 9.02 am).
+ */
+const STAGE_29 =
+  'Hi Lawal, if it’s free then yes this would be great thank you\r\n\r\nGet Outlook for iOS<https://aka.ms/o0ukef>\r\n________________________________\r\nFrom: Lawal Adams <lawal@eventlinqs.com>\r\nSent: Saturday, 21 November 2026 07:15:19\r\nTo: Jennifer Turner <info@stage29studios.com.au>\r\nSubject: Complimentary EventLinqs listing for Stage 29 Studios'
+
+describe('a yes after a greeting, or on the condition that it is free, is a clear yes', () => {
+  test("Stage 29 Studios' own words are a yes, clear, answered by the confirmation", () => {
+    const k = reply(STAGE_29)
+    expect(k).toMatchObject({ kind: 'reply', outcome: 'yes', answerKey: 'thank_you' })
+    if (k.kind === 'reply') {
+      expect(k.confidence).toBeGreaterThanOrEqual(CLEAR)
+      expect(k.held).toBeUndefined()
+    }
+  })
+  test.each([
+    'Hi Lawal, yes please, that sounds great.',
+    'Hello, sounds good to us.',
+    'Dear Lawal,\nYes, go ahead.',
+    "If it's complimentary then sure, happy to.",
+    'If it is at no cost, yes please.',
+  ])('%s is a clear yes', (text) => {
+    const k = reply(text)
+    expect(k).toMatchObject({ outcome: 'yes', answerKey: 'thank_you' })
+    if (k.kind === 'reply') expect(k.confidence).toBeGreaterThanOrEqual(CLEAR)
+  })
+  test('a yes on any other condition, or a greeting with no yes, is not acted on', () => {
+    for (const text of ['Hi Lawal, if the dates work then yes.', 'Hi Lawal, not this year thanks.', 'Hi Lawal, thanks for the email.']) {
+      const k = reply(text)
+      if (k.kind === 'reply') expect(k.outcome === 'yes' && k.confidence >= CLEAR).toBe(false)
+    }
+  })
+})
+
+describe('money or a contract is never answered by itself (CRM directive section 9)', () => {
+  test.each([
+    'Yes please, send through the contract and we will sign it.',
+    'Happy to, what are your advertising rates?',
+    'Sure, our fee for a feature is $150, please invoice us.',
+    'Yes, we would love a sponsorship arrangement.',
+  ])('%s is held for the PM, with no answer drafted', (text) => {
+    const k = reply(text)
+    expect(k).toMatchObject({ kind: 'reply', answerKey: null, held: HELD_MONEY_OR_CONTRACT })
+    if (k.kind === 'reply') expect(k.confidence).toBeLessThan(CLEAR)
+  })
+  test('a stop that names money is still a stop, and a question about our cost is still answered', () => {
+    expect(reply('Please stop emailing us, we will not pay for listings.')).toMatchObject({ outcome: 'stop', answerKey: 'reply_stop' })
+    const cost = reply('How much does it cost?')
+    expect(cost).toMatchObject({ answerKey: 'reply_cost' })
+    if (cost.kind === 'reply') expect(cost.held).toBeUndefined()
   })
 })

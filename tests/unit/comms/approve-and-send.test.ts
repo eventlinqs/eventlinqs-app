@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { replyHash, replyProblems, replySubject, replyText } from '@/lib/comms/approve-and-send'
-import { greetingNameFor, proposedReply } from '@/lib/comms/decisions'
+import { greetingNameFor } from '@/lib/comms/decisions'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
 
 /*
@@ -17,21 +17,26 @@ describe('the reply the platform proposes', () => {
     expect(greetingNameFor(null, 'Asia Oasis')).toBe('Asia Oasis team')
     expect(greetingNameFor('  ', null)).toBe('')
   })
-  it('passes the gateway once his answer is written into it', () => {
-    const text = proposedReply('Aria', policy.replySignature).replace('Thank you for your reply.\n\n', 'Thank you for your reply.\n\nYour three days are listed now, each with its own date and time.\n')
+  it('passes the gateway with an answer written into it', () => {
+    const text = answer('Aria', 'Your three days are listed now, each with its own date and time.')
     expect(replyProblems({ ...base, text: replyText(text) }, policy)).toEqual([])
   })
 })
 
+/** A reply as a person writes one: the greeting, one answer, his closing and reply signature. */
+function answer(name: string, line: string): string {
+  return [`Hi ${name},`, '', line, '', 'Kind regards,', ...policy.replySignature].join('\n')
+}
+
 describe('the gateway refuses, and nothing goes', () => {
   it('a greeting that names someone else', () => {
-    const text = replyText(proposedReply('Maria', policy.replySignature))
+    const text = replyText(answer('Maria', 'Your three days are listed now.'))
     expect(replyProblems({ ...base, text }, policy).join(' ')).toMatch(/greeting names "Maria" but the verified recipient is "Aria"/)
   })
   it('a dash, or a reply that lost its thread subject', () => {
-    const dashed = replyText(proposedReply('Aria', policy.replySignature).replace('Thank you for your reply.', 'Thank you for your reply \u2013 truly.'))
+    const dashed = replyText(answer('Aria', 'Your three days are listed now \u2013 truly.'))
     expect(replyProblems({ ...base, text: dashed }, policy).length).toBeGreaterThan(0)
-    const text = replyText(proposedReply('Aria', policy.replySignature))
+    const text = replyText(answer('Aria', 'Your three days are listed now.'))
     expect(replyProblems({ ...base, subject: 'Your three days', text }, policy).join(' ')).toMatch(/keep the thread subject/)
   })
   it('a signature that is not his reply signature', () => {

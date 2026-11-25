@@ -6,8 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { readCentre } from '@/lib/comms/centre'
 import type { Figures } from '@/lib/comms/centre-math'
-import { proposedReply, readDecisions } from '@/lib/comms/decisions'
-import { readVoicePolicy } from '@/lib/outreach/voice-gate'
+import { readDecisions } from '@/lib/comms/decisions'
 import { approveAndSendAction, closeWithoutReplyAction } from './actions'
 import { graphConfigFromEnv } from '@/lib/outreach/graph'
 import { graphIdOf, graphPhotosOf, type InboundAttachment } from '@/lib/comms/inbound-attachments'
@@ -51,7 +50,6 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
 
   const db = createAdminClient()
   const [centre, decisions] = await Promise.all([readCentre(db, new Date()), readDecisions(db)])
-  const signature = readVoicePolicy().replySignature
   // The photographs an organiser attached, listed from the outreach mailbox itself (law 30, section 4 A); a read that
   // fails says so on the reply and never stops the page.
   const photos = new Map<string, InboundAttachment[] | string>()
@@ -91,9 +89,11 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
       ) : null}
 
       <section id="decisions" aria-labelledby="comms-decisions" className="mb-8 rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-5 sm:p-6">
-        <h2 id="comms-decisions" className="font-display text-lg font-semibold text-[var(--admin-ink)]">Needs your decision</h2>
+        <h2 id="comms-decisions" className="font-display text-lg font-semibold text-[var(--admin-ink)]">Replies with the PM</h2>
         <p className="mt-1 text-sm text-[var(--admin-soft)]">
-          {decisions.length === 0 ? 'No reply waits for you.' : `${decisions.length} ${decisions.length === 1 ? 'reply waits' : 'replies wait'} for you, newest first.`}
+          {decisions.length === 0
+            ? 'Every reply was answered by itself. Nothing here waits for you.'
+            : `${decisions.length} ${decisions.length === 1 ? 'reply was' : 'replies were'} not answered by itself and ${decisions.length === 1 ? 'is' : 'are'} with the PM, who shows you the words in your chat. Nothing here waits for you.`}
         </p>
         <ul className="mt-4 grid gap-4">
           {decisions.map((d) => (
@@ -103,6 +103,7 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
               </p>
               {d.ourSubject ? <p className="mt-1 text-sm text-[var(--admin-soft)]">Answering our message: {d.ourSubject}</p> : null}
               <blockquote className="mt-3 whitespace-pre-wrap rounded-md bg-[var(--admin-tint)] p-3 text-sm text-[var(--admin-soft)]">{d.theirWords}</blockquote>
+              {d.why ? <p className="mt-2 text-sm text-[var(--admin-soft)]">Not answered by itself: {d.why}</p> : null}
               {(() => {
                 const shown = photos.get(d.replyId)
                 if (shown === undefined) return null
@@ -122,7 +123,9 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
                   </div>
                 )
               })()}
-              {d.channel === 'email' ? (
+              {d.channel === 'email' && !d.drafted ? (
+                <p className="mt-3 text-sm text-[var(--admin-soft)]">No answer is drafted for this one: the PM writes it.</p>
+              ) : d.channel === 'email' && d.drafted ? (
                 <form action={approveAndSendAction} className="mt-4 grid gap-3">
                   <input type="hidden" name="replyId" value={d.replyId} />
                   <label htmlFor={`greeting-${d.replyId}`} className="text-sm font-medium text-[var(--admin-ink)]">
@@ -130,9 +133,9 @@ export default async function AdminCommsCentrePage({ searchParams }: { searchPar
                   </label>
                   <input id={`greeting-${d.replyId}`} name="greetingName" defaultValue={d.greetingName} required maxLength={80} className="min-h-11 rounded-lg border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-3 text-sm text-[var(--admin-ink)]" />
                   <label htmlFor={`body-${d.replyId}`} className="text-sm font-medium text-[var(--admin-ink)]">
-                    Your reply
+                    The drafted answer
                   </label>
-                  <textarea id={`body-${d.replyId}`} name="body" required rows={9} maxLength={5000} defaultValue={proposedReply(d.greetingName, signature)} className="rounded-lg border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-3 py-2 text-sm text-[var(--admin-ink)]" />
+                  <textarea id={`body-${d.replyId}`} name="body" required rows={9} maxLength={5000} defaultValue={d.drafted} className="rounded-lg border border-[var(--admin-line-strong)] bg-[var(--admin-paper)] px-3 py-2 text-sm text-[var(--admin-ink)]" />
                   <div className="flex flex-wrap gap-3">
                     <button type="submit" className="min-h-11 rounded-lg bg-[var(--admin-ink)] px-4 text-sm font-semibold text-[var(--admin-paper)]">
                       Approve and send

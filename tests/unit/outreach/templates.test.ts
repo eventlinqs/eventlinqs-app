@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { LAWAL_SIGNATURE, renderTemplate, type TemplateRow } from '@/lib/outreach/rules'
+import { LAWAL_SIGNATURE, REPLY_SIGNATURE, renderTemplate, type TemplateRow } from '@/lib/outreach/rules'
 
 /**
  * THE TEMPLATE ROWS (scripts/ops/data/outreach-templates-28oct.json, written to outreach_templates by
@@ -46,7 +46,12 @@ describe('every template row passes every rule once filled from facts', () => {
     expect(r.heldBecause).toEqual([])
     expect(r.body.startsWith('Hi ')).toBe(true)
     if (t.channel === 'email') {
-      expect(r.body).toContain(LAWAL_SIGNATURE)
+      // A reply signs as Lawal replies, without the ABN block (the voice gate refuses it in a reply); every other email
+      // carries his full signature (the PM's 07:03 of 25 November 2026: no reply could pass the gate until this).
+      if (t.purpose === 'reply') {
+        expect(r.body).toContain(REPLY_SIGNATURE)
+        expect(r.body).not.toContain('ABN')
+      } else expect(r.body).toContain(LAWAL_SIGNATURE)
       expect(r.body).toContain(UNSUB)
     }
   })
