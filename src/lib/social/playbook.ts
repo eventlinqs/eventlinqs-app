@@ -206,6 +206,20 @@ export const PLAYBOOK: readonly PlaybookRule[] = [
     source: "the comedy set's approval of 25 November 2026, 01:10 (GitHub Actions run 45411129004)",
     date: '2026-11-25',
   },
+  {
+    id: 'city-carousel-weekly',
+    rule: "Monday's week ahead is the weekly city carousel: 'THINGS TO DO IN' the city 'THIS WEEK' over a licensed photograph of the city itself, the dates written with 'to', an icon row from the week's real events, then eight events (seven days from the post, none started, one per title, at least three categories and four days, a free one when the week has one, organisers with a relationship first), then the ask; its caption names the city and the week, a line per event with its day, and the question.",
+    reason: "Lawal's yes to the 'Things to do in [city] this week' format, the benchmark's best performing post shape for a city account.",
+    source: "Lawal, 25 November 2026, 00:47; the PM's 01:12; SOCIAL-BENCHMARK-PLAYBOOK-25NOV.md section 5",
+    date: '2026-11-25',
+  },
+  {
+    id: 'post-kind-explicit',
+    rule: 'Every piece carries its post kind in the playbook\'s words (city, event, organiser, reel, story), the goal that kind is for and the measure it is judged by: a feed post performs when, within 72 hours, it reaches twice our average likes or shares above its likes.',
+    reason: 'A post is only improved when the engine knows what it was for and how to read whether it worked.',
+    source: "the PM's 01:02 item 2 of 25 November 2026; SOCIAL-BENCHMARK-PLAYBOOK-25NOV.md sections 3a and 4",
+    date: '2026-11-25',
+  },
 ]
 
 /**

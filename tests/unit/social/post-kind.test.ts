@@ -24,3 +24,9 @@ describe('every piece has its post kind, its goal and its measure', () => {
     for (const k of ['city', 'event', 'organiser', 'reel'] as const) expect(POST_KINDS[k].measure).toContain('within 72 hours')
   })
 })
+
+test("the playbook holds the carousel's rule and the post kind's (the PM's 01:12 item 4: each rule a playbook rule)", async () => {
+  const { PLAYBOOK } = await import('@/lib/social/playbook')
+  const ids = PLAYBOOK.map((r) => r.id)
+  expect(ids).toEqual(expect.arrayContaining(['city-carousel-weekly', 'post-kind-explicit']))
+})
