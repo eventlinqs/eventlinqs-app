@@ -43,6 +43,6 @@ describe('in the 08:00 report, every morning', () => {
   it('the daily cron reads it every morning, and a failed read is named in the line', () => {
     const route = readFileSync('src/app/api/cron/health-heartbeat/route.ts', 'utf8')
     expect(route).toMatch(/const perContact = await readMessagesPerContact\(db, now\)\.catch\(\(err: unknown\) => `not read: /)
-    expect(route).toMatch(/answers, perContact(, floor)?(, nextActions)? \}\)/)
+    expect(route).toMatch(/answers, perContact(, floor)?(, nextActions)?(, scoreboard)? \}\)/)
   })
 })
