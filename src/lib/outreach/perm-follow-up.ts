@@ -34,7 +34,9 @@ export const LIFECYCLE_PERM_FOLLOW_UP: PermFollowUpLetter = {
   channel: 'email',
   purpose: 'cadence',
   step: 2,
-  subject: 'Re: Promoting [event] on EventLinqs',
+  // In the request's own thread, whichever version of the request it was (the subject it actually went with): version 1
+  // went as 'Your [event] listing on EventLinqs: may we use your photo?', version 2 as 'Promoting [event] on EventLinqs'.
+  subject: 'Re: [thread subject]',
   body: [
     'Hi [greeting],',
     'Just following up on our request to use the event image for [event] in our EventLinqs promotions.',
@@ -75,6 +77,8 @@ export function draftPermFollowUp(input: {
   readonly record: PermRequestRecord
   readonly event: LetterEvent
   readonly unsubscribeUrl: string | null
+  /** The request's own subject, as it went; the follow up answers it once ('Re:'), never 'Re: Re:'. */
+  readonly threadSubject: string | null
   readonly now: Date
 }): PermFollowUpDraft {
   const r = input.record
@@ -109,5 +113,6 @@ export function draftPermFollowUp(input: {
   if (!clock.due.includes('perm_follow_up')) {
     return notDrafted(`not due on the event's clock: once, from T-17 and four days after the request, never inside T-7 (the event is ${clock.daysToStart} day(s) away)`)
   }
-  return { state: 'drafted', letter: renderTemplate(LIFECYCLE_PERM_FOLLOW_UP, lifecycleFields(input.facts), input.unsubscribeUrl) }
+  const thread = (input.threadSubject ?? '').replace(/^(re:\s*)+/i, '').trim() || null
+  return { state: 'drafted', letter: renderTemplate(LIFECYCLE_PERM_FOLLOW_UP, { ...lifecycleFields(input.facts), 'thread subject': thread }, input.unsubscribeUrl) }
 }

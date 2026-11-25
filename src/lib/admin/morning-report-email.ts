@@ -13,7 +13,13 @@ import type { LearnedLines } from '@/lib/ops/learned-lines'
  */
 export function morningReportEmail(
   report: MorningReport,
-  when: { readonly dateWords: string; readonly adminUrl: string; readonly learned?: LearnedLines },
+  when: {
+    readonly dateWords: string
+    readonly adminUrl: string
+    readonly learned?: LearnedLines
+    /** Mondays: how fast we answered last week, by class (src/lib/outreach/answer-report.ts; the PM's 15:10 item 5). */
+    readonly answers?: string
+  },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
   // Each check's saved copy and Stop, on the admin's own origin (adminUrl is the report's own page, /admin/today).
@@ -37,6 +43,7 @@ export function morningReportEmail(
       : []),
     // What the engine learned, from production (Lawal's 06:07 of 20 November 2026): the timetable, yesterday's lessons, today's changes.
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
+    ...(when.answers ? [`How fast we answered last week: ${when.answers}`, ''] : []),
     `Everything above is read from production at the time of sending. The admin: ${when.adminUrl}`,
   ].join('\n')
   const rowsHtml = report.rows
@@ -63,6 +70,7 @@ export function morningReportEmail(
     (when.learned
       ? `<p><strong>Today's timetable:</strong> ${escape(when.learned.timetable)}<br/><strong>Learned yesterday:</strong> ${escape(when.learned.learned)}<br/><strong>Changed today because of it:</strong> ${escape(when.learned.changed)}</p>`
       : '') +
+    (when.answers ? `<p><strong>How fast we answered last week:</strong> ${escape(when.answers)}</p>` : '') +
     `<p style="color:#666">Everything above is read from production at the time of sending. <a href="${when.adminUrl}">The admin</a></p>` +
     `</div>`
   return { subject: `EventLinqs 08:00 report, ${when.dateWords}: ${report.allWell ? 'all well' : 'needs your eye'}`, text, html }

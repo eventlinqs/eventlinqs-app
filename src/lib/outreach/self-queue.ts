@@ -5,6 +5,7 @@ import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readTouchVoice } from './daily-queue'
 import { dayAndMinuteIn, DEFAULT_SEND_WINDOW, inBusinessHours, recipientZone, sendWindowOf, type SendWindow } from './sender'
 import { mailboxFor } from './addresses'
+import { answerAt, answerClassOf } from './answer-timing'
 import letters from './letter-approvals.generated.json'
 import standing from './standing-approvals.generated.json'
 import { readVoicePolicy, voiceProblems, type VoicePolicy } from './voice-gate'
@@ -324,21 +325,25 @@ export async function queueApprovedHeldLetters(
  *      a template whose words are not true today stays off in the approvals record, so its drafts stay held.
  * The CRM directive's section 9 is kept before this: a reply that speaks of money or a contract is never drafted
  * (./replies.ts MONEY_OR_CONTRACT), and goes to the PM. The sender then sends it from the address the letter it answers
- * went from, in their thread (./sender.ts wroteToFor), and records the provider's own confirmation.
+ * went from, in their thread (./sender.ts readConversation), and records the provider's own confirmation.
+ *
+ * ITS TIME (Lawal, 25 November 2026, 15:14 and 15:16; ./answer-timing.ts): an answer is not outreach, so it is queued
+ * for its own class's time after their message arrived (a sale 50 to 60 minutes, a reply to our letter 1 to 2 hours,
+ * general about 4 hours; never under 50 minutes), inside 07:00 to 21:00 in Melbourne, never law 44's window.
  */
 export const REPLY_TEMPLATE_KEYS: readonly string[] = [
   'reply_cost', 'reply_existing_ticketing', 'reply_who_are_you', 'reply_why_listed', 'reply_not_now', 'reply_change', 'reply_stop', 'reply_take_down',
   'thank_you', 'withdrawal_confirmed',
 ]
 
-type HeldReply = { id: string; contact_id: string; subject: string | null; body: string; held_because: string[] | null; outreach_templates: { key: string; version: number } | null }
+type HeldReply = { id: string; contact_id: string; subject: string | null; body: string; in_reply_to: string | null; held_because: string[] | null; outreach_templates: { key: string; version: number } | null }
 
 export async function queueApprovedReplies(
   db: Admin,
-  deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[] },
+  deps: { readonly now: Date; readonly policy?: VoicePolicy; readonly approvals?: readonly StandingApproval[]; readonly random?: () => number },
 ): Promise<SelfQueueReport> {
   const report: SelfQueueReport = { queued: [], waiting: [] }
-  const sender = await db.from('outreach_sender').select('mode, send_days, send_from_minute, send_until_minute').eq('id', true).single()
+  const sender = await db.from('outreach_sender').select('mode').eq('id', true).single()
   if (sender.error) throw new Error(`outreach_sender: ${sender.error.message}`)
   if (sender.data.mode !== 'live') return { ...report, note: `the sender is ${sender.data.mode}: no reply queues itself` }
   let policy: VoicePolicy
@@ -349,7 +354,7 @@ export async function queueApprovedReplies(
   }
   const held = await db
     .from('outreach_touches')
-    .select('id, contact_id, subject, body, held_because, outreach_templates(key, version)')
+    .select('id, contact_id, subject, body, in_reply_to, held_because, outreach_templates(key, version)')
     .eq('state', 'held')
     .in('purpose', ['reply', 'relationship'])
     .not('in_reply_to', 'is', null)
@@ -371,13 +376,26 @@ export async function queueApprovedReplies(
       report.waiting.push({ id: t.id, reasons })
       continue
     }
-    const at = nextWindowStart(deps.now, await recipientZone(db, t.contact_id), sendWindowOf(sender.data)).toISOString()
+    // Their message it answers, and our letter that one answered, give the class and the time.
+    const theirs = await db.from('outreach_replies').select('received_at, outcome, wording, touch_id').eq('source_message_id', t.in_reply_to ?? '').maybeSingle()
+    if (theirs.error || !theirs.data) {
+      report.waiting.push({ id: t.id, reasons: [theirs.error ? `the message it answers could not be read: ${theirs.error.message}` : 'the message it answers is not on record'] })
+      continue
+    }
+    const letter = theirs.data.touch_id ? await db.from('outreach_touches').select('comms_category').eq('id', theirs.data.touch_id as string).maybeSingle() : null
+    const klass = answerClassOf({
+      templateKey: key,
+      outcome: (theirs.data.outcome as string | null) ?? null,
+      answeredCategory: ((letter?.data as { comms_category?: string | null } | null | undefined)?.comms_category as string | null | undefined) ?? null,
+      words: String(theirs.data.wording ?? ''),
+    })
+    const at = answerAt({ receivedAt: new Date(theirs.data.received_at as string), klass, now: deps.now, random: (deps.random ?? Math.random)() }).toISOString()
     const moved = await db.from('outreach_touches').update({ state: 'queued', scheduled_for: at }).eq('id', t.id).eq('state', 'held').select('id').maybeSingle()
     if (moved.error || !moved.data) {
       report.waiting.push({ id: t.id, reasons: [moved.error?.message.replace(/^refused: /, '') ?? 'it was no longer held'] })
       continue
     }
-    report.queued.push({ id: t.id, at, why: clear.reason })
+    report.queued.push({ id: t.id, at, why: `${clear.reason}; answered as ${klass}` })
   }
   return report
 }

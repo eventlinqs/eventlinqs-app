@@ -1,4 +1,6 @@
 import { COMMS_CATEGORIES, type CommsCategory } from '@/lib/comms/categories'
+import { startOfLocalDayUtcOffset } from '@/lib/events/listing-window'
+import { afterYourNightRefusal, afterYourNightResults } from '@/lib/outreach/after-your-night'
 
 /**
  * THE GROWTH AND COMMUNICATIONS CENTRE'S FIGURES (Law 24; Lawal's master communications directive of 18 November 2026,
@@ -137,41 +139,44 @@ export function nextGoAt(schedules: ScheduleRow[], now: Date): string | null {
 /**
  * THE NIGHT REPORTS, GROUPED BY WHETHER ONE CAN EVER BE SENT (the PM's 06:59 item 4 of 25 November 2026: "a night report
  * that can never go ... is not 'waiting': show it as 'not sendable' with its reason"), as the planner's message 8 path
- * decides it (src/lib/outreach/planner.ts planRelationship; src/lib/outreach/after-your-night.ts): sent; not sendable
- * because no organiser runs the night's venue, or the venue's organiser is not a partner (a cold first letter the 30 day
- * gap holds), or a partner's report is past its window (a missed day is never caught up, law 42); otherwise a partner's,
- * due now or from its day. Pure.
+ * decides it (src/lib/outreach/planner.ts planRelationship, nightPartner; src/lib/outreach/after-your-night.ts): sent; not
+ * sendable because no organiser is on record for the night, or its organiser is not a partner (a cold first letter the
+ * 30 day gap holds), or a partner's is past its window (T+1 to T+3; a missed day is never caught up, law 42), or nothing
+ * above zero was counted for it (no results note); otherwise a partner's, due now or from its day. Pure.
  */
-export type ReportRow = { event_id: string; night_ended_at: string | null; sent_at: string | null; lettered: boolean }
-export type ReportGroups = { total: number; sent: number; dueNow: number; notYetDue: number; firstDue: string | null; noOrganiser: number; notPartner: number; pastWindow: number }
+export type ReportRow = { event_id: string; night_ended_at: string | null; sent_at: string | null; lettered: boolean; figures?: unknown }
+export type ReportGroups = { total: number; sent: number; dueNow: number; notYetDue: number; firstDue: string | null; noOrganiser: number; notPartner: number; pastWindow: number; nothingCounted: number }
 export function reportGroups(
   reports: ReportRow[],
-  ctx: { venueOf: ReadonlyMap<string, string | null>; organisersAt: ReadonlyMap<string, readonly string[]>; partners: ReadonlySet<string> },
+  ctx: {
+    /** The partner whose night it was, by the three roads (nightPartner), or null. */
+    readonly partnerOf: ReadonlyMap<string, string | null>
+    /** The nights an organiser is on record for at all (a venue they run, or an organisation not the platform's). */
+    readonly hasOrganiser: ReadonlySet<string>
+    /** Each night's own zone. */
+    readonly zoneOf: ReadonlyMap<string, string>
+  },
   now: Date,
-  window: { dueDays: number; staleDays: number },
 ): ReportGroups {
-  const g: ReportGroups = { total: reports.length, sent: 0, dueNow: 0, notYetDue: 0, firstDue: null, noOrganiser: 0, notPartner: 0, pastWindow: 0 }
+  const g: ReportGroups = { total: reports.length, sent: 0, dueNow: 0, notYetDue: 0, firstDue: null, noOrganiser: 0, notPartner: 0, pastWindow: 0, nothingCounted: 0 }
   for (const r of reports) {
     if (r.sent_at || r.lettered) {
       g.sent++
       continue
     }
-    const venue = ctx.venueOf.get(r.event_id) ?? null
-    const organisers = venue ? (ctx.organisersAt.get(venue) ?? []) : []
-    if (organisers.length === 0) {
-      g.noOrganiser++
+    if (!(ctx.partnerOf.get(r.event_id) ?? null)) {
+      if (ctx.hasOrganiser.has(r.event_id)) g.notPartner++
+      else g.noOrganiser++
       continue
     }
-    if (!organisers.some((o) => ctx.partners.has(o))) {
-      g.notPartner++
-      continue
-    }
-    const ended = r.night_ended_at ? new Date(r.night_ended_at).getTime() : NaN
-    const days = (now.getTime() - ended) / 86_400_000
-    if (!Number.isFinite(days) || days >= window.staleDays) g.pastWindow++
-    else if (days < window.dueDays) {
+    const ended = r.night_ended_at ? new Date(r.night_ended_at) : null
+    const zone = ctx.zoneOf.get(r.event_id) ?? 'Australia/Melbourne'
+    const why = ended && Number.isFinite(ended.getTime()) ? afterYourNightRefusal(ended, now, zone) : 'its end is not on record, too late'
+    if (why && /too late/.test(why)) g.pastWindow++
+    else if (afterYourNightResults(r.figures, null) === null) g.nothingCounted++
+    else if (why && ended) {
       g.notYetDue++
-      const due = new Date(ended + window.dueDays * 86_400_000).toISOString()
+      const due = startOfLocalDayUtcOffset(ended, zone, 1).toISOString()
       if (!g.firstDue || due < g.firstDue) g.firstDue = due
     } else g.dueNow++
   }
@@ -186,9 +191,10 @@ export function reportFigures(g: ReportGroups, lastUpdated: string | null): Figu
 /** The night reports that cannot be sent, each group with its reason, for the section's notes. Pure. */
 export function reportNotes(g: ReportGroups): string[] {
   const notes: string[] = []
-  if (g.noOrganiser) notes.push(`${g.noOrganiser} night reports not sendable: no organiser runs the night's venue, so there is no one to write to`)
-  if (g.notPartner) notes.push(`${g.notPartner} night reports not sendable: the venue's organiser is not a partner (no yes yet), so the report would be a cold first letter the 30 day gap holds`)
-  if (g.pastWindow) notes.push(`${g.pastWindow} night reports not sendable: a partner's, past its window (a missed day is never caught up)`)
+  if (g.noOrganiser) notes.push(`${g.noOrganiser} night reports not sendable: no organiser is on record for the night (by a venue they run, their organisation or their booking page), so there is no one to write to`)
+  if (g.notPartner) notes.push(`${g.notPartner} night reports not sendable: the night's organiser is not a partner (no yes yet), so the report would be a cold first letter the 30 day gap holds`)
+  if (g.pastWindow) notes.push(`${g.pastWindow} night reports not sendable: a partner's, past its window, T+1 to T+3 (a missed day is never caught up)`)
+  if (g.nothingCounted) notes.push(`${g.nothingCounted} night reports not sent: a partner's, but nothing above zero was counted for the night, so there is no results note to send`)
   return notes
 }
 

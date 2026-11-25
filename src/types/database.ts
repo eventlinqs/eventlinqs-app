@@ -4388,6 +4388,7 @@ export type Database = {
           permits_facts: boolean
           permits_images: boolean
           permits_links: boolean
+          read_at_most_every_days: number | null
           refresh_interval_hours: number
           refresh_interval_reason: string | null
           source_type: string
@@ -4454,6 +4455,7 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          read_at_most_every_days?: number | null
           refresh_interval_hours?: number
           refresh_interval_reason?: string | null
           source_type?: string
@@ -4520,6 +4522,7 @@ export type Database = {
           permits_facts?: boolean
           permits_images?: boolean
           permits_links?: boolean
+          read_at_most_every_days?: number | null
           refresh_interval_hours?: number
           refresh_interval_reason?: string | null
           source_type?: string
@@ -6995,6 +6998,9 @@ export type Database = {
           relevance: string | null
           role: string
           seen_on: string | null
+          stated_address: string | null
+          stated_address_at: string | null
+          stated_address_reply: string | null
           unsubscribe_token: string
         }
         Insert: {
@@ -7019,6 +7025,9 @@ export type Database = {
           relevance?: string | null
           role: string
           seen_on?: string | null
+          stated_address?: string | null
+          stated_address_at?: string | null
+          stated_address_reply?: string | null
           unsubscribe_token?: string
         }
         Update: {
@@ -7043,6 +7052,9 @@ export type Database = {
           relevance?: string | null
           role?: string
           seen_on?: string | null
+          stated_address?: string | null
+          stated_address_at?: string | null
+          stated_address_reply?: string | null
           unsubscribe_token?: string
         }
         Relationships: [
@@ -7646,6 +7658,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outreach_message_mailboxes: {
+        Row: {
+          contact_id: string | null
+          conversation_id: string | null
+          counterpart_address: string | null
+          direction: string
+          internet_message_id: string
+          mailbox: string
+          message_at: string | null
+          recorded_at: string
+          subject: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          conversation_id?: string | null
+          counterpart_address?: string | null
+          direction: string
+          internet_message_id: string
+          mailbox: string
+          message_at?: string | null
+          recorded_at?: string
+          subject?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          conversation_id?: string | null
+          counterpart_address?: string | null
+          direction?: string
+          internet_message_id?: string
+          mailbox?: string
+          message_at?: string | null
+          recorded_at?: string
+          subject?: string | null
+        }
+        Relationships: []
       }
       outreach_play_judgements: {
         Row: {

@@ -51,6 +51,9 @@ const PRODUCTION_KEYS = [
   'lifecycle_perm', 'lifecycle_acq',
   // The source ask (the founder, 12:14 of 23 November 2026): written with its play by C:/dev/EVIDENCE/EL-23NOV/source-asks/load-APPLY.sql.
   'source_ask',
+  // Law 49's two follow ups (the PM's 14:15 of 25 November 2026, item D): their class by 20261125170002, their template
+  // rows written after it is in force (C:/dev/EVIDENCE/EL-25NOV/law49-steps).
+  'lifecycle_perm_follow_up', 'lifecycle_acq_follow_up',
 ]
 
 describe('the seven communication categories (Law 24)', () => {
@@ -84,7 +87,7 @@ describe('the seven communication categories (Law 24)', () => {
 
   it('the template map is read from the latest migration that writes it, with the rows added to it in place since', () => {
     expect(MAP_MIGRATION).toBe('20261121150001_lifecycle_letters_take_their_class.sql')
-    expect(IN_PLACE_MIGRATIONS).toEqual(['20261123130001_source_ask_takes_its_class.sql'])
+    expect(IN_PLACE_MIGRATIONS).toEqual(['20261123130001_source_ask_takes_its_class.sql', '20261125170002_law49_follow_ups_take_their_class.sql'])
   })
 
   it('the source ask is PERM-SOURCE: a permission request, from hello@, never toward the 20', () => {

@@ -14,13 +14,16 @@
  * The database judges every draft again and refuses what it must; a refusal is reported in its words and the planner
  * moves on. Nothing here sends.
  */
-import { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
+import { AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, afterYourNightResults, nightPartner } from './after-your-night'
+import { readTheirNights } from './their-nights'
+import { dayWords } from './twenty-letters'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
 import { draftFromTemplate } from './drafts'
 import { contextKeys } from './contact-policy'
 import { draftSegmentALetter } from './segment-a-play'
+import { draftLifecycleFollowUp } from './lifecycle-follow-up'
 import { draftLifecycleLetter, lifecycleSlotBase } from './lifecycle-play'
 import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
 import { organiserCitySlugs } from './organiser-city'
@@ -236,8 +239,38 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       }
     }
 
-    // 1. Follow-ups that are due. A law 49 play has none: the event's clock owns its follow ups, and their words wait on
-    // Lawal's one template approval.
+    // 1. Follow-ups that are due. A LAW 49 PLAY'S ONE FOLLOW UP (the PM's 12:11 of 25 November 2026, item 1; law 49's
+    // 'follow ups once'): each first letter of its law 49 kind sent in the last 35 days, on its own night's clock, from
+    // the play's step 2 template (./lifecycle-follow-up.ts); a play with no step 2 template drafts none. Read by the
+    // letter's template key, every version, not by the play: a play's terms never change (outreach_play_terms_hold), so
+    // the step 2 comes as a new version of the play, and the letters its earlier versions sent (on lifecycle_perm and
+    // lifecycle_acq versions 1 and 2, since 21 November 2026) are followed up too, once each.
+    if (lifecycle && play.step2_template_id && base) {
+      const since = new Date(deps.now.getTime() - 35 * 86_400_000).toISOString()
+      const sentFirsts = await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key, outreach_templates!inner(key)').eq('outreach_templates.key', lifecycle).eq('step', 1).eq('state', 'sent').gte('sent_at', since).order('sent_at', { ascending: true }).limit(500)
+      if (sentFirsts.error) throw new Error(`the play's first letters could not be read: ${sentFirsts.error.message}`)
+      for (const first of sentFirsts.data ?? []) {
+        if (room <= 0) break
+        const f = await draftLifecycleFollowUp(db, {
+          play: { id: play.id, name: play.name },
+          key: lifecycle,
+          first: { id: first.id as string, contactId: first.contact_id as string, subject: (first.subject as string | null) ?? null, contextKey: (first.context_key as string | null) ?? null, sentAt: first.sent_at as string },
+          templateId: play.step2_template_id,
+          // As the first letters are slotted: the night before, after the morning's letters already scheduled.
+          scheduledFor: base.getTime() > deps.now.getTime()
+            ? new Date(base.getTime() + (report.usedToday + slot) * SPACING_MINUTES * 60_000)
+            : new Date(deps.now.getTime() + slot * SPACING_MINUTES * 60_000),
+          origin: deps.origin,
+          actingUser: deps.actingUser,
+        })
+        if (f.state === 'queued') {
+          report.queued++
+          room--
+          slot++
+        } else if (f.state === 'held') report.held.push({ contactId: first.contact_id as string, why: [...f.why] })
+        else if (f.state === 'refused') report.refused.push({ contactId: first.contact_id as string, why: f.why })
+      }
+    }
     const firsts = lifecycle ? { data: [] } : await db.from('outreach_touches').select('id, contact_id, sent_at, subject, context_key').eq('play_id', play.id).eq('step', 1).eq('state', 'sent')
     for (const first of firsts.data ?? []) {
       if (room <= 0) break
@@ -433,30 +466,53 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
     else report.queued++
   }
 
-  // Message 8: each night report from two to seven days old, not sent by hand, to the partner whose venue held the night.
+  // MESSAGE 8, THE RESULTS NOTE (law 49: T+1 to T+3, "a results note (views, clicks, tickets sold through EventLinqs) and
+  // the invite to list their next event natively"; after_your_night version 2, the PM's 12:11 of 25 November 2026, item
+  // 1): each night report of a night that ended in the last four days, not sent by hand, to the PARTNER whose night it
+  // was, found by the three roads ./their-nights.ts reads (a venue they run, their own organisation, a booking page on
+  // their own website's host), never by the venue alone. Its figures only when read and above zero; nothing counted,
+  // no note.
+  const partnerRows = byOrganiser.size > 0 ? await db.from('organisers').select('id, name, organisation_id, website_url').in('id', [...byOrganiser.keys()]) : { data: [], error: null }
+  if (partnerRows.error) throw new Error(`organisers: ${partnerRows.error.message}`)
+  const partnersById = new Map((partnerRows.data ?? []).map((o) => [o.id as string, o]))
   const reports = await db
     .from('organiser_night_reports')
     .select('id, event_id, figures, night_ended_at')
     .is('sent_at', null)
-    .lte('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_DUE_DAYS * 86_400_000).toISOString())
+    .lte('night_ended_at', deps.now.toISOString())
     .gt('night_ended_at', new Date(deps.now.getTime() - AFTER_YOUR_NIGHT_STALE_DAYS * 86_400_000).toISOString())
     .order('night_ended_at')
-    .limit(200)
+    .limit(300)
   if (reports.error) throw new Error(`organiser_night_reports: ${reports.error.message}`)
   for (const night of reports.data ?? []) {
     const already = await db.from('outreach_touches').select('id').eq('night_report_id', night.id).neq('state', 'void').limit(1)
     if (already.error) throw new Error(`outreach_touches: ${already.error.message}`)
     if ((already.data ?? []).length > 0) continue
-    const event = await db.from('events').select('title, venue_id').eq('id', night.event_id).maybeSingle()
+    const event = await db.from('events').select('title, start_date, timezone, venue_id, organisation_id, external_ticket_url').eq('id', night.event_id).maybeSingle()
     if (event.error) throw new Error(`events: ${event.error.message}`)
-    if (!event.data?.venue_id) continue
-    const owners = await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id)
+    if (!event.data) continue
+    const links = await db.from('event_booking_links').select('url').eq('event_id', night.event_id)
+    if (links.error) throw new Error(`event_booking_links: ${links.error.message}`)
+    const owners = event.data.venue_id ? await db.from('organiser_venues').select('organiser_id').eq('venue_id', event.data.venue_id) : { data: [], error: null }
     if (owners.error) throw new Error(`organiser_venues: ${owners.error.message}`)
-    const organiserId = (owners.data ?? []).map((o) => o.organiser_id).find((o) => byOrganiser.has(o) && (!deps.organisers || deps.organisers.includes(o)))
-    if (!organiserId) continue
-    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now)
+    const pages = [(event.data.external_ticket_url as string | null) ?? null, ...(links.data ?? []).map((l) => l.url as string)].filter((u): u is string => Boolean(u))
+    const organiserId = nightPartner(
+      { venueOwners: (owners.data ?? []).map((o) => o.organiser_id as string), organisationId: (event.data.organisation_id as string | null) ?? null, bookingPages: pages },
+      [...partnersById.values()].map((o) => ({ id: o.id as string, organisationId: (o.organisation_id as string | null) ?? null, websiteUrl: (o.website_url as string | null) ?? null })),
+    )
+    if (!organiserId || (deps.organisers && !deps.organisers.includes(organiserId))) continue
+    const zone = ((event.data.timezone as string | null) ?? '').trim() || 'Australia/Melbourne'
+    const why = afterYourNightRefusal(new Date(night.night_ended_at), deps.now, zone)
     if (why) {
       report.afterNight.notDue.push({ organiserId, why })
+      continue
+    }
+    const org = partnersById.get(organiserId)!
+    const ahead = await readTheirNights(db, { id: organiserId, organisation_id: (org.organisation_id as string | null) ?? null, website_url: (org.website_url as string | null) ?? null }, deps.now, 1)
+    const next = ahead[0] ? { title: ahead[0].title, day: dayWords(ahead[0].startDate, ahead[0].timezone), link: `${deps.origin.replace(/\/+$/, '')}/events/${ahead[0].slug}` } : null
+    const results = afterYourNightResults(night.figures, next)
+    if (!results) {
+      report.afterNight.notDue.push({ organiserId, why: 'nothing above zero was counted for that night, so there is no results note to send' })
       continue
     }
     const contactId = byOrganiser.get(organiserId)!
@@ -464,7 +520,13 @@ export async function planRelationship(db: Admin, deps: { now: Date; origin: str
       contactId,
       templateKey: 'after_your_night',
       purpose: 'relationship',
-      extraFields: afterYourNightFields(night.figures, event.data.title),
+      extraFields: {
+        night: event.data.title as string,
+        'night day': dayWords(event.data.start_date as string, zone),
+        results,
+        // Where they add their next night: the public page that answers 200 (/submit-event), never a guessed one.
+        link: `${deps.origin.replace(/\/+$/, '')}/submit-event`,
+      },
       nightReportId: night.id,
       contextKey: contextKeys.report(night.id),
       scheduledFor: deps.now,
@@ -672,7 +734,8 @@ export function featuredFields(k: { title: string; cityName: string | null; went
  * empty, so the message is held for Lawal rather than saying a number nobody counted.
  */
 // Message 8's own window lives in after-your-night.ts, read by the planner here and by the sender at send time.
-export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
+export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, nightPartner } from './after-your-night'
+
 
 const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
 

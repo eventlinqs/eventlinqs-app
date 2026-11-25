@@ -22,7 +22,8 @@ import {
   type TouchRow,
 } from '@/lib/comms/centre-math'
 import { formatPlatformDateTime } from '@/lib/dates/event-time'
-import { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS } from '@/lib/outreach/after-your-night'
+import { nightPartner } from '@/lib/outreach/after-your-night'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { nextWindowStart } from '@/lib/outreach/self-queue'
 
 /**
@@ -61,8 +62,8 @@ export async function readCentre(db: Db, now: Date): Promise<Centre> {
   const rejections = await readEveryRow<{ piece_id: string; revision: number }>('the social rejections', (a, b) =>
     db.from('social_piece_decisions').select('piece_id, revision').eq('decision', 'rejected').order('id').range(a, b) as never,
   )
-  const reports = await readEveryRow<{ id: string; event_id: string; night_ended_at: string | null; read_at: string | null; sent_at: string | null }>('the night reports', (a, b) =>
-    db.from('organiser_night_reports').select('id, event_id, night_ended_at, read_at, sent_at').order('id').range(a, b) as never,
+  const reports = await readEveryRow<{ id: string; event_id: string; night_ended_at: string | null; read_at: string | null; sent_at: string | null; figures: unknown }>('the night reports', (a, b) =>
+    db.from('organiser_night_reports').select('id, event_id, night_ended_at, read_at, sent_at, figures').order('id').range(a, b) as never,
   )
   // Who a night report could go to, as the planner's message 8 path reads it: the night's venue, the organisers who run
   // it, and which of them are partners (a contact's yes or interested, or their own express consent).
@@ -74,10 +75,21 @@ export async function readCentre(db: Db, now: Date): Promise<Centre> {
   )
   const reportEvents = [...new Set(reports.map((r) => r.event_id))]
   const venueOf = new Map<string, string | null>()
+  // Message 8 version 2 finds a night's partner by three roads (src/lib/outreach/after-your-night.ts nightPartner): a
+  // venue they run, their own organisation, a booking page on their own website's host; and judges T+1 to T+3 in the
+  // night's own zone. So each night's organisation, booking pages and zone are read with its venue.
+  const nightOf = new Map<string, { organisationId: string | null; pages: string[]; zone: string }>()
   for (let i = 0; i < reportEvents.length; i += 150) {
-    const part = await db.from('events').select('id, venue_id').in('id', reportEvents.slice(i, i + 150))
+    const ids = reportEvents.slice(i, i + 150)
+    const part = await db.from('events').select('id, venue_id, organisation_id, external_ticket_url, timezone').in('id', ids)
     if (part.error) throw new Error(`the nights' venues could not be read: ${part.error.message}`)
-    for (const e of (part.data ?? []) as { id: string; venue_id: string | null }[]) venueOf.set(e.id, e.venue_id)
+    const links = await db.from('event_booking_links').select('event_id, url').in('event_id', ids)
+    if (links.error) throw new Error(`the nights' booking pages could not be read: ${links.error.message}`)
+    for (const e of (part.data ?? []) as { id: string; venue_id: string | null; organisation_id: string | null; external_ticket_url: string | null; timezone: string | null }[]) {
+      venueOf.set(e.id, e.venue_id)
+      const pages = [e.external_ticket_url, ...((links.data ?? []) as { event_id: string; url: string }[]).filter((l) => l.event_id === e.id).map((l) => l.url)].filter((u): u is string => Boolean(u))
+      nightOf.set(e.id, { organisationId: e.organisation_id, pages, zone: (e.timezone ?? '').trim() || 'Australia/Melbourne' })
+    }
   }
   const digests = await readEveryRow<{ digest_date: string | null; sent_at: string | null }>('the sales digests', (a, b) =>
     db.from('organiser_sales_digest_sends').select('digest_date, sent_at').order('organisation_id').order('digest_date').range(a, b) as never,
@@ -129,11 +141,31 @@ export async function readCentre(db: Db, now: Date): Promise<Centre> {
   const organisersAt = new Map<string, string[]>()
   for (const l of venueLinks) organisersAt.set(l.venue_id, [...(organisersAt.get(l.venue_id) ?? []), l.organiser_id])
   const lettered = new Set(touches.filter((t) => t.night_report_id && t.state !== 'void').map((t) => t.night_report_id as string))
+  // The partners' own rows, for the roads; the platform's own listings organisation is never anyone's partner, and a
+  // night under it has no organiser on record by that road (src/lib/growth/platform-organiser.ts).
+  const platform = await readPlatformOrganiserIds(db)
+  const partnerIds = [...partners].filter((o) => !platform.has(o))
+  const partnerRows = partnerIds.length > 0 ? await db.from('organisers').select('id, organisation_id, website_url').in('id', partnerIds) : { data: [], error: null }
+  if (partnerRows.error) throw new Error(`the partners could not be read: ${partnerRows.error.message}`)
+  const platformOrgs = platform.size > 0 ? await db.from('organisers').select('organisation_id').in('id', [...platform]) : { data: [], error: null }
+  if (platformOrgs.error) throw new Error(`the platform's own organisation could not be read: ${platformOrgs.error.message}`)
+  const platformOrganisations = new Set(((platformOrgs.data ?? []) as { organisation_id: string | null }[]).map((o) => o.organisation_id).filter((x): x is string => Boolean(x)))
+  const roads = ((partnerRows.data ?? []) as { id: string; organisation_id: string | null; website_url: string | null }[]).map((o) => ({ id: o.id, organisationId: o.organisation_id, websiteUrl: o.website_url }))
+  const partnerOf = new Map<string, string | null>()
+  const hasOrganiser = new Set<string>()
+  const zoneOf = new Map<string, string>()
+  for (const id of reportEvents) {
+    const venue = venueOf.get(id) ?? null
+    const n = nightOf.get(id)
+    const venueOwners = venue ? (organisersAt.get(venue) ?? []) : []
+    partnerOf.set(id, nightPartner({ venueOwners, organisationId: n?.organisationId ?? null, bookingPages: n?.pages ?? [] }, roads))
+    if (venueOwners.length > 0 || (n?.organisationId && !platformOrganisations.has(n.organisationId))) hasOrganiser.add(id)
+    if (n) zoneOf.set(id, n.zone)
+  }
   const groups: ReportGroups = reportGroups(
-    reports.map((r) => ({ event_id: r.event_id, night_ended_at: r.night_ended_at, sent_at: r.sent_at, lettered: lettered.has(r.id) })),
-    { venueOf, organisersAt, partners },
+    reports.map((r) => ({ event_id: r.event_id, night_ended_at: r.night_ended_at, sent_at: r.sent_at, lettered: lettered.has(r.id), figures: r.figures })),
+    { partnerOf, hasOrganiser, zoneOf },
     now,
-    { dueDays: AFTER_YOUR_NIGHT_DUE_DAYS, staleDays: AFTER_YOUR_NIGHT_STALE_DAYS },
   )
   const reportsUpdated = reports.flatMap((r) => [r.read_at, r.sent_at]).filter((x): x is string => !!x).sort().pop() ?? null
   const retNext = groups.dueNow
@@ -170,7 +202,7 @@ export async function readCentre(db: Db, now: Date): Promise<Centre> {
       figures: combine(combine(touchesOf('RET'), reportFigures(groups, reportsUpdated)), sentRecordFigures(digests.map((d) => ({ at: d.digest_date, sent_at: d.sent_at })))),
       sources: [
         'CRM messages (outreach_touches)',
-        'night reports (organiser_night_reports), with the organisers of each night\'s venue (organiser_venues) and the partners among them (outreach_replies, organiser_contacts)',
+        'night reports (organiser_night_reports), with each night\'s partner by three roads (a venue they run in organiser_venues, their own organisation, their own booking page) and the partners (outreach_replies, organiser_contacts)',
         'sales digests (organiser_sales_digest_sends)',
       ],
       extra: reportNotes(groups),

@@ -13,6 +13,7 @@ import { readLessons, recordLesson } from '@/lib/ops/lessons'
 import { learnedLines } from '@/lib/ops/learned-lines'
 import { melbourneMinutes, type PhaseKey } from '@/lib/ops/timetable'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isReportWeekday, readAnswerTiming } from '@/lib/outreach/answer-report'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -79,7 +80,10 @@ export async function GET(request: NextRequest) {
         }
       }
       const learned = await readLessons(db, new Date(midnight - 24 * 60 * 60_000), new Date(midnight)).catch((err: unknown) => ({ unread: err instanceof Error ? err.message : String(err) }))
-      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned) })
+      // MONDAYS, HOW FAST WE ANSWERED LAST WEEK (the PM's 15:10 item 5): by class, median, slowest and on target, with
+      // the reply and yes rates; a read that fails says so in the line.
+      const answers = isReportWeekday(now) ? await readAnswerTiming(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`) : undefined
+      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers })
       const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
       reportId = sentReport.id
       report = 'sent'

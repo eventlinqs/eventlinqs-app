@@ -36,7 +36,7 @@ function fakeDb() {
     if (call.table === 'organisations') return { data: [], error: null }
     // The policy reads one organiser by id; the platform reader pages the test organisers, of which there are none here.
     if (call.table === 'organisers') return call.filters.some(([k]) => k === 'eq:id') ? { data: { organisation_id: null }, error: null } : { data: [], error: null }
-    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
+    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events', 'outreach_message_mailboxes'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: 'q-1' }, error: null }
     return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
   }

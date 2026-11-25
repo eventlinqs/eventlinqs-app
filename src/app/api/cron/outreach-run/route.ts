@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
     }
 
     const sent = await runOutreachSender(db, { now, origin, graph })
-    console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours`)
+    console.log(`[cron/outreach-run] mode ${sent.mode}: ${sent.sent.length} sent, ${sent.failed.length} failed, ${sent.refused.length} refused, ${sent.outsideHours} outside hours, ${sent.tooSoon ?? 0} answers not yet 50 minutes old${sent.mailboxNotRecorded?.length ? `, mailbox not recorded: ${sent.mailboxNotRecorded.join('; ')}` : ''}`)
 
     const refreshed = await db.rpc('organiser_acquisition_refresh_all', { p_proved_by: 'outreach-run' })
     const acquisition = refreshed.error ? { error: refreshed.error.message } : { changed: refreshed.data }

@@ -58,7 +58,8 @@ describe("a reply on a template his standing approval holds is the template with
 
 describe('the reply queue', () => {
   type Call = { table: string; op: string; payload: unknown; filters: [string, unknown][] }
-  const fakeDb = (rows: { id: string; template: string; subject: string; body: string; heldBecause?: string[] }[], mode = 'live') => {
+  type Theirs = { received_at: string; outcome: string; wording: string; touch_id: string | null }
+  const fakeDb = (rows: { id: string; template: string; subject: string; body: string; heldBecause?: string[] }[], mode = 'live', theirs: Theirs | null = null) => {
     const calls: Call[] = []
     const from = (table: string) => {
       const call: Call = { table, op: 'select', payload: null, filters: [] }
@@ -77,6 +78,8 @@ describe('the reply queue', () => {
         }
         if (table === 'organiser_contacts') return { data: { organiser_id: 'o1' }, error: null }
         if (table === 'organiser_venues') return { data: [], error: null }
+        // The message the answer answers (by its id): when it arrived and what it said.
+        if (table === 'outreach_replies') return { data: theirs, error: null }
         return { data: null, error: { message: `unexpected ${call.op} on ${table}` } }
       }
       const done = () => (calls.push(call), Promise.resolve(answer()))
@@ -100,13 +103,28 @@ describe('the reply queue', () => {
   const policy = { version: COST.policy_version } as never
   const cost = renderTemplate(REPLY_COST_V1, { 'first name': 'Jennifer', 'thread subject': THREAD }, UNSUBSCRIBE)
 
-  test('a held answer on reply_cost, words passing, in their thread, queues itself for the next window at 06:00', async () => {
-    const { db, calls } = fakeDb([{ id: 'cost', template: 'reply_cost v1', subject: cost.subject ?? '', body: cost.body }])
-    const r = await queueApprovedReplies(db, { now: NOW, policy })
-    expect(r.queued).toEqual([expect.objectContaining({ id: 'cost', at: THURSDAY_6, why: expect.stringContaining('standing approval of reply_cost v1') })])
-    expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: THURSDAY_6 })
+  // HOW FAST WE ANSWER (Lawal, 25 November 2026, 15:14 and 15:16; src/lib/outreach/answer-timing.ts): an answer is not
+  // outreach, so it is never held to law 44's next window (it was: Thursday 06:00, THURSDAY_6, for a question asked at
+  // 10:20 on Wednesday); a reply to our letter goes an hour or so after it arrived, the same day.
+  test('a held answer on reply_cost, words passing, in their thread, queues itself for its own time, never the next window', async () => {
+    const asked = { received_at: '2026-11-24T23:20:00Z', outcome: 'question', wording: 'How much does it cost?', touch_id: null }
+    const { db, calls } = fakeDb([{ id: 'cost', template: 'reply_cost v1', subject: cost.subject ?? '', body: cost.body }], 'live', asked)
+    const r = await queueApprovedReplies(db, { now: NOW, policy, random: () => 0 })
+    const AT = '2026-11-25T00:20:00.000Z' // Wednesday 11:20: an hour after it arrived
+    expect(AT).not.toBe(THURSDAY_6)
+    expect(r.queued).toEqual([expect.objectContaining({ id: 'cost', at: AT, why: expect.stringContaining('standing approval of reply_cost v1') })])
+    expect(r.queued[0].why).toContain('answered as letter')
+    expect(calls.find((c) => c.op === 'update')?.payload).toEqual({ state: 'queued', scheduled_for: AT })
     const read = calls.find((c) => c.table === 'outreach_touches' && c.op === 'select')
     expect(read?.filters).toEqual(expect.arrayContaining([['eq:state', 'held'], ['in:purpose', ['reply', 'relationship']], ['not:in_reply_to:is', null]]))
+  })
+
+  test('the message it answers not on record: it waits, never queued for a guessed time', async () => {
+    const { db, calls } = fakeDb([{ id: 'cost', template: 'reply_cost v1', subject: cost.subject ?? '', body: cost.body }], 'live', null)
+    const r = await queueApprovedReplies(db, { now: NOW, policy, random: () => 0 })
+    expect(r.queued).toEqual([])
+    expect(r.waiting).toEqual([{ id: 'cost', reasons: ['the message it answers is not on record'] }])
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
 
   test('a template off his standing approval, failed words, a failed rule or a changed sentence: it waits, never queued', async () => {

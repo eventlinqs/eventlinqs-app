@@ -1,0 +1,15 @@
+{
+  "source": "The PM's 12:11 of 25 November 2026, item 1 (under Lawal's standing rule of 12:10: work already authorised is not asked again): after_your_night version 2 activated, version 1 (message 8 of C:\\dev\\START-16OCT\\EVENTLINQS-ORGANISER-MESSAGES-28OCT.md) with its untrue lines removed, partners only, figures only when read; law 49's results note, T+1 to T+3 (EVENT-LIFECYCLE-ENGINE-LOCKED-21NOV.md section 2)",
+  "readings": "Version 2 of after_your_night: version 1's opening and close kept; its three figure lines and 'Your next [night] is already listed' replaced by one [results] the planner composes only from figures read and above zero (src/lib/outreach/after-your-night.ts afterYourNightResults: views, clicks to the seller named, tickets bought on EventLinqs, and their next night only when it is listed and ahead), so nothing untrue or zero is ever said; [link] is the public /submit-event page. Written by scripts/ops/outreach-templates.mjs --data scripts/ops/data/outreach-templates-25nov-v2.json --version 2, after reading that version 2 of after_your_night is not already stored (the insert does nothing on a conflict).",
+  "templates": [
+    {
+      "key": "after_your_night",
+      "channel": "email",
+      "purpose": "relationship",
+      "step": null,
+      "message": "8 (version 2, partners only, figures only when read)",
+      "subject": "How [night] went on EventLinqs",
+      "body": "Hi [first name],\nHere's what EventLinqs did for [night] on [night day]: [results]\nGot something coming up? Add it here: [link], or reply with the details and I'll set it up.\nKind regards,\n[signature]\n\n[unsubscribe]"
+    }
+  ]
+}

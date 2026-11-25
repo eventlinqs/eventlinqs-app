@@ -16,13 +16,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { PROVIDER_NAMES } from '@/lib/events/booking-links'
-import type { InboundMessage } from './graph'
+import { idsInHeaders, type InboundMessage } from './graph'
+import { contactForNewAddress, threadOf } from './thread-match'
 import { draftFromTemplate } from './drafts'
 import { contextKeys } from './contact-policy'
 import { objectionOf } from './objections'
 import type { MediaDeps } from '@/lib/listings/organiser-media'
 import { keepEmailedImages, recordEmailedYes, type EmailedFile, type EmailedMessage, type ThreadTouch } from '@/lib/comms/emailed-media'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
+import { OUR_MAILBOXES } from './addresses'
+import { asksToBePhoned, PHONE_HELD, statedAddressIn } from './conversation'
 
 type Admin = SupabaseClient<Database>
 
@@ -224,13 +227,49 @@ async function recordSenderName(db: Admin, contactId: string, m: InboundMessage)
   }
 }
 
-export type InboxReport = { read: number; matched: number; unmatched: number; autoReplies: number; bounces: number; replies: { id: string; outcome: string; confidence: number; action: string }[]; failed: { messageId: string | null; error: string }[] }
+export type InboxReport = {
+  read: number
+  matched: number
+  unmatched: number
+  autoReplies: number
+  bounces: number
+  replies: { id: string; outcome: string; confidence: number; action: string }[]
+  failed: { messageId: string | null; error: string }[]
+  /** Each message that matched no thread or contact of ours: recorded, and listed by the leads watch (the PM's 16:28, item 3). */
+  unmatchedMessages?: { messageId: string | null; from: string; subject: string; receivedAt: string }[]
+}
 
 const OUR_ID = /<[^<>\s]+@eventlinqs\.com>/gi
 
-/** Our message ids a message names (its In-Reply-To, References, or for a bounce its quoted original). */
-function ourIdsIn(m: InboundMessage): string[] {
-  return [...new Set(`${m.headers['in-reply-to'] ?? ''} ${m.headers['references'] ?? ''} ${m.text}`.match(OUR_ID) ?? [])]
+/**
+ * The message ids a message names: every id its In-Reply-To and References carry, any domain (a message we sent by hand
+ * from Outlook has an Outlook id), and for a bounce our own ids quoted in its words.
+ */
+function idsNamedBy(m: InboundMessage): string[] {
+  return [...new Set([...idsInHeaders(m.headers), ...(m.text.match(OUR_ID) ?? [])])]
+}
+
+/**
+ * EVERY MESSAGE READ IS RECORDED (the PM's 16:28): the mailbox it arrived in, who it came from, its subject, time and
+ * conversation, and the contact its thread belongs to, null when none; insert only, so a message read again keeps its
+ * first record. A record that fails is said, and never stops the message being handled.
+ */
+async function recordReceived(db: Admin, m: InboundMessage, mailbox: string, contactId: string | null): Promise<void> {
+  if (!m.internetMessageId) return
+  const row = {
+    internet_message_id: m.internetMessageId,
+    mailbox: mailbox.trim().toLowerCase(),
+    direction: 'received',
+    counterpart_address: /^[^@\s]+@[^@\s]+$/.test(m.fromAddress) ? m.fromAddress.toLowerCase() : null,
+    subject: (m.subject ?? '').slice(0, 998) || null,
+    message_at: m.receivedAt || null,
+    conversation_id: (m.conversationId ?? '').trim() || null,
+    contact_id: contactId,
+  }
+  const kept = await Promise.resolve()
+    .then(() => db.from('outreach_message_mailboxes').upsert(row, { onConflict: 'internet_message_id', ignoreDuplicates: true }))
+    .catch((err: unknown) => ({ error: { message: err instanceof Error ? err.message : String(err) } }))
+  if (kept.error) console.error(`[outreach/replies] ${mailbox}: message ${m.internetMessageId}: its record was not kept:`, kept.error.message)
 }
 
 /**
@@ -282,14 +321,15 @@ export async function handleInbox(
       report.autoReplies++
       continue
     }
-    const ids = ourIdsIn(m)
-    const touch = ids.length
-      ? (await db.from('outreach_touches').select('id, contact_id, subject, context_key').in('internet_message_id', ids).order('sent_at', { ascending: false }).limit(1)).data?.[0]
-      : undefined
+    // ITS THREAD (./thread-match.ts; the PM's 16:28): by the ids it names, any domain, then Outlook's conversation, then
+    // the address it came from.
+    const match = await threadOf(db, { ids: idsNamedBy(m), conversationId: m.conversationId ?? null, address: m.fromAddress })
+    const touch = match?.touch ?? undefined
 
     if (kind.kind === 'bounce') {
       if (!touch) {
         report.unmatched++
+        await recordReceived(db, m, deps.mailbox, match?.contactId ?? null)
         continue
       }
       report.bounces++
@@ -304,16 +344,31 @@ export async function handleInbox(
       continue
     }
 
-    const contactId =
-      touch?.contact_id ??
-      (await db.from('organiser_contacts').select('id').eq('channel', 'email').eq('address', m.fromAddress).maybeSingle()).data?.id
+    const contactId = match?.contactId ?? null
     if (!contactId) {
+      // NEVER SILENTLY DROPPED (the PM's 16:28, item 3): recorded unmatched, so the leads watch lists it within the run.
       report.unmatched++
+      ;(report.unmatchedMessages ??= []).push({ messageId: m.internetMessageId || null, from: m.fromAddress, subject: m.subject, receivedAt: m.receivedAt })
+      await recordReceived(db, m, deps.mailbox, null)
       continue
     }
     report.matched++
-    await recordSenderName(db, contactId, m)
+    // A NEW ADDRESS IN A KNOWN THREAD (the PM's 16:28, item 1): the reply attaches to the thread's contact, and the
+    // address it came from becomes a contact of the same organiser, on the basis of their own message; our answer goes
+    // to the address they wrote from (sender.ts). Their own name goes on the contact of their own address.
+    let fromContact: string | null = match?.road === 'address' ? contactId : null
+    let newAddress: string | null = null
+    if (!fromContact && /^[^@\s]+@[^@\s]+$/.test(m.fromAddress)) {
+      const own = await contactForNewAddress(db, { threadContactId: contactId, address: m.fromAddress, by: deps.actingUser })
+      if ('id' in own) {
+        fromContact = own.id
+        if (own.made && own.id !== contactId) newAddress = m.fromAddress
+      } else console.error(`[outreach/replies] ${deps.mailbox}: message ${m.internetMessageId || '(no id)'}: ${own.why}`)
+    }
+    await recordSenderName(db, fromContact ?? contactId, m)
     const clear = kind.confidence >= CLEAR && kind.outcome !== 'unclear' && kind.outcome !== 'referred'
+    // A REQUEST TO BE PHONED OR TEXTED (Lawal, 25 November 2026, 14:43, item 3): held for the PM, never answered by machine.
+    const phoned = asksToBePhoned(stripQuoted(m.text))
     const logged = await db
       .from('outreach_replies')
       .insert({
@@ -325,12 +380,16 @@ export async function handleInbox(
         objection: objectionOf(kind),
         classified_by: 'rules',
         confidence: kind.confidence,
-        needs_lawal: !clear || kind.outcome === 'take_down' || DECISION_CLASSES.includes(kind.outcome),
+        needs_lawal: phoned || !clear || kind.outcome === 'take_down' || DECISION_CLASSES.includes(kind.outcome),
         source_message_id: m.internetMessageId || null,
         logged_by: deps.actingUser,
       })
       .select('id')
       .single()
+    // THE MAILBOX IT ARRIVED IN (Lawal, 25 November 2026, 14:41 and 14:43; ./conversation.ts) and its thread's contact,
+    // recorded once, so the answer and every message after go from it, in its thread. Also for a message logged before
+    // the record began.
+    await recordReceived(db, m, deps.mailbox, contactId)
     // THEIR ATTACHMENTS (src/lib/comms/emailed-media.ts): taken from a reply that is not a stop, a take down or a no.
     const thread: ThreadTouch = touch ? { subject: (touch.subject as string | null) ?? null, context_key: (touch.context_key as string | null) ?? null } : null
     const message: EmailedMessage = { internetMessageId: m.internetMessageId, fromAddress: m.fromAddress, receivedAt: m.receivedAt, ownWords: stripQuoted(m.text) }
@@ -354,7 +413,7 @@ export async function handleInbox(
     }
 
     // A reply held for money or a contract says so; any other held reply waits as before (the leads watch reads both).
-    let action = kind.kind === 'reply' && kind.held ? kind.held : 'waits for Lawal'
+    let action = phoned ? PHONE_HELD : kind.kind === 'reply' && kind.held ? kind.held : 'waits for Lawal'
     if (clear && kind.outcome === 'take_down') {
       const contact = await db.from('organiser_contacts').select('organiser_id, address, person_name').eq('id', contactId).single()
       const link = contact.data ? await db.from('organiser_venues').select('venue_id').eq('organiser_id', contact.data.organiser_id).limit(1) : null
@@ -373,7 +432,7 @@ export async function handleInbox(
       } else {
         action = 'suppressed; no venue is linked to this organiser, so the listing to remove waits for Lawal'
       }
-    } else if (clear && kind.answerKey) {
+    } else if (clear && kind.answerKey && !phoned) {
       const purpose = kind.outcome === 'yes' ? 'relationship' : 'reply'
       const drafted = await draftFromTemplate(db, {
         contactId,
@@ -404,6 +463,17 @@ export async function handleInbox(
       action = `${action}; ${yes.state === 'recorded' ? `their yes is recorded from their own words for ${yes.nights.join(', ')}` : `their yes is not recorded: ${yes.why}`}`
     }
     if (takes) action = `${action}; ${await takeAttachments(db, m, { contactId, touch: thread, message, now: deps.now, by: deps.actingUser }, takes)}`
+    // THE ONE CHANGE OF CHANNEL IS THEIRS (Lawal, 25 November 2026, 14:43, item 2): an address their own words ask us to
+    // use instead is kept on the contact, with when and this reply, and every message after goes to it.
+    const stated = kind.outcome === 'stop' || kind.outcome === 'take_down' ? null : statedAddressIn(message.ownWords, { from: m.fromAddress, ours: OUR_MAILBOXES })
+    if (stated) {
+      const moved = await db
+        .from('organiser_contacts')
+        .update({ stated_address: stated, stated_address_at: m.receivedAt, stated_address_reply: logged.data.id })
+        .eq('id', contactId)
+      action = `${action}; ${moved.error ? `their stated address ${stated} was not recorded: ${moved.error.message}` : `their stated address ${stated} is kept for every message after (their own words)`}`
+    }
+    if (newAddress) action = `${action}; written from ${newAddress}, a new address in their thread: recorded as a contact of the same organiser, and answered there`
     await db.from('outreach_replies').update({ action_taken: action }).eq('id', logged.data.id)
     report.replies.push({ id: logged.data.id, outcome: kind.outcome, confidence: kind.confidence, action })
     } catch (err) {

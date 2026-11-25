@@ -796,6 +796,11 @@ export type RegisteredSource = {
   canary?: SourceCanary
   /** The source's own category (listing_sources.category_id, by slug), the one a night takes when its words give none. */
   categorySlug?: string | null
+  /**
+   * The most often its owner agreed we read it, in days (listing_sources.read_at_most_every_days; Bendigo Tourism, 25
+   * November 2026: weekly), else null: read daily.
+   */
+  readAtMostEveryDays?: number | null
 }
 
 /**
@@ -889,6 +894,12 @@ export function lastCheckFailed(s: Pick<RegisteredSource, 'lastCheckedAt' | 'las
 export function dueSources(sources: readonly RegisteredSource[], now: Date, thisWeek: ReadonlySet<string> = new Set()): RegisteredSource[] {
   return sources.filter((s) => {
     if (s.collection !== 'read') return false
+    /* ITS OWNER'S AGREED PACE (the PM's 15:51 of 25 November 2026): a source read at most every N days by its owner's
+       agreement is read again only N days after its last successful read, whatever the daily or this week rules say;
+       a read that failed since is retried daily once those days have passed. Half a day's slack, so a weekly source
+       read in one morning's run is due in the same run a week on. */
+    const agreed = s.readAtMostEveryDays ?? null
+    if (agreed !== null && agreed > 0 && s.lastSuccessAt !== null && now.getTime() - new Date(s.lastSuccessAt).getTime() < agreed * 24 * HOUR_MS - 12 * HOUR_MS) return false
     if (s.lastCheckedAt === null) return true
     /* THE RE-READ SCHEDULE (Lawal, 1 November 2026, 16:15; the controller's 16:15 (B)). Every source at least once a
        day, in the first run after 04:00 in the platform's zone, so each day's guide is right before people look; a
