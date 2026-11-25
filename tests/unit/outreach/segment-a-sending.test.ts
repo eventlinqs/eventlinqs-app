@@ -59,7 +59,7 @@ function db() {
     // no address suppressed, nothing bounced.
     if (call.table === 'organisations') return { data: [], error: null }
     if (call.table === 'organisers') return shape === 'many' ? { data: [], error: null } : { data: { organisation_id: null }, error: null }
-    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events'].includes(call.table)) return { data: [], error: null }
+    if (['outreach_replies', 'outreach_unsubscribes', 'outreach_delivery_events', 'outreach_message_mailboxes'].includes(call.table)) return { data: [], error: null }
     if (call.table === 'outreach_touches' && call.op === 'update') return { data: { id: call.filters.find(([k]) => k === 'eq:id')?.[1] }, error: null }
     return { data: null, error: { message: `unexpected ${call.op} on ${call.table}` } }
   })

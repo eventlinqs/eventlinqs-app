@@ -102,6 +102,6 @@ describe('the Sent Items reader', () => {
     expect(asked[0]).toContain('/users/lawal%40eventlinqs.com/mailFolders/sentitems/messages?')
     expect(asked[0]).toContain('sentDateTime+ge+2026-11-11T00%3A00%3A00Z')
     expect(asked[0]).toContain('outlook.body-content-type="text"')
-    expect(out).toEqual([{ graphId: 'g1', internetMessageId: '<m1@x>', subject: 'Hello', toAddresses: ['jo@promoter.example.com.au', 'sam@venue.example.com.au'], sentAt: '2026-11-13T01:00:00Z', text: 'Hi Jo,' }])
+    expect(out).toEqual([{ graphId: 'g1', internetMessageId: '<m1@x>', subject: 'Hello', toAddresses: ['jo@promoter.example.com.au', 'sam@venue.example.com.au'], sentAt: '2026-11-13T01:00:00Z', text: 'Hi Jo,', conversationId: '', threadIds: [] }])
   })
 })
