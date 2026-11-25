@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { COMPLETE_BY } from '@/lib/events/event-clock'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readTheirNights, type OwnNight } from './their-nights'
 import { daysToGo, lifecycleChoice, type LifecycleNightClock } from './lifecycle-letters'
 
@@ -58,6 +59,9 @@ export function generalLetterHeldBy(nights: readonly Pick<OwnNight, 'eventId' | 
 
 /** The same, read from production for one organiser; a read that fails is a reason, never a guess. */
 export async function readGeneralLetterHold(db: Admin, organiserId: string, now: Date): Promise<string | null> {
+  // The platform's own listings organisation and every test organiser are never written to (src/lib/growth/platform-organiser.ts,
+  // the one reader of them; the guard growth-reads-skip-the-platform).
+  if ((await readPlatformOrganiserIds(db)).has(organiserId)) return "the platform's own listings organisation, or a test organiser: never written to"
   const org = await db.from('organisers').select('id, organisation_id, website_url, is_test').eq('id', organiserId).maybeSingle()
   if (org.error || !org.data) return `the organiser could not be read${org.error ? `: ${org.error.message}` : ''}; never written on a guess`
   try {
