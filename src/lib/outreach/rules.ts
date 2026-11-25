@@ -169,8 +169,12 @@ export function renderTemplate(template: TemplateRow, fields: Record<string, str
   for (const [k, v] of Object.entries(fields)) all[k.trim().toLowerCase()] = v
   // A reply signs as Lawal replies, without the ABN block (VOICE-EVENTLINQS.md; voice-gate.ts: 'replies sign without the
   // ABN block'). Until 25 November 2026 every reply template rendered the full signature, so no reply ever passed the
-  // voice gate and every one waited for a person (the PM's 07:00 and 07:03).
-  all.signature = template.purpose === 'reply' ? REPLY_SIGNATURE : LAWAL_SIGNATURE
+  // voice gate and every one waited for a person (the PM's 07:00 and 07:03). THE CLASS (WINDOW 5C, the same day): the
+  // gateway wants the full block on a first contact alone (gateway.py: first_sig for 'first_contact', reply_sig for every
+  // other category), so a relationship message to a partner (the results note, message 9) signs as Lawal replies too; its
+  // sample was refused 'replies sign without the ABN block' at 14:5x until this.
+  const firstContact = template.purpose === 'cadence' && (template.step ?? 1) <= 1
+  all.signature = firstContact ? LAWAL_SIGNATURE : REPLY_SIGNATURE
   all.unsubscribe = unsubscribeUrl ? unsubscribeLine(unsubscribeUrl) : null
   // A template that writes its own unsubscribe line (acq_first v1) names only the address: '[unsubscribe link]'.
   all['unsubscribe link'] = unsubscribeUrl

@@ -113,6 +113,20 @@ describe("2. only on its night's clock, once, and never after a reply", () => {
   })
 })
 
+describe('the signature the gateway asks for: the ABN block on a first contact alone', () => {
+  it('a relationship message (the results note to a partner) and a follow up sign as Lawal replies; a first contact carries the block', async () => {
+    const { renderTemplate } = await import('@/lib/outreach/rules')
+    const body = 'Hi [first name],\nA line about their night.\nKind regards,\n[signature]\n\n[unsubscribe]'
+    const sign = (purpose: 'relationship' | 'cadence' | 'reply', step: number | null) =>
+      renderTemplate({ channel: 'email', purpose, step, subject: 'A subject', body }, { 'first name': 'Jennifer' }, UNSUB).body
+    expect(sign('relationship', null)).not.toContain('ABN')
+    expect(sign('relationship', null)).toContain('Kind regards,\nLawal Adams\nFounder, EventLinqs\n\n')
+    expect(sign('cadence', 2)).not.toContain('ABN')
+    expect(sign('reply', null)).not.toContain('ABN')
+    expect(sign('cadence', 1)).toContain('ABN 30 837 447 587')
+  })
+})
+
 describe('3. each in its first letter\'s class, and the planner drafts them for a law 49 play', () => {
   it('PERM-REMINDER for the photo request\'s, ACQ-FOLLOWUP for the offer\'s (law 24)', () => {
     expect(TEMPLATE_CLASS[PERM_FOLLOW_UP_KEY]).toEqual({ category: 'PERM', subtype: 'PERM-REMINDER' })
