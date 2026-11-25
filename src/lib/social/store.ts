@@ -576,7 +576,7 @@ export async function slideImagesNow(db: Db, slides: readonly Slide[], now: Date
 /* ------------------------------------------------------------------ J15: event validation is a publishing dependency */
 
 const NIGHT_COLUMNS =
-  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, host_name:metadata->>host_name, category:event_categories!events_category_id_fkey(slug), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
+  'id, slug, title, start_date, end_date, timezone, created_at, listing_series_id, status, visibility, venue_name, venue_address, venue_city, venue_id, is_age_restricted, age_restriction_min, cover_image_url, summary, is_free, entry_mode, external_ticket_url, listing_source, host_name:metadata->>host_name, category:event_categories!events_category_id_fkey(slug, name), organisation:organisations(name, slug), ticket_tiers(price, currency, is_active, total_capacity, sold_count, reserved_count), event_booking_links(availability), venue_row:venues(name)'
 
 /** A night's call to action and its one price line, read the same way for planning and for the check before approval. */
 async function admissionOf(e: Record<string, unknown>, now: Date): Promise<{ cta: Cta; priceLine: string | null }> {
@@ -808,6 +808,30 @@ export function timingOfRows(momentKey: string | null, nights: readonly Record<s
   const rows = nights.map(timingNightOf)
   const multiDay = nights.some((e) => e.end_date && Date.parse(String(e.end_date)) - Date.parse(String(e.start_date)) >= 24 * 3_600_000)
   return timingOf({ moment: m?.kind ?? null, day: m?.day ?? null, nights: rows, preferredAt, multiDay }, now)
+}
+
+/** The later of two starts, either of which may be absent: a piece waits for both. Pure. */
+export function laterStart(a: Date | null | undefined, b: Date | null | undefined): Date | null {
+  if (!a) return b ?? null
+  if (!b) return a
+  return a.getTime() >= b.getTime() ? a : b
+}
+
+/**
+ * Each creative piece's preferred time, from its own intake record (creative_intake.preferred_at), so the scheduler never
+ * posts a finished design before it (WINDOW 5C, 25 November 2026). A failed read throws, as the nights' own read does, and
+ * the run holds; a piece with no record is held at publishing anyway (intakeIssuesAtPublish).
+ */
+async function creativePreferredAt(db: Db, pieceIds: readonly string[]): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>()
+  if (pieceIds.length === 0) return out
+  const { data, error } = await db.from('creative_intake').select('piece_id, preferred_at').in('piece_id', [...pieceIds])
+  if (error) throw new Error(`the creative pieces' preferred times could not be read: ${error.message}`)
+  for (const r of (data ?? []) as { piece_id: string | null; preferred_at: string }[]) {
+    const at = Date.parse(r.preferred_at)
+    if (r.piece_id && Number.isFinite(at)) out.set(r.piece_id, new Date(at))
+  }
+  return out
 }
 
 /** A piece's timing read now: its moment key and its newest version's nights. A failed read is said, never a pass. */
@@ -1209,6 +1233,7 @@ export async function readCampaignNights(
       // Who puts it on, as the night names them, never its venue for want of a name (shown-organiser.ts nightMaker).
       organiser: nightMaker({ listing_source: (e.listing_source as string | null) ?? null, metadata: { host_name: (e.host_name as string | null) ?? null }, words: [(e.summary as string | null) ?? null] }, organisation),
       categorySlug: (e.category as { slug: string | null } | null)?.slug ?? null,
+      categoryName: (e.category as { name: string | null } | null)?.name ?? null,
       summary: (e.summary as string | null) ?? null,
       approvedPhotoUrl: image?.url ?? null,
       photoCredit: image?.credit ?? null,
@@ -1593,7 +1618,9 @@ export async function approveApprovedSet(db: Db, input: { readonly pieceId: stri
 
 /** The register's assets a record's images rest on, read now, each with the record's nights it is usable for this minute. */
 async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<string, RegisterAsset>> {
-  const ids = [...new Set(r.images.flatMap((i) => (i.restsOn.kind === 'asset' || i.restsOn.kind === 'organiser_artwork' ? [i.restsOn.assetId] : [])))]
+  const ids = [...new Set(r.images.flatMap((i) => (i.restsOn.kind === 'asset' || i.restsOn.kind === 'organiser_artwork' || i.restsOn.kind === 'city_photo' ? [i.restsOn.assetId] : [])))]
+  // A city's own photograph is asked of the register with no night (WINDOW 5C, 25 November 2026: the carousel's cover).
+  const alone = new Set(r.images.flatMap((i) => (i.restsOn.kind === 'city_photo' ? [i.restsOn.assetId] : [])))
   const out = new Map<string, RegisterAsset>()
   if (ids.length === 0) return out
   const { data, error } = await db.from('social_assets').select('id, asset_url, asset_type, event_id, source_width, source_height').in('id', ids)
@@ -1606,6 +1633,12 @@ async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<st
       if (uerr) throw new Error(`whether the asset ${String(a.id)} may be used could not be read: ${uerr.message}`)
       if (ok === true) usableFor.add(id)
     }
+    let usableAlone = false
+    if (alone.has(String(a.id))) {
+      const { data: ok, error: aerr } = await db.rpc('social_asset_usable', { p_url: String(a.asset_url), p_event: null, p_at: now.toISOString() })
+      if (aerr) throw new Error(`whether the asset ${String(a.id)} may be used for EventLinqs' own promotion could not be read: ${aerr.message}`)
+      usableAlone = ok === true
+    }
     out.set(String(a.id), {
       id: String(a.id),
       assetUrl: String(a.asset_url),
@@ -1614,6 +1647,7 @@ async function intakeAssetsOf(db: Db, r: IntakeInput, now: Date): Promise<Map<st
       width: (a.source_width as number | null) ?? null,
       height: (a.source_height as number | null) ?? null,
       usableFor,
+      usableAlone,
     })
   }
   return out
@@ -2249,6 +2283,73 @@ export async function rejectPiece(db: Db, input: { readonly pieceId: string; rea
   return { state: 'done' }
 }
 
+/**
+ * WHY A PIECE NOTHING CAN APPROVE IS SET ASIDE (WINDOW 5C, 25 November 2026; the PM's 12:11 item 2: of 136 discarded
+ * pieces, 69 of the 70 that expired were drawn 9 to 16 November in families law 37 then switched off, and stood pending
+ * until their nights passed). The reason an unapproved piece can never post, or null: every night it shows has ended
+ * (never merely started: a night on now may still be posted while it runs), or, for a piece of our own account, its
+ * slides are in a format law 37 no longer posts. A partner kit is a card for a partner's own account, so only its nights
+ * set it aside. Pure.
+ */
+export function unpostableReason(p: { readonly kind: string; readonly slides: readonly Pick<Slide, 't'>[]; readonly ends: readonly number[] }, now: Date): string | null {
+  if (p.ends.length > 0 && p.ends.every((end) => Number.isFinite(end) && end <= now.getTime())) {
+    return `Set aside by the daily run: every night it shows had ended by ${now.toISOString()}; a piece never posts once its night is over.`
+  }
+  if (p.kind === 'partner_kit') return null
+  const refusal = law37Refusal(p.slides)
+  return refusal ? `Set aside by the daily run: ${refusal}` : null
+}
+
+/**
+ * THE DAILY RUN SETS ASIDE WHAT NOTHING CAN APPROVE (unpostableReason): each piece drawn in the last 60 days whose newest
+ * version is neither approved nor rejected gets one 'rejected' decision on that version, with its reason, as a person's
+ * rejection is kept (rejectPiece), so the queue and the communications centre never count it as waiting. Nothing deleted;
+ * a piece drawn again is a new version and is judged afresh. A failed read throws and the run says so.
+ */
+export async function setAsideUnpostable(db: Db, input: { readonly now: Date; readonly by: string }): Promise<{ readonly setAside: readonly string[]; readonly refused: readonly string[] }> {
+  const since = new Date(input.now.getTime() - 60 * DAY_MS).toISOString()
+  const { data: pieces, error } = await db.from('social_pieces').select('id, kind').gte('planned_at', since).limit(2000)
+  if (error) throw new Error(`the pieces could not be read: ${error.message}`)
+  const ids = ((pieces ?? []) as { id: string; kind: string }[]).map((p) => p.id)
+  const kindOf = new Map(((pieces ?? []) as { id: string; kind: string }[]).map((p) => [p.id, p.kind]))
+  const newest = new Map<string, number>()
+  const approved = new Set<string>()
+  const rejected = new Set<string>()
+  for (let i = 0; i < ids.length; i += 150) {
+    const chunk = ids.slice(i, i + 150)
+    const [revs, apps, decs] = await Promise.all([
+      db.from('social_piece_revisions').select('piece_id, version').in('piece_id', chunk).limit(20000),
+      db.from('social_piece_approvals').select('piece_id, revision').in('piece_id', chunk).limit(20000),
+      db.from('social_piece_decisions').select('piece_id, revision').eq('decision', 'rejected').in('piece_id', chunk).limit(20000),
+    ])
+    const fault = revs.error ?? apps.error ?? decs.error
+    if (fault) throw new Error(`the pieces' versions, approvals or decisions could not be read: ${fault.message}`)
+    for (const r of (revs.data ?? []) as { piece_id: string; version: number }[]) newest.set(r.piece_id, Math.max(newest.get(r.piece_id) ?? 0, r.version))
+    for (const a of (apps.data ?? []) as { piece_id: string; revision: number }[]) approved.add(`${a.piece_id}|${a.revision}`)
+    for (const d of (decs.data ?? []) as { piece_id: string; revision: number }[]) rejected.add(`${d.piece_id}|${d.revision}`)
+  }
+  const waiting = [...newest.entries()].filter(([id, v]) => !approved.has(`${id}|${v}`) && !rejected.has(`${id}|${v}`))
+  if (waiting.length === 0) return { setAside: [], refused: [] }
+  const revisions = await newestRevisions(db, waiting)
+  const nightIds = [...new Set([...revisions.values()].flatMap((r) => r.eventIds))]
+  const ends = new Map<string, number>()
+  for (let i = 0; i < nightIds.length; i += 150) {
+    const { data, error: nerr } = await db.from('events').select('id, start_date, end_date').in('id', nightIds.slice(i, i + 150))
+    if (nerr) throw new Error(`the pieces' nights could not be read: ${nerr.message}`)
+    for (const e of (data ?? []) as { id: string; start_date: string; end_date: string | null }[]) ends.set(e.id, Date.parse(e.end_date ?? e.start_date))
+  }
+  const setAside: string[] = []
+  const refused: string[] = []
+  for (const [id, rev] of revisions) {
+    const reason = unpostableReason({ kind: kindOf.get(id) ?? '', slides: rev.slides, ends: rev.eventIds.map((e) => ends.get(e) ?? Number.NaN) }, input.now)
+    if (!reason) continue
+    const { error: werr } = await db.from('social_piece_decisions').insert({ piece_id: id, revision: rev.version, decision: 'rejected', reason, decided_by: input.by, decided_at: input.now.toISOString() })
+    if (werr) refused.push(`${id}: ${refusalOf(werr.message) ?? werr.message}`)
+    else setAside.push(`${id} (${kindOf.get(id)}): ${reason}`)
+  }
+  return { setAside, refused }
+}
+
 /** K7: the founder edits one platform's words; the edit is a new revision, kept beside every earlier one. */
 export async function editPiece(db: Db, input: { readonly pieceId: string; readonly platform: 'instagram' | 'facebook'; readonly caption: string; readonly by: string; readonly now: Date }): Promise<Done> {
   const rev = await newestRevision(db, input.pieceId)
@@ -2755,6 +2856,9 @@ export async function scheduleApprovedPieces(
   const nightOf = new Map((nights ?? []).map((n) => [n.id as string, { title: String(n.title), start: Date.parse(String(n.start_date)), end: Date.parse(String(n.end_date)), startDate: String(n.start_date), endDate: (n.end_date as string | null) ?? null, zone: (n.timezone as string | null)?.trim() || LIFECYCLE_ZONE }]))
   // Each piece goes before its earliest night STARTS (scheduleWindowOf, class 2 of the PM's 22:08 of 17 November 2026).
   const firstStarting = new Map<string, { title: string; start: Date }>()
+  // A CREATIVE PIECE'S OWN PREFERRED TIME (WINDOW 5C, 25 November 2026): a finished design verified early (the weekly city
+  // carousel, drawn from the Thursday before its Monday) never goes before the time its intake record prefers.
+  const preferred = await creativePreferredAt(db, due.filter((d) => d.kind === 'creative').map((d) => d.id))
   // The operating model's A2 (the PM's 01:39 of 19 November 2026): each family leans to its day of the week, only where
   // that day falls inside its own window (rhythmDays), so law 18's tiers always win and the lean never makes it late.
   const pieces: FloorPiece[] = due.map((d) => {
@@ -2778,7 +2882,7 @@ export async function scheduleApprovedPieces(
       const { notBefore, latestUseful } = lifecycleWindow(d.format, moment.day, onNow, own)
       return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful, notBefore, days: null }
     }
-    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful: window.latestUseful, notBefore: window.notBefore, days: rhythmDays(d.kind, window, now) }
+    return { id: d.id, format: d.format, kind: d.kind, approvedAt: d.approvedAt, latestUseful: window.latestUseful, notBefore: laterStart(window.notBefore, preferred.get(d.id) ?? null), days: rhythmDays(d.kind, window, now) }
   })
 
   // The starting calendar until our own posts teach the hours (cadence.ts, STARTING_CALENDAR).

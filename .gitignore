@@ -60,6 +60,9 @@ next-env.d.ts
 # The stand-in photographs of a kind of night (15 November 2026), each with its photographer and Pexels page in
 # src/lib/social/stand-ins.ts: served from our own origin to the day slides of the week's posts.
 !public/social/stand-ins/*.jpg
+# The weekly city carousel's cover photographs of the cities themselves (25 November 2026), each with its author, page
+# and licence in src/lib/social/city-carousel.ts CITY_COVERS: served from our own origin to the carousel's cover.
+!public/social/cities/*.jpg
 # Lawal's approved posts (18 November 2026, 11:55), the exact files of C:/dev/START-16OCT/SOCIAL-READY-15NOV, served
 # from our own origin and posted as they are by a 'file' slide (src/lib/social/campaign.ts isApprovedFileUrl).
 !public/social/approved/*.jpg

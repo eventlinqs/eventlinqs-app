@@ -149,6 +149,8 @@ export type CampaignNight = {
   ageMin?: number | null
   /** events.venue_id: a venue that said no to our posts has its nights left out (D3 (6)). */
   venueId?: string | null
+  /** The guide's own name for its category (event_categories.name), as the city carousel's icon row and chip print it. */
+  categoryName?: string | null
 }
 
 /**
@@ -177,7 +179,7 @@ export type Slide =
    * for each night with its own permitted photograph shown whole, and the ask on gold.
    */
   /** The cover: `photoEventId` is the night whose own photograph it shows whole; with none, `photo` is a stand-in band or null. */
-  | { t: 'week_cover'; composition: 'contents_cover'; range: string; lines: [string, string, string]; draws: string | null; line: string; photoEventId: string | null; photo: string | null; credit: string | null; lead?: DayRow[] }
+  | { t: 'week_cover'; composition: 'contents_cover'; range: string; lines: [string, string, string]; draws: string | null; line: string; photoEventId: string | null; photo: string | null; credit: string | null; lead?: DayRow[]; /** The line in the accent colour: the third unless said (the city carousel's city name is the second). */ accentLine?: 0 | 1 | 2 }
   /** A day or two days of the piece's nights, under a photograph of the lead night's kind (a stand-in) or none. */
   | { t: 'days'; composition: 'contents_cover'; day: string; date: string; rows: DayRow[]; photo: string | null; credit: string | null }
   /** Family B, Tonight (master 01): the day and the city, the nights as cream timed cards, the line the tap opens. */

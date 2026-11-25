@@ -24,12 +24,20 @@ import { carriesBannedWord } from '@/lib/social/words'
 export type Network = 'instagram' | 'facebook'
 export const NETWORKS: readonly Network[] = ['instagram', 'facebook']
 
-/** What an image rests on: an organiser's yes, a permitted asset of the register, an approved file, or the organiser's artwork kept whole. */
+/**
+ * What an image rests on: an organiser's yes, a permitted asset of the register, an approved file, or the organiser's
+ * artwork kept whole. And for EventLinqs' own designed artwork (the weekly city carousel, WINDOW 5C, 25 November 2026):
+ * a photograph of the city itself, licensed for EventLinqs' own promotion and tied to no night, asked of the register as
+ * no night's ('city_photo'); or our own design alone, a finished design that shows no one else's photograph or artwork
+ * ('own_design'). Both only ever as a finished design in our own storage.
+ */
 export type RestsOn =
   | { readonly kind: 'grant'; readonly grantId: string }
   | { readonly kind: 'asset'; readonly assetId: string }
   | { readonly kind: 'organiser_artwork'; readonly assetId: string }
   | { readonly kind: 'approved_file' }
+  | { readonly kind: 'city_photo'; readonly assetId: string }
+  | { readonly kind: 'own_design' }
 
 export type IntakeImage = { readonly url: string; readonly restsOn: RestsOn }
 
@@ -76,6 +84,8 @@ export type RegisterAsset = {
   readonly width: number | null
   readonly height: number | null
   readonly usableFor: ReadonlySet<string>
+  /** Whether the register holds it as usable now with no night (EventLinqs' own promotion); absent reads as not. */
+  readonly usableAlone?: boolean
 }
 
 /** Everything the gates read at that minute (store.ts readIntakeFacts). */
@@ -122,7 +132,7 @@ export function intakeRow(r: IntakeInput): Record<string, unknown> {
 
 function restsOnRow(o: RestsOn): Record<string, string> {
   if (o.kind === 'grant') return { kind: o.kind, grant_id: o.grantId }
-  if (o.kind === 'asset' || o.kind === 'organiser_artwork') return { kind: o.kind, asset_id: o.assetId }
+  if (o.kind === 'asset' || o.kind === 'organiser_artwork' || o.kind === 'city_photo') return { kind: o.kind, asset_id: o.assetId }
   return { kind: o.kind }
 }
 
@@ -131,6 +141,8 @@ function restsOnOf(v: unknown): RestsOn {
   if (o.kind === 'grant') return { kind: 'grant', grantId: String(o.grant_id ?? '') }
   if (o.kind === 'asset') return { kind: 'asset', assetId: String(o.asset_id ?? '') }
   if (o.kind === 'organiser_artwork') return { kind: 'organiser_artwork', assetId: String(o.asset_id ?? '') }
+  if (o.kind === 'city_photo') return { kind: 'city_photo', assetId: String(o.asset_id ?? '') }
+  if (o.kind === 'own_design') return { kind: 'own_design' }
   return { kind: 'approved_file' }
 }
 
@@ -219,6 +231,24 @@ export function rightsFaults(r: IntakeInput, read: Pick<IntakeRead, 'assets' | '
     const o = img.restsOn
     if (o.kind === 'approved_file') {
       if (!approvedFile(img.url)) out.push(`[rights] Image ${n} rests on an approved file, and ${img.url} is not one under /social/approved/.`)
+      return
+    }
+    // Our own design alone: only ever a finished design in our own storage, showing no one else's picture.
+    if (o.kind === 'own_design') {
+      if (!isCreativeFileUrl(img.url)) out.push(`[rights] Image ${n} rests on our own design and is not a finished design in our own storage (${img.url}).`)
+      return
+    }
+    // A city's own photograph: the register's row, licensed for EventLinqs' own promotion and tied to no night, asked as
+    // no night's (social_asset_usable with no event). It never stands for one of the record's nights.
+    if (o.kind === 'city_photo') {
+      const city = read.assets.get(o.assetId)
+      if (!city) {
+        out.push(`[rights] Image ${n} rests on the city photograph ${o.assetId}, which is not in the register.`)
+        return
+      }
+      if (city.eventId !== null) out.push(`[rights] Image ${n}: the asset ${o.assetId} is tied to a night, so it is not a photograph of the city itself.`)
+      if (city.usableAlone !== true) out.push(`[rights] Image ${n}: the asset ${o.assetId} is not approved and current for EventLinqs' own promotion now.`)
+      if (!isCreativeFileUrl(img.url)) out.push(`[rights] Image ${n} rests on the city photograph and is not a finished design in our own storage (${img.url}).`)
       return
     }
     if (o.kind === 'grant') {

@@ -332,7 +332,7 @@ async function lockedElement(f: Format, slide: LockedSlide, image: SlideImage | 
   switch (slide.t) {
     case 'week_cover': {
       const standIn = Boolean(standInOf(url))
-      const words = { range: slide.range, lines: slide.lines, draws: slide.draws, line: slide.line ?? '', credit: url ? slide.credit : null, lead: slide.lead }
+      const words = { range: slide.range, lines: slide.lines, draws: slide.draws, line: slide.line ?? '', credit: url ? slide.credit : null, lead: slide.lead, accentLine: slide.accentLine }
       if (url && standIn) {
         // The band ends where the words begin: above the credit, or the range where there is none. Satori draws a word's
         // trailing colon as a word of its own ('Photo' then ':'), so the marker is the word without it.
