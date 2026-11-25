@@ -384,7 +384,10 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error('[cron/social-publish] the carousel could not be made:', error instanceof Error ? error.message : error)
       }
-      // THE QUEUE KEPT HONEST (store.ts setAsideUnpostable; the PM's 12:11 item 2 of 25 November 2026): each unapproved
+    }
+    if (hourRun) {
+      // THE QUEUE KEPT HONEST, EVERY HOUR (store.ts setAsideUnpostable; the PM's 12:11 item 2 and 14:15 item E of 25
+      // November 2026: set aside "the hour the rule changes", so never only at 06:40): each unapproved
       // piece nothing can approve (its nights over, or a format law 37 no longer posts) is set aside with its reason, in
       // the founder's name as the standing policy's approvals are, so nothing stands pending until its night has passed.
       try {

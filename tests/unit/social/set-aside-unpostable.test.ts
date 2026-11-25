@@ -33,13 +33,20 @@ describe('why a piece nothing can approve is set aside', () => {
   })
 })
 
-describe('the daily run sets them aside', () => {
+describe("every hour's run sets them aside", () => {
   const route = readFileSync('src/app/api/cron/social-publish/route.ts', 'utf8').replace(/\r\n/g, '\n')
-  it("calls the step in the 06:40 run, after the plan, in the standing policy's name, and records what it set aside", () => {
-    const daily = route.slice(route.indexOf("if (hourRun && (melbourneHour(now) === 6"), route.indexOf('// THE TIMETABLE\'S SOCIAL PHASES'))
+  // The PM's 14:15 item E: "set aside the hour the rule changes", so in every hour's run, never the 06:40 run alone; after
+  // the 06:40 plan in the run that plans, in the standing policy's name, and what it set aside recorded.
+  it("calls the step in every hour's run, after the 06:40 plan, in the standing policy's name, and records what it set aside", () => {
+    const daily = route.slice(route.indexOf("if (hourRun && (melbourneHour(now) === 6"), route.indexOf('// THE QUEUE KEPT HONEST, EVERY HOUR'))
+    const hourly = route.slice(route.indexOf('// THE QUEUE KEPT HONEST, EVERY HOUR'), route.indexOf('// THE TIMETABLE\'S SOCIAL PHASES'))
     expect(daily).toContain('planCampaignWeek(db')
-    expect(daily).toContain('setAsideUnpostable(db, { now, by: founder.id })')
-    expect(daily.indexOf('planCampaignWeek(db')).toBeLessThan(daily.indexOf('setAsideUnpostable('))
-    expect(daily).toContain("action: 'system.social.set_aside'")
+    expect(daily).not.toContain('setAsideUnpostable(')
+    // Its own block, opened by the hour's run alone, after the 06:40 block has closed.
+    expect(route.slice(0, route.indexOf('// THE QUEUE KEPT HONEST, EVERY HOUR')).trimEnd().endsWith('}\n    if (hourRun) {')).toBe(true)
+    expect(hourly).toContain('setAsideUnpostable(db, { now, by: founder.id })')
+    expect(hourly).not.toContain('melbourneHour(now) === 6')
+    expect(route.indexOf('planCampaignWeek(db, { plannedBy: null, now })')).toBeLessThan(route.indexOf('setAsideUnpostable(db, { now, by: founder.id })'))
+    expect(hourly).toContain("action: 'system.social.set_aside'")
   })
 })
