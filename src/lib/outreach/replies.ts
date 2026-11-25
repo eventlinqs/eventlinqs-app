@@ -135,7 +135,8 @@ function classifyWords(m: Pick<InboundMessage, 'subject' | 'fromAddress' | 'text
   if (/\b(take (it|this|us|that|the listing|our listing) (down|off)|remove (the|our|my) (listing|venue|page)|delete (the|our) (listing|page)|unlist)\b/i.test(text)) hits.push({ outcome: 'take_down', key: 'reply_take_down' })
   if (/^\s*(no thanks|no thank you|not interested|we('re| are) not interested|we('ll| will) pass|no,? (we('re| are)|not for us))/im.test(text)) hits.push({ outcome: 'no', key: null })
   if ((YES_OPENER.test(text) || YES_IF_FREE.test(text)) && !/\b(not|no|don'?t)\b/i.test((text.split('\n')[0] ?? '').replace(/\bno (cost|charge)\b/gi, ''))) hits.push({ outcome: 'yes', key: 'thank_you' })
-  for (const a of ANSWERS) if (a.pattern.test(text)) hits.push({ outcome: a.outcome, key: a.key })
+  // A cost named as the condition of a yes ("if it is at no cost, yes please") is answered by our offer, not a question.
+  for (const a of ANSWERS) if (a.pattern.test(text) && !(a.key === 'reply_cost' && YES_IF_FREE.test(text))) hits.push({ outcome: a.outcome, key: a.key })
   if (/\b(talk to|speak (to|with)|contact|email|reach out to)\s+[A-Z][a-z]+\b/.test(text) || /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/.test(text)) hits.push({ outcome: 'referred', key: null })
 
   // AN ACKNOWLEDGEMENT WITH NO AUTO HEADER (Bendigo Symphony Orchestra's of 21 November 2026, 7.01 am: 'Thank you for
