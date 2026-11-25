@@ -1,15 +1,17 @@
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { dayRowOf, listEmoji, type CampaignNight, type Slide } from './campaign'
-import { captionDay, iconRow, placeOfNight, relationshipOf, type CarouselNight } from './city-carousel'
+import { captionDay, iconRow, placeOfNight, relationshipOf, type CarouselNight, type CityPhoto } from './city-carousel'
 
 /**
  * THE DAILY CITY STORY, TONIGHT'S PICKS (the PM's 01:02 item 4 of 25 November 2026: "Stories: one a day per active city
  * from the week's nights (tonight's picks ...), through the publishing path the engine already has"; the playbook's
  * section 3a: "STORY: daily, for people who already follow: tonight's picks"). A story is one 9:16 frame, so it is the
- * cover of the locked look drawn in type: "TONIGHT IN" / the city, in the accent / the day and date, the picks counted,
- * and tonight's two best picks as cards beneath (day-cards.ts leadRoom: two in a story). It is EventLinqs' own designed
- * artwork, made by the carousel's make step (./carousel-make.ts) into a finished file for the creative intake, posted only
- * after the PM's verify, in the story band (18:00, cadence.ts STARTING_CALENDAR). Pure.
+ * cover of the locked look: "TONIGHT IN" / the city, in the accent / the day and date, the picks counted, and tonight's
+ * two best picks as cards beneath (day-cards.ts leadRoom: two in a story), drawn ON THE CITY'S OWN LICENSED PHOTOGRAPH,
+ * as the carousel's cover is (the PM's 14:15 item E: "stories as designed artwork on licensed city photos"; its credit
+ * printed once on the frame); a city with no licensed photograph of its own has no story, never one in type alone. It is
+ * EventLinqs' own designed artwork, made by the carousel's make step (./carousel-make.ts) into a finished file for the
+ * creative intake, posted only after the PM's verify, in the story band (18:00, cadence.ts STARTING_CALENDAR). Pure.
  *
  * Which picks: tonight's nights in the city starting at least two hours after the story's band (the timing engine holds a
  * piece of nights ahead until two hours before the first doors), one per title, organisers with a relationship first
@@ -45,7 +47,7 @@ export type CityStoryDesign = {
   readonly link: string
 }
 
-/** Tonight's picks and the story's frame and words, or null when the night holds fewer than two picks. Pure. */
+/** Tonight's picks and the story's frame and words, or null with no city photograph or fewer than two picks. Pure. */
 export function cityStoryDesign(input: {
   readonly city: { readonly slug: string; readonly name: string }
   readonly nights: readonly CampaignNight[]
@@ -53,7 +55,10 @@ export function cityStoryDesign(input: {
   readonly origin: string
   readonly hop: string
   readonly tags: readonly string[]
+  /** The city's own licensed photograph (city-carousel.ts cityCoverPhotos); none, no story. */
+  readonly cityPhoto: CityPhoto | null
 }): CityStoryDesign | null {
+  if (!input.cityPhoto) return null
   const band = storyPostAt(input.day).getTime()
   const end = midnightIn(new Date(band + 12 * H), ZONE).getTime()
   const seen = new Set<string>()
@@ -83,8 +88,8 @@ export function cityStoryDesign(input: {
     draws: iconRow(picks),
     line: '',
     photoEventId: null,
-    photo: null,
-    credit: null,
+    photo: input.cityPhoto.url,
+    credit: input.cityPhoto.credit,
     lead: picks.map((n) => dayRowOf(n)),
   }
   const link = `${input.origin.replace(/\/+$/, '')}/city/${input.city.slug}`

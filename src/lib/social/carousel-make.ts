@@ -120,6 +120,14 @@ export function restsOnOfSlides(
   return { slides: out, restsOn }
 }
 
+/** Which of the pictures' assets the media register holds as EventLinqs' own that minute. */
+async function registeredOf(db: Db, pictures: ReadonlyMap<number, SlidePicture>): Promise<ReadonlySet<string>> {
+  const ids = [...new Set([...pictures.values()].flatMap((p) => (p ? [p.assetId] : [])))]
+  const { data: rows, error } = ids.length > 0 ? await db.from('social_assets').select('id').in('id', ids) : { data: [], error: null }
+  if (error) throw new Error(`the register could not be read for its photographs: ${error.message}`)
+  return new Set(((rows ?? []) as { id: string }[]).map((r) => r.id))
+}
+
 export type CarouselMade = { readonly city: string; readonly weekStart: string; readonly state: 'made' | 'kept' | 'refused'; readonly line: string }
 
 /** The make step's own hands, each replaced in a test: the store's readers and the intake, the renderer, the storage. */
@@ -168,11 +176,7 @@ export async function makeWeeklyCarousels(db: Db, input: { readonly now: Date; r
         continue
       }
       const pictures = await deps.pictures(db, design.slides, input.now)
-      const ids = [...new Set([...pictures.values()].flatMap((p) => (p ? [p.assetId] : [])))]
-      const { data: rows, error: rerr } = ids.length > 0 ? await db.from('social_assets').select('id').in('id', ids) : { data: [], error: null }
-      if (rerr) throw new Error(`the register could not be read for its photographs: ${rerr.message}`)
-      const registered = new Set(((rows ?? []) as { id: string }[]).map((r) => r.id))
-      const rests = restsOnOfSlides(design.slides, pictures, registered)
+      const rests = restsOnOfSlides(design.slides, pictures, await registeredOf(db, pictures))
       if ('refused' in rests) {
         say('refused', `not made: ${rests.refused}.`)
         continue
@@ -235,18 +239,26 @@ export async function makeDailyStories(db: Db, input: { readonly now: Date; read
         origin: ORIGIN,
         hop: goHop(ORIGIN, 'facebook'),
         tags: standardTags(city, tagWord(city.name)).split(/\s+/).filter((t) => t.startsWith('#')),
+        cityPhoto: cityCoverPhotos([city], ORIGIN).get(city.slug) ?? null,
       })
       if (!design) {
-        say('refused', 'not made: tonight holds fewer than two picks starting two hours after the story band.')
+        say('refused', 'not made: the city has no licensed photograph of its own, or tonight holds fewer than two picks starting two hours after the story band.')
         continue
       }
-      const bytes = await deps.render(design.slides[0], 1, 1, null, null, 'story')
+      // On the city's own photograph, proved in the register that minute, as the carousel's cover is; else no story.
+      const pictures = await deps.pictures(db, design.slides, input.now)
+      const rests = restsOnOfSlides(design.slides, pictures, await registeredOf(db, pictures))
+      if ('refused' in rests) {
+        say('refused', `not made: ${rests.refused}.`)
+        continue
+      }
+      const bytes = await deps.render(rests.slides[0], 1, 1, pictures.get(0) ?? null, null, 'story')
       const url = await deps.store(`creative/${randomUUID()}/${city.slug}-story-${day}-01.jpg`, bytes)
       const record: IntakeInput = {
         briefId,
         eventIds: design.picks.map((n) => n.eventId),
         format: 'story',
-        images: [{ url, restsOn: { kind: 'own_design' } }],
+        images: [{ url, restsOn: rests.restsOn[0] }],
         captions: design.captions,
         destinations: ['instagram', 'facebook'],
         facts: design.picks.map((n) => ({ eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate ?? null, venue: placeOfNight(n), organiser: n.organiser ?? null })),

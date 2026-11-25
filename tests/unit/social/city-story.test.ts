@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { intakeFaults, slidesOf, type IntakeInput, type IntakeRead } from '@/lib/creative/intake'
+import { intakeFaults, slidesOf, type IntakeInput, type IntakeRead, type RegisterAsset } from '@/lib/creative/intake'
 import type { CampaignCity, CampaignNight } from '@/lib/social/campaign'
 import { makeDailyStories, storyBriefIdOf, type CarouselDeps } from '@/lib/social/carousel-make'
 import { cityStoryDesign, storyDateLine, storyDayToDraw, storyPostAt, storyTimeline } from '@/lib/social/city-story'
@@ -10,8 +10,8 @@ import { timingOf } from '@/lib/social/timing'
 /*
  * THE DAILY CITY STORY, TONIGHT'S PICKS (the PM's 01:02 item 4 of 25 November 2026). Red on main, where a story is drawn
  * only for one night with a permitted photograph not already used, so since 22 November the planner drew one story
- * (277 nights hold no permitted photo): one 9:16 frame a city a day in the locked look, in type, our own design alone,
- * through the creative intake, for the PM's verify, in the 18:00 story band.
+ * (277 nights hold no permitted photo): one 9:16 frame a city a day in the locked look, on the city's own licensed
+ * photograph (the PM's 14:15 item E), through the creative intake, for the PM's verify, in the 18:00 story band.
  */
 const STORAGE = 'https://gndnldyfudbytbboxesk.supabase.co'
 const ORIGIN = 'https://www.eventlinqs.com.au'
@@ -19,6 +19,8 @@ const DAY = '2026-11-26' // Thursday 26 November 2026
 const BAND = storyPostAt(DAY) // 18:00 in Melbourne
 const H = 3_600_000
 const HOP = goHop(ORIGIN, 'facebook')
+const CITY_URL = `${ORIGIN}/social/cities/melbourne-city-circle-tram.jpg`
+const CITY_PHOTO = { url: CITY_URL, credit: 'Photo: Melbourne city circle tram, CC BY 4.0' }
 
 beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL_PREVIEW', '')
@@ -53,7 +55,8 @@ const night = (o: { hoursAfterBand: number; title?: string; city?: string; photo
     priceLine: 'From $30',
   } as CampaignNight
 }
-const design = (nights: CampaignNight[]) => cityStoryDesign({ city: { slug: 'melbourne', name: 'Melbourne' }, nights, day: DAY, origin: ORIGIN, hop: HOP, tags: ['#MelbourneEvents', '#Melbourne', '#EventLinqs'] })
+const design = (nights: CampaignNight[], cityPhoto: { url: string; credit: string | null } | null = CITY_PHOTO) =>
+  cityStoryDesign({ city: { slug: 'melbourne', name: 'Melbourne' }, nights, day: DAY, origin: ORIGIN, hop: HOP, tags: ['#MelbourneEvents', '#Melbourne', '#EventLinqs'], cityPhoto })
 
 describe('when, and the words on the frame', () => {
   it("goes in the story band, 18:00 in Melbourne, made that morning while the band is at least an hour away", () => {
@@ -79,6 +82,11 @@ describe("tonight's picks", () => {
     expect(d!.slides).toHaveLength(1)
     expect(cover).toMatchObject({ t: 'week_cover', lines: ['TONIGHT IN', 'MELBOURNE', 'THU 26 NOV'], accentLine: 1, photo: null, credit: null })
     expect((cover as { lead: unknown[] }).lead).toHaveLength(2)
+  })
+  it("drawn on the city's own licensed photograph, its credit with it; no photograph, no story", () => {
+    const d = design([night({ hoursAfterBand: 3 }), night({ hoursAfterBand: 4 })])
+    expect(d?.slides[0]).toMatchObject({ t: 'week_cover', photo: CITY_URL, credit: CITY_PHOTO.credit })
+    expect(design([night({ hoursAfterBand: 3 }), night({ hoursAfterBand: 4 })], null)).toBeNull()
   })
   it('fewer than two picks tonight: no story that day', () => {
     expect(design([night({ hoursAfterBand: 3 })])).toBeNull()
@@ -108,7 +116,7 @@ describe('the record it hands to the creative intake', () => {
     briefId: storyBriefIdOf('melbourne', DAY),
     eventIds: d.picks.map((p) => p.eventId),
     format: 'story',
-    images: [{ url, restsOn: { kind: 'own_design' } }],
+    images: [{ url, restsOn: { kind: 'city_photo', assetId: 'city-1' } }],
     captions: d.captions,
     destinations: ['instagram', 'facebook'],
     facts: d.picks.map((p) => ({ eventId: p.eventId, title: p.title, startDate: p.startDate, endDate: p.endDate ?? null, venue: p.placeName ?? null, organiser: null })),
@@ -116,12 +124,14 @@ describe('the record it hands to the creative intake', () => {
     objective: 'engagement',
     ...storyTimeline(DAY, d.picks),
   }
+  const CITY_ASSET: RegisterAsset = { id: 'city-1', assetUrl: CITY_URL, assetType: 'photo', eventId: null, width: 1920, height: 1080, usableFor: new Set<string>(), usableAlone: true }
   const read: IntakeRead = {
     nights: new Map(nights.map((x) => [x.eventId, x])),
     aliases: new Map(),
     known: new Map(),
     timing: timingOf({ moment: null, nights: d.picks.map((p) => ({ title: p.title, startDate: p.startDate, endDate: p.endDate ?? null, timezone: p.timezone, status: 'published', isFree: false })), preferredAt: new Date(record.expiresAt) }, new Date('2026-11-25T19:40:00Z')),
-    assets: new Map(),
+    // The city's photograph as the register holds it: EventLinqs' own, usable alone, of no night.
+    assets: new Map([['city-1', CITY_ASSET]]),
     grants: new Map(),
     page: { ok: true, status: 200, body: nights.map((x) => `<a href="/events/${x.slug}">`).join('') },
     misfits: new Map([['facebook', null], ['instagram', null]]),
@@ -140,8 +150,17 @@ describe('the record it hands to the creative intake', () => {
 describe('the make step', () => {
   const city: CampaignCity = { slug: 'melbourne', name: 'Melbourne' }
   const thursday = new Date('2026-11-25T19:40:00Z')
-  const fakeDb = (had: { state: string; piece_id: string | null }[]) =>
-    ({ from: () => { const q = { select: () => q, eq: () => Promise.resolve({ data: had, error: null }) }; return q } }) as never
+  const fakeDb = (had: { state: string; piece_id: string | null }[], registered: string[] = ['city-1']) =>
+    ({
+      from: (table: string) => {
+        const q = {
+          select: () => q,
+          eq: () => Promise.resolve({ data: table === 'creative_intake' ? had : [], error: null }),
+          in: () => Promise.resolve({ data: table === 'social_assets' ? registered.map((id) => ({ id })) : [], error: null }),
+        }
+        return q
+      },
+    }) as never
   it('renders one story frame, stores it once under creative/<uuid>/, and hands the record to the intake as a story', async () => {
     const formats: string[] = []
     const stored: string[] = []
@@ -149,7 +168,7 @@ describe('the make step', () => {
     const deps: CarouselDeps = {
       readCities: async () => [city],
       readNights: async () => [night({ hoursAfterBand: 3 }), night({ hoursAfterBand: 4 })],
-      pictures: async () => new Map(),
+      pictures: async () => new Map([[0, { url: CITY_URL, assetId: 'city-1', kind: 'photo' as const }]]),
       render: async (_s, _n, _t, _p, _x, format) => {
         formats.push(format)
         return new Uint8Array([0xff, 0xd8])
@@ -167,7 +186,12 @@ describe('the make step', () => {
     expect(out).toEqual([expect.objectContaining({ city: 'melbourne', state: 'made' })])
     expect(formats).toEqual(['story'])
     expect(stored[0]).toMatch(new RegExp(`^creative/[0-9a-f-]{36}/melbourne-story-${DAY}-01\\.jpg$`))
-    expect(handed[0]).toMatchObject({ format: 'story', briefId: storyBriefIdOf('melbourne', DAY), images: [{ restsOn: { kind: 'own_design' } }] })
+    expect(handed[0]).toMatchObject({ format: 'story', briefId: storyBriefIdOf('melbourne', DAY), images: [{ restsOn: { kind: 'city_photo', assetId: 'city-1' } }] })
     expect(await makeDailyStories(fakeDb([{ state: 'handed_off', piece_id: 'p1' }]), { now: thursday, deps })).toEqual([expect.objectContaining({ state: 'kept' })])
+    // The city's photograph not in the register as EventLinqs' own that minute: no story, nothing drawn or handed.
+    const before = handed.length
+    const unregistered = await makeDailyStories(fakeDb([], []), { now: thursday, deps })
+    expect(unregistered).toEqual([expect.objectContaining({ state: 'refused', line: expect.stringContaining("the city's own photograph is not in the media register") })])
+    expect(handed.length).toBe(before)
   })
 })
