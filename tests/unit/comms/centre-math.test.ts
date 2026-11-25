@@ -77,26 +77,28 @@ describe('the Centre counts what the rows say', () => {
   })
 
   // THE PM's 06:59 ITEM 4: "569 of 569 night reports not sent" read as waiting; none could ever go.
-  it('a night report that can never go is not sendable, with its reason; only a partner\'s in its window is pending', () => {
+  it('a night report that can never go is not sendable, with its reason; only a partner\'s in its window with something counted is pending', () => {
+    // Wednesday 25 November 2026, 11:00 in Melbourne.
     const now = new Date('2026-11-25T00:00:00Z')
     const day = 86_400_000
     const ended = (days: number) => new Date(now.getTime() - days * day).toISOString()
+    const counted = { viewers: 5, pressesOut: { people: 1, bySite: [] }, onEventLinqs: null }
     const reports = [
-      { event_id: 'e-sent', night_ended_at: ended(3), sent_at: ended(1), lettered: false },
-      { event_id: 'e-lettered', night_ended_at: ended(3), sent_at: null, lettered: true },
-      { event_id: 'e-no-venue', night_ended_at: ended(3), sent_at: null, lettered: false },
-      { event_id: 'e-nobody', night_ended_at: ended(3), sent_at: null, lettered: false },
-      { event_id: 'e-cold', night_ended_at: ended(3), sent_at: null, lettered: false },
-      { event_id: 'e-late', night_ended_at: ended(9), sent_at: null, lettered: false },
-      { event_id: 'e-due', night_ended_at: ended(3), sent_at: null, lettered: false },
-      { event_id: 'e-soon', night_ended_at: ended(0.5), sent_at: null, lettered: false },
+      { event_id: 'e-sent', night_ended_at: ended(3), sent_at: ended(1), lettered: false, figures: counted },
+      { event_id: 'e-lettered', night_ended_at: ended(3), sent_at: null, lettered: true, figures: counted },
+      { event_id: 'e-nobody', night_ended_at: ended(3), sent_at: null, lettered: false, figures: counted },
+      { event_id: 'e-cold', night_ended_at: ended(3), sent_at: null, lettered: false, figures: counted },
+      { event_id: 'e-late', night_ended_at: ended(9), sent_at: null, lettered: false, figures: counted },
+      { event_id: 'e-due', night_ended_at: ended(3), sent_at: null, lettered: false, figures: counted },
+      // Ended at 08:36 this morning: its note goes from tomorrow, Thursday 26 (T+1), in its own zone.
+      { event_id: 'e-soon', night_ended_at: ended(0.1), sent_at: null, lettered: false, figures: counted },
+      { event_id: 'e-nothing', night_ended_at: ended(2), sent_at: null, lettered: false, figures: { viewers: 0, pressesOut: { people: 0, bySite: [] }, onEventLinqs: null } },
     ]
-    const venueOf = new Map<string, string | null>([['e-no-venue', null], ['e-nobody', 'v-empty'], ['e-cold', 'v-cold'], ['e-late', 'v-partner'], ['e-due', 'v-partner'], ['e-soon', 'v-partner']])
-    const organisersAt = new Map([['v-cold', ['o-cold']], ['v-partner', ['o-cold', 'o-partner']]])
-    const g = reportGroups(reports, { venueOf, organisersAt, partners: new Set(['o-partner']) }, now, { dueDays: 2, staleDays: 7 })
-    expect(g).toEqual({ total: 8, sent: 2, dueNow: 1, notYetDue: 1, firstDue: new Date(now.getTime() + 1.5 * day).toISOString(), noOrganiser: 2, notPartner: 1, pastWindow: 1 })
+    const partnerOf = new Map<string, string | null>([['e-nobody', null], ['e-cold', null], ['e-late', 'o-partner'], ['e-due', 'o-partner'], ['e-soon', 'o-partner'], ['e-nothing', 'o-partner']])
+    const g = reportGroups(reports, { partnerOf, hasOrganiser: new Set(['e-cold', 'e-late', 'e-due', 'e-soon', 'e-nothing']), zoneOf: new Map() }, now)
+    expect(g).toEqual({ total: 8, sent: 2, dueNow: 1, notYetDue: 1, firstDue: '2026-11-25T13:00:00.000Z', noOrganiser: 1, notPartner: 1, pastWindow: 1, nothingCounted: 1 })
     expect(reportFigures(g, null)).toMatchObject({ total: 8, pending: 2, sent: 2 })
-    expect(reportNotes(g).map((n) => n.split(':')[0])).toEqual(['2 night reports not sendable', '1 night reports not sendable', '1 night reports not sendable'])
+    expect(reportNotes(g).map((n) => n.split(':')[0])).toEqual(['1 night reports not sendable', '1 night reports not sendable', '1 night reports not sendable', '1 night reports not sent'])
   })
 
   it('a record with no approval step says so, and pending means not yet sent', () => {

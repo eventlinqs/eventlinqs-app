@@ -1,4 +1,5 @@
 import { PROVIDER_NAMES, type BookingProvider } from '@/lib/events/booking-links'
+import { ownHost, onOwnHost } from './own-host'
 
 /**
  * MESSAGE 8, THE RESULTS NOTE AFTER A NIGHT (law 49: "T+1 to T+3, RET: a results note (views, clicks, tickets sold through
@@ -65,4 +66,21 @@ export function afterYourNightResults(figures: unknown, next: { readonly title: 
   if (tickets > 0) lines.push(`${tickets} ${tickets === 1 ? 'ticket was' : 'tickets were'} bought on EventLinqs.`)
   const out = lines.join(' ')
   return next ? `${out}\n\nYour next one, ${next.title} on ${next.day}, is listed too: ${next.link}` : out
+}
+
+/**
+ * The partner a night was theirs, by the three roads ./their-nights.ts reads an organiser's nights by: a venue they run,
+ * their own organisation, or a booking page on their own website's host; the first partner found, or null. Pure.
+ */
+export function nightPartner(
+  night: { readonly venueOwners: readonly string[]; readonly organisationId: string | null; readonly bookingPages: readonly string[] },
+  partners: readonly { readonly id: string; readonly organisationId: string | null; readonly websiteUrl: string | null }[],
+): string | null {
+  for (const p of partners) {
+    if (night.venueOwners.includes(p.id)) return p.id
+    if (night.organisationId !== null && p.organisationId === night.organisationId) return p.id
+    const host = ownHost(p.websiteUrl)
+    if (host && night.bookingPages.some((u) => onOwnHost(u, host))) return p.id
+  }
+  return null
 }

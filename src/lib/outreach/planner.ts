@@ -14,8 +14,7 @@
  * The database judges every draft again and refuses what it must; a refusal is reported in its words and the planner
  * moves on. Nothing here sends.
  */
-import { AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, afterYourNightResults } from './after-your-night'
-import { ownHost, onOwnHost } from './own-host'
+import { AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, afterYourNightResults, nightPartner } from './after-your-night'
 import { readTheirNights } from './their-nights'
 import { dayWords } from './twenty-letters'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -732,24 +731,8 @@ export function featuredFields(k: { title: string; cityName: string | null; went
  * empty, so the message is held for Lawal rather than saying a number nobody counted.
  */
 // Message 8's own window lives in after-your-night.ts, read by the planner here and by the sender at send time.
-export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal } from './after-your-night'
+export { AFTER_YOUR_NIGHT_DUE_DAYS, AFTER_YOUR_NIGHT_STALE_DAYS, afterYourNightRefusal, nightPartner } from './after-your-night'
 
-/**
- * The partner a night was theirs, by the three roads ./their-nights.ts reads an organiser's nights by: a venue they run,
- * their own organisation, or a booking page on their own website's host; the first partner found, or null. Pure.
- */
-export function nightPartner(
-  night: { readonly venueOwners: readonly string[]; readonly organisationId: string | null; readonly bookingPages: readonly string[] },
-  partners: readonly { readonly id: string; readonly organisationId: string | null; readonly websiteUrl: string | null }[],
-): string | null {
-  for (const p of partners) {
-    if (night.venueOwners.includes(p.id)) return p.id
-    if (night.organisationId !== null && p.organisationId === night.organisationId) return p.id
-    const host = ownHost(p.websiteUrl)
-    if (host && night.bookingPages.some((u) => onOwnHost(u, host))) return p.id
-  }
-  return null
-}
 
 const countOf = (v: unknown): string | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? String(v) : null)
 
