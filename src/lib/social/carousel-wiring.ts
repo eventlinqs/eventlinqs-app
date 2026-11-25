@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
-import { makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
+import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
 import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
 
 type Db = SupabaseClient
@@ -19,7 +19,7 @@ export function carouselDepsFor(db: Db, opts: { readonly now: Date; readonly sit
     readNights: (d, cities, weekStart, now) => readCampaignNights(d, cities, weekStart, now, { aheadDays: 7 }),
     pictures: (d, slides, now) => slideImagesNow(d, slides, now),
     // The picture handed back is the register's own answer for that slide (slideImagesNow), passed through as it came.
-    render: (slide, n, total, picture, next) => renderCampaignSlide('feed', slide, n, total, null, picture as UsableImage | null, next),
+    render: (slide, n, total, picture, next, format) => renderCampaignSlide(format, slide, n, total, null, picture as UsableImage | null, next),
     store: async (path, bytes) => {
       const bucket = db.storage.from('event-images')
       const up = await bucket.upload(path, bytes, { contentType: 'image/jpeg', upsert: false, cacheControl: '31536000' })
@@ -31,6 +31,11 @@ export function carouselDepsFor(db: Db, opts: { readonly now: Date; readonly sit
       return r.state === 'refused' ? { state: 'refused', reason: r.reason } : { state: r.state, pieceId: r.pieceId, faults: r.faults }
     },
   }
+}
+
+/** Makes each city's story of the day due now with the wired hands (./carousel-make.ts makeDailyStories); one line a city. */
+export function makeStoriesNow(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<CarouselMade[]> {
+  return makeDailyStories(db, { now: input.now, deps: carouselDepsFor(db, input) })
 }
 
 /** Makes each carousel due now with the wired hands; one line a city. */
