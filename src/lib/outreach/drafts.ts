@@ -19,6 +19,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { goalLinesFor, readDueGoals, withGoalLines } from './goals'
 import { renderTemplate, type MessageChannel, type MessagePurpose } from './rules'
 import { factsForContact } from './facts'
 import { refusalFromError, type Done } from './crm'
@@ -27,6 +28,9 @@ import { firstLetterBlocked } from './one-first-letter'
 import { FIRST_LETTER_WRITTEN, readFirstLetterRecord } from './first-letter-record'
 
 type Admin = SupabaseClient<Database>
+
+/** Messages that carry nothing more than their own words: a removal confirmed, a stop confirmed. */
+const NO_GOALS: ReadonlySet<string> = new Set(['withdrawal_confirmed', 'reply_stop', 'reply_take_down'])
 
 export type DraftRequest = {
   contactId: string
@@ -107,17 +111,28 @@ export async function draftFromTemplate(db: Admin, r: DraftRequest): Promise<Dra
 
   const facts = { ...(await factsForContact(db, r.contactId, r.origin)), ...(r.extraFields ?? {}) }
   const unsubscribe = contact.data.channel === 'email' ? `${r.origin.replace(/\/+$/, '')}/unsubscribe/outreach?t=${contact.data.unsubscribe_token}` : null
-  const rendered = renderTemplate(
-    {
-      channel: template.data.channel as MessageChannel,
-      purpose: template.data.purpose as MessagePurpose,
-      step: template.data.step,
-      subject: template.data.subject,
-      body: template.data.body,
-    },
-    facts,
-    unsubscribe,
-  )
+  const shape = {
+    channel: template.data.channel as MessageChannel,
+    purpose: template.data.purpose as MessagePurpose,
+    step: template.data.step,
+    subject: template.data.subject,
+    body: template.data.body as string,
+  }
+  let rendered = renderTemplate(shape, facts, unsubscribe)
+  // ONE MESSAGE CARRIES EVERY GOAL (Lawal, 26 November 2026, 00:01; the PM's 00:02 item A; ./goals.ts): a relationship
+  // message to a partner in conversation carries every goal of theirs that is due, one short line each, before its sign
+  // off, and the whole letter is rendered and checked again as one. A cold letter keeps its one category (law 24, never
+  // mixed) and the gap spaces those; a confirmation of a removal or a stop carries nothing more. A goals read that fails
+  // leaves the message as its template wrote it, and says so.
+  const key = (template.data.key as string | null) ?? null
+  if (shape.purpose === 'relationship' && contact.data.channel === 'email' && !(key && NO_GOALS.has(key))) {
+    const goals = await readDueGoals(db, { contactId: r.contactId, origin: r.origin, now: r.scheduledFor }).catch((err: unknown) => {
+      console.error(`[outreach/drafts] contact ${r.contactId}: their goals could not be read, so the message carries its own alone:`, err instanceof Error ? err.message : String(err))
+      return null
+    })
+    const lines = goals ? goalLinesFor(goals, { templateKey: key, words: rendered.body }) : []
+    if (lines.length > 0) rendered = renderTemplate({ ...shape, body: withGoalLines(shape.body, lines) }, facts, unsubscribe)
+  }
 
   // Nothing is queued for the sender from here: Lawal approves each message's exact words first (voice-gate.ts).
   const state = 'held' as const
