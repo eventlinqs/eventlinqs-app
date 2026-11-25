@@ -26,7 +26,9 @@
  *      CONTACT_GAP_DAYS after any unanswered unsolicited message to any of their addresses, in any category; a sequence's
  *      own scheduled follow up (step 2 or 3) is excepted. Before drafting, a letter already queued or being sent counts as
  *      written; at send, only one being sent or sent does, so two queued letters never hold each other and the first to
- *      go holds the other.
+ *      go holds the other;
+ *   and, after 1, a partner's message (purpose relationship) waits while our newest message that asked something is not
+ *      answered, at most the gap (ONE OPEN MESSAGE: Lawal, 26 November 2026, 00:01; oneOpenMessage below).
  * It answers allowed, or held with the rule, the reason in words and the next eligible moment (null: not by waiting).
  *
  * PURE at its core (contactDecision); readContactPolicy is its one reader, and a read that fails is never a guess.
@@ -68,7 +70,13 @@ const DAY_MS = 86_400_000
 /** The one confirmation that may still reach a stopped contact (the database allows each once). */
 const STOP_CONFIRMATIONS: ReadonlySet<string> = new Set(['reply_stop', 'reply_take_down'])
 
-export type PolicyRule = 'suppressed' | 'opted out' | 'bounced' | 'replied' | 'own flow' | 'gap'
+export type PolicyRule = 'suppressed' | 'opted out' | 'bounced' | 'replied' | 'own flow' | 'gap' | 'open'
+
+/** The messages of ours that ask something of them: a cold letter or a partner's message. An answer of ours asks nothing. */
+const ASKS: ReadonlySet<string> = new Set(['cadence', 'relationship'])
+
+/** A partner's message that answers their own act (a withdrawal, its two promises kept): never held by one open message. */
+const KEEPS_A_PROMISE: ReadonlySet<string> = new Set(['withdrawal_confirmed'])
 
 export type PolicyDecision =
   | { readonly state: 'allowed' }
@@ -152,6 +160,7 @@ export function contactDecision(c: PolicyCandidate, h: PolicyHistory, now: Date)
   const bounce = earliest(h.bounced.filter((b) => b.contactId === c.contactId))
   if (bounce) return held('bounced', `${me?.address ?? 'this address'} bounced on ${melbourneDateWords(bounce.at)}: nothing more goes to it, in any category`)
 
+  if (c.purpose === 'relationship') return c.templateKey !== null && KEEPS_A_PROMISE.has(c.templateKey) ? { state: 'allowed' } : oneOpenMessage(c, h, now)
   if (c.purpose !== 'cadence') return { state: 'allowed' }
 
   // 2. A reply moves the organiser out of cold sequences, into the reply's own handling.
@@ -196,6 +205,43 @@ export function contactDecision(c: PolicyCandidate, h: PolicyHistory, now: Date)
     )
   }
   return { state: 'allowed' }
+}
+
+/**
+ * ONE OPEN MESSAGE (Lawal, 26 November 2026, 00:01: "You can't be doing too many back-and-forth communications ... it's
+ * better than just bombarding the user with too many emails"; the PM's 00:02, item A: "No second message to the same
+ * contact while one is unanswered, except the approved follow ups when nothing came back"). A partner's message
+ * (purpose relationship) waits while our newest message to the organiser that asked something (a cold letter or a
+ * partner's message, to any of their addresses) is on its way or sent and not answered by any of them; it waits at most
+ * the gap in force, never forever. Its due goals ride in the next message we send anyway (./goals.ts). A cold sequence's
+ * own follow ups keep their place in the frequency rule below, and an answer to them (purpose reply) is never held by it.
+ * Before drafting, a message queued or being sent counts as on its way; at send, only one being sent does. Pure.
+ */
+function oneOpenMessage(c: PolicyCandidate, h: PolicyHistory, now: Date): PolicyDecision {
+  const gapDays = h.gapDays ?? CONTACT_GAP_DAYS
+  const gap = gapDays * DAY_MS
+  const asks = h.touches.filter((t) => ASKS.has(t.purpose))
+  const inFlight = asks.find((t) => (c.moment === 'draft' ? ['queued', 'sending'] : ['sending']).includes(t.state))
+  if (inFlight) {
+    const from = inFlight.scheduledFor && Date.parse(inFlight.scheduledFor) > now.getTime() ? Date.parse(inFlight.scheduledFor) : now.getTime()
+    const at = new Date(from + gap).toISOString()
+    const to = h.contacts.find((x) => x.id === inFlight.contactId)?.address ?? 'them'
+    const kind = inFlight.category ? `${inFlight.category} ` : ''
+    return held('open', `a ${kind}message to ${to} is already on its way; one message at a time, so this waits for their answer, or ${melbourneDateWords(at)} at the latest`, at)
+  }
+  const last = asks.filter((t) => t.state === 'sent' && t.sentAt).sort((a, b) => ms(b.sentAt) - ms(a.sentAt))[0]
+  if (!last) return { state: 'allowed' }
+  const answered = h.replies.some((r) => isReply(r.outcome) && r.receivedAt !== null && ms(r.receivedAt) > ms(last.sentAt))
+  const until = ms(last.sentAt) + gap
+  if (answered || until <= now.getTime()) return { state: 'allowed' }
+  const at = new Date(until).toISOString()
+  const to = h.contacts.find((x) => x.id === last.contactId)?.address ?? 'them'
+  const kind = last.category ? `${last.category} ` : ''
+  return held(
+    'open',
+    `our ${kind}message to ${to} on ${melbourneDateWords(last.sentAt)} is not answered yet; one message at a time, so this waits for their answer, or ${melbourneDateWords(at)} at the latest`,
+    at,
+  )
 }
 
 /**

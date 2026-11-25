@@ -27,14 +27,21 @@ import { draftLifecycleFollowUp } from './lifecycle-follow-up'
 import { draftLifecycleLetter, lifecycleSlotBase } from './lifecycle-play'
 import { isLifecycleKey, type LifecycleKey } from './lifecycle-letters'
 import { organiserCitySlugs } from './organiser-city'
+import { ACQ_GUIDE_CITIES } from './acq-target'
+import { readGeneralLetterHold } from './general-first-letter'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { readKitIdsSentByEmail } from '@/lib/social/kit-sent'
 import { ALPHA, CLAIM_WINDOW_DAYS, Z_CRITICAL, armsOf, firstMessageChoice, halfOf, judgeVariant, readyToJudge, type Half, type JudgedOutcome } from './learning'
 
 type Admin = SupabaseClient<Database>
 
-/** Who a play writes to: organisers at a venue in these cities, and, when named, only these organisers. */
-export type CohortRule = { cities?: string[]; organisers?: string[] }
+/**
+ * Who a play writes to: organisers at a venue in these cities, and, when named, only these organisers. general: the
+ * general first letter (./general-first-letter.ts; Lawal's directive of 26 November 2026, item A): the four guide cities
+ * unless cities are named, never an organiser whose night is due its own event letter on law 49's clock, and the day's
+ * cap counts every letter it drafted that day.
+ */
+export type CohortRule = { cities?: string[]; organisers?: string[]; general?: boolean }
 
 /**
  * Which of an organiser's published addresses to write to first: the one meant for events, bookings or music, then a
@@ -182,9 +189,14 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
     const base = lifecycle ? lifecycleSlotBase(deps.now) : deps.now
     const dayStart = melbourneDayStart(base ?? deps.now)
     const counted = db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('play_id', play.id).in('state', ['queued', 'sending', 'sent'])
+    // THE GENERAL LETTER'S DAY: its letters are drafted held and queue themselves (./self-queue.ts), so every letter it
+    // drafted today that is not set aside counts against its cap, held ones too, and a day never drafts past its cap.
+    const general = ((play.cohort_rule ?? {}) as CohortRule).general === true
     const used = lifecycle
       ? await counted.gte('scheduled_for', dayStart.toISOString()).lt('scheduled_for', melbourneDayStart(new Date(dayStart.getTime() + 36 * 3_600_000)).toISOString())
-      : await counted.gte('drafted_at', melbourneDayStart(deps.now).toISOString())
+      : general
+        ? await db.from('outreach_touches').select('id', { count: 'exact', head: true }).eq('play_id', play.id).neq('state', 'void').gte('drafted_at', melbourneDayStart(deps.now).toISOString())
+        : await counted.gte('drafted_at', melbourneDayStart(deps.now).toISOString())
     const report: PlayReport = { playId: play.id, name: play.name, cap, usedToday: used.count ?? 0, queued: 0, held: [], refused: [] }
     const judgement = play.variant_template_id ? await db.from('outreach_play_judgements').select('outcome').eq('play_id', play.id).maybeSingle() : null
     if (judgement?.error) throw new Error(`outreach_play_judgements: ${judgement.error.message}`)
@@ -231,8 +243,11 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       })
       if (r.state === 'refused') report.refused.push({ contactId, why: r.reason })
       else if (r.state === 'held by policy') report.held.push({ contactId, why: [r.reason] })
-      else if (r.value.state === 'held') report.held.push({ contactId, why: r.value.heldBecause })
-      else {
+      else if (r.value.state === 'held') {
+        report.held.push({ contactId, why: r.value.heldBecause })
+        // A general letter drafted held is one of the day's letters (it queues itself when it clears).
+        if (general) room--
+      } else {
         report.queued++
         room--
         slot++
@@ -292,7 +307,8 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       const touched = ids.length ? await db.from('outreach_touches').select('contact_id, state').in('contact_id', ids) : { data: [] as { contact_id: string; state: string }[] }
       const written = writtenContacts((touched.data ?? []) as { contact_id: string; state: string }[], segmentA)
       let allowed: Set<string> | null = null
-      if (rule.cities && rule.cities.length > 0) {
+      const cohortCities = rule.cities && rule.cities.length > 0 ? rule.cities : general ? [...ACQ_GUIDE_CITIES] : null
+      if (cohortCities) {
         // THE CITIES COHORT (train AE, 20 November 2026; the PM's 08:37 item 4): each organiser's city by its three
         // roads (./organiser-city.ts: a linked venue, the EventLinqs page they were found on, a night under their own
         // account). Until now only a linked venue counted, so most organisers of the four guide cities were never in it.
@@ -307,7 +323,7 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         )
         const real = (rows.data ?? []).filter((o) => !platform.has(o.id) && !named.has(o.id))
         const cities = await organiserCitySlugs(db, real, deps.now)
-        allowed = new Set(real.filter((o) => rule.cities!.includes(cities.get(o.id) ?? '')).map((o) => o.id))
+        allowed = new Set(real.filter((o) => cohortCities.includes(cities.get(o.id) ?? '')).map((o) => o.id))
       }
       const seenOrganiser = new Set<string>()
       if (lifecycle) {
@@ -350,6 +366,15 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         if (allowed && !allowed.has(c.organiser_id)) continue
         if (rule.organisers && rule.organisers.length > 0 && !rule.organisers.includes(c.organiser_id)) continue
         seenOrganiser.add(c.organiser_id)
+        // THE GENERAL LETTER NEVER TAKES THE EVENT LETTER'S PLACE (Lawal's directive of 26 November 2026, item A): an
+        // organiser whose night is due its own letter on law 49's clock, or inside its final week, is passed over, with why.
+        if (general) {
+          const hold = await readGeneralLetterHold(db, c.organiser_id, deps.now)
+          if (hold) {
+            ;(report.notDrafted ??= []).push({ contactId: c.id, why: hold })
+            continue
+          }
+        }
         // The learning loop: while the play's test is open, the contact's half and its text (src/lib/outreach/learning.ts).
         const half = halfOf(c.id)
         const inHalf = play.variant_template_id && judged === null
