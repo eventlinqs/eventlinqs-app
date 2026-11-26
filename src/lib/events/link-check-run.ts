@@ -64,7 +64,30 @@ export function politeLinkDeps(inner: CheckDeps = fetchDeps, pauseMs = 1000): Ch
   }
 }
 
-export type LinkCheckSummary = { links: number; changed: number; confirmed: number; robots: number; unknown: number; failed: number }
+export type LinkCheckSummary = { links: number; changed: number; confirmed: number; robots: number; unknown: number; failed: number; healed?: number }
+
+/**
+ * THE LINK HEALS BEFORE ANYONE IS TOLD (the PM's 11:53 of 26 November 2026, item 2: "On a dead booking link the engine
+ * itself re-reads the source, sets the new link when the source gives one ... and records which"). The case: The
+ * Greatest Christmas Show's one booking page, .../the-greatest-christmas-show-2/, answered 404 or 410 and the sentinel
+ * emailed Lawal CRITICAL at 11:42, while the night's own newer listing from its source (Geelong Arts Centre) already named
+ * the moved page, .../the-greatest-christmas-show-3/, live and selling. So before a link is written dead, the night's own
+ * pages from its sources (listing_candidates of that night, newest first) that the night does not already carry are read,
+ * the same polite way; the first that answers 2xx and does not state itself dead becomes the link, with what it states.
+ * Which pages to try, in order. Pure.
+ */
+export function healCandidates(
+  deadUrl: string,
+  nightUrls: readonly string[],
+  candidates: readonly { readonly page_url: string | null; readonly found_at: string | null }[],
+): string[] {
+  const taken = new Set([deadUrl, ...nightUrls])
+  const seen = new Set<string>()
+  return [...candidates]
+    .sort((a, b) => Date.parse(b.found_at ?? '') - Date.parse(a.found_at ?? ''))
+    .map((c) => (c.page_url ?? '').trim())
+    .filter((u) => /^https?:\/\//.test(u) && !taken.has(u) && !seen.has(u) && seen.add(u))
+}
 
 const hostOf = (url: string): string | null => {
   try {
@@ -82,7 +105,7 @@ const hostOf = (url: string): string | null => {
 export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: Date, opts: { onlyHosts?: ReadonlySet<string> } = {}): Promise<LinkCheckSummary> {
   const { data, error } = await admin
     .from('event_booking_links')
-    .select('id, url, availability, price_from_cents, events!inner(end_date, start_date, timezone)')
+    .select('id, event_id, url, availability, price_from_cents, events!inner(end_date, start_date, timezone)')
     .gte('events.end_date', now.toISOString())
     .limit(MOST_LINKS)
   if (error) {
@@ -100,7 +123,33 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
       return pages.get(url) as Promise<{ status: number; body: string } | null>
     },
   }
-  type Linked = { id: string; url: string; availability: string; price_from_cents: number | null; events: { start_date: string; timezone: string | null } | { start_date: string; timezone: string | null }[] | null }
+  type Linked = { id: string; event_id: string; url: string; availability: string; price_from_cents: number | null; events: { start_date: string; timezone: string | null } | { start_date: string; timezone: string | null }[] | null }
+  // THE HEAL (healCandidates above): the night's own source pages it does not carry, newest first, each read once; the
+  // first alive becomes the link. A read that fails is no heal, never a guess; the link is then written dead as before.
+  const heal = async (link: Linked, night: { startsAt: string; zone: string } | null): Promise<string | null> => {
+    const [cands, theirs] = await Promise.all([
+      admin.from('listing_candidates').select('page_url, found_at').eq('event_id', link.event_id).not('page_url', 'is', null).limit(20),
+      admin.from('event_booking_links').select('url').eq('event_id', link.event_id),
+    ])
+    if (cands.error || theirs.error) return null
+    const tries = healCandidates(link.url, ((theirs.data ?? []) as { url: string }[]).map((r) => r.url), (cands.data ?? []) as { page_url: string | null; found_at: string | null }[]).slice(0, 3)
+    for (const url of tries) {
+      const verdict = await checkLink(url, once, robots, night)
+      const read = pages.has(url) ? await pages.get(url) : null
+      const alive = !!read && read.status >= 200 && read.status < 300 && !(verdict.changed && verdict.availability === 'dead')
+      if (!alive) continue
+      const row: Record<string, unknown> = { url, availability: verdict.changed ? verdict.availability : 'on_sale', updated_at: now.toISOString() }
+      if (verdict.changed && verdict.priceFromCents !== null) Object.assign(row, { price_from_cents: verdict.priceFromCents, price_checked_at: now.toISOString() })
+      const { error: healError } = await admin.from('event_booking_links').update(row).eq('id', link.id).eq('url', link.url)
+      if (healError) {
+        captureException(healError, { scope: 'link-check', handler: 'heal', linkId: link.id })
+        return null
+      }
+      console.log(`[link-check] healed ${link.event_id}: ${link.url} answered dead; its source's own page ${url} answers, so it is the link now`)
+      return url
+    }
+    return null
+  }
   const byHost = new Map<string, Linked[]>()
   for (const link of (data ?? []) as Linked[]) {
     const host = hostOf(link.url) ?? ''
@@ -122,6 +171,11 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
       return
     }
     const stated = verdict.changed ? verdict.availability : null
+    // Before a link is written dead, its night's own newer page from its source is tried (healCandidates).
+    if (stated === 'dead' && (await heal(link, night))) {
+      summary.healed = (summary.healed ?? 0) + 1
+      return
+    }
     const price = verdict.changed ? verdict.priceFromCents : null
     // An unstated availability keeps the stored one; only what the page states is written, except a dead link that answers
     // again, which works ('on_sale', the state every link starts in).

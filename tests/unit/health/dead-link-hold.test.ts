@@ -21,11 +21,10 @@ describe('the automatic hold for a dead booking link', () => {
     expect(holdsToMake([night()], new Set(), NOW).map((n) => n.slug)).toEqual([night().slug])
   })
 
-  it('a link found dead only on this run is named, and held on the next run if still dead', () => {
-    const fresh = night({ links: [{ url: 'https://example.com/a', availability: 'dead', updatedAt: '2026-11-15T22:00:00Z' }] })
-    expect(holdsToMake([fresh], new Set(), NOW)).toEqual([])
-    expect(deadNotYetHeld([fresh], new Set(), NOW).map((n) => n.id)).toEqual(['e1'])
-    expect(holdsToMake([fresh], new Set(), new Date('2026-11-16T06:40:00Z')).map((n) => n.id)).toEqual(['e1'])
+  it("a link found dead on this run is held on this run (the PM's 11:53 of 26 November 2026: within one run), never left live", () => {
+    const fresh = night({ links: [{ url: 'https://example.com/a', availability: 'dead', updatedAt: NOW.toISOString() }] })
+    expect(holdsToMake([fresh], new Set(), NOW).map((n) => n.id)).toEqual(['e1'])
+    expect(deadNotYetHeld([fresh], new Set(), NOW)).toEqual([])
   })
 
   it('never holds a night with a link that works, a night with no link, a private night or one held already', () => {

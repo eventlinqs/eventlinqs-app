@@ -18,6 +18,7 @@ import { readMessagesPerContact } from '@/lib/outreach/frequency-report'
 import { readFirstLetterFloor } from '@/lib/outreach/first-letter-floor'
 import { nextActionsLine, readNextActions } from '@/lib/ops/next-actions'
 import { readScoreboard } from '@/lib/ops/scoreboard'
+import { readDeadLinkLine } from '@/lib/health/dead-link-line'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -99,7 +100,10 @@ export async function GET(request: NextRequest) {
       // EVERY MORNING, YESTERDAY'S WINS AGAINST THEIR APPROVED TARGETS AND TODAY'S ACTION ON A MISS (Lawal, 26 November
       // 2026, 00:04; the PM's 00:04 item 2); each win read alone, and a failed read is named in the line.
       const scoreboard = await readScoreboard(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
-      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor, nextActions, scoreboard })
+      // EVERY MORNING, THE DEAD BOOKING LINKS THE SENTINEL HEALED, HELD OR COULD NOT DECIDE, said to the PM here, never
+      // alarmed to Lawal as CRITICAL (the PM's 11:53 of 26 November 2026, item 2); a failed read is named in the line.
+      const deadLinks = await readDeadLinkLine(db).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
+      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor, nextActions, scoreboard, deadLinks })
       const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
       reportId = sentReport.id
       report = 'sent'

@@ -5,16 +5,24 @@
  * (src/lib/events/link-check.ts, a 404 or 410 only), the visitor sentinel emailed CRITICAL twice, and nothing took the
  * night down. Now the sentinel itself, on its own schedule (vercel.json, every 6 hours at 40 past), judges EVERY
  * published upcoming night, not only those on the pages it reads, and:
- *   holds a public night whose every booking link is dead and was already dead on its previous run (marked at least
- *   SEEN_EARLIER_HOURS ago): the resolver's own night hold, so the night is private and one listing_holds row records why
+ *   holds a public night whose every booking link is dead after this run's own re-read and heal (since 26 November
+ *   2026 in the same run: SEEN_EARLIER_HOURS below): the resolver's own night hold, so the night is private and one listing_holds row records why
  *   (field status, reason no_official_page, the dead links as its readings), never deleted;
  *   releases a hold it made the moment one of the night's links answers again (the link check reads a dead link afresh
  *   every day, src/lib/events/link-check.ts), and the night is public again;
  *   names both in its CRITICAL email. Pure: src/lib/health/visitor-sentinel-run.ts reads and writes.
  */
 
-/** The sentinel runs every 6 hours; a link marked dead at least 5 hours ago was dead on the run before this one. */
-export const SEEN_EARLIER_HOURS = 5
+/**
+ * HELD IN ONE RUN (the PM's 11:53 of 26 November 2026, item 2: "a night whose link dies is healed or taken down within
+ * one run, never left live with a dead link"). Until then a night was held only if its links were already dead on the run
+ * before (5 hours), so a dead night stayed public for up to six hours and the sentinel emailed Lawal CRITICAL meanwhile
+ * (The Greatest Christmas Show, 11:42). The sentinel now re-reads the night's host in the same run before it judges
+ * (visitor-sentinel-run.ts), and that re-read heals a link whose source names a new page (link-check-run.ts
+ * healCandidates); a night still dead after both is held on that run. A dead link is only ever a 404 or 410 its own page
+ * answered (link-check.ts), never a blink, and the hold is released the moment a link answers again.
+ */
+export const SEEN_EARLIER_HOURS = 0
 
 /** What marks a hold as the sentinel's own, in its readings, so it releases only what it made. */
 export const SENTINEL_HOLD_MARK = 'visitor-sentinel: every booking link dead'
@@ -40,7 +48,7 @@ export function holdsToMake(nights: readonly NightLinks[], openHeld: ReadonlySet
   return nights.filter((n) => n.visibility === 'public' && !openHeld.has(n.id) && everyLinkDead(n) && n.links.every((l) => Date.parse(l.updatedAt) <= before))
 }
 
-/** Public nights with every link dead that are not yet held: found on this run only, held on the next if still dead. */
+/** Public nights with every link dead that are not yet held after this run (none, since the hold is made in one run, unless its write failed). */
 export function deadNotYetHeld(nights: readonly NightLinks[], openHeld: ReadonlySet<string>, now: Date): NightLinks[] {
   const made = new Set(holdsToMake(nights, openHeld, now).map((n) => n.id))
   return nights.filter((n) => n.visibility === 'public' && !openHeld.has(n.id) && everyLinkDead(n) && !made.has(n.id))

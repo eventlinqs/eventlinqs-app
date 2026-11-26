@@ -24,8 +24,9 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
   const dry = request.nextUrl.searchParams.get('dry') === '1'
 
-  // A real run holds a night whose every booking link was dead on two runs and releases one whose link answers again
-  // (src/lib/health/dead-link-hold.ts); ?dry=1 judges and writes nothing.
+  // A real run heals a dead link its source moved (src/lib/events/link-check-run.ts healCandidates), holds a night still
+  // dead after this run's own re-read, and releases one whose link answers again (src/lib/health/dead-link-hold.ts, since
+  // 26 November 2026 in one run); ?dry=1 judges and writes nothing.
   // A dead night's whole host is re-read at once through the polite link check before any night is judged.
   const db = createAdminClient()
   const results = await runVisitorSentinel({
