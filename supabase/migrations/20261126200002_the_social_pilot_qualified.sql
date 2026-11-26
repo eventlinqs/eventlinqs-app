@@ -4,7 +4,7 @@
 -- 2, section 4; the PM's car K lean, items K3 and K4). On the contact itself: when it was qualified, by whom, and the basis
 -- in words (the route the organiser publishes for business enquiries, where it was seen). The database keeps the pilot to
 -- 20 and to Instagram and Facebook contacts with a recorded page; a pilot message is then logged sent by hand on that
--- contact (outreach_touch_is_lawful already requires the sender, the time and a STOP line), never sent by software.
+-- contact (the lawful touch trigger already requires the sender, the time and a STOP line), never sent by software.
 
 alter table public.organiser_contacts add column if not exists pilot_qualified_at timestamptz;
 alter table public.organiser_contacts add column if not exists pilot_qualified_by uuid references auth.users (id) on delete set null;

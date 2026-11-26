@@ -321,8 +321,8 @@ async function drive() {
     dmRow.data?.state === 'sent' && dmRow.data?.provider === 'by_hand' && dmRow.data?.sent_by === user && dmRow.data?.context_key === PILOT_CONTEXT && typeof kept.pilot_basis === 'string',
     JSON.stringify(dmRow.data),
   )
-  const again = await recordPilotMessage(db, { contactId: made.dmContact!, body, sentAt: new Date().toISOString(), sentBy: user }, new Date())
-  check('a second first message to the same organiser is refused', again.state === 'refused', JSON.stringify(again))
+  const secondFirst = await recordPilotMessage(db, { contactId: made.dmContact!, body, sentAt: new Date().toISOString(), sentBy: user }, new Date())
+  check('a second first message to the same organiser is refused', secondFirst.state === 'refused', JSON.stringify(secondFirst))
   const after = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
   check('the sender never touches a DM', !after.sent.includes(dmRow.data!.id))
 }
