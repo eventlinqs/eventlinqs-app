@@ -27,6 +27,8 @@ export function morningReportEmail(
     readonly nextActions?: string
     /** Every morning: yesterday's wins against their approved targets, and today's action on a miss (src/lib/ops/scoreboard.ts). */
     readonly scoreboard?: string
+    /** Every morning: dead booking links healed, held, or not decided by the visitor sentinel (src/lib/health/dead-link-line.ts). */
+    readonly deadLinks?: string
   },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
@@ -53,6 +55,7 @@ export function morningReportEmail(
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     ...(when.answers ? [`How fast we answered last week: ${when.answers}`, ''] : []),
     ...(when.scoreboard ? [`Yesterday's wins: ${when.scoreboard}`, ''] : []),
+    ...(when.deadLinks ? [`System, booking links: ${when.deadLinks}`, ''] : []),
     ...(when.floor ? [`First letters: ${when.floor}`, ''] : []),
     ...(when.nextActions ? [`Next actions: ${when.nextActions}`, ''] : []),
     ...(when.perContact ? [`Messages per contact, last 7 days: ${when.perContact}`, ''] : []),
@@ -84,6 +87,7 @@ export function morningReportEmail(
       : '') +
     (when.answers ? `<p><strong>How fast we answered last week:</strong> ${escape(when.answers)}</p>` : '') +
     (when.scoreboard ? `<p><strong>Yesterday's wins:</strong> ${escape(when.scoreboard)}</p>` : '') +
+    (when.deadLinks ? `<p><strong>System, booking links:</strong> ${escape(when.deadLinks)}</p>` : '') +
     (when.floor ? `<p><strong>First letters:</strong> ${escape(when.floor)}</p>` : '') +
     (when.nextActions ? `<p><strong>Next actions:</strong> ${escape(when.nextActions)}</p>` : '') +
     (when.perContact ? `<p><strong>Messages per contact, last 7 days:</strong> ${escape(when.perContact)}</p>` : '') +

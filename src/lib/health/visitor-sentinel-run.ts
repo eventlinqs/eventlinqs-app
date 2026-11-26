@@ -128,28 +128,32 @@ export async function holdDeadNights(
     {
       id: 'visitor-dead-booking-everywhere',
       label: 'Nights with every booking link dead (every published upcoming night)',
-      severity: 'critical',
+      // A WARNING, NEVER LAWAL'S CRITICAL (the PM's 11:53 of 26 November 2026, item 2): the run heals a link its source
+      // moved and holds a night still dead, both in this run; one left here is one it could not decide (its hold not
+      // written), said in the 08:00 report's System line for the PM, not emailed to Lawal as CRITICAL.
+      severity: 'warning',
       ok: named.length === 0,
       detail: named.length === 0 ? `none among ${all.length} nights with a booking link` : list(named.map((n) => n.slug)),
       probableCause: named.length === 0 ? undefined : 'the daily link check read every booking link of these nights as gone (404 or 410)',
-      action: named.length === 0 ? undefined : 'Held by the sentinel on its next run if still dead; give the night its new booking link first if the seller moved it.',
+      action: named.length === 0 ? undefined : 'Its hold was not written on this run: read the night at its source and give it its new link or take it down.',
     },
     {
       id: 'visitor-held-dead-booking',
-      label: write ? 'Nights held this run: every booking link dead on two runs' : 'Nights the sentinel would hold (a dry run, nothing written)',
-      severity: 'critical',
+      label: write ? 'Nights held this run: every booking link dead after its own re-read' : 'Nights the sentinel would hold (a dry run, nothing written)',
+      // A decision made (the night private until a link answers), said in the report, not alarmed (the PM's 11:53, item 2).
+      severity: 'warning',
       ok: toHold.length === 0 && failures.length === 0,
       detail:
         toHold.length === 0 && failures.length === 0
           ? `none held${toRelease.length > 0 ? `; released, a link answers again: ${toRelease.map((h) => slugOf(h.eventId)).join(', ')}` : ''}`
           : `${toHold.length > 0 ? `held, private until a link answers: ${list(toHold.map((n) => n.slug))}` : ''}${failures.length > 0 ? `${toHold.length > 0 ? '; ' : ''}not written: ${failures.join('; ')}` : ''}${toRelease.length > 0 ? `; released: ${toRelease.map((h) => slugOf(h.eventId)).join(', ')}` : ''}`,
-      probableCause: toHold.length === 0 ? undefined : 'every booking link of each was gone (404 or 410) on this run and the one before',
+      probableCause: toHold.length === 0 ? undefined : "every booking link of each was gone (404 or 410) after this run's own re-read, and its source named no new page that answers",
       action: toHold.length === 0 ? undefined : 'Nothing to do unless the seller moved the night: then give it its new link and the next run releases it.',
     },
     {
       id: 'visitor-source-stopped-dead-links',
       label: 'Sources switched off: dead booking links on two nights within a week',
-      severity: 'critical',
+      severity: 'warning',
       ok: stoppedSources.length === 0,
       detail:
         stoppedSources.length === 0

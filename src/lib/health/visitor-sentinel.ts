@@ -62,10 +62,10 @@ export function judgeVisitorPage(input: {
   const { path, citySlug, html, facts, now } = input
   const shown = new Set(linksOnPage(html).events)
   const onPage = facts.filter((f) => shown.has(f.slug))
-  const result = (id: string, label: string, bad: string[], why: string, action: string): HealthResult => ({
+  const result = (id: string, label: string, bad: string[], why: string, action: string, severity: HealthResult['severity'] = 'critical'): HealthResult => ({
     id: `${id}:${path}`,
     label: `${label} (${path})`,
-    severity: 'critical',
+    severity,
     ok: bad.length === 0,
     detail: bad.length === 0 ? 'none' : `${bad.length}: ${bad.slice(0, 12).join(', ')}${bad.length > 12 ? ' and more' : ''}`,
     probableCause: bad.length === 0 ? undefined : why,
@@ -92,7 +92,7 @@ export function judgeVisitorPage(input: {
   return [
     result('visitor-ended', 'Ended nights shown', ended, 'a public list read a night past its end', 'The night must leave every public list at its end in its own zone; find the list that skipped the listing rule.'),
     result('visitor-other-city', 'Nights of another city', otherCity, 'a city page listed a night placed in another city', 'A city page shows its own city only; check the city rule the page reads.'),
-    result('visitor-dead-booking', 'Nights with no working booking link', deadBooking, 'every booking link the night carries answered 404 or 410', 'Re-check the night at its source; take it down or give it its new booking link.'),
+    result('visitor-dead-booking', 'Nights with no working booking link', deadBooking, 'every booking link the night carries answered 404 or 410', 'Re-check the night at its source; take it down or give it its new booking link.', 'warning'),
     result('visitor-placeholder', 'Placeholder covers drawn as photographs', placeholders, 'a generated cover is drawn where a photograph belongs', 'A night without a rights recorded photograph is a directory row, never a drawn cover (law 7).'),
   ]
 }

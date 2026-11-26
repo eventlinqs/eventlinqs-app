@@ -44,7 +44,7 @@ describe("the sentinel's run holds and releases", () => {
     expect(writes[0].values).toMatchObject({ event_id: 'e1', scope: 'night', reason: 'no_official_page' })
     expect(writes[1]).toMatchObject({ values: { visibility: 'private' }, where: [['id', 'e1'], ['visibility', 'public']] })
     const held = results.find((r) => r.id === 'visitor-held-dead-booking')
-    expect(held).toMatchObject({ ok: false, severity: 'critical' })
+    expect(held).toMatchObject({ ok: false, severity: 'warning' })
     expect(held?.detail).toContain(cannonball.slug)
   })
 
