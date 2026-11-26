@@ -25,6 +25,8 @@ export function morningReportEmail(
     readonly floor?: string
     /** Every morning: every active record's next action, and those without one or past their time (src/lib/ops/next-actions.ts). */
     readonly nextActions?: string
+    /** Every morning: yesterday's wins against their approved targets, and today's action on a miss (src/lib/ops/scoreboard.ts). */
+    readonly scoreboard?: string
   },
 ): { subject: string; text: string; html: string } {
   const headline = report.allWell ? 'every area working, nothing waiting for you' : 'what needs your eye is first in each area below'
@@ -50,6 +52,7 @@ export function morningReportEmail(
     // What the engine learned, from production (Lawal's 06:07 of 20 November 2026): the timetable, yesterday's lessons, today's changes.
     ...(when.learned ? [`Today's timetable: ${when.learned.timetable}`, `Learned yesterday: ${when.learned.learned}`, `Changed today because of it: ${when.learned.changed}`, ''] : []),
     ...(when.answers ? [`How fast we answered last week: ${when.answers}`, ''] : []),
+    ...(when.scoreboard ? [`Yesterday's wins: ${when.scoreboard}`, ''] : []),
     ...(when.floor ? [`First letters: ${when.floor}`, ''] : []),
     ...(when.nextActions ? [`Next actions: ${when.nextActions}`, ''] : []),
     ...(when.perContact ? [`Messages per contact, last 7 days: ${when.perContact}`, ''] : []),
@@ -80,6 +83,7 @@ export function morningReportEmail(
       ? `<p><strong>Today's timetable:</strong> ${escape(when.learned.timetable)}<br/><strong>Learned yesterday:</strong> ${escape(when.learned.learned)}<br/><strong>Changed today because of it:</strong> ${escape(when.learned.changed)}</p>`
       : '') +
     (when.answers ? `<p><strong>How fast we answered last week:</strong> ${escape(when.answers)}</p>` : '') +
+    (when.scoreboard ? `<p><strong>Yesterday's wins:</strong> ${escape(when.scoreboard)}</p>` : '') +
     (when.floor ? `<p><strong>First letters:</strong> ${escape(when.floor)}</p>` : '') +
     (when.nextActions ? `<p><strong>Next actions:</strong> ${escape(when.nextActions)}</p>` : '') +
     (when.perContact ? `<p><strong>Messages per contact, last 7 days:</strong> ${escape(when.perContact)}</p>` : '') +

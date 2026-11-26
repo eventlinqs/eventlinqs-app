@@ -17,6 +17,7 @@ import { isReportWeekday, readAnswerTiming } from '@/lib/outreach/answer-report'
 import { readMessagesPerContact } from '@/lib/outreach/frequency-report'
 import { readFirstLetterFloor } from '@/lib/outreach/first-letter-floor'
 import { nextActionsLine, readNextActions } from '@/lib/ops/next-actions'
+import { readScoreboard } from '@/lib/ops/scoreboard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -95,7 +96,10 @@ export async function GET(request: NextRequest) {
       // EVERY MORNING, EVERY ACTIVE RECORD'S NEXT ACTION, AND THOSE WITHOUT ONE OR PAST THEIR TIME (Lawal's directive of
       // 26 November 2026, items H and I); a read that fails says so in the line.
       const nextActions = await readNextActions(db, now).then(nextActionsLine).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
-      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor, nextActions })
+      // EVERY MORNING, YESTERDAY'S WINS AGAINST THEIR APPROVED TARGETS AND TODAY'S ACTION ON A MISS (Lawal, 26 November
+      // 2026, 00:04; the PM's 00:04 item 2); each win read alone, and a failed read is named in the line.
+      const scoreboard = await readScoreboard(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
+      const email = morningReportEmail(read, { dateWords: melbourneDateWords(now), adminUrl: `${getSiteUrl()}/admin/today`, learned: learnedLines(timetable, learned), answers, perContact, floor, nextActions, scoreboard })
       const sentReport = await sendEmail({ to: founderDestination(), ...email, messageType: 'platform_morning_report', recipientRole: 'platform_owner' })
       reportId = sentReport.id
       report = 'sent'

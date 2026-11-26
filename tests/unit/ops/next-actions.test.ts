@@ -56,6 +56,6 @@ describe('a reply, a post, and the line', () => {
   it('the 08:00 report reads it every morning, and a failed read is named in the line', () => {
     const route = readFileSync('src/app/api/cron/health-heartbeat/route.ts', 'utf8').replace(/\r\n/g, '\n')
     expect(route).toMatch(/const nextActions = await readNextActions\(db, now\)\.then\(nextActionsLine\)\.catch\(\(err: unknown\) => `not read: /)
-    expect(route).toContain('answers, perContact, floor, nextActions })')
+    expect(route).toMatch(/answers, perContact, floor, nextActions(, scoreboard)? \}\)/)
   })
 })
