@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { runAllChecks, overallStatus } from '@/lib/health/checks'
 import { sendHeartbeat } from '@/lib/health/runner'
 import { readMorningReport } from '@/lib/admin/morning-report'
+import { readPilotLine } from '@/lib/outreach/pilot-board'
 import { melbourneDateWords, morningReportEmail } from '@/lib/admin/morning-report-email'
 import { sendEmail } from '@/lib/email/send'
 import { founderDestination } from '@/lib/env/destinations'
@@ -99,7 +100,9 @@ export async function GET(request: NextRequest) {
       const nextActions = await readNextActions(db, now).then(nextActionsLine).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
       // EVERY MORNING, YESTERDAY'S WINS AGAINST THEIR APPROVED TARGETS AND TODAY'S ACTION ON A MISS (Lawal, 26 November
       // 2026, 00:04; the PM's 00:04 item 2); each win read alone, and a failed read is named in the line.
+      // Then the social pilot's eight measures as its own block (the PM's car K lean, item K4), read alone.
       const scoreboard = await readScoreboard(db, now).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)
+        .then(async (wins) => `${wins} ${await readPilotLine(db).catch((err: unknown) => `Social pilot: not read: ${err instanceof Error ? err.message : String(err)}.`)}`)
       // EVERY MORNING, THE DEAD BOOKING LINKS THE SENTINEL HEALED, HELD OR COULD NOT DECIDE, said to the PM here, never
       // alarmed to Lawal as CRITICAL (the PM's 11:53 of 26 November 2026, item 2); a failed read is named in the line.
       const deadLinks = await readDeadLinkLine(db).catch((err: unknown) => `not read: ${err instanceof Error ? err.message : String(err)}`)

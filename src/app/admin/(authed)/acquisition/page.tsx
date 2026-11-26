@@ -15,6 +15,7 @@ import { markSentAction, sendAllClearedAction, sendHeldAction } from './actions'
 import { FIRST_LETTER_MANUAL_ON } from '@/lib/outreach/first-letter-flags'
 import { DailyQueueItem } from './daily-queue-item'
 import { PipelineBoardView } from './pipeline-board-view'
+import { PilotSection } from './pilot-section'
 import { readVoicePolicy } from '@/lib/outreach/voice-gate'
 import { ADMIN_CELL, ADMIN_CELL_LABEL, ADMIN_CELL_NAME, ADMIN_ROW, ADMIN_ROW_CONTROL, ADMIN_TABLE, ADMIN_TABLE_WRAP, ADMIN_TBODY, ADMIN_THEAD } from '@/components/admin/table-card'
 
@@ -194,6 +195,8 @@ export default async function AdminAcquisitionPage({ searchParams }: { searchPar
           </div>
         )}
       </section>
+
+      <PilotSection />
 
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4">
