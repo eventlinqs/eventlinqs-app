@@ -18,6 +18,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { planDms, planPlays, planRelationship } from '@/lib/outreach/planner'
+import { PILOT_CONTEXT, recordPilotMessage } from '@/lib/outreach/pilot'
 import { clearRecordedOutreachMail, recordedOutreachMail, runOutreachSender } from '@/lib/outreach/sender'
 import { handleInbox } from '@/lib/outreach/replies'
 
@@ -295,11 +296,33 @@ async function drive() {
     .select('id')
     .single()
   made.dmContact = dm.data?.id
+  // Law 31 narrowed (Lawal, 26 November 2026, 23:01): no automated first DM, and a DM only to a pilot qualified contact.
   const dms = await planDms(db, { now, origin: ORIGIN, actingUser: user, organisers: [made.dmOrganiser!] })
-  const dmRow = await db.from('outreach_touches').select('id, state, body, provider').eq('contact_id', made.dmContact!).eq('step', 1).single()
-  check('a first DM is drafted and HELD for Lawal, never queued', dms.drafted >= 1 && dmRow.data?.state === 'held' && dmRow.data?.provider === null && (dmRow.data?.body ?? '').includes("reply stop and I won't message again"), JSON.stringify({ drafted: dms.drafted, held: dms.held, refused: dms.refused, state: dmRow.data?.state }))
-  const handSent = await db.from('outreach_touches').update({ state: 'sent', sent_at: new Date().toISOString(), sent_by: user, provider: 'by_hand' }).eq('id', dmRow.data!.id).eq('state', 'held').select('id').single()
-  check('his send by hand is recorded, with the basis kept', !handSent.error, handSent.error?.message ?? '')
+  const drafted = await db.from('outreach_touches').select('id').eq('contact_id', made.dmContact!).limit(1)
+  check('no first DM is drafted by the system', dms.drafted === 0 && (drafted.data ?? []).length === 0, JSON.stringify({ drafted: dms.drafted, rows: drafted.data }))
+  const body = "Hi Dee,\n\nI'm writing from EventLinqs about your weekly night.\n\nIf you'd rather not hear from us, reply stop and I won't message again."
+  const unqualified = await recordPilotMessage(db, { contactId: made.dmContact!, body, sentAt: new Date().toISOString(), sentBy: user }, new Date())
+  check('a message to a contact not in the pilot is refused', unqualified.state === 'refused', JSON.stringify(unqualified))
+  const raw = await db.from('outreach_touches').insert({ contact_id: made.dmContact!, purpose: 'cadence', step: 1, state: 'sent', provider: 'by_hand', sent_at: new Date().toISOString(), sent_by: user, body, drafted_by: user }).select('id')
+  check('the database refuses it too', Boolean(raw.error) && /social pilot/.test(raw.error?.message ?? ''), raw.error?.message ?? 'no error')
+  const qualified = await db
+    .from('organiser_contacts')
+    .update({ pilot_qualified_at: new Date().toISOString(), pilot_qualified_by: user, pilot_basis: 'Their profile asks for bookings and enquiries by DM; seen on the profile page.' })
+    .eq('id', made.dmContact!)
+    .select('id')
+    .single()
+  check('the PM qualifies the contact into the pilot', !qualified.error, qualified.error?.message ?? '')
+  const recorded = await recordPilotMessage(db, { contactId: made.dmContact!, body, sentAt: new Date().toISOString(), sentBy: user }, new Date())
+  check('the message a person sent is recorded', recorded.state === 'done', JSON.stringify(recorded))
+  const dmRow = await db.from('outreach_touches').select('id, state, provider, sent_by, context_key, basis_at_send').eq('contact_id', made.dmContact!).eq('step', 1).single()
+  const kept = (dmRow.data?.basis_at_send ?? {}) as Record<string, unknown>
+  check(
+    'it is sent by hand, by the person, in the pilot thread, with the pilot basis kept',
+    dmRow.data?.state === 'sent' && dmRow.data?.provider === 'by_hand' && dmRow.data?.sent_by === user && dmRow.data?.context_key === PILOT_CONTEXT && typeof kept.pilot_basis === 'string',
+    JSON.stringify(dmRow.data),
+  )
+  const secondFirst = await recordPilotMessage(db, { contactId: made.dmContact!, body, sentAt: new Date().toISOString(), sentBy: user }, new Date())
+  check('a second first message to the same organiser is refused', secondFirst.state === 'refused', JSON.stringify(secondFirst))
   const after = await runOutreachSender(db, { now, origin: ORIGIN, graph: null })
   check('the sender never touches a DM', !after.sent.includes(dmRow.data!.id))
 }

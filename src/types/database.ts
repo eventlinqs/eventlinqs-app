@@ -4563,6 +4563,7 @@ export type Database = {
       listing_submissions: {
         Row: {
           alerted_at: string | null
+          also_listed_on: string | null
           authority_confirmed: boolean
           booking_url: string
           category_slug: string | null
@@ -4575,6 +4576,9 @@ export type Database = {
           email: string
           ends_at: string | null
           entry: string
+          event_frequency: string | null
+          found_us: string | null
+          found_us_src: string | null
           held_because: string | null
           id: string
           name: string
@@ -4593,6 +4597,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           role: string
+          social_account: string | null
           starts_at: string
           status: string
           title: string
@@ -4601,6 +4606,7 @@ export type Database = {
         }
         Insert: {
           alerted_at?: string | null
+          also_listed_on?: string | null
           authority_confirmed: boolean
           booking_url: string
           category_slug?: string | null
@@ -4613,6 +4619,9 @@ export type Database = {
           email: string
           ends_at?: string | null
           entry: string
+          event_frequency?: string | null
+          found_us?: string | null
+          found_us_src?: string | null
           held_because?: string | null
           id?: string
           name: string
@@ -4631,6 +4640,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           role: string
+          social_account?: string | null
           starts_at: string
           status?: string
           title: string
@@ -4639,6 +4649,7 @@ export type Database = {
         }
         Update: {
           alerted_at?: string | null
+          also_listed_on?: string | null
           authority_confirmed?: boolean
           booking_url?: string
           category_slug?: string | null
@@ -4651,6 +4662,9 @@ export type Database = {
           email?: string
           ends_at?: string | null
           entry?: string
+          event_frequency?: string | null
+          found_us?: string | null
+          found_us_src?: string | null
           held_because?: string | null
           id?: string
           name?: string
@@ -4669,6 +4683,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           role?: string
+          social_account?: string | null
           starts_at?: string
           status?: string
           title?: string
@@ -6994,6 +7009,9 @@ export type Database = {
           organiser_id: string
           page_checked_by: string | null
           person_name: string | null
+          pilot_basis: string | null
+          pilot_qualified_at: string | null
+          pilot_qualified_by: string | null
           published_on_url: string | null
           relevance: string | null
           role: string
@@ -7021,6 +7039,9 @@ export type Database = {
           organiser_id: string
           page_checked_by?: string | null
           person_name?: string | null
+          pilot_basis?: string | null
+          pilot_qualified_at?: string | null
+          pilot_qualified_by?: string | null
           published_on_url?: string | null
           relevance?: string | null
           role: string
@@ -7048,6 +7069,9 @@ export type Database = {
           organiser_id?: string
           page_checked_by?: string | null
           person_name?: string | null
+          pilot_basis?: string | null
+          pilot_qualified_at?: string | null
+          pilot_qualified_by?: string | null
           published_on_url?: string | null
           relevance?: string | null
           role?: string
@@ -7559,6 +7583,7 @@ export type Database = {
           notes: string | null
           organisation_id: string | null
           owner_id: string | null
+          source_channel: string
           website_key: string | null
           website_url: string | null
         }
@@ -7582,6 +7607,7 @@ export type Database = {
           notes?: string | null
           organisation_id?: string | null
           owner_id?: string | null
+          source_channel?: string
           website_key?: string | null
           website_url?: string | null
         }
@@ -7605,6 +7631,7 @@ export type Database = {
           notes?: string | null
           organisation_id?: string | null
           owner_id?: string | null
+          source_channel?: string
           website_key?: string | null
           website_url?: string | null
         }

@@ -93,7 +93,7 @@ export const RESERVED_CODES: readonly string[] = [
   // guard report almost every route in the app as unreserved, which is how the
   // first two versions of this line failed.
   'm',
-  'legal', 'login', 'marketing', 'newsletter', 'offline', 'orders', 'organisers', 'out', 'photos', 'press', 'pricing', 'queue', 'remind', 's',
+  'legal', 'list', 'login', 'marketing', 'newsletter', 'offline', 'orders', 'organisers', 'out', 'photos', 'press', 'pricing', 'queue', 'remind', 's',
   'scan', 'signup', 'squad', 'start', 'subscribe', 'submit-event', 't', 'this-weekend', 'tickets', 'unsubscribe', 'venues',
   'verify-email-sent', 'waitlist', 'weekend',
   // Held back on purpose: the permanent redirects from the community rename,

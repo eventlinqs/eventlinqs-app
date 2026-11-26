@@ -10,6 +10,7 @@ import { judgeSubmission } from '@/lib/listings/submission'
 import { recordSubmission, sentPhoto } from '@/lib/listings/submission-store'
 import { readSubmissionChoices } from '@/lib/listings/submission-choices'
 import { selfListSubmission, type SelfListingOutcome } from '@/lib/listings/self-listing-run'
+import { sourceAnswersOf } from '@/lib/listings/source-capture'
 
 /**
  * THE SUBMISSION FORM (release checklist H1). Public and unauthenticated, because the organiser of an event sold
@@ -57,7 +58,8 @@ export async function submitEvent(formData: FormData): Promise<void> {
   if (!judged.ok) back(`problem=${encodeURIComponent(judged.problem)}`)
   else {
     const photo = formData.get('photo')
-    const done = await recordSubmission(createAdminClient(), judged.row, photo instanceof File ? photo : null)
+    // WHERE THEY FOUND US (the PM's car K lean, item K1): the four answers ride with the judged row, each optional.
+    const done = await recordSubmission(createAdminClient(), { ...judged.row, ...sourceAnswersOf(field) }, photo instanceof File ? photo : null)
     if (done.state === 'refused') back(`problem=${encodeURIComponent(done.reason)}`)
     else {
       let outcome: SelfListingOutcome | null = null

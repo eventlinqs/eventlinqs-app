@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { FOUND_US, FOUND_US_WORDS, FREQUENCIES, FREQUENCY_WORDS, foundUsFromSrc, listLinkSource } from '@/lib/listings/source-capture'
 import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
@@ -36,8 +37,11 @@ const LABEL = 'block text-sm font-medium text-[var(--text-primary)]'
  * the page bears it out (src/lib/listings/self-listing.ts); only one that cannot be verified waits for a person. The
  * listing's one button goes to the organiser's own booking page. A plain form post; it works with no script.
  */
-export default async function SubmitEventPage({ searchParams }: { searchParams: Promise<{ sent?: string; problem?: string; live?: string; held?: string; city?: string }> }) {
-  const { sent, problem, live, held, city: fromGuide } = await searchParams
+export default async function SubmitEventPage({ searchParams }: { searchParams: Promise<{ sent?: string; problem?: string; live?: string; held?: string; city?: string; src?: string }> }) {
+  const { sent, problem, live, held, city: fromGuide, src } = await searchParams
+  // The channel link they came by (eventlinqs.com.au/list?src=ig, fb, email, qr or ref; the PM's car K lean, item K1).
+  const linkSource = listLinkSource(src)
+  const foundDefault = foundUsFromSrc(src)
   const choices = await readSubmissionChoices()
   // A city guide's "List your event" names its city, so the form opens on it; anything not on the list opens on none.
   const startCity = choices.cities.some((c) => c.slug === fromGuide) ? (fromGuide as string) : ''
@@ -212,6 +216,37 @@ export default async function SubmitEventPage({ searchParams }: { searchParams: 
                     {SUBMISSION_ROLES.map((r) => (
                       <option key={r} value={r}>
                         {SUBMISSION_ROLE_WORDS[r]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* WHERE THEY FOUND US (the PM's car K lean, item K1): four answers, each optional, the first chosen
+                    already when they came by a channel link. */}
+                <div data-source-capture>
+                  <label htmlFor="se-found-us" className={LABEL}>
+                    Where did you find us? (optional)
+                  </label>
+                  <select id="se-found-us" name="found_us" className={SELECT} defaultValue={foundDefault}>
+                    <option value="">Choose one</option>
+                    {FOUND_US.map((f) => (
+                      <option key={f} value={f}>
+                        {FOUND_US_WORDS[f]}
+                      </option>
+                    ))}
+                  </select>
+                  {linkSource ? <input type="hidden" name="src" value={linkSource} /> : null}
+                </div>
+                <FormField id="se-also-listed" name="also_listed_on" label="Where else do you list or sell? (optional)" type="text" maxLength={200} />
+                <FormField id="se-social" name="social_account" label="Your main social account, a handle or a link (optional)" type="text" maxLength={200} />
+                <div>
+                  <label htmlFor="se-frequency" className={LABEL}>
+                    How often do you run events? (optional)
+                  </label>
+                  <select id="se-frequency" name="event_frequency" className={SELECT} defaultValue="">
+                    <option value="">Choose one</option>
+                    {FREQUENCIES.map((f) => (
+                      <option key={f} value={f}>
+                        {FREQUENCY_WORDS[f]}
                       </option>
                     ))}
                   </select>

@@ -88,16 +88,12 @@ export function melbourneDaysBetween(from: Date, to: Date): number {
   return Math.round((melbourneDayStart(to).getTime() - melbourneDayStart(from).getTime()) / DAY_MS)
 }
 
-/** How many new first DMs are drafted for Lawal each day: EventLinqs' own choice (UNSOURCED), a list he clears by hand. */
-export const DM_DRAFTS_PER_DAY = 10
-
 export type DmReport = { drafted: number; followUps: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[] }
 
 /**
- * DMs ARE SENT BY LAWAL BY HAND, never by the system (Meta forbids automated messaging; the engine plan). The planner
- * holds them for him: message 2 (first_dm) to organisers reachable only on Instagram, whose handle has a whole basis and
- * who have never been written to, at most DM_DRAFTS_PER_DAY new ones a day; and the day 4 DM (day4_dm, "the only DM
- * follow-up") once he has marked the first one sent. He sends each with one tap and marks it sent (markSent).
+ * DMs ARE SENT BY A PERSON BY HAND, never by the system (Meta forbids automated messaging; the engine plan). The planner
+ * holds only the day 4 DM (day4_dm, "the only DM follow-up") once a pilot first message is recorded sent; he sends it
+ * with one tap and marks it sent (markSent). It drafts no first DM (law 31 narrowed, below).
  */
 export async function planDms(db: Admin, deps: { now: Date; origin: string; actingUser: string; organisers?: string[] }): Promise<DmReport> {
   const report: DmReport = { drafted: 0, followUps: 0, held: [], refused: [] }
@@ -120,35 +116,10 @@ export async function planDms(db: Admin, deps: { now: Date; origin: string; acti
     record(first.contact_id, await draftFromTemplate(db, { contactId: first.contact_id, templateKey: 'day4_dm', purpose: 'cadence', step: 2, contextKey: (first.context_key as string | null) ?? null, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), true)
   }
 
-  const today = await db
-    .from('outreach_touches')
-    .select('id, organiser_contacts!inner(channel)', { count: 'exact', head: true })
-    .eq('step', 1)
-    .eq('organiser_contacts.channel', 'instagram')
-    .gte('drafted_at', melbourneDayStart(deps.now).toISOString())
-  let room = DM_DRAFTS_PER_DAY - (today.count ?? 0)
-  if (room <= 0) return report
-
-  const handles = await db.from('organiser_contacts').select('id, organiser_id').eq('channel', 'instagram').neq('basis', 'none').order('created_at').limit(500)
-  const organiserIds = [...new Set((handles.data ?? []).map((h) => h.organiser_id))]
-  const reachable = organiserIds.length ? await db.from('organiser_contacts').select('organiser_id, id').in('organiser_id', organiserIds) : { data: [] as { organiser_id: string; id: string }[] }
-  const contactsOf = new Map<string, string[]>()
-  for (const c of reachable.data ?? []) contactsOf.set(c.organiser_id, [...(contactsOf.get(c.organiser_id) ?? []), c.id])
-  const allIds = [...contactsOf.values()].flat()
-  const touched = allIds.length ? await db.from('outreach_touches').select('contact_id').in('contact_id', allIds) : { data: [] as { contact_id: string }[] }
-  const written = new Set((touched.data ?? []).map((t) => t.contact_id))
-  const emailable = organiserIds.length ? await db.from('organiser_contacts').select('organiser_id').in('organiser_id', organiserIds).eq('channel', 'email').neq('basis', 'none') : { data: [] as { organiser_id: string }[] }
-  const byEmail = new Set((emailable.data ?? []).map((e) => e.organiser_id))
-
-  for (const h of handles.data ?? []) {
-    if (room <= 0) break
-    // Email is the automatic channel; a DM is drafted only where no email can go, and never to an organiser already written to.
-    if (byEmail.has(h.organiser_id) || (contactsOf.get(h.organiser_id) ?? []).some((id) => written.has(id))) continue
-    if (deps.organisers && !deps.organisers.includes(h.organiser_id)) continue
-    record(h.id, await draftFromTemplate(db, { contactId: h.id, templateKey: 'first_dm', purpose: 'cadence', step: 1, scheduledFor: deps.now, origin: deps.origin, draftedBy: deps.actingUser }), false)
-    written.add(h.id)
-    room--
-  }
+  // NO AUTOMATED FIRST MESSAGE (Lawal's ruling of 23:01 on 26 November 2026, law 31 narrowed; the social organiser
+  // document version 2, section 4: "No automated first message"). A first DM is no longer drafted from first_dm for any
+  // handle: it goes only to an organiser the PM qualified into the social pilot, written for that organiser by a person
+  // and recorded as sent (./pilot.ts). The database refuses any other (outreach_touch_wants_its_pilot_place).
   return report
 }
 
