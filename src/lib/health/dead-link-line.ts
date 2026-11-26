@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { HealthResult } from './runner'
+import type { HealthResult } from './result'
 import { latestSentinelRun } from './sentinel-runs'
 
 /**

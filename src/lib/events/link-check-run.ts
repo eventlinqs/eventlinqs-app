@@ -127,10 +127,17 @@ export async function runLinkCheck(admin: SupabaseClient, deps: CheckDeps, now: 
   // THE HEAL (healCandidates above): the night's own source pages it does not carry, newest first, each read once; the
   // first alive becomes the link. A read that fails is no heal, never a guess; the link is then written dead as before.
   const heal = async (link: Linked, night: { startsAt: string; zone: string } | null): Promise<string | null> => {
-    const [cands, theirs] = await Promise.all([
-      admin.from('listing_candidates').select('page_url, found_at').eq('event_id', link.event_id).not('page_url', 'is', null).limit(20),
-      admin.from('event_booking_links').select('url').eq('event_id', link.event_id),
-    ])
+    let cands: { data: unknown; error: unknown }
+    let theirs: { data: unknown; error: unknown }
+    try {
+      ;[cands, theirs] = await Promise.all([
+        admin.from('listing_candidates').select('page_url, found_at').eq('event_id', link.event_id).not('page_url', 'is', null).limit(20),
+        admin.from('event_booking_links').select('url').eq('event_id', link.event_id),
+      ])
+    } catch (err) {
+      captureException(err, { scope: 'link-check', handler: 'heal-read', linkId: link.id })
+      return null
+    }
     if (cands.error || theirs.error) return null
     const tries = healCandidates(link.url, ((theirs.data ?? []) as { url: string }[]).map((r) => r.url), (cands.data ?? []) as { page_url: string | null; found_at: string | null }[]).slice(0, 3)
     for (const url of tries) {

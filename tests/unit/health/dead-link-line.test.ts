@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { deadLinkLine } from '@/lib/health/dead-link-line'
-import type { HealthResult } from '@/lib/health/runner'
+import type { HealthResult } from '@/lib/health/result'
 
 /*
  * DEAD BOOKING LINKS, SAID TO THE PM, NEVER ALARMED TO LAWAL (the PM's 11:53 of 26 November 2026, item 2): the visitor
