@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { dollars } from '@/lib/admin/morning-report-math'
 import { SOLD_STATUSES } from '@/lib/broadcast/sales-attribution'
+import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
 import { PILOT_MOST } from './pilot'
 
 /**
@@ -67,10 +68,13 @@ const need = <T>(r: { data: T[] | null; error: { message: string } | null }, wha
 
 /** Every pilot contact with its messages and whether it answered yes. A failed read throws. */
 export async function readPilotContacts(db: Admin): Promise<PilotContact[]> {
-  const contacts = need(
+  const qualified = need(
     await db.from('organiser_contacts').select('id, organiser_id, channel, address, person_name, pilot_basis, pilot_qualified_at').not('pilot_qualified_at', 'is', null).order('pilot_qualified_at').limit(PILOT_MOST + 5),
     'the pilot contacts',
   )
+  // The platform's own listings organisation and the test organisers are never pilot organisers (platform-organiser.ts).
+  const platform = await readPlatformOrganiserIds(db)
+  const contacts = qualified.filter((c) => !platform.has(c.organiser_id))
   if (contacts.length === 0) return []
   const ids = contacts.map((c) => c.id)
   const organisers = need(await db.from('organisers').select('id, name').in('id', [...new Set(contacts.map((c) => c.organiser_id))]), 'their organisers')

@@ -48,6 +48,8 @@ comment on column public.organiser_contacts.pilot_basis is 'The business enquiry
 -- that contact is qualified into the pilot, and the record sent keeps the pilot basis beside the basis it relied on. A reply
 -- to an organiser who wrote to us, a permission request and every other class are untouched. Named to fire after
 -- trg_outreach_touch_takes_its_class (triggers of one event fire in name order), so the class it reads is the one written.
+-- It fires only on an update of the columns it reads, so a set null from a deleted parent (sent_by, drafted_by) is never
+-- judged by it (scripts/guards/a-referential-null-is-not-an-edit.mjs).
 create or replace function public.outreach_touch_wants_its_pilot_place()
 returns trigger
 language plpgsql
@@ -77,5 +79,5 @@ $$;
 
 drop trigger if exists trg_outreach_touch_wants_its_pilot_place on public.outreach_touches;
 create trigger trg_outreach_touch_wants_its_pilot_place
-  before insert or update on public.outreach_touches
+  before insert or update of state, contact_id, purpose, comms_category, basis_at_send on public.outreach_touches
   for each row execute function public.outreach_touch_wants_its_pilot_place();
