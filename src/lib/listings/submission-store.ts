@@ -1,4 +1,5 @@
 import 'server-only'
+import type { SourceAnswers } from './source-capture'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
@@ -23,7 +24,7 @@ export function sentPhoto(photo: unknown): photo is File {
   return photo instanceof File && photo.size > 0
 }
 
-export async function recordSubmission(admin: Admin, row: SubmissionRow, photo: File | null): Promise<Recorded> {
+export async function recordSubmission(admin: Admin, row: SubmissionRow & Partial<SourceAnswers>, photo: File | null): Promise<Recorded> {
   if (!sentPhoto(photo)) {
     // No photo is a whole submission: the listing is designed from its details (the checklist's section K, path B).
     const { data, error } = await admin.from('listing_submissions').insert({ ...row, photo_path: null, photo_owned: false }).select('id').single()
