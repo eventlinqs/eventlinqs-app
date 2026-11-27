@@ -39,7 +39,7 @@ describe('the 21:00 published check', () => {
     const route = read('src/app/api/cron/social-publish/route.ts')
     expect(route).toContain('const PUBLISHED_CHECK_HOUR = 21')
     expect(route).toContain("const due = await readRemindersDue(db, (week?.pieces ?? []).filter((p) => p.state === 'drafted').map((p) => p.id), now)")
-    expect(route).toContain("await recordPhaseRun(db, { phase: 'evening', ride: 'social', startedAt: now, endedAt: new Date(), units: 0, result: `${check.line}${mailed}`.slice(0, 2000), failed: check.failed })")
+    expect(route).toContain("await recordPhaseRun(db, { phase: 'evening', ride: 'social', startedAt: now, endedAt: new Date(), units: 0, result: `${check.line}; ${count}${mailed}`.slice(0, 2000), failed: check.failed })")
     expect(route).toContain("messageType: 'social_publish_failures'")
     expect(read('src/lib/notifications/recipient-matrix.ts')).toMatch(/type: 'social_publish_failures',\n\s+roles: \['platform_owner'\],/)
   })

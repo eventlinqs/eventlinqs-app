@@ -6,6 +6,7 @@ import { publishedCheck, readRemindersDue, readTodaySchedule } from '@/lib/socia
 
 /** The hour of the daily published check (M6, item 6): 21:00 in Melbourne. */
 const PUBLISHED_CHECK_HOUR = 21
+import { readReliability, reliabilityLine } from '@/lib/social/scorecard'
 import { sendEmail } from '@/lib/email/send'
 import { PLATFORM_INBOX } from '@/lib/env/destinations'
 import { midnightIn } from '@/lib/dates/zone-midnight'
@@ -490,7 +491,9 @@ export async function GET(request: NextRequest) {
             .then((r) => `; emailed hello@ (${r.id})`)
             .catch((err: unknown) => `; the failure email was not sent: ${err instanceof Error ? err.message : String(err)}`)
         }
-        await recordPhaseRun(db, { phase: 'evening', ride: 'social', startedAt: now, endedAt: new Date(), units: 0, result: `${check.line}${mailed}`.slice(0, 2000), failed: check.failed })
+        // The publishing reliability count rides the evening row (car U, U4); a failed read is said, never a failed check.
+        const count = await readReliability(db, now).then(reliabilityLine).catch((err: unknown) => `publishing reliability: not read (${err instanceof Error ? err.message : String(err)})`)
+        await recordPhaseRun(db, { phase: 'evening', ride: 'social', startedAt: now, endedAt: new Date(), units: 0, result: `${check.line}; ${count}${mailed}`.slice(0, 2000), failed: check.failed })
       }
     }
     /* EVERY RUN WRITES ITS OWN ROW (src/lib/social/publish-run.ts; Lawal's hardening order, section 2 E): an HTTP 200 is

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkLine, checklistRows, checkProblems, type SlideCheck } from './studio-check'
+import { scoreRows, type ScoreRow } from './scorecard'
 
 /**
  * WHAT THE PHONE SHOWS, AT /admin/social (Lawal, 16:52 on 27 November 2026; the PM's 17:00, car Q, item 3). For each
@@ -17,16 +18,18 @@ export type StudioProof = {
   readonly passed: boolean
   readonly line: string
   readonly rows: readonly SlideCheck[]
+  /** The scorecard's eight measures, the engine's and the PM's score (car U, U3). */
+  readonly scores: readonly ScoreRow[]
 }
 
 export type StudioHold = { readonly pieceKey: string; readonly reason: string; readonly heldAt: string | null }
 
 export type StudioProofs = { readonly byPiece: ReadonlyMap<string, StudioProof>; readonly held: readonly StudioHold[] }
 
-type StudioRow = { id: string; piece_key: string; slides: number; qa_checklist: unknown; intake_id: string | null; moved_at: string | null; held_reason: string | null; held_at: string | null; expires_at: string }
+type StudioRow = { id: string; piece_key: string; slides: number; qa_checklist: unknown; scorecard?: unknown; intake_id: string | null; moved_at: string | null; held_reason: string | null; held_at: string | null; expires_at: string }
 
 /** One piece's proof from its row and its stored phone views. Pure. */
-export function studioProof(row: Pick<StudioRow, 'piece_key' | 'slides' | 'qa_checklist'>, phone: ReadonlyMap<number, string>): StudioProof {
+export function studioProof(row: Pick<StudioRow, 'piece_key' | 'slides' | 'qa_checklist' | 'scorecard'>, phone: ReadonlyMap<number, string>): StudioProof {
   const problems = checkProblems(row.qa_checklist ?? null, row.slides, new Set(phone.keys()))
   return {
     pieceKey: row.piece_key,
@@ -35,6 +38,7 @@ export function studioProof(row: Pick<StudioRow, 'piece_key' | 'slides' | 'qa_ch
     passed: problems.length === 0,
     line: checkLine(problems, row.slides),
     rows: checklistRows(row.qa_checklist ?? null, row.slides),
+    scores: scoreRows(row.scorecard ?? null),
   }
 }
 
@@ -42,7 +46,7 @@ export function studioProof(row: Pick<StudioRow, 'piece_key' | 'slides' | 'qa_ch
 export async function readStudioProofs(db: SupabaseClient, now: Date): Promise<StudioProofs> {
   const s = await db
     .from('studio_pieces')
-    .select('id, piece_key, slides, qa_checklist, intake_id, moved_at, held_reason, held_at, expires_at')
+    .select('id, piece_key, slides, qa_checklist, scorecard, intake_id, moved_at, held_reason, held_at, expires_at')
     .gte('created_at', new Date(now.getTime() - 21 * 86_400_000).toISOString())
     .is('error', null)
     .order('created_at', { ascending: false })

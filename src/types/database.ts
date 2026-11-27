@@ -11818,6 +11818,7 @@ export type Database = {
           piece_key: string
           preferred_at: string
           qa_checklist: Json | null
+          scorecard: Json | null
           slides: number
         }
         Insert: {
@@ -11842,6 +11843,7 @@ export type Database = {
           piece_key: string
           preferred_at: string
           qa_checklist?: Json | null
+          scorecard?: Json | null
           slides: number
         }
         Update: {
@@ -11866,6 +11868,7 @@ export type Database = {
           piece_key?: string
           preferred_at?: string
           qa_checklist?: Json | null
+          scorecard?: Json | null
           slides?: number
         }
         Relationships: [
