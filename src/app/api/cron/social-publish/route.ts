@@ -1,7 +1,9 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { claimPublishLease, deploymentOf, HOURLY_FLAG, isHourRun, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
 import { socialPhaseAt } from '@/lib/ops/timetable'
-import { planCheckWords } from '@/lib/ops/plan-check'
+import { approvalsNeeded, approvalsNeededWords, planCheckWords } from '@/lib/ops/plan-check'
+import { sendEmail } from '@/lib/email/send'
+import { PLATFORM_INBOX } from '@/lib/env/destinations'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
@@ -429,6 +431,17 @@ export async function GET(request: NextRequest) {
           const later = await db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'scheduled').gte('go_at', now.toISOString()).lt('go_at', tomorrow.toISOString())
           if (later.error) throw new Error(`the rest of the day's schedule could not be read: ${later.error.message}`)
           plan = planCheckWords(dry, later.count ?? 0)
+          // M4 (the PM's 12:18 of 27 November 2026): the pieces a person must approve, by name, on the row; at the 05:40
+          // schedule run, the one line to hello@ as well, so they are approved at /admin/social before 09:00.
+          const needs = approvalsNeeded(dry)
+          let mailed = ''
+          if (phase === 'schedule' && needs.length > 0) {
+            const line = `${approvalsNeededWords(needs)}. Approve them at ${getSiteUrl()}/admin/social before 9:00 am.`
+            mailed = await sendEmail({ to: PLATFORM_INBOX, subject: `${needs.length} social piece${needs.length === 1 ? '' : 's'} to approve before 9:00 am`, html: `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`, text: line, messageType: 'social_approvals_needed', recipientRole: 'platform_owner' })
+              .then((r) => `; emailed hello@ (${r.id})`)
+              .catch((err: unknown) => `; the list to hello@ was not sent: ${err instanceof Error ? err.message : String(err)}`)
+          }
+          plan = { words: `${plan.words}; ${approvalsNeededWords(needs)}${mailed}`, failed: plan.failed }
         } catch (fault) {
           plan = { words: `plan: the check could not run: ${fault instanceof Error ? fault.message : String(fault)}`, failed: true }
         }
