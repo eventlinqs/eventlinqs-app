@@ -20,7 +20,7 @@ import { correctPlaceLines, knownVenueIndex, type KnownVenues } from './venue-id
 import { pastLatest, timingOf, type Timing, type TimingNight } from './timing'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
-import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
+import { dayIn, LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
 import { scopeToRecord } from './grant-scope'
 import type { SniffedFormat } from '@/lib/launch/sniff-image'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
@@ -802,10 +802,41 @@ export function timingNightOf(e: Record<string, unknown>): TimingNight {
   }
 }
 
-/** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now. */
-export function timingOfRows(momentKey: string | null, nights: readonly Record<string, unknown>[], preferredAt: Date | null, now: Date): Timing {
+/**
+ * THE NIGHTS WHOSE STAGE ON A DAY IS A REMINDER (car T, T2; car O's event_promotions): for each night, its newest stage
+ * due by the Melbourne day the piece goes (an excluded row never counts); a follow-up or a final stage, or a flagged same
+ * day exception, is a reminder, an initial stage or none a first exposure. Pure.
+ */
+export function remindersFrom(rows: readonly { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day: string): Set<string> {
+  const newest = new Map<string, { stage: string; due_on: string; exception: boolean | null }>()
+  for (const r of rows) {
+    if (r.state === 'excluded' || r.due_on > day) continue
+    const held = newest.get(r.event_id)
+    if (!held || r.due_on > held.due_on) newest.set(r.event_id, r)
+  }
+  return new Set([...newest].filter(([, r]) => r.stage !== 'initial' || r.exception === true).map(([id]) => id))
+}
+
+/**
+ * Each night's stage on the day a piece goes, read now (remindersFrom). A failed read is no reminder: the stricter rule
+ * ahead of the night stands, never a pass on a guess, and the read is said.
+ */
+export async function remindersOn(db: Db, eventIds: readonly string[], at: Date): Promise<Set<string>> {
+  if (eventIds.length === 0) return new Set()
+  const day = dayIn(at, LIFECYCLE_ZONE)
+  const { data, error } = await db.from('event_promotions').select('event_id, stage, due_on, exception, state').in('event_id', [...eventIds]).lte('due_on', day)
+  if (error) {
+    console.error(`[social/timing] the nights' promotion stages could not be read (${error.message}); each is judged ahead of itself`)
+    return new Set()
+  }
+  return remindersFrom((data ?? []) as { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day)
+}
+
+/** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now, each night's stage on
+ * its day (reminders, remindersOn). */
+export function timingOfRows(momentKey: string | null, nights: readonly Record<string, unknown>[], preferredAt: Date | null, now: Date, reminders: ReadonlySet<string> = new Set()): Timing {
   const m = parseMomentKey(momentKey)
-  const rows = nights.map(timingNightOf)
+  const rows = nights.map((e) => ({ ...timingNightOf(e), reminder: reminders.has(String(e.id)) }))
   const multiDay = nights.some((e) => e.end_date && Date.parse(String(e.end_date)) - Date.parse(String(e.start_date)) >= 24 * 3_600_000)
   return timingOf({ moment: m?.kind ?? null, day: m?.day ?? null, nights: rows, preferredAt, multiDay }, now)
 }
@@ -842,7 +873,8 @@ async function timingOfPiece(db: Db, pieceId: string, preferredAt: Date | null, 
   const ids = rev?.eventIds ?? []
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (nerr) return { kind: 'held', reason: `its nights could not be read (${nerr.message}); it waits for the next run` }
-  return timingOfRows((piece as { moment_key?: string | null } | null)?.moment_key ?? null, (nights ?? []) as Record<string, unknown>[], preferredAt, now)
+  const reminders = await remindersOn(db, ids, preferredAt ?? now)
+  return timingOfRows((piece as { moment_key?: string | null } | null)?.moment_key ?? null, (nights ?? []) as Record<string, unknown>[], preferredAt, now, reminders)
 }
 
 /**
@@ -1686,7 +1718,9 @@ export async function readIntakeFacts(
   if (error) throw new Error(`the nights could not be read again: ${error.message}`)
   // At intake the window is read for the record's own expiry, so the record's timeline is judged whole; before publishing,
   // for the minute it goes (timing.ts: a piece's window is its own day's, never later than two hours before the doors).
-  const timing = timingOfRows(null, (rows ?? []) as Record<string, unknown>[], opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.expiresAt), now)
+  // Each night's promotion stage on the day the piece goes (car T, T2): its slot at intake, the minute it goes before publishing.
+  const reminders = await remindersOn(db, r.eventIds, opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.preferredAt))
+  const timing = timingOfRows(null, (rows ?? []) as Record<string, unknown>[], opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.expiresAt), now, reminders)
   const aliases = await venueAliasesOf(db, [...new Set(nights.map((n) => n.venueId).filter((v): v is string => typeof v === 'string'))])
   const assets = await intakeAssetsOf(db, r, now)
   const grants = await intakeGrantsOf(db, r)
@@ -2945,7 +2979,7 @@ export async function scheduleApprovedPieces(
     // THE TIMING ENGINE AT SCHEDULING (timing.ts; Lawal's 19:13, section 4, point 2): the piece's window from its own
     // facts, stored on both rows; a slot past its latest acceptable time is recorded EXPIRED at once, never published.
     const pieceNights = ((nights ?? []) as Record<string, unknown>[]).filter((e) => d.rev.eventIds.includes(e.id as string))
-    const timing = timingOfRows(d.momentKey, pieceNights, at, now)
+    const timing = timingOfRows(d.momentKey, pieceNights, at, now, await remindersOn(db, d.rev.eventIds, at))
     const windowCols = timing.kind === 'window' ? { objective: timing.objective, latest_at: timing.latestAt, expires_at: timing.expiresAt, recovery: timing.recovery, timing_basis: timing.basis.slice(0, 500) } : {}
     const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt, ...windowCols }))
     const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
