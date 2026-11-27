@@ -2,9 +2,9 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
-import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
+import { preflightIntake, readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
-import { moveStudioPieces } from './studio-move'
+import { moveStudioPieces, preflightStudioPieces } from './studio-move'
 import { pngToJpeg } from './studio-jpeg'
 import { weekStartOf } from './campaign'
 
@@ -67,6 +67,25 @@ export function moveStudioNow(db: Db, input: { readonly now: Date; readonly site
       },
       held: (pieceKey, reason) =>
         recordPhaseRun(db, { phase: 'prepare', ride: 'social', startedAt: input.now, endedAt: new Date(), units: 1, result: `studio piece ${pieceKey}: ${reason}`, failed: true }),
+    },
+    input.now,
+  )
+}
+
+/**
+ * THE STUDIO'S PREFLIGHT, WIRED (car T, T3): each piece flagged preflight judged by the intake's own gates, its slides at
+ * the addresses the move would store them under, its nights read as the move reads them, nothing stored or handed off.
+ */
+export function preflightStudioNow(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<string[]> {
+  return preflightStudioPieces(
+    db,
+    {
+      urlOf: (path) => db.storage.from('event-images').getPublicUrl(path).data.publicUrl,
+      facts: async (ids) => {
+        const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(input.now), input.now, { ids })
+        return new Map(nights.map((n) => [n.eventId, { eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate ?? null, venue: n.venueName, organiser: n.organiser ?? null }]))
+      },
+      check: (record) => preflightIntake(db, record, { now: input.now, siteOrigin: input.siteOrigin }),
     },
     input.now,
   )

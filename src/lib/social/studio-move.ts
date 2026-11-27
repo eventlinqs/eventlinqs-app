@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { IntakeInput, Network, RestsOn, StatedFact } from '@/lib/creative/intake'
 import { checkLine, checkProblems } from './studio-check'
@@ -120,6 +121,8 @@ export async function moveStudioPieces(db: Db, deps: StudioMoveDeps, now: Date):
     .select('id, brief_id, piece_key, format, slides, captions, destinations, event_ids, facts, link, objective, preferred_at, latest_at, expires_at, qa_checklist, held_reason')
     .is('moved_at', null)
     .is('error', null)
+    // A piece the studio flags preflight is only judged (preflightStudioPieces), never moved, until the studio clears it.
+    .eq('preflight', false)
     // A piece past its expiry never moves (the intake would refuse it), so a held one drops out and never blocks newer ones.
     .gt('expires_at', now.toISOString())
     .order('created_at')
@@ -174,6 +177,96 @@ export async function moveStudioPieces(db: Db, deps: StudioMoveDeps, now: Date):
   }
   lines.push(...(await storeLatePhoneViews(db, deps, now)))
   return lines
+}
+
+/** How many preflight pieces one run judges (each reads its nights, its rights and its page). */
+export const PREFLIGHT_LIMIT = 5
+
+export type StudioPreflightDeps = {
+  /** Where a slide will be stored, as its public address (no upload: the move stores it when the piece is sent). */
+  readonly urlOf: (path: string) => string
+  /** Each night as the engine reads it now, as the move reads it (StudioMoveDeps.facts). */
+  readonly facts: StudioMoveDeps['facts']
+  /** The intake's own gates on the record, written nowhere (store.ts preflightIntake): every reason, none when it passes. */
+  readonly check: (input: IntakeInput) => Promise<readonly string[]>
+}
+
+/**
+ * WHAT A PREFLIGHT JUDGED, AS ONE FINGERPRINT: the piece's words, slot, nights, facts, link, checklist and the slides
+ * that have arrived with their rights. A piece is judged again only when this changes, so a fix is judged without being
+ * asked and an unchanged piece costs nothing. Pure.
+ */
+export function preflightOf(piece: PieceRow, uploads: readonly { slide_no: number; view?: StudioView | null; rests_on: unknown }[]): string {
+  const judged = {
+    captions: piece.captions, destinations: piece.destinations, eventIds: piece.event_ids, facts: piece.facts, link: piece.link, objective: piece.objective,
+    preferred: piece.preferred_at, latest: piece.latest_at, expires: piece.expires_at, slides: piece.slides, format: piece.format, checklist: piece.qa_checklist ?? null,
+    uploads: uploads.map((u) => [u.slide_no, u.view ?? 'full', u.rests_on]),
+  }
+  return createHash('sha256').update(JSON.stringify(judged)).digest('hex').slice(0, 32)
+}
+
+/**
+ * THE PREFLIGHT (car T, T3, the PM's 02:05 of 28 November 2026; migration 20261128050001): each piece the studio flags
+ * preflight, before its slides travel, is judged by the intake's own gates on every run (each ten minutes) whenever what it
+ * states has changed: the phone check's checklist (its phone views are judged when the slides travel), the nights' facts
+ * as the engine reads them, then the intake's every gate and the handoff's refusals on the record the move would hand in,
+ * its slides at the addresses the move would store them under (deps.check). The answer is written on the piece
+ * (preflight_at, preflight_passed, preflight_reasons, preflight_of); nothing is stored, received or handed off. A failure
+ * to judge is written as its reason, never a pass.
+ */
+export async function preflightStudioPieces(db: Db, deps: StudioPreflightDeps, now: Date): Promise<string[]> {
+  const p = await db
+    .from('studio_pieces')
+    .select('id, brief_id, piece_key, format, slides, captions, destinations, event_ids, facts, link, objective, preferred_at, latest_at, expires_at, qa_checklist, preflight_of')
+    .eq('preflight', true)
+    .is('moved_at', null)
+    .gt('expires_at', now.toISOString())
+    .order('created_at')
+    .limit(20)
+  if (p.error) throw new Error(`the studio's preflight pieces could not be read: ${p.error.message}`)
+  const lines: string[] = []
+  let judged = 0
+  for (const piece of (p.data ?? []) as (PieceRow & { preflight_of?: string | null })[]) {
+    if (judged >= PREFLIGHT_LIMIT) break
+    const u = await db.from('studio_uploads').select('slide_no, view, rests_on').eq('piece_key', piece.piece_key).eq('format', piece.format).order('slide_no')
+    if (u.error) {
+      lines.push(`${piece.piece_key}: PREFLIGHT NOT RUN, its slides could not be read: ${u.error.message}`)
+      continue
+    }
+    const uploads = (u.data ?? []) as { slide_no: number; view?: StudioView | null; rests_on: RestsOn }[]
+    const of = preflightOf(piece, uploads)
+    if (of === (piece.preflight_of ?? null)) continue
+    judged += 1
+    let reasons: string[]
+    try {
+      reasons = await preflightReasons(piece, uploads, deps)
+    } catch (err) {
+      reasons = [`[read] The preflight could not read what it needs (${err instanceof Error ? err.message : String(err)}); judged again on the next run.`]
+    }
+    // A read that failed is not an answer: its fingerprint is not kept, so the next run judges it again.
+    const answered = !reasons.some((r) => r.startsWith('[read]'))
+    const w = await db
+      .from('studio_pieces')
+      .update({ preflight_at: now.toISOString(), preflight_passed: reasons.length === 0, preflight_reasons: reasons.map((r) => r.slice(0, 1000)), preflight_of: answered ? of : null })
+      .eq('id', piece.id)
+    if (w.error) lines.push(`${piece.piece_key}: PREFLIGHT ANSWER NOT WRITTEN, ${w.error.message}`)
+    lines.push(reasons.length === 0 ? `${piece.piece_key}: preflight PASSED; clear preflight to send it` : `${piece.piece_key}: preflight HELD, ${reasons.length} reason(s): ${reasons.join(' ')}`.slice(0, 2000))
+  }
+  return lines
+}
+
+/** Every reason a preflight piece would be held, in the order the move and the intake would meet them. */
+async function preflightReasons(piece: PieceRow, uploads: readonly { slide_no: number; view?: StudioView | null; rests_on: RestsOn }[], deps: StudioPreflightDeps): Promise<string[]> {
+  const numbers = Array.from({ length: piece.slides }, (_, i) => i + 1)
+  // The checklist as the phone check reads it; its phone views are judged when the slides travel, so each is taken as sent.
+  const checklist = checkProblems(piece.qa_checklist ?? null, piece.slides, new Set(numbers)).map((x) => `[phone check] ${x}.`)
+  const stated = statedFacts(piece.event_ids, piece.facts, await deps.facts(piece.event_ids))
+  if ('refused' in stated) return [...checklist, `[facts] ${stated.refused}.`]
+  const images = numbers.map((n) => ({
+    url: deps.urlOf(studioPath(piece.id, n, piece.format)),
+    restsOn: uploads.find((x) => x.slide_no === n && (x.view ?? 'full') === 'full')?.rests_on ?? ({ kind: 'own_design' } as RestsOn),
+  }))
+  return [...checklist, ...(await deps.check(studioIntake(piece, images, stated.facts)))]
 }
 
 /**

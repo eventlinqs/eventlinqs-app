@@ -8,7 +8,8 @@ type Row = Record<string, unknown>
 export function studioFakeDb(rows: { pieces: Row[]; uploads: Row[] }) {
   const updates: { table: string; values: Record<string, unknown>; id: unknown }[] = []
   const tableRows = (table: string) => (table === 'studio_pieces' ? rows.pieces : table === 'studio_uploads' ? rows.uploads : [])
-  const valueOf = (table: string, r: Row, col: string) => (col === 'view' && table === 'studio_uploads' ? (r.view ?? 'full') : (r[col] ?? null))
+  // A column's database default where a row leaves it out: an upload's view is 'full', a piece's preflight false (20261128050001).
+  const valueOf = (table: string, r: Row, col: string) => (col === 'view' && table === 'studio_uploads' ? (r.view ?? 'full') : col === 'preflight' && table === 'studio_pieces' ? (r.preflight ?? false) : (r[col] ?? null))
   const db = {
     from(table: string) {
       const filters: [string, string, unknown][] = []

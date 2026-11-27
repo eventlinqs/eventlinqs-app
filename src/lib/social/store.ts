@@ -1677,7 +1677,7 @@ export async function readIntakeFacts(
   db: Db,
   r: IntakeInput,
   now: Date,
-  opts: { readonly stage: GateStage; readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date },
+  opts: { readonly stage: GateStage; readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly measureFit?: boolean },
 ): Promise<{ readonly read: IntakeRead; readonly slides: readonly Slide[] | null; readonly slideRefusal: string | null }> {
   const fetcher = opts.fetcher ?? fetch
   const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(now), now, { ids: r.eventIds })
@@ -1695,7 +1695,8 @@ export async function readIntakeFacts(
   const misfits = new Map<Network, string | null>()
   for (const net of r.destinations) {
     try {
-      misfits.set(net, slides ? await slidesMisfit(slides, net, r.format, fetcher) : null)
+      // A preflight's slides are not stored yet, so their fit is measured when they travel (measureFit false).
+      misfits.set(net, slides && opts.measureFit !== false ? await slidesMisfit(slides, net, r.format, fetcher) : null)
     } catch (e) {
       misfits.set(net, `its fit for ${net} could not be read (${e instanceof Error ? e.message : String(e)})`)
     }
@@ -1729,6 +1730,23 @@ export async function receiveIntake(
   const { data, error } = await db.from('creative_intake').insert(intakeRow(input)).select('id').single()
   if (error || !data) return { state: 'refused', reason: `Not received: ${refusalOf(error?.message ?? '') ?? error?.message ?? 'no row'}.` }
   return checkIntake(db, String((data as { id: string }).id), opts)
+}
+
+/**
+ * THE INTAKE'S GATES, CHECK ONLY (car T, T3, the PM's 02:05 of 28 November 2026): every gate the intake runs at intake
+ * (intakeFaults on what is read that minute) and the handoff's own refusals (pieceRefusal, law37Refusal on the piece it
+ * would draw), on a record that is never kept: nothing is inserted, drawn or written. Its slides' fit is measured when
+ * they travel. Every reason comes back; none means it would pass. A read that fails throws, and the caller says so.
+ */
+export async function preflightIntake(db: Db, r: IntakeInput, opts: { readonly now: Date; readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<string[]> {
+  const facts = await readIntakeFacts(db, r, opts.now, { stage: 'intake', siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, measureFit: false })
+  const faults = [...intakeFaults(r, facts.read, { stage: 'intake', now: opts.now, origin: ORIGIN, pieceId: null }), ...(facts.slideRefusal ? [`[rights] ${facts.slideRefusal}.`] : [])]
+  if (facts.slides) {
+    const p = planIntakePiece({ ...r, id: 'preflight', state: 'received', pieceId: null }, facts.slides, facts.read.nights, ORIGIN)
+    const refused = pieceRefusal(p) ?? law37Refusal(p.slides)
+    if (refused) faults.push(`[handoff] ${refused}`)
+  }
+  return faults
 }
 
 /** One intake record by its id, or null. */

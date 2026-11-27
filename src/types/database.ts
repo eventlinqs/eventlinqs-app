@@ -11817,6 +11817,11 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          preflight: boolean
+          preflight_at: string | null
+          preflight_of: string | null
+          preflight_passed: boolean | null
+          preflight_reasons: string[] | null
           qa_checklist: Json | null
           scorecard: Json | null
           slides: number
@@ -11842,6 +11847,11 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          preflight?: boolean
+          preflight_at?: string | null
+          preflight_of?: string | null
+          preflight_passed?: boolean | null
+          preflight_reasons?: string[] | null
           qa_checklist?: Json | null
           scorecard?: Json | null
           slides: number
@@ -11867,6 +11877,11 @@ export type Database = {
           objective?: string
           piece_key?: string
           preferred_at?: string
+          preflight?: boolean
+          preflight_at?: string | null
+          preflight_of?: string | null
+          preflight_passed?: boolean | null
+          preflight_reasons?: string[] | null
           qa_checklist?: Json | null
           scorecard?: Json | null
           slides?: number

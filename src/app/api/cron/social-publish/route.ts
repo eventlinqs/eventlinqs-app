@@ -23,7 +23,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 import { planAsOf } from '@/lib/social/plan-for'
-import { makeCarouselsNow, makeStoriesNow, moveStudioNow } from '@/lib/social/carousel-wiring'
+import { makeCarouselsNow, makeStoriesNow, moveStudioNow, preflightStudioNow } from '@/lib/social/carousel-wiring'
 
 export const dynamic = 'force-dynamic'
 
@@ -210,6 +210,12 @@ export async function GET(request: NextRequest) {
       for (const line of await moveStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio: ${line}`)
     } catch (err) {
       console.error('[cron/social-publish] the studio move could not run:', err instanceof Error ? err.message : err)
+    }
+    // THE STUDIO'S PREFLIGHT (car T, T3): each piece it flags is judged and answered on the piece, never moved. Contained.
+    try {
+      for (const line of await preflightStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio preflight: ${line}`)
+    } catch (err) {
+      console.error('[cron/social-publish] the studio preflight could not run:', err instanceof Error ? err.message : err)
     }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
