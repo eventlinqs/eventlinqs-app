@@ -10,6 +10,7 @@ import type { LedgerRow } from '@/lib/events/ledger-data'
 import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
+import { outboundHref } from '@/lib/listings/outbound'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
 import { IG_DAYS, IG_SLOT_LEAD_MS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
@@ -32,6 +33,25 @@ export type IgItem = {
   /** The card's link: its listing, tagged source instagram and the post's id. */
   readonly href: string
   readonly postId: string
+  /** One tap to its tickets or booking (car U, U2). */
+  readonly action?: IgAction
+}
+
+/** One tap to the night's tickets or booking (car U, U2): its words and where it goes. */
+export type IgAction = { readonly label: 'Get tickets' | 'Book' | 'Free, details'; readonly href: string }
+
+/**
+ * THE ONE TAP (car U, U2, the PM's 02:12 of 28 November 2026; the scorecard's conversion point 9): EventLinqs' own tickets
+ * go to the event page's ticket panel (#tickets); a night sold elsewhere goes through the counted /out redirect to its own
+ * live booking link (the primary one first; outbound.ts outboundHref, never an open redirect); a free night, or one with no
+ * live link, goes to its own page. Pure.
+ */
+export function igAction(row: Pick<RawRow, 'slug' | 'is_free' | 'ticket_tiers' | 'booking_links'>, eventHref: string): IgAction {
+  if (row.is_free) return { label: 'Free, details', href: eventHref }
+  if ((row.ticket_tiers ?? []).length > 0) return { label: 'Get tickets', href: `${eventHref}#tickets` }
+  const live = (row.booking_links ?? []).filter((l) => l.availability !== 'dead' && /^https:\/\//.test(l.url))
+  const link = live.find((l) => l.is_primary) ?? live[0]
+  return link ? { label: 'Book', href: outboundHref(row.slug, link.url) } : { label: 'Book', href: eventHref }
 }
 
 export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
@@ -132,7 +152,9 @@ async function cardsOf(picks: readonly IgPick[], rows: readonly RawRow[], now: D
     const row = byId.get(p.eventId)
     if (!row) return []
     const card = marketCard({ row, more: p.more, every: null }, shaped.days.todayKey)
-    return [{ card, href: igHref(card.href, p.postId, source), postId: p.postId }]
+    const href = igHref(card.href, p.postId, source)
+    const raw = rows.find((r) => r.id === p.eventId)
+    return [{ card, href, postId: p.postId, ...(raw ? { action: igAction(raw, href) } : {}) }]
   })
 }
 
