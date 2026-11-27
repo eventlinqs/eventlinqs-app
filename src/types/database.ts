@@ -11807,6 +11807,8 @@ export type Database = {
           expires_at: string
           facts: Json
           format: string
+          held_at: string | null
+          held_reason: string | null
           id: string
           intake_id: string | null
           latest_at: string
@@ -11815,6 +11817,7 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          qa_checklist: Json | null
           slides: number
         }
         Insert: {
@@ -11828,6 +11831,8 @@ export type Database = {
           expires_at: string
           facts?: Json
           format: string
+          held_at?: string | null
+          held_reason?: string | null
           id?: string
           intake_id?: string | null
           latest_at: string
@@ -11836,6 +11841,7 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          qa_checklist?: Json | null
           slides: number
         }
         Update: {
@@ -11849,6 +11855,8 @@ export type Database = {
           expires_at?: string
           facts?: Json
           format?: string
+          held_at?: string | null
+          held_reason?: string | null
           id?: string
           intake_id?: string | null
           latest_at?: string
@@ -11857,6 +11865,7 @@ export type Database = {
           objective?: string
           piece_key?: string
           preferred_at?: string
+          qa_checklist?: Json | null
           slides?: number
         }
         Relationships: [
@@ -11884,6 +11893,7 @@ export type Database = {
           rests_on: Json
           sha256: string | null
           slide_no: number
+          view: string
         }
         Insert: {
           brief_id: string
@@ -11899,6 +11909,7 @@ export type Database = {
           rests_on?: Json
           sha256?: string | null
           slide_no: number
+          view?: string
         }
         Update: {
           brief_id?: string
@@ -11914,6 +11925,7 @@ export type Database = {
           rests_on?: Json
           sha256?: string | null
           slide_no?: number
+          view?: string
         }
         Relationships: [
           {

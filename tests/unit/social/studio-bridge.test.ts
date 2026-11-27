@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { byteaBytes, moveStudioPieces, studioIntake, studioPath } from '@/lib/social/studio-move'
 import { isCreativeFileUrl } from '@/lib/social/campaign'
+import { passedChecklist, studioFakeDb } from './studio-fake'
 
 /*
  * THE STUDIO BRIDGE (the PM's 14:12 and 14:20 of 27 November 2026, car N step 2b). Red on main, where the cloud studio had
@@ -29,30 +30,27 @@ const piece = {
   preferred_at: '2026-11-27T22:00:00Z',
   latest_at: '2026-11-28T02:00:00Z',
   expires_at: '2026-11-28T12:00:00Z',
+  qa_checklist: passedChecklist(2),
+  held_reason: null,
+  moved_at: null,
+  error: null,
 }
 
 // The night as the engine reads it (car S): the intake's facts come from here, never from the studio's text.
 const LISTED = { eventId: '33333333-3333-4333-8333-333333333333', title: 'Night Market', startDate: '2026-11-28T09:00:00Z', endDate: null, venue: 'Queen Victoria Market', organiser: null }
 const facts = async () => new Map([[LISTED.eventId, LISTED]])
 
-function fakeDb(uploads: { id: string; slide_no: number; png: string; rests_on: unknown }[]) {
-  const updates: { table: string; values: Record<string, unknown> }[] = []
-  const db = {
-    from(table: string) {
-      const q: Record<string, unknown> = {}
-      const chain = () => q
-      Object.assign(q, { select: chain, is: chain, eq: chain, order: chain })
-      q.limit = () => Promise.resolve({ data: table === 'studio_pieces' ? [piece] : [], error: null })
-      q.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: table === 'studio_uploads' ? uploads : [], error: null }).then(ok)
-      q.update = (values: Record<string, unknown>) => {
-        updates.push({ table, values })
-        return { eq: () => Promise.resolve({ error: null }) }
-      }
-      return q
-    },
-  }
-  return { db: db as never, updates }
+// Since car Q (the PM's 17:00), a piece moves only with its phone check passed and a phone view of every slide.
+function fakeDb(uploads: { id: string; slide_no: number; png: string; rests_on: unknown; view?: string }[]) {
+  return studioFakeDb({
+    pieces: [{ ...piece }],
+    uploads: uploads.map((u) => ({ brief_id: piece.brief_id, piece_key: piece.piece_key, format: 'feed', view: 'full', moved_at: null, ...u })),
+  })
 }
+const phoneViews = [
+  { id: 'p1', slide_no: 1, png: PNG_HEX, rests_on: { kind: 'own_design' }, view: 'phone' },
+  { id: 'p2', slide_no: 2, png: PNG_HEX, rests_on: { kind: 'own_design' }, view: 'phone' },
+]
 
 describe('the pure parts', () => {
   it('reads a bytea as bytes, names the path, and builds the intake with the slides in order', () => {
@@ -77,6 +75,7 @@ describe('the move', () => {
     const { db, updates } = fakeDb([
       { id: 'u1', slide_no: 1, png: PNG_HEX, rests_on: { kind: 'own_design' } },
       { id: 'u2', slide_no: 2, png: PNG_HEX, rests_on: { kind: 'own_design' } },
+      ...phoneViews,
     ])
     let received: unknown = null
     const lines = await moveStudioPieces(db, {
@@ -84,16 +83,17 @@ describe('the move', () => {
       receive: async (input) => ((received = input), { state: 'handed_off', id: 'intake-1' }),
       facts,
     }, NOW)
-    expect(stored).toEqual([`creative/${piece.id}/1-feed.jpg`, `creative/${piece.id}/2-feed.jpg`])
-    expect((received as { images: { url: string }[] }).images.map((i) => i.url)).toEqual(stored.map((p) => `https://store/${p}`))
-    expect(updates.filter((u) => u.table === 'studio_uploads')).toHaveLength(2)
+    expect(stored).toEqual([`creative/${piece.id}/1-feed.jpg`, `creative/${piece.id}/2-feed.jpg`, `creative/${piece.id}/1-feed-phone.jpg`, `creative/${piece.id}/2-feed-phone.jpg`])
+    expect((received as { images: { url: string }[] }).images.map((i) => i.url)).toEqual(stored.slice(0, 2).map((p) => `https://store/${p}`))
+    expect(updates.filter((u) => u.table === 'studio_uploads')).toHaveLength(4)
     expect(updates.find((u) => u.table === 'studio_pieces')?.values).toMatchObject({ intake_id: 'intake-1' })
-    expect(lines).toEqual(['mel-weekend-28nov: moved, 2 slides, intake handed_off'])
+    expect(lines).toEqual(['mel-weekend-28nov: moved, 2 slides and their phone views, Phone check passed: all 10 items on each of 2 slides, and a phone view of every slide. Intake handed_off'])
   })
   it('writes a refusal on the piece, never a silent drop', async () => {
     const { db, updates } = fakeDb([
       { id: 'u1', slide_no: 1, png: PNG_HEX, rests_on: { kind: 'own_design' } },
       { id: 'u2', slide_no: 2, png: PNG_HEX, rests_on: { kind: 'own_design' } },
+      ...phoneViews,
     ])
     const lines = await moveStudioPieces(db, { store: async (p) => p, receive: async () => ({ state: 'refused', reason: 'a stated fact differs from the listing' }), facts }, NOW)
     expect(updates.find((u) => u.table === 'studio_pieces')?.values).toEqual({ error: 'the creative intake refused it: a stated fact differs from the listing' })

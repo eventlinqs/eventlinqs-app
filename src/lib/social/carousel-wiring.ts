@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
 import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
+import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { moveStudioPieces } from './studio-move'
 import { pngToJpeg } from './studio-jpeg'
 import { weekStartOf } from './campaign'
@@ -40,7 +41,9 @@ export function carouselDepsFor(db: Db, opts: { readonly now: Date; readonly sit
  * THE STUDIO BRIDGE'S MOVE, WIRED (the PM's 14:12 and 14:20 of 27 November 2026; ./studio-move.ts): each studio slide
  * re-encoded as JPEG and stored under event-images/creative/<piece id>/ (car R1; the same path again overwrites the same
  * file, so a retried move is safe),
- * and each piece handed to the creative intake (store.ts receiveIntake), whose gates leave it unapproved for Lawal.
+ * and each piece handed to the creative intake (store.ts receiveIntake), whose gates leave it unapproved for Lawal. A piece
+ * the phone check holds (car Q, the PM's 17:00) is written into ops_phase_runs once for each new reason, as a failed
+ * run of the social ride's prepare phase: the studio's pieces are the posts prepared ahead of their day.
  */
 export function moveStudioNow(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<string[]> {
   return moveStudioPieces(
@@ -62,6 +65,8 @@ export function moveStudioNow(db: Db, input: { readonly now: Date; readonly site
         // A night with no end or no named organiser states null for it, as the intake's own record does (StatedFact).
         return new Map(nights.map((n) => [n.eventId, { eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate ?? null, venue: n.venueName, organiser: n.organiser ?? null }]))
       },
+      held: (pieceKey, reason) =>
+        recordPhaseRun(db, { phase: 'prepare', ride: 'social', startedAt: input.now, endedAt: new Date(), units: 1, result: `studio piece ${pieceKey}: ${reason}`, failed: true }),
     },
     input.now,
   )

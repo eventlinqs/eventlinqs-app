@@ -9,6 +9,8 @@ import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import { cadenceFor, lastPosted, readAssets, readCampaign, readImageRequests, readPosts, type AssetRow, type PieceRow, type PostRow } from '@/lib/social/store'
 import { imageRightsLine, readImageRights, type ImageRightsReport } from '@/lib/media/image-rights'
 import { readBlotatoTargets, type BlotatoTargets } from '@/lib/social/blotato-targets'
+import { CHECK_ITEMS } from '@/lib/social/studio-check'
+import { readStudioProofs, type StudioProof, type StudioProofs } from '@/lib/social/studio-proof'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import {
@@ -173,8 +175,50 @@ const ASSET_STATE_NAME: Record<string, string> = {
   original_design: 'Original EventLinqs design',
 }
 
+/** What the phone shows (car Q, the PM's 17:00 of 27 November 2026; src/lib/social/studio-proof.ts): each slide as the
+ * studio's phone view stored it, 390 px wide, and the ten item checklist's result, slide by slide. */
+function StudioProofView({ proof }: { proof: StudioProof }) {
+  return (
+    <div data-phone-check={proof.passed ? 'passed' : 'not-passed'} className="mt-3">
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--admin-muted)]">What the phone shows, 390 px wide</p>
+      <ol className="mt-1 flex gap-3 overflow-x-auto pb-2" aria-label="Phone views">
+        {proof.phoneViews.map((url, i) => (
+          <li key={i} data-phone-view={i + 1} className="w-[390px] max-w-full shrink-0">
+            {url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- the studio's stored phone view, shown at its own width, never resized by the optimiser
+              <img src={url} alt={`Slide ${i + 1} as a phone shows it`} loading="lazy" className="w-full rounded-lg border border-[var(--admin-line)]" />
+            ) : (
+              <p className="rounded-lg border border-[var(--admin-line)] p-4 text-sm text-[var(--admin-soft)]">Slide {i + 1}: no phone view stored</p>
+            )}
+          </li>
+        ))}
+      </ol>
+      <p data-check-line className="mt-2 text-sm text-[var(--admin-ink)]">
+        {proof.line}
+      </p>
+      {proof.rows.length === 0 ? null : (
+        <details className="mt-1 text-sm text-[var(--admin-soft)]">
+          <summary className="flex min-h-[44px] cursor-pointer items-center text-[var(--admin-ink)] underline">The ten items, slide by slide</summary>
+          {proof.rows.map((slide) => (
+            <div key={slide.slide} data-check-slide={slide.slide} className="mt-2">
+              <p className="font-semibold text-[var(--admin-ink)]">Slide {slide.slide}</p>
+              <ul className="mt-1 space-y-1">
+                {slide.items.map((it) => (
+                  <li key={it.item} data-check-item={it.item} data-pass={it.pass ? 'yes' : 'no'}>
+                    {it.pass ? 'Pass' : 'NOT PASSED'} · {it.item}. {CHECK_ITEMS[it.item - 1] ?? 'an item outside the ten'}: {it.seen || 'nothing written on what was seen'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </details>
+      )}
+    </div>
+  )
+}
+
 /** One piece of the week's campaign, phone ready, with its picks, its history and every decision on it (A6, B4, K6, K7). */
-function Piece({ p }: { p: PieceRow }) {
+function Piece({ p, proof }: { p: PieceRow; proof?: StudioProof }) {
   const r = p.revision
   const plain = piecePlainState({
     state: p.state,
@@ -263,6 +307,7 @@ function Piece({ p }: { p: PieceRow }) {
           </li>
         ))}
       </ol>
+      {proof ? <StudioProofView proof={proof} /> : null}
       {p.kind === 'discovery_reel' ? (
         <a href={`/admin/social/piece/${p.id}/reel?download=1&v=${r.version}`} className={`${QUIET} mt-2`} data-press="reel-mp4">
           Download the Reel (MP4)
@@ -378,7 +423,15 @@ function Piece({ p }: { p: PieceRow }) {
   )
 }
 
-function CampaignSection({ campaign, requests }: { campaign: { weekStart: string; pieces: PieceRow[]; excluded: string[] } | null; requests: { eventTitle: string; hostName: string; message: string | null }[] }) {
+function CampaignSection({
+  campaign,
+  requests,
+  studio,
+}: {
+  campaign: { weekStart: string; pieces: PieceRow[]; excluded: string[] } | null
+  requests: { eventTitle: string; hostName: string; message: string | null }[]
+  studio: StudioProofs & { readonly unread?: string }
+}) {
   return (
     <section data-section="campaign" className="mb-8">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
@@ -411,9 +464,26 @@ function CampaignSection({ campaign, requests }: { campaign: { weekStart: string
       ) : (
         <ul className="space-y-4">
           {campaign.pieces.map((p) => (
-            <Piece key={p.id} p={p} />
+            <Piece key={p.id} p={p} proof={studio.byPiece.get(p.id)} />
           ))}
         </ul>
+      )}
+      {studio.unread ? (
+        <p data-studio-unread className="mt-4 text-sm text-[var(--admin-soft)]">
+          The studio&apos;s phone checks could not be read: {studio.unread}
+        </p>
+      ) : null}
+      {studio.held.length === 0 ? null : (
+        <div data-section="studio-held" className="mt-6">
+          <h3 className="mb-3 font-display text-base font-semibold text-[var(--admin-ink)]">Studio pieces the phone check holds</h3>
+          <ul className="space-y-2">
+            {studio.held.map((h) => (
+              <li key={h.pieceKey} data-held={h.pieceKey} className="rounded-xl border border-[var(--admin-line)] bg-[var(--admin-paper)] p-4 text-sm text-[var(--admin-ink)]">
+                <span className="font-semibold">{h.pieceKey}</span>: {h.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {requests.length === 0 ? null : (
         <div data-section="image-requests" className="mt-6">
@@ -689,9 +759,17 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
   const now = new Date()
   // EVERY READ AT ONCE (law 41, the speed train of 20 November 2026): the posts, the five reads and the two cadence
   // rules were awaited in turn, and each rule's two reads one after the other; none depends on another.
-  const [posts, [campaign, requests, assets, imageRights, targets], rules] = await Promise.all([
+  const [posts, [campaign, requests, assets, imageRights, targets, studio], rules] = await Promise.all([
     readPosts(db, now),
-    Promise.all([readCampaign(db, now), readImageRequests(db, now), readAssets(db), readImageRights(db), readBlotatoTargets(process.env)]),
+    Promise.all([
+      readCampaign(db, now),
+      readImageRequests(db, now),
+      readAssets(db),
+      readImageRights(db),
+      readBlotatoTargets(process.env),
+      // The studio's phone checks (car Q): contained, so a failed read is said on the page and never breaks it.
+      readStudioProofs(db, now).catch((e: unknown): StudioProofs & { readonly unread: string } => ({ byPiece: new Map(), held: [], unread: e instanceof Error ? e.message : String(e) })),
+    ]),
     Promise.all(
       (['feed', 'story'] as const).map(async (format) => {
         const [rule, last] = await Promise.all([cadenceFor(db, 'instagram', format, now), lastPosted(db, 'instagram', format)])
@@ -727,7 +805,7 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
 
       <TargetsSection targets={targets} />
 
-      <CampaignSection campaign={campaign} requests={requests} />
+      <CampaignSection campaign={campaign} requests={requests} studio={studio} />
 
       <ImageRightsSection report={imageRights} />
 
