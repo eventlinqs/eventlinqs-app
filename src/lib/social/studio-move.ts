@@ -16,6 +16,8 @@ type Db = SupabaseClient
 export type StudioMoveDeps = {
   readonly store: (path: string, bytes: Uint8Array) => Promise<string>
   readonly receive: (input: IntakeInput) => Promise<{ readonly state: string; readonly id?: string; readonly reason?: string; readonly faults?: readonly string[] }>
+  /** Each night as the engine reads it now, by its id (store.ts readCampaignNights); a night not public now is absent. */
+  readonly facts: (eventIds: readonly string[]) => Promise<ReadonlyMap<string, StatedFact>>
 }
 
 type PieceRow = {
@@ -27,7 +29,8 @@ type PieceRow = {
   captions: Record<string, string>
   destinations: string[]
   event_ids: string[]
-  facts: StatedFact[]
+  /** The studio's own statement of each night, in whatever shape it wrote; read by statedFacts, never handed on. */
+  facts: unknown[]
   link: string
   objective: IntakeInput['objective']
   preferred_at: string
@@ -48,8 +51,29 @@ export function studioPath(pieceId: string, slideNo: number, format: string): st
   return `creative/${pieceId}/${slideNo}-${format}.jpg`
 }
 
+/**
+ * EACH NIGHT'S FACTS AS THE ENGINE READS THEM NOW (car S, the PM's 19:40 of 27 November 2026): the intake compares a
+ * piece's facts with the listing, title, start, end, venue and the organiser as the engine names it (shown-organiser.ts
+ * nightMaker), so the bridge states them from the engine's own read, never from the studio's text. The studio's own word
+ * still counts where it can be wrong: a night it states no facts for, or whose start it states otherwise than the listing,
+ * is refused with its reason, and a night not public now cannot be stated. Pure.
+ */
+export function statedFacts(eventIds: readonly string[], studio: readonly unknown[], read: ReadonlyMap<string, StatedFact>): { readonly facts: StatedFact[] } | { readonly refused: string } {
+  const out: StatedFact[] = []
+  for (const id of eventIds) {
+    const n = read.get(id)
+    if (!n) return { refused: `its night ${id} is not public now, so its facts cannot be stated` }
+    const s = studio.find((f): f is Record<string, unknown> => f !== null && typeof f === 'object' && ((f as Record<string, unknown>).eventId ?? (f as Record<string, unknown>).event_id) === id)
+    if (!s) return { refused: `the studio states no facts for ${n.title}` }
+    const start = s.startDate ?? s.start
+    if (typeof start !== 'string' || Date.parse(start) !== Date.parse(n.startDate)) return { refused: `the studio states ${n.title} starts ${String(start)}; the listing reads ${n.startDate}` }
+    out.push(n)
+  }
+  return { facts: out }
+}
+
 /** The intake record of a piece and its stored slides, in order. Pure. */
-export function studioIntake(piece: PieceRow, images: readonly { url: string; restsOn: RestsOn }[]): IntakeInput {
+export function studioIntake(piece: PieceRow, images: readonly { url: string; restsOn: RestsOn }[], facts: readonly StatedFact[]): IntakeInput {
   return {
     briefId: piece.id,
     eventIds: piece.event_ids,
@@ -57,7 +81,7 @@ export function studioIntake(piece: PieceRow, images: readonly { url: string; re
     images,
     captions: { instagram: piece.captions.instagram ?? '', facebook: piece.captions.facebook ?? piece.captions.instagram ?? '' } as Record<Network, string>,
     destinations: piece.destinations as Network[],
-    facts: piece.facts,
+    facts,
     link: piece.link,
     objective: piece.objective,
     preferredAt: piece.preferred_at,
@@ -90,6 +114,11 @@ export async function moveStudioPieces(db: Db, deps: StudioMoveDeps, now: Date):
         lines.push(`${piece.piece_key}: waiting, ${uploads.length} of ${piece.slides} slides arrived`)
         continue
       }
+      const stated = statedFacts(piece.event_ids, piece.facts, await deps.facts(piece.event_ids))
+      if ('refused' in stated) {
+        await fail(stated.refused)
+        continue
+      }
       const images: { url: string; restsOn: RestsOn }[] = []
       for (const up of uploads.slice(0, piece.slides)) {
         const path = studioPath(piece.id, up.slide_no, piece.format)
@@ -97,7 +126,7 @@ export async function moveStudioPieces(db: Db, deps: StudioMoveDeps, now: Date):
         await db.from('studio_uploads').update({ moved_at: now.toISOString(), moved_to: url }).eq('id', up.id)
         images.push({ url, restsOn: up.rests_on })
       }
-      const r = await deps.receive(studioIntake(piece, images))
+      const r = await deps.receive(studioIntake(piece, images, stated.facts))
       if (r.state === 'refused') {
         await fail(`the creative intake refused it: ${r.reason ?? 'no reason given'}`)
         continue

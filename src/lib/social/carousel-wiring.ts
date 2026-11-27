@@ -5,6 +5,7 @@ import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type Carousel
 import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
 import { moveStudioPieces } from './studio-move'
 import { pngToJpeg } from './studio-jpeg'
+import { weekStartOf } from './campaign'
 
 type Db = SupabaseClient
 
@@ -54,6 +55,11 @@ export function moveStudioNow(db: Db, input: { readonly now: Date; readonly site
       receive: async (record) => {
         const r = await receiveIntake(db, record, { now: input.now, siteOrigin: input.siteOrigin })
         return r.state === 'refused' ? { state: 'refused', reason: r.reason } : { state: r.state, id: r.id, faults: r.faults }
+      },
+      // Each night as the engine reads it now (car S): the same reader the intake's facts check reads.
+      facts: async (ids) => {
+        const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(input.now), input.now, { ids })
+        return new Map(nights.map((n) => [n.eventId, { eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate, venue: n.venueName, organiser: n.organiser }]))
       },
     },
     input.now,
