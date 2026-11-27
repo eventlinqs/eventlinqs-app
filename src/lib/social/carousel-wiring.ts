@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
 import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
+import { moveStudioPieces } from './studio-move'
 
 type Db = SupabaseClient
 
@@ -31,6 +32,30 @@ export function carouselDepsFor(db: Db, opts: { readonly now: Date; readonly sit
       return r.state === 'refused' ? { state: 'refused', reason: r.reason } : { state: r.state, pieceId: r.pieceId, faults: r.faults }
     },
   }
+}
+
+/**
+ * THE STUDIO BRIDGE'S MOVE, WIRED (the PM's 14:12 and 14:20 of 27 November 2026; ./studio-move.ts): each studio slide
+ * stored as a PNG under event-images/studio/ (the same path again overwrites the same file, so a retried move is safe),
+ * and each piece handed to the creative intake (store.ts receiveIntake), whose gates leave it unapproved for Lawal.
+ */
+export function moveStudioNow(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<string[]> {
+  return moveStudioPieces(
+    db,
+    {
+      store: async (path, bytes) => {
+        const bucket = db.storage.from('event-images')
+        const up = await bucket.upload(path, bytes, { contentType: 'image/png', upsert: true, cacheControl: '31536000' })
+        if (up.error) throw new Error(`the slide ${path} could not be stored: ${up.error.message}`)
+        return bucket.getPublicUrl(path).data.publicUrl
+      },
+      receive: async (record) => {
+        const r = await receiveIntake(db, record, { now: input.now, siteOrigin: input.siteOrigin })
+        return r.state === 'refused' ? { state: 'refused', reason: r.reason } : { state: r.state, id: r.id, faults: r.faults }
+      },
+    },
+    input.now,
+  )
 }
 
 /** Makes each city's story of the day due now with the wired hands (./carousel-make.ts makeDailyStories); one line a city. */

@@ -315,3 +315,29 @@ export function basisPoolStore(db: Db, recordedBy: string): PoolStore {
     },
   }
 }
+
+/**
+ * M3 (the PM's 12:18 of 27 November 2026: "No contact has been added since 25 November. The pool is not being
+ * refilled"): the next send day holds at least POOL_TARGET lawful contacts never written to. While it is short, the night
+ * reads the short week's cap of organisers' own sites; the turn's own row then says the pool before and after, what it
+ * read, and when still short, by how many and why, so a shortfall is reported, never silent. EventLinqs' own choice of
+ * twenty, the PM's number (UNSOURCED).
+ */
+export const POOL_TARGET = 20
+
+/** The cap of organisers to read tonight: the short week's while the pool is under its target or unread. Pure. */
+export function poolCapForNeed(poolBefore: number | null, weekCap: number): number {
+  return poolBefore === null || poolBefore < POOL_TARGET ? POOL_PER_NIGHT_SHORT : weekCap
+}
+
+/** The pool turn's line on its row. Pure. */
+export function poolLine(before: number | null, after: number | null, outcomes: readonly PoolOutcome[]): string {
+  const recorded = outcomes.reduce((n, o) => n + o.recorded, 0)
+  const counts = new Map<string, number>()
+  for (const o of outcomes) if (o.recorded === 0) counts.set(o.outcome.replace(/\d+/g, 'N'), (counts.get(o.outcome.replace(/\d+/g, 'N')) ?? 0) + 1)
+  const why = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([w, n]) => `${n} ${w}`).join('; ')
+  const read = `read ${outcomes.length} organisers' own sites, ${recorded} address${recorded === 1 ? '' : 'es'} recorded`
+  const word = (n: number | null) => (n === null ? 'not read' : String(n))
+  const short = after === null ? 'the pool after could not be read' : after >= POOL_TARGET ? `at or above its target of ${POOL_TARGET}` : `SHORT by ${POOL_TARGET - after} of its target of ${POOL_TARGET}${why ? `; none found: ${why}` : ''}`
+  return `pool for the next send day: ${word(before)} before, ${word(after)} after; ${read}; ${short}`
+}

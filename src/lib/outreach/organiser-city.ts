@@ -136,9 +136,11 @@ export async function organiserCitySlugs(db: Admin, organisers: readonly Organis
   const platform = await readPlatformOrganiserIds(db)
   const rest = unplaced.filter((id) => !platform.has(id))
   if (rest.length === 0) return out
-  const own = await db.from('organisers').select('id, name, city_slug').in('id', rest)
+  const own = await db.from('organisers').select('id, name, city_slug, city_source_url, city_quote').in('id', rest)
   if (own.error) throw new Error(`their names and own pages' cities could not be read: ${own.error.message}`)
-  const named = (own.data ?? []).map((o) => ({ id: o.id, name: o.name as string | null, city: (o.city_slug as string | null) ?? null }))
+  // M2 (Lawal's directive of 12:35, 27 November 2026): a city from their own page counts only with its evidence, the page and
+  // the words it prints, both recorded (organisers.city_source_url, city_quote), whether the engine or a person read it.
+  const named = (own.data ?? []).map((o) => ({ id: o.id, name: o.name as string | null, city: o.city_slug && o.city_source_url?.trim() && o.city_quote?.trim() ? (o.city_slug as string) : null }))
 
   // 4. An upcoming EventLinqs listing whose shown organiser is theirs.
   const listings = await readEveryRow('the upcoming listings for road 4', (from, to) =>

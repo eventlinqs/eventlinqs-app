@@ -7,7 +7,7 @@ import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox, type InboxIntake } from '@/lib/outreach/replies'
 import { graphPhotoBytes, graphPhotosOf } from '@/lib/comms/inbound-attachments'
 import { mediaDeps } from '@/lib/listings/organiser-media'
-import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, type PlayReport } from '@/lib/outreach/planner'
+import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, queueLine, type PlayReport } from '@/lib/outreach/planner'
 import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters, queueApprovedReplies } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
@@ -20,7 +20,8 @@ import { TWENTY_ADVICE_DRAFTING, draftTheTwenty, founderAccount, storeSegmentALe
 import { draftDay10FollowUps, draftDay4FollowUps } from '@/lib/outreach/follow-ups'
 import { syncSentItems } from '@/lib/outreach/sent-sync'
 import { draftTheSpotlight } from '@/lib/social/three-posts'
-import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, poolCapFor, runBasisPool, weekFirstLetters } from '@/lib/outreach/basis-pool'
+import { basisPoolStore, POOL_HOUR, POOL_MINUTE_FROM, POOL_TARGET, poolCapFor, poolCapForNeed, poolLine, runBasisPool, weekFirstLetters, type PoolOutcome } from '@/lib/outreach/basis-pool'
+import { readAcqPool } from '@/lib/outreach/acq-pool'
 import { engineRecheckStore, recheckUnticked } from '@/lib/outreach/engine-recheck'
 
 /**
@@ -237,9 +238,23 @@ export async function GET(request: NextRequest) {
         const founder = await founderAccount(db)
         // While the coming week is short of its sixty first letters the night reads up to sixty organisers, else twelve
         // (the PM's 10:30 of 22 November 2026, item (b)); a failed count reads the short week's cap.
-        const cap = poolCapFor(await weekFirstLetters(db, now).catch(() => 0))
+        // M3 (the PM's 12:18 of 27 November 2026): the next send day's pool read before; while it is under its target the
+        // night reads the short week's cap; after, the turn's own row says the pool, what was read and any shortfall.
+        const before = await readAcqPool(db, now).catch(() => null)
+        const cap = poolCapForNeed(before, poolCapFor(await weekFirstLetters(db, now).catch(() => 0)))
         pool = founder.id === null ? `not read: ${founder.why}` : await runBasisPool(basisPoolStore(db, founder.id), fetch, now, now.getTime() + 240_000, { cap })
         console.log(`[cron/outreach-run] the pool: ${JSON.stringify(pool)}`)
+        const after = await readAcqPool(db, new Date()).catch(() => null)
+        const outcomes = Array.isArray(pool) ? (pool as PoolOutcome[]) : []
+        await recordPhaseRun(db, {
+          phase: 'prepare',
+          ride: 'outreach',
+          startedAt: now,
+          endedAt: new Date(),
+          units: outcomes.reduce((n, o) => n + o.recorded, 0),
+          result: (typeof pool === 'string' ? `pool: ${pool}` : poolLine(before, after, outcomes)).slice(0, 2000),
+          failed: after === null || after < POOL_TARGET,
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[cron/outreach-run] the pool not read:', message)
@@ -267,7 +282,8 @@ export async function GET(request: NextRequest) {
         startedAt: now,
         endedAt: new Date(),
         units: report.sent?.length ?? 0,
-        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}${faults.length ? `; contained: ${faults.map((f) => `${f.step}: ${f.error}`).join('; ')}` : ''}`.slice(0, 2000),
+        // M1 (the PM's 12:18 of 27 November 2026): the queue's pool, queued and skipped by reason, in the run's own row.
+        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}${!isStepFault(plays) && Array.isArray(plays) && queueLine(plays as PlayReport[]) ? `; queue: ${queueLine(plays as PlayReport[])}` : ''}${faults.length ? `; contained: ${faults.map((f) => `${f.step}: ${f.error}`).join('; ')}` : ''}`.slice(0, 2000),
         failed: (report.failed?.length ?? 0) > 0 || faults.length > 0,
       })
     }

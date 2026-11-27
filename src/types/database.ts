@@ -11765,6 +11765,173 @@ export type Database = {
           },
         ]
       }
+      studio_briefs: {
+        Row: {
+          created_at: string
+          created_by: string
+          findings: string
+          id: string
+          kind: string
+          read_at: string
+          sources: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          findings: string
+          id?: string
+          kind: string
+          read_at: string
+          sources?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          findings?: string
+          id?: string
+          kind?: string
+          read_at?: string
+          sources?: Json
+        }
+        Relationships: []
+      }
+      studio_pieces: {
+        Row: {
+          brief_id: string
+          canvas_url: string
+          captions: Json
+          created_at: string
+          destinations: string[]
+          error: string | null
+          event_ids: string[]
+          expires_at: string
+          facts: Json
+          format: string
+          id: string
+          intake_id: string | null
+          latest_at: string
+          link: string
+          moved_at: string | null
+          objective: string
+          piece_key: string
+          preferred_at: string
+          slides: number
+        }
+        Insert: {
+          brief_id: string
+          canvas_url: string
+          captions: Json
+          created_at?: string
+          destinations?: string[]
+          error?: string | null
+          event_ids?: string[]
+          expires_at: string
+          facts?: Json
+          format: string
+          id?: string
+          intake_id?: string | null
+          latest_at: string
+          link: string
+          moved_at?: string | null
+          objective: string
+          piece_key: string
+          preferred_at: string
+          slides: number
+        }
+        Update: {
+          brief_id?: string
+          canvas_url?: string
+          captions?: Json
+          created_at?: string
+          destinations?: string[]
+          error?: string | null
+          event_ids?: string[]
+          expires_at?: string
+          facts?: Json
+          format?: string
+          id?: string
+          intake_id?: string | null
+          latest_at?: string
+          link?: string
+          moved_at?: string | null
+          objective?: string
+          piece_key?: string
+          preferred_at?: string
+          slides?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_pieces_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "studio_briefs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_uploads: {
+        Row: {
+          brief_id: string
+          canvas_url: string
+          created_at: string
+          error: string | null
+          format: string
+          id: string
+          moved_at: string | null
+          moved_to: string | null
+          piece_key: string
+          png: string
+          rests_on: Json
+          sha256: string | null
+          slide_no: number
+        }
+        Insert: {
+          brief_id: string
+          canvas_url: string
+          created_at?: string
+          error?: string | null
+          format: string
+          id?: string
+          moved_at?: string | null
+          moved_to?: string | null
+          piece_key: string
+          png: string
+          rests_on?: Json
+          sha256?: string | null
+          slide_no: number
+        }
+        Update: {
+          brief_id?: string
+          canvas_url?: string
+          created_at?: string
+          error?: string | null
+          format?: string
+          id?: string
+          moved_at?: string | null
+          moved_to?: string | null
+          piece_key?: string
+          png?: string
+          rests_on?: Json
+          sha256?: string | null
+          slide_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_uploads_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "studio_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_uploads_piece_key_fkey"
+            columns: ["piece_key"]
+            isOneToOne: false
+            referencedRelation: "studio_pieces"
+            referencedColumns: ["piece_key"]
+          },
+        ]
+      }
       subgenres: {
         Row: {
           created_at: string

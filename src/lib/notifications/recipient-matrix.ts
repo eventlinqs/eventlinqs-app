@@ -386,6 +386,22 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'A system health check went critical or recovered.',
   },
   {
+    // M4 (the PM's 12:18 of 27 November 2026): the 05:40 schedule run's one line to hello@, the social pieces a person must
+    // approve at /admin/social before 09:00, by name.
+    type: 'social_approvals_needed',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: "The day's social pieces the standing policy cannot approve, named, for a person's approval before 09:00.",
+  },
+  {
+    // M6 (Lawal's directive of 12:35 on 27 November 2026, item 6): the 21:00 check's FAILURE line to hello@, every post
+    // scheduled to now that did not publish (a day with nothing planned is not a failure).
+    type: 'social_publish_failures',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: "The day's planned social posts scheduled to 21:00 that did not publish, each with its reason.",
+  },
+  {
     // The 08:00 report (the mandate's section 14; law 25), sent by the daily heartbeat cron to Lawal's own mailbox.
     type: 'platform_morning_report',
     roles: ['platform_owner'],

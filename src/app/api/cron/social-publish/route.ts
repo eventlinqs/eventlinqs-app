@@ -1,13 +1,19 @@
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
 import { claimPublishLease, deploymentOf, HOURLY_FLAG, isHourRun, recordPublishRun, releasePublishLease } from '@/lib/social/publish-run'
 import { socialPhaseAt } from '@/lib/ops/timetable'
-import { planCheckWords } from '@/lib/ops/plan-check'
+import { approvalsNeeded, approvalsNeededWords, planCheckWords } from '@/lib/ops/plan-check'
+import { publishedCheck, readRemindersDue, readTodaySchedule } from '@/lib/social/published-check'
+
+/** The hour of the daily published check (M6, item 6): 21:00 in Melbourne. */
+const PUBLISHED_CHECK_HOUR = 21
+import { sendEmail } from '@/lib/email/send'
+import { PLATFORM_INBOX } from '@/lib/env/destinations'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, setAsideUnpostable, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
+import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, readCampaign, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, setAsideUnpostable, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -16,7 +22,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 import { planAsOf } from '@/lib/social/plan-for'
-import { makeCarouselsNow, makeStoriesNow } from '@/lib/social/carousel-wiring'
+import { makeCarouselsNow, makeStoriesNow, moveStudioNow } from '@/lib/social/carousel-wiring'
 
 export const dynamic = 'force-dynamic'
 
@@ -195,6 +201,14 @@ export async function GET(request: NextRequest) {
         await releasePublishLease(db, holder)
         return NextResponse.json({ ok: true, skipped: `${HOURLY_FLAG} is on` })
       }
+    }
+    /* THE STUDIO BRIDGE (the PM's 14:12 and 14:20 of 27 November 2026; src/lib/social/studio-move.ts): every run moves the
+       studio's finished pieces into storage and the creative intake, where Lawal approves them at /admin/social. A fault
+       here is said and never stops the run. */
+    try {
+      for (const line of await moveStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio: ${line}`)
+    } catch (err) {
+      console.error('[cron/social-publish] the studio move could not run:', err instanceof Error ? err.message : err)
     }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
@@ -421,6 +435,17 @@ export async function GET(request: NextRequest) {
           const later = await db.from('social_piece_schedules').select('id', { count: 'exact', head: true }).eq('state', 'scheduled').gte('go_at', now.toISOString()).lt('go_at', tomorrow.toISOString())
           if (later.error) throw new Error(`the rest of the day's schedule could not be read: ${later.error.message}`)
           plan = planCheckWords(dry, later.count ?? 0)
+          // M4 (the PM's 12:18 of 27 November 2026): the pieces a person must approve, by name, on the row; at the 05:40
+          // schedule run, the one line to hello@ as well, so they are approved at /admin/social before 09:00.
+          const needs = approvalsNeeded(dry)
+          let mailed = ''
+          if (phase === 'schedule' && needs.length > 0) {
+            const line = `${approvalsNeededWords(needs)}. Approve them at ${getSiteUrl()}/admin/social before 9:00 am.`
+            mailed = await sendEmail({ to: PLATFORM_INBOX, subject: `${needs.length} social piece${needs.length === 1 ? '' : 's'} to approve before 9:00 am`, html: `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`, text: line, messageType: 'social_approvals_needed', recipientRole: 'platform_owner' })
+              .then((r) => `; emailed hello@ (${r.id})`)
+              .catch((err: unknown) => `; the list to hello@ was not sent: ${err instanceof Error ? err.message : String(err)}`)
+          }
+          plan = { words: `${plan.words}; ${approvalsNeededWords(needs)}${mailed}`, failed: plan.failed }
         } catch (fault) {
           plan = { words: `plan: the check could not run: ${fault instanceof Error ? fault.message : String(fault)}`, failed: true }
         }
@@ -436,6 +461,37 @@ export async function GET(request: NextRequest) {
         result: `${scheduled.scheduled.length} scheduled; ${published.due} due; ${published.switchOn ? `${published.published.length} published, ${published.held.length} held` : 'the switch is off, nothing published'}; ${redrawn.redrawn.length} drawn again${plan ? `; ${plan.words}` : ''}`,
         failed: published.held.length > 0 || plan?.failed === true,
       })
+    }
+    // M6 (Lawal's directive of 12:35 on 27 November 2026, items 4, 6 and 7; src/lib/social/published-check.ts): each hour's
+    // run names to hello@ every unapproved piece whose slot is 24 or 3 hours away; the 21:00 run compares what was scheduled
+    // to now with what was published, writes every missed planned post as a FAILURE on its own row and emails it.
+    if (hourRun) {
+      try {
+        const week = await readCampaign(db, now)
+        const due = await readRemindersDue(db, (week?.pieces ?? []).filter((p) => p.state === 'drafted').map((p) => p.id), now)
+        if (due.length > 0) {
+          const line = `Still to approve at ${getSiteUrl()}/admin/social: ${due.join('; ')}. An unapproved piece is never published.`
+          await sendEmail({ to: PLATFORM_INBOX, subject: `${due.length} social piece${due.length === 1 ? '' : 's'} still to approve`, html: `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`, text: line, messageType: 'social_approvals_needed', recipientRole: 'platform_owner' })
+        }
+      } catch (err) {
+        console.error('[cron/social-publish] the approval reminders could not run:', err instanceof Error ? err.message : err)
+      }
+      if (melbourneHour(now) === PUBLISHED_CHECK_HOUR) {
+        let check: { line: string; failed: boolean; failures: string[] }
+        try {
+          check = publishedCheck(await readTodaySchedule(db, midnightIn(now, 'Australia/Melbourne')), now)
+        } catch (err) {
+          check = { line: `published check: the check could not run: ${err instanceof Error ? err.message : String(err)}`, failed: true, failures: ['the check could not run'] }
+        }
+        let mailed = ''
+        if (check.failed) {
+          const text = `${check.line}. Read at ${getSiteUrl()}/admin/social.`
+          mailed = await sendEmail({ to: PLATFORM_INBOX, subject: `Social FAILURE today: ${check.failures.length} gap${check.failures.length === 1 ? '' : 's'}`, html: `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`, text, messageType: 'social_publish_failures', recipientRole: 'platform_owner' })
+            .then((r) => `; emailed hello@ (${r.id})`)
+            .catch((err: unknown) => `; the failure email was not sent: ${err instanceof Error ? err.message : String(err)}`)
+        }
+        await recordPhaseRun(db, { phase: 'evening', ride: 'social', startedAt: now, endedAt: new Date(), units: 0, result: `${check.line}${mailed}`.slice(0, 2000), failed: check.failed })
+      }
     }
     /* EVERY RUN WRITES ITS OWN ROW (src/lib/social/publish-run.ts; Lawal's hardening order, section 2 E): an HTTP 200 is
        not proof; this row, with its deployment and its counts, is. Then the lease is freed for the next run. */

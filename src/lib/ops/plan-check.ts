@@ -40,3 +40,16 @@ export function planCheckWords(plan: readonly PlanRow[] | null, scheduledLaterTo
     failed: scheduledLaterToday === 0,
   }
 }
+
+/**
+ * M4 (the PM's 12:18 of 27 November 2026: "4 of this week's 7 pieces have no approval"): the drafted pieces the standing
+ * policy cannot approve, so a person must, each named with its first reason. The 05:40 schedule run writes them on its own
+ * row and emails hello@ the one line, so Lawal can approve them at /admin/social before 09:00. Pure.
+ */
+export function approvalsNeeded(plan: readonly (PlanRow & { readonly label: string })[] | null): string[] {
+  return (plan ?? []).filter((r) => !r.eligible).map((r) => `${r.label} (${reasonHead(r.reasons[0] ?? 'no reason given')})`)
+}
+
+export function approvalsNeededWords(names: readonly string[]): string {
+  return names.length === 0 ? "no piece needs a person's approval" : `${names.length} need a person's approval at /admin/social: ${names.join('; ')}`
+}
