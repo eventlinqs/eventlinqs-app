@@ -198,25 +198,17 @@ function StudioProofView({ proof }: { proof: StudioProof }) {
         {proof.line}
       </p>
       {proof.scores.some((s) => s.engine !== null || s.pm !== null) ? (
-        <table data-scorecard className="mt-3 text-sm text-[var(--admin-ink)]">
-          <caption className="text-left text-xs uppercase tracking-[0.14em] text-[var(--admin-muted)]">The scorecard, out of 10 (the floor is 9)</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="pr-4 text-left font-normal text-[var(--admin-muted)]">Measure</th>
-              <th scope="col" className="pr-4 text-left font-normal text-[var(--admin-muted)]">Engine</th>
-              <th scope="col" className="text-left font-normal text-[var(--admin-muted)]">PM</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div data-scorecard className="mt-3 text-sm text-[var(--admin-ink)]">
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--admin-muted)]">The scorecard, out of 10 (the floor is 9)</p>
+          <ul className="mt-1 space-y-1">
             {proof.scores.map((s) => (
-              <tr key={s.key} data-measure={s.key} data-below={s.below ? 'yes' : 'no'}>
-                <td className="pr-4">{s.name}</td>
-                <td className="pr-4">{s.engine ?? 'not scored'}</td>
-                <td>{s.pm ?? 'not scored'}{s.below ? ' (under the floor)' : ''}</td>
-              </tr>
+              <li key={s.key} data-measure={s.key} data-below={s.below ? 'yes' : 'no'}>
+                <span className="font-semibold">{s.name}</span>
+                {`: engine ${s.engine ?? 'not scored'}, PM ${s.pm ?? 'not scored'}${s.below ? ' (under the floor)' : ''}`}
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        </div>
       ) : null}
       {proof.rows.length === 0 ? null : (
         <details className="mt-1 text-sm text-[var(--admin-soft)]">

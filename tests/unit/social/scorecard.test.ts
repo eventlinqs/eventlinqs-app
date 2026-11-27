@@ -43,7 +43,8 @@ describe('the publishing reliability count', () => {
 describe('the wiring', () => {
   it("shows both on /admin/social, the scorecard beside the phone views, and the count in the evening check's row", () => {
     const page = read('src/app/admin/(authed)/social/page.tsx')
-    expect(page).toContain('<table data-scorecard')
+    expect(page).toContain('<div data-scorecard')
+    expect(page).not.toContain('<table')
     expect(page).toContain('reliabilityLine(reliability)')
     expect(read('src/app/api/cron/social-publish/route.ts')).toContain('result: `${check.line}; ${count}${mailed}`.slice(0, 2000)')
     expect(read('src/lib/social/studio-proof.ts')).toContain("scores: scoreRows(row.scorecard ?? null),")

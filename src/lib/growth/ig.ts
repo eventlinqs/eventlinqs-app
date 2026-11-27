@@ -10,7 +10,9 @@ import type { LedgerRow } from '@/lib/events/ledger-data'
 import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
-import { outboundHref } from '@/lib/listings/outbound'
+import { ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { toBookingLink } from '@/lib/events/booking-links'
+import { ctaFor } from '@/lib/events/cta'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
 import { IG_DAYS, IG_SLOT_LEAD_MS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
@@ -38,20 +40,25 @@ export type IgItem = {
 }
 
 /** One tap to the night's tickets or booking (car U, U2): its words and where it goes. */
-export type IgAction = { readonly label: 'Get tickets' | 'Book' | 'Free, details'; readonly href: string }
+export type IgAction = { readonly label: string; readonly href: string }
 
 /**
- * THE ONE TAP (car U, U2, the PM's 02:12 of 28 November 2026; the scorecard's conversion point 9): EventLinqs' own tickets
- * go to the event page's ticket panel (#tickets); a night sold elsewhere goes through the counted /out redirect to its own
- * live booking link (the primary one first; outbound.ts outboundHref, never an open redirect); a free night, or one with no
- * live link, goes to its own page. Pure.
+ * THE ONE TAP (car U, U2, the PM's 02:12 of 28 November 2026; the scorecard's conversion point 9), in the platform's own
+ * words and never its own (the release checklist's section E; the cta-five-states guard): a night sold elsewhere takes the
+ * event page's own ticket panel button (ticketPanelOf: "View tickets at Humanitix" or "Register free on Humanitix", through
+ * the counted /out redirect, WI3's buttonOf choosing the link, a sold out or dead one never a button); every other night
+ * asks ctaFor: our own tickets (E3, or E2 for free ones) go to the event page's ticket panel (#tickets),
+ * a free walk in or a night of unknown price to its own page ("View event details"). Pure.
  */
-export function igAction(row: Pick<RawRow, 'slug' | 'is_free' | 'ticket_tiers' | 'booking_links'>, eventHref: string): IgAction {
-  if (row.is_free) return { label: 'Free, details', href: eventHref }
-  if ((row.ticket_tiers ?? []).length > 0) return { label: 'Get tickets', href: `${eventHref}#tickets` }
-  const live = (row.booking_links ?? []).filter((l) => l.availability !== 'dead' && /^https:\/\//.test(l.url))
-  const link = live.find((l) => l.is_primary) ?? live[0]
-  return link ? { label: 'Book', href: outboundHref(row.slug, link.url) } : { label: 'Book', href: eventHref }
+export function igAction(row: Pick<RawRow, 'slug' | 'is_free' | 'entry_mode' | 'ticket_tiers' | 'booking_links'>, eventHref: string, now: Date): IgAction {
+  const tiers = (row.ticket_tiers ?? []).map((t) => ({ price: t.price }))
+  if (tiers.length === 0) {
+    const button = ticketPanelOf(row.slug, (row.booking_links ?? []).map(toBookingLink), now).button
+    if (button) return { label: button.label, href: button.href }
+  }
+  const cta = ctaFor({ entryMode: row.entry_mode, tiers, isFree: row.is_free })
+  const panel = cta.state === 'paid_native' || cta.state === 'free_registration'
+  return { label: cta.action, href: panel ? `${eventHref}#tickets` : eventHref }
 }
 
 export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
@@ -154,7 +161,7 @@ async function cardsOf(picks: readonly IgPick[], rows: readonly RawRow[], now: D
     const card = marketCard({ row, more: p.more, every: null }, shaped.days.todayKey)
     const href = igHref(card.href, p.postId, source)
     const raw = rows.find((r) => r.id === p.eventId)
-    return [{ card, href, postId: p.postId, ...(raw ? { action: igAction(raw, href) } : {}) }]
+    return [{ card, href, postId: p.postId, ...(raw ? { action: igAction(raw, href, now) } : {}) }]
   })
 }
 
