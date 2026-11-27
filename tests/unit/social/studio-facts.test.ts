@@ -26,7 +26,9 @@ describe("the bridge states each night as the engine reads it", () => {
 })
 
 describe("a /ig link is judged as the piece's own page", () => {
-  const record = (link: string) => ({ link, eventIds: ['e1', 'e2'] }) as unknown as IntakeInput
+  // The record's own destinations too: destinationFaults reads each network's fit at its end (its 23:07 red: 'r.destinations
+  // is not iterable' in this fixture, never in the code).
+  const record = (link: string) => ({ link, eventIds: ['e1', 'e2'], destinations: ['instagram', 'facebook'] }) as unknown as IntakeInput
   const nights = new Map([['e1', { eventId: 'e1', slug: 'j-cole-2026-11-28', title: 'J Cole' }]]) as never
   const page = { ok: true, status: 200, body: '<html>no event links</html>' }
   const lines = (link: string) => destinationFaults(record(link), { instagram: '', facebook: '' }, { nights, page, misfits: new Map() }, { origin: 'https://www.eventlinqs.com.au', pieceId: null }).filter((l) => /list/.test(l))
