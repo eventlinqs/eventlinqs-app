@@ -394,6 +394,14 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: "The day's social pieces the standing policy cannot approve, named, for a person's approval before 09:00.",
   },
   {
+    // M6 (Lawal's directive of 12:35 on 27 November 2026, item 6): the 21:00 check's FAILURE line to hello@, every post
+    // scheduled to now that did not publish, or a day with no post published.
+    type: 'social_publish_failures',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: "The day's social posts scheduled to 21:00 that did not publish, each with its reason, or a day with none.",
+  },
+  {
     // The 08:00 report (the mandate's section 14; law 25), sent by the daily heartbeat cron to Lawal's own mailbox.
     type: 'platform_morning_report',
     roles: ['platform_owner'],
