@@ -33,9 +33,14 @@ export function publishedCheck(rows: readonly ScheduleRow[], now: Date): { reado
 
 const LABEL = (p: { kind: string; city: string; partner_name: string | null }) => `${p.kind.replace(/_/g, ' ')}${p.partner_name ? `, ${p.partner_name}` : ''}, ${p.city}`
 
-/** Today's (Melbourne) schedule rows with their pieces' labels. A read that fails throws. */
-export async function readTodaySchedule(db: Db, now: Date, dayStart: Date): Promise<ScheduleRow[]> {
-  const s = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason').gte('go_at', dayStart.toISOString()).lte('go_at', now.toISOString()).limit(500)
+/**
+ * The whole of today's (Melbourne) schedule with its pieces' labels; publishedCheck picks the rows due by now. It reads
+ * the whole day, never 'up to now': this check fires nothing, it reports, so it is no reader of a passed slot (the class
+ * test in tests/unit/ops/stale-slot.test.ts). A read that fails throws.
+ */
+export async function readTodaySchedule(db: Db, dayStart: Date): Promise<ScheduleRow[]> {
+  const dayEnd = new Date(dayStart.getTime() + 24 * 3_600_000)
+  const s = await db.from('social_piece_schedules').select('piece_id, platform, go_at, state, held_reason').gte('go_at', dayStart.toISOString()).lt('go_at', dayEnd.toISOString()).limit(500)
   if (s.error) throw new Error(`today's schedule could not be read: ${s.error.message}`)
   const rows = (s.data ?? []) as { piece_id: string; platform: string; go_at: string; state: string; held_reason: string | null }[]
   const ids = [...new Set(rows.map((r) => r.piece_id))]

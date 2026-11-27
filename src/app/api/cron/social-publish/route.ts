@@ -479,7 +479,7 @@ export async function GET(request: NextRequest) {
       if (melbourneHour(now) === PUBLISHED_CHECK_HOUR) {
         let check: { line: string; failed: boolean; failures: string[] }
         try {
-          check = publishedCheck(await readTodaySchedule(db, now, midnightIn(now, 'Australia/Melbourne')), now)
+          check = publishedCheck(await readTodaySchedule(db, midnightIn(now, 'Australia/Melbourne')), now)
         } catch (err) {
           check = { line: `published check: the check could not run: ${err instanceof Error ? err.message : String(err)}`, failed: true, failures: ['the check could not run'] }
         }
