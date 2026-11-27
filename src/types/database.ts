@@ -11897,7 +11897,7 @@ export type Database = {
           piece_key: string
           png: string
           rests_on?: Json
-          sha256?: never
+          sha256?: string | null
           slide_no: number
         }
         Update: {
@@ -11912,7 +11912,7 @@ export type Database = {
           piece_key?: string
           png?: string
           rests_on?: Json
-          sha256?: never
+          sha256?: string | null
           slide_no?: number
         }
         Relationships: [
