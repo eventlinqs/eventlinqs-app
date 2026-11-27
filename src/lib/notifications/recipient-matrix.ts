@@ -395,11 +395,11 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
   },
   {
     // M6 (Lawal's directive of 12:35 on 27 November 2026, item 6): the 21:00 check's FAILURE line to hello@, every post
-    // scheduled to now that did not publish, or a day with no post published.
+    // scheduled to now that did not publish (a day with nothing planned is not a failure).
     type: 'social_publish_failures',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,
-    what: "The day's social posts scheduled to 21:00 that did not publish, each with its reason, or a day with none.",
+    what: "The day's planned social posts scheduled to 21:00 that did not publish, each with its reason.",
   },
   {
     // The 08:00 report (the mandate's section 14; law 25), sent by the daily heartbeat cron to Lawal's own mailbox.

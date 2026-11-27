@@ -6,7 +6,7 @@ import { publishedCheck, reminderDue } from '@/lib/social/published-check'
  * M6 (Lawal's directive of 12:35 on 27 November 2026, the PM's 12:55, items 4, 6 and 7). Red on main, where a piece left
  * unapproved was found out at 05:40 and a day with nothing published read as quiet: a piece still unapproved is named to
  * hello@ 24 hours and 3 hours before its slot; at 21:00 every post scheduled to now that did not publish is a FAILURE
- * with its reason, on its own row and emailed, and a day with no post published is a FAILURE, never ok.
+ * with its reason, on its own row and emailed; a day with no content planned is not a failure (version 2, 16:00).
  */
 const read = (f: string) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n')
 const NOW = new Date('2026-11-28T10:00:00Z') // 21:00 in Melbourne
@@ -27,10 +27,10 @@ describe('the 21:00 published check', () => {
     expect(c.failed).toBe(true)
     expect(c.line).toBe('published check: 2 scheduled to now, 1 published; FAILURE: week ahead, melbourne on instagram, due 12:00: held, the image right lapsed')
   })
-  it('calls a day with no post published a FAILURE, never ok', () => {
+  it('calls a day with nothing planned no failure (the operating model version 2)', () => {
     const none = publishedCheck([], NOW)
-    expect(none.failed).toBe(true)
-    expect(none.line).toBe('published check: 0 scheduled to now, 0 published; FAILURE: no post was published today')
+    expect(none.failed).toBe(false)
+    expect(none.line).toBe('published check: 0 scheduled to now, 0 published; every scheduled post published')
   })
   it('says a whole day plainly', () => {
     expect(publishedCheck([row('published', '2026-11-27T22:00:00Z')], NOW)).toMatchObject({ failed: false, line: 'published check: 1 scheduled to now, 1 published; every scheduled post published' })

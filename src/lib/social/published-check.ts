@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * items 4, 6 and 7). Founder approval and the image rights gates are unchanged; nothing here approves or posts.
  *   - A piece still unapproved 24 hours and 3 hours before its slot is named again to hello@ (reminderDue).
  *   - Every day at 21:00 what was scheduled to now is compared with what was published; every gap is a FAILURE with its
- *     reason, and a day with no post published is a FAILURE, never ok (publishedCheck).
+ *     reason; a day with no content planned is not a failure (Lawal's version 2 of 16:00) (publishedCheck).
  */
 
 type Db = SupabaseClient
@@ -20,14 +20,13 @@ export function reminderDue(slotIso: string, now: Date): 24 | 3 | null {
 
 export type ScheduleRow = { readonly label: string; readonly platform: string; readonly goAt: string; readonly state: string; readonly heldReason: string | null }
 
-/** The 21:00 line and whether the day failed: every post scheduled to now that did not publish, and a day with none. Pure. */
+/** The 21:00 line and whether the day failed: every PLANNED post scheduled to now that did not publish. Pure. */
 export function publishedCheck(rows: readonly ScheduleRow[], now: Date): { readonly line: string; readonly failures: string[]; readonly failed: boolean } {
   const due = rows.filter((r) => Date.parse(r.goAt) <= now.getTime())
   const published = due.filter((r) => r.state === 'published')
   const failures = due
     .filter((r) => r.state !== 'published')
     .map((r) => `${r.label} on ${r.platform}, due ${new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(r.goAt))}: ${r.state}${r.heldReason ? `, ${r.heldReason}` : ''}`)
-  if (published.length === 0) failures.unshift('no post was published today')
   const line = `published check: ${due.length} scheduled to now, ${published.length} published${failures.length ? `; FAILURE: ${failures.join('; ')}` : '; every scheduled post published'}`
   return { line, failures, failed: failures.length > 0 }
 }

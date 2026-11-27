@@ -464,7 +464,7 @@ export async function GET(request: NextRequest) {
     }
     // M6 (Lawal's directive of 12:35 on 27 November 2026, items 4, 6 and 7; src/lib/social/published-check.ts): each hour's
     // run names to hello@ every unapproved piece whose slot is 24 or 3 hours away; the 21:00 run compares what was scheduled
-    // to now with what was published, writes every gap as a FAILURE on its own row (a day with no post is one) and emails it.
+    // to now with what was published, writes every missed planned post as a FAILURE on its own row and emails it.
     if (hourRun) {
       try {
         const week = await readCampaign(db, now)
