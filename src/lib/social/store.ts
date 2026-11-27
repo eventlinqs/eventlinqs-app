@@ -37,7 +37,7 @@ import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
-import type { BlotatoPostReader } from './blotato-publisher'
+import { blotatoMediaType, type BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
 import { intakeFaults, intakeOfRow, intakeRow, planIntakePiece, slidesOf as slidesOfIntake, stateAfter, type GateStage, type IntakeInput, type IntakeRead, type IntakeRecord, type IntakeState, type Network, type RegisterAsset } from '@/lib/creative/intake'
@@ -946,7 +946,7 @@ export async function pieceDependencies(
   db: Db,
   pieceId: string,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform; readonly keep?: boolean },
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
@@ -957,7 +957,7 @@ export async function pieceDependencies(
   const ids = rev.eventIds
   /* THE CREATIVE INTAKE'S GATES, AGAIN, at approval and immediately before publishing (creative/intake.ts): a creative
      piece is held by any reason its record now has, and on a network its record does not name. */
-  if (String(piece.kind) === 'creative') issues.push(...(await intakeIssuesAtPublish(db, pieceId, rev, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: opts.goesAt, platform: opts.platform })))
+  if (String(piece.kind) === 'creative') issues.push(...(await intakeIssuesAtPublish(db, pieceId, rev, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: opts.goesAt, platform: opts.platform, keep: opts.keep })))
 
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
@@ -1881,7 +1881,7 @@ async function intakeIssuesAtPublish(
   pieceId: string,
   rev: Revision,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform; readonly keep?: boolean },
 ): Promise<string[]> {
   const { data, error } = await db.from('creative_intake').select('*').eq('piece_id', pieceId).maybeSingle()
   if (error) return [`[intake] Its intake record could not be read (${error.message}).`]
@@ -1896,7 +1896,8 @@ async function intakeIssuesAtPublish(
     faults = [`[read] The checks could not read what they need (${e instanceof Error ? e.message : String(e)}).`]
   }
   const state = stateAfter(faults)
-  const kept = await keepIntakeCheck(db, r.id, { stage: 'publish', faults, state: state === 'passed' ? 'handed_off' : state, now })
+  // A dry run (car T, T5) keeps nothing: its result lives on its own row.
+  const kept = opts.keep === false ? null : await keepIntakeCheck(db, r.id, { stage: 'publish', faults, state: state === 'passed' ? 'handed_off' : state, now })
   if (kept) console.error('[creative] the check before publishing could not be kept', kept)
   const out = faults.map((f) => `[intake] ${f}`)
   if (opts.platform && !r.destinations.includes(opts.platform)) out.push(`[intake] ${opts.platform} is not a destination of its intake record (${r.destinations.join(', ')}); it is skipped there.`)
@@ -3633,4 +3634,128 @@ async function publishPassedPiece(
     }
   }
   return { state: mine(published.published).length > 0 ? 'posted' : 'held', pieceId, lines }
+}
+
+/* ------------------------------------------------------------------ the dry run of a piece (car T, T5) */
+
+const DRY_PLATFORMS = ['instagram', 'facebook'] as const
+
+export type DryStage = { readonly stage: 'render' | 'intake' | 'approval' | 'validation' | 'schedule' | 'payload'; readonly ok: boolean; readonly detail: string }
+export type DryRun = { readonly stages: readonly DryStage[]; readonly schedule: readonly Record<string, unknown>[]; readonly payload: readonly Record<string, unknown>[] }
+
+/** Where a slide's image is: a finished design's file, a whole photograph, or drawn at publishing. Pure. */
+function slideAddress(s: Slide): string {
+  if (s.t === 'file') return s.url
+  if (s.t === 'photo') return s.photo
+  return `drawn as a JPEG at publishing (a ${s.t} slide)`
+}
+
+/**
+ * THE DRY RUN OF A PIECE (car T, T5 and car U, U5, the PM's 02:05 and 02:12 of 28 November 2026: "through scheduling
+ * preparation in a dry mode up to the Blotato call ... a test approval in a test campaign, never Lawal's, the schedule
+ * prepared and not sent"). Every stage the real path runs, in its order, on what is read now: RENDER (each slide measured
+ * against each destination, as publishing measures it), INTAKE (a creative piece's record as the handoff left it),
+ * APPROVAL (the checks a press runs; the test approval is the dry run's own row, by its asker, never Lawal's), VALIDATION
+ * (each network's checks at the slot), SCHEDULE (the rows the scheduler would insert, its window from the timing engine
+ * with each night's stage) and PAYLOAD (what would go to Blotato: the caption as it would post, its media, its target;
+ * the account is read from Blotato only at publishing). Nothing is written anywhere: the checks run with keep false, no
+ * approval, no schedule, no provider call. The caller keeps the result on the dry run's own row.
+ */
+export async function dryRunPiece(db: Db, run: { readonly pieceId: string; readonly goAt: Date }, now: Date, opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<DryRun> {
+  const fetcher = opts.fetcher ?? fetch
+  const stages: DryStage[] = []
+  const say = (stage: DryStage['stage'], ok: boolean, detail: string) => stages.push({ stage, ok, detail: detail.slice(0, 2000) })
+  const { data: piece, error: perr } = await db.from('social_pieces').select('kind').eq('id', run.pieceId).maybeSingle()
+  if (perr) throw new Error(`the piece could not be read: ${perr.message}`)
+  const rev = piece ? await newestRevision(db, run.pieceId) : null
+  if (!piece || rev === null) {
+    say('render', false, piece ? 'the piece has no version' : `no piece ${run.pieceId}`)
+    return { stages, schedule: [], payload: [] }
+  }
+  const format = await ownFormatOf(db, run.pieceId)
+  const misfits: string[] = []
+  for (const platform of DRY_PLATFORMS) {
+    const m = await slidesMisfit(rev.slides, platform, format, fetcher)
+    if (m) misfits.push(`${platform}: ${m}`)
+  }
+  say('render', misfits.length === 0, misfits.length > 0 ? misfits.join(' ') : `version ${rev.version}: ${rev.slides.length} ${format} slide(s), each measured against Instagram and Facebook`)
+
+  if (String(piece.kind) === 'creative') {
+    const { data: intake, error: ierr } = await db.from('creative_intake').select('id, state, checked_at, checked_stage, check_reasons').eq('piece_id', run.pieceId).maybeSingle()
+    if (ierr) say('intake', false, `its intake record could not be read: ${ierr.message}`)
+    else if (!intake) say('intake', false, 'a creative piece with no intake record never posts')
+    else {
+      const i = intake as { id: string; state: string; checked_at: string | null; checked_stage: string | null; check_reasons: string[] | null }
+      say('intake', i.state === 'handed_off', `record ${i.id}: ${i.state}, checked ${i.checked_at ?? 'never'} at ${i.checked_stage ?? 'no stage'}${i.check_reasons?.length ? `: ${i.check_reasons.join(' ')}` : ''}`)
+    }
+  } else {
+    say('intake', true, `a ${String(piece.kind)} piece: no intake record is asked of it`)
+  }
+
+  const atApproval = await pieceDependencies(db, run.pieceId, now, { siteOrigin: opts.siteOrigin, fetcher, keep: false })
+  say('approval', atApproval.length === 0, atApproval.length > 0
+    ? `a test approval would be refused: ${atApproval.join(' ')}`
+    : `a test approval of version ${rev.version} would be taken, by the dry run's asker, never Lawal's; nothing written to social_piece_approvals`)
+
+  const atSlot: string[] = []
+  for (const platform of DRY_PLATFORMS) {
+    for (const issue of await pieceDependencies(db, run.pieceId, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: run.goAt, platform, keep: false })) atSlot.push(`${platform}: ${issue}`)
+  }
+  say('validation', atSlot.length === 0, atSlot.length > 0 ? atSlot.join(' ') : `every check on Instagram and Facebook passes for ${run.goAt.toISOString()}`)
+
+  const timing = await timingOfPiece(db, run.pieceId, run.goAt, now)
+  const schedule: Record<string, unknown>[] = []
+  if (timing.kind === 'window') {
+    for (const platform of DRY_PLATFORMS) {
+      schedule.push({ piece_id: run.pieceId, approval_id: null, platform, go_at: run.goAt.toISOString(), objective: timing.objective, latest_at: timing.latestAt, expires_at: timing.expiresAt, recovery: timing.recovery, timing_basis: timing.basis.slice(0, 500), state: 'prepared, not inserted' })
+    }
+    const lapse = pastLatest(timing.latestAt, run.goAt)
+    say('schedule', lapse === null, lapse ?? `two rows prepared and not inserted: ${timing.objective}, latest ${timing.latestAt}, expires ${timing.expiresAt} (${timing.basis})`)
+  } else {
+    say('schedule', false, `${timing.kind}: ${timing.reason}`)
+  }
+
+  const payload: Record<string, unknown>[] = []
+  for (const platform of DRY_PLATFORMS) {
+    const corrected = await placeCorrectionFor(db, rev.eventIds, rev.versions[platform].caption ?? '')
+    const collaborators = platform === 'instagram' ? (rev.versions[platform].collaborators ?? []) : []
+    const mediaType = blotatoMediaType(format)
+    payload.push({
+      platform,
+      format,
+      account: 'the connected account, read from Blotato only at publishing',
+      content: { text: onItsDay(corrected.caption, rev.slides, run.goAt), mediaUrls: rev.slides.map(slideAddress), platform },
+      target: { targetType: platform, ...(mediaType ? { mediaType } : {}), ...(collaborators.length > 0 ? { collaborators } : {}) },
+      sent: false,
+    })
+  }
+  const empty = payload.filter((p) => String((p.content as { text: string }).text).trim() === '').map((p) => p.platform)
+  say('payload', empty.length === 0, empty.length > 0 ? `no caption for ${empty.join(' and ')}` : `the Instagram and Facebook payloads, ${rev.slides.length} media each, prepared and never sent`)
+  return { stages, schedule, payload }
+}
+
+/**
+ * EACH ASKED DRY RUN, TAKEN (car T, T5): a row in social_dry_runs whose state is asked is run (dryRunPiece) and its result
+ * kept on it, done with every stage, its schedule and its payload, a failing stage named in its error; a run that throws
+ * is failed with its reason. Two a run. A failed write is said.
+ */
+export async function runAskedDryRuns(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<string[]> {
+  const { data, error } = await db.from('social_dry_runs').select('id, piece_id, go_at').eq('state', 'asked').order('asked_at').limit(2)
+  if (error) return [`the asked dry runs could not be read: ${error.message}`]
+  const lines: string[] = []
+  for (const r of (data ?? []) as { id: string; piece_id: string; go_at: string }[]) {
+    let values: Record<string, unknown>
+    try {
+      const out = await dryRunPiece(db, { pieceId: r.piece_id, goAt: new Date(r.go_at) }, now, opts)
+      const failed = out.stages.filter((s) => !s.ok)
+      values = { state: 'done', stages: out.stages, schedule: out.schedule, payload: out.payload, done_at: new Date().toISOString(), error: failed.length > 0 ? failed.map((s) => `${s.stage}: ${s.detail}`).join(' | ').slice(0, 2000) : null }
+      lines.push(`${r.id} (${r.piece_id}): ${failed.length === 0 ? `every stage passed, ${out.schedule.length} schedule rows prepared and not inserted, nothing sent` : `held at ${failed.map((s) => s.stage).join(', ')}`}`)
+    } catch (e) {
+      values = { state: 'failed', done_at: new Date().toISOString(), error: (e instanceof Error ? e.message : String(e)).slice(0, 2000) }
+      lines.push(`${r.id} (${r.piece_id}): FAILED, ${String(values.error)}`)
+    }
+    const w = await db.from('social_dry_runs').update(values).eq('id', r.id).eq('state', 'asked')
+    if (w.error) lines.push(`${r.id}: its result could not be kept: ${w.error.message}`)
+  }
+  return lines
 }

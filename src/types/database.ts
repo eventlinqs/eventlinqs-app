@@ -10911,6 +10911,56 @@ export type Database = {
           },
         ]
       }
+      social_dry_runs: {
+        Row: {
+          asked_at: string
+          asked_by: string
+          done_at: string | null
+          error: string | null
+          go_at: string
+          id: string
+          payload: Json
+          piece_id: string
+          schedule: Json
+          stages: Json
+          state: string
+        }
+        Insert: {
+          asked_at?: string
+          asked_by: string
+          done_at?: string | null
+          error?: string | null
+          go_at: string
+          id?: string
+          payload?: Json
+          piece_id: string
+          schedule?: Json
+          stages?: Json
+          state?: string
+        }
+        Update: {
+          asked_at?: string
+          asked_by?: string
+          done_at?: string | null
+          error?: string | null
+          go_at?: string
+          id?: string
+          payload?: Json
+          piece_id?: string
+          schedule?: Json
+          stages?: Json
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_dry_runs_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_image_requests: {
         Row: {
           campaign_id: string

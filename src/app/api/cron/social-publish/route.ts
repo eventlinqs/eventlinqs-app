@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, readCampaign, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, setAsideUnpostable, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules } from '@/lib/social/store'
+import { approveApprovedSet, approveUnderStandingPolicy, drawApprovedSet, readCampaign, standingPolicyDryRun, heldPostsNeedingInvestigation, planCampaignWeek, setAsideUnpostable, postNightNow, publishDuePieces, readBackPendingPosts, recordMissingPostings, redrawOlderLook, scheduleApprovedPieces, expireLapsedSchedules, runAskedDryRuns } from '@/lib/social/store'
 import { founderAccount } from '@/lib/outreach/twenty-drafts'
 import { socialAnalyticsFromEnv, socialPostReaderFromEnv, socialPublishedSearchFromEnv, socialPublisherFromEnv } from '@/lib/social/meta-wiring'
 import { reconcileHeld } from '@/lib/social/reconcile'
@@ -219,6 +219,12 @@ export async function GET(request: NextRequest) {
       for (const line of await preflightStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio preflight: ${line}`)
     } catch (err) {
       console.error('[cron/social-publish] the studio preflight could not run:', err instanceof Error ? err.message : err)
+    }
+    // THE DRY RUN OF A PIECE (car T, T5): each asked one taken to a prepared, unsent schedule, kept on its own row. Contained.
+    try {
+      for (const line of await runAskedDryRuns(db, now, { siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] dry run: ${line}`)
+    } catch (err) {
+      console.error('[cron/social-publish] the dry runs could not run:', err instanceof Error ? err.message : err)
     }
     /* THE PROMOTION CALENDAR (car O; src/lib/social/promotion-calendar.ts): once a day, at the prepare hour, every event
        ahead gets its type and its stage days from promotion_lead_times, written to event_promotions for the studio. Its
