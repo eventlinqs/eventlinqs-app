@@ -11,7 +11,7 @@ import { noIndexMetadata } from '@/lib/seo/indexing-policy'
  */
 
 const h = vi.hoisted(() => ({ every: vi.fn(), piece: vi.fn() }))
-vi.mock('@/lib/growth/ig', () => ({ readIgItems: h.every, readIgPiecePage: h.piece }))
+vi.mock('@/lib/growth/ig', () => ({ readIgItems: h.every, readIgPiecePage: h.piece, readIgLead: async () => null }))
 vi.mock('next/cache', () => ({ unstable_cache: (fn: () => unknown) => fn }))
 vi.mock('@/components/layout/site-header', () => ({ SiteHeader: () => <header data-chrome="header" /> }))
 vi.mock('@/components/layout/site-footer', () => ({ SiteFooter: () => <footer data-chrome="footer" /> }))
