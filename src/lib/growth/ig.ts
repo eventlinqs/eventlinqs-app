@@ -194,16 +194,41 @@ export async function readIgLead(now: Date = new Date()): Promise<IgLead | null>
   if (!slot) return null
   const page = await readIgPiecePage(slot.piece_id, 'instagram', now)
   if (page.items.length === 0) return null
-  // THE POST'S OWN ORDER (scorecard point 3: '#3 on the slide is #3 on the bio page'): the order its piece names its nights
-  // (the revision's event_ids, copied by the intake from the studio's piece), never the slide ties the intake assigns.
+  // THE POST'S OWN ORDER (scorecard point 3: '#3 on the slide is #3 on the bio page'): the order its published caption
+  // first names each night (captionOrder), which is the slides' order; the revision's event_ids after it, which the
+  // intake sorts by date (the weekend post of 28 November: its caption led with the Book Market, its ids with Michael Charles).
   const newest = await readOrThrow("the leading post's order for /ig", () =>
-    admin.from('social_piece_revisions').select('event_ids').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
+    admin.from('social_piece_revisions').select('event_ids, versions').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
   )
-  const order = ((newest ?? [])[0] as { event_ids?: string[] | null } | undefined)?.event_ids ?? []
+  const rev = (newest ?? [])[0] as { event_ids?: string[] | null; versions?: { instagram?: { caption?: string | null } } | null } | undefined
+  const order = captionOrder(rev?.versions?.instagram?.caption ?? '', page.items.map((i) => ({ id: i.card.id, title: i.card.title })), rev?.event_ids ?? [])
   return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, order) }
 }
 
 /** Items in the post's own order (its nights' ids, in order); a night it does not name after them, in its own order. Pure. */
+/** A title as a caption may write it: lower case, straight quotes, single spaces. Pure. */
+const plain = (s: string) => s.toLowerCase().replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\s+/g, ' ').trim()
+
+/**
+ * THE POST'S OWN ORDER (car U, U1): each night by where the post's caption first names it (its title, else the part
+ * before a colon), nights at the same place in the order given, any it does not name after them in `fallback`'s order.
+ * The caption is the post's own words, the same order as its slides. Pure.
+ */
+export function captionOrder(caption: string, nights: readonly { readonly id: string; readonly title: string }[], fallback: readonly string[]): string[] {
+  const text = plain(caption)
+  const at = (title: string) => {
+    for (const t of [plain(title), plain(title.split(':')[0] ?? '')]) {
+      if (t.length >= 3) {
+        const i = text.indexOf(t)
+        if (i >= 0) return i
+      }
+    }
+    return Infinity
+  }
+  const back = (id: string) => (fallback.includes(id) ? fallback.indexOf(id) : fallback.length)
+  return nights.map((n, i) => ({ id: n.id, at: at(n.title), back: back(n.id), i })).sort((a, b) => a.at - b.at || a.back - b.back || a.i - b.i).map((x) => x.id)
+}
+
 export function inPostOrder(items: readonly IgItem[], order: readonly string[]): IgItem[] {
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length)
   return [...items].map((item, i) => ({ item, i })).sort((a, b) => rank(a.item.card.id) - rank(b.item.card.id) || a.i - b.i).map((x) => x.item)
