@@ -16,7 +16,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { switchOffByCode, switchTrips, type PolicyHour } from '@/lib/social/policy-guard'
 import { PREFLIGHT_HOUR, runPreflight } from '@/lib/social/preflight'
 import { planAsOf } from '@/lib/social/plan-for'
-import { makeCarouselsNow, makeStoriesNow } from '@/lib/social/carousel-wiring'
+import { makeCarouselsNow, makeStoriesNow, moveStudioNow } from '@/lib/social/carousel-wiring'
 
 export const dynamic = 'force-dynamic'
 
@@ -195,6 +195,14 @@ export async function GET(request: NextRequest) {
         await releasePublishLease(db, holder)
         return NextResponse.json({ ok: true, skipped: `${HOURLY_FLAG} is on` })
       }
+    }
+    /* THE STUDIO BRIDGE (the PM's 14:12 and 14:20 of 27 November 2026; src/lib/social/studio-move.ts): every run moves the
+       studio's finished pieces into storage and the creative intake, where Lawal approves them at /admin/social. A fault
+       here is said and never stops the run. */
+    try {
+      for (const line of await moveStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio: ${line}`)
+    } catch (err) {
+      console.error('[cron/social-publish] the studio move could not run:', err instanceof Error ? err.message : err)
     }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best
