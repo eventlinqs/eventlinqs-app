@@ -7,7 +7,7 @@ import { OUR_MAILBOXES } from '@/lib/outreach/addresses'
 import { handleInbox, type InboxIntake } from '@/lib/outreach/replies'
 import { graphPhotoBytes, graphPhotosOf } from '@/lib/comms/inbound-attachments'
 import { mediaDeps } from '@/lib/listings/organiser-media'
-import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, type PlayReport } from '@/lib/outreach/planner'
+import { judgePlays, planDms, planPlays, planRelationship, playDecisionLines, queueLine, type PlayReport } from '@/lib/outreach/planner'
 import { expireLapsedLetters, runOutreachSender } from '@/lib/outreach/sender'
 import { queueApprovedHeldLetters, queueApprovedReplies } from '@/lib/outreach/self-queue'
 import { recordPhaseRun } from '@/lib/ops/phase-runs'
@@ -267,7 +267,8 @@ export async function GET(request: NextRequest) {
         startedAt: now,
         endedAt: new Date(),
         units: report.sent?.length ?? 0,
-        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}${faults.length ? `; contained: ${faults.map((f) => `${f.step}: ${f.error}`).join('; ')}` : ''}`.slice(0, 2000),
+        // M1 (the PM's 12:18 of 27 November 2026): the queue's pool, queued and skipped by reason, in the run's own row.
+        result: `${report.sent?.length ?? 0} sent, ${report.failed?.length ?? 0} failed, ${report.refused?.length ?? 0} refused${report.note ? `; ${report.note}` : ''}${!isStepFault(plays) && Array.isArray(plays) && queueLine(plays as PlayReport[]) ? `; queue: ${queueLine(plays as PlayReport[])}` : ''}${faults.length ? `; contained: ${faults.map((f) => `${f.step}: ${f.error}`).join('; ')}` : ''}`.slice(0, 2000),
         failed: (report.failed?.length ?? 0) > 0 || faults.length > 0,
       })
     }

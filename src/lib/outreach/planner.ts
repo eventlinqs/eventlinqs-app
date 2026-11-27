@@ -55,7 +55,34 @@ export function addressRank(address: string, personName: string | null): number 
   return 3
 }
 
-export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[]; error?: string }
+export type PlayReport = { playId: string; name: string; cap: number; usedToday: number; queued: number; held: { contactId: string; why: string[] }[]; refused: { contactId: string; why: string }[]; notDrafted?: { contactId: string; why: string }[]; pool?: number; error?: string }
+
+/** Why a contact of a play's pool was not queued (M1, the PM's 12:18 of 27 November 2026), each in the run's words. */
+export const SKIP = {
+  organisationTaken: 'its organisation has its letter this run',
+  platform: "the platform's own or a test organiser",
+  named: 'named by another approved play',
+  noCity: 'no city found (no linked venue, no EventLinqs page it was found on, no night of its own)',
+  otherCity: "outside the play's cities",
+  cap: "the play's cap for today is used",
+} as const
+
+/** The queue run's line: for each play with a pool, the pool, the queued, and the skipped by reason. Pure. */
+export function queueLine(reports: readonly PlayReport[]): string {
+  const parts: string[] = []
+  for (const r of reports) {
+    if (!r.pool) continue
+    const by = new Map<string, number>()
+    for (const n of r.notDrafted ?? []) {
+      const key = n.why.replace(/ \(.*\)$/, '')
+      by.set(key, (by.get(key) ?? 0) + 1)
+    }
+    const skipped = [...by.values()].reduce((a, b) => a + b, 0)
+    const reasons = [...by].sort((a, b) => b[1] - a[1]).map(([why, n]) => `${n} ${why}`).join(', ')
+    parts.push(`${r.name}: ${r.pool} lawful in pool, ${r.queued} queued, ${r.held.length} held, ${skipped} skipped${reasons ? ` (${reasons})` : ''}`)
+  }
+  return parts.join('; ')
+}
 
 /** Each play's decisions as log lines: its cap and use, then each contact queued, held, refused or not drafted, with why. Pure. */
 export function playDecisionLines(reports: readonly PlayReport[]): string[] {
@@ -278,6 +305,8 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
       const touched = ids.length ? await db.from('outreach_touches').select('contact_id, state').in('contact_id', ids) : { data: [] as { contact_id: string; state: string }[] }
       const written = writtenContacts((touched.data ?? []) as { contact_id: string; state: string }[], segmentA)
       let allowed: Set<string> | null = null
+      // M1 (the PM's 12:18 of 27 November 2026): why each organiser is outside the cohort, so no contact is passed over unsaid.
+      const outside = new Map<string, string>()
       const cohortCities = rule.cities && rule.cities.length > 0 ? rule.cities : general ? [...ACQ_GUIDE_CITIES] : null
       if (cohortCities) {
         // THE CITIES COHORT (train AE, 20 November 2026; the PM's 08:37 item 4): each organiser's city by its three
@@ -295,6 +324,12 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
         const real = (rows.data ?? []).filter((o) => !platform.has(o.id) && !named.has(o.id))
         const cities = await organiserCitySlugs(db, real, deps.now)
         allowed = new Set(real.filter((o) => cohortCities.includes(cities.get(o.id) ?? '')).map((o) => o.id))
+        for (const o of rows.data ?? []) {
+          if (platform.has(o.id)) outside.set(o.id, SKIP.platform)
+          else if (named.has(o.id)) outside.set(o.id, SKIP.named)
+          else if (!cities.has(o.id)) outside.set(o.id, SKIP.noCity)
+          else if (!allowed.has(o.id)) outside.set(o.id, `${SKIP.otherCity} (${cities.get(o.id)})`)
+        }
       }
       const seenOrganiser = new Set<string>()
       if (lifecycle) {
@@ -331,11 +366,17 @@ export async function planPlays(db: Admin, deps: { now: Date; origin: string; ac
           else (report.notDrafted ??= []).push({ contactId: c.id, why: l.why })
         }
       }
+      // M1: every contact of the pool not queued is said with its reason (report.notDrafted); a named play's pool is its own
+      // organisers only, so the others are never listed as skipped by it.
+      const skip = (contactId: string, why: string) => (report.notDrafted ??= []).push({ contactId, why })
       for (const c of lifecycle ? [] : (candidates.data ?? [])) {
-        if (room <= 0) break
-        if (written.has(c.id) || seenOrganiser.has(c.organiser_id)) continue
-        if (allowed && !allowed.has(c.organiser_id)) continue
         if (rule.organisers && rule.organisers.length > 0 && !rule.organisers.includes(c.organiser_id)) continue
+        // The pool is the lawful contacts never written to; one already written is not in it.
+        if (written.has(c.id)) continue
+        report.pool = (report.pool ?? 0) + 1
+        if (seenOrganiser.has(c.organiser_id)) { skip(c.id, SKIP.organisationTaken); continue }
+        if (allowed && !allowed.has(c.organiser_id)) { skip(c.id, outside.get(c.organiser_id) ?? SKIP.noCity); continue }
+        if (room <= 0) { skip(c.id, SKIP.cap); continue }
         seenOrganiser.add(c.organiser_id)
         // THE GENERAL LETTER NEVER TAKES THE EVENT LETTER'S PLACE (Lawal's directive of 26 November 2026, item A): an
         // organiser whose night is due its own letter on law 49's clock, or inside its final week, is passed over, with why.
