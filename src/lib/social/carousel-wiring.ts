@@ -59,7 +59,8 @@ export function moveStudioNow(db: Db, input: { readonly now: Date; readonly site
       // Each night as the engine reads it now (car S): the same reader the intake's facts check reads.
       facts: async (ids) => {
         const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(input.now), input.now, { ids })
-        return new Map(nights.map((n) => [n.eventId, { eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate, venue: n.venueName, organiser: n.organiser }]))
+        // A night with no end or no named organiser states null for it, as the intake's own record does (StatedFact).
+        return new Map(nights.map((n) => [n.eventId, { eventId: n.eventId, title: n.title, startDate: n.startDate, endDate: n.endDate ?? null, venue: n.venueName, organiser: n.organiser ?? null }]))
       },
     },
     input.now,
