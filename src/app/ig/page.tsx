@@ -7,7 +7,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { MarketEventCard } from '@/components/features/home-market/market-card'
 import { EmptyCollectionNote } from '@/components/ui/empty-collection-note'
 import { noIndexMetadata } from '@/lib/seo/indexing-policy'
-import { readIgItems, readIgPiecePage, type IgItem } from '@/lib/growth/ig'
+import { readIgItems, readIgLead, readIgPiecePage, type IgItem, type IgLead } from '@/lib/growth/ig'
 import { igSource } from '@/lib/growth/ig-math'
 import { EVENT_DATA_CACHE_TAGS } from '@/lib/events/cache-tags'
 
@@ -43,6 +43,8 @@ export const revalidate = 300
 
 /** The page of every post: its read held five minutes, as the rendered page was before a piece could be named. */
 const everyPost = unstable_cache(() => readIgItems(), ['ig-every-post-v1'], { revalidate: 300, tags: [EVENT_DATA_CACHE_TAGS[0]] })
+/** The post that leads the bio link now (car U, U1): read on the same five minute window, so it leads from its slot. */
+const leadPost = unstable_cache(() => readIgLead(), ['ig-lead-post-v1'], { revalidate: 300, tags: [EVENT_DATA_CACHE_TAGS[0]] })
 
 const PIECE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -92,6 +94,7 @@ export default async function IgPage({ searchParams }: IgProps) {
   const piece = pieceOf(q)
   let items: IgItem[] = []
   let heading: string | null = null
+  let lead: IgLead | null = null
   let unread = false
   try {
     if (piece) {
@@ -99,7 +102,11 @@ export default async function IgPage({ searchParams }: IgProps) {
       items = page.items
       heading = page.heading
     } else {
-      items = await everyPost()
+      // THE POST THAT LEADS (car U, U1): its nights first, numbered in its order; the other posted nights after, once each.
+      const [all, led] = await Promise.all([everyPost(), leadPost()])
+      lead = led
+      const ledIds = new Set((led?.items ?? []).map((i) => i.card.id))
+      items = all.filter((i) => !ledIds.has(i.card.id))
     }
   } catch (err) {
     unread = true
@@ -120,6 +127,25 @@ export default async function IgPage({ searchParams }: IgProps) {
               : 'Every event from our latest posts, newest first. Tap one for its date, venue and where to book.'}
           </p>
 
+          {lead ? (
+            <section aria-labelledby="ig-lead" data-ig-lead={lead.pieceId} className="mt-6">
+              <h2 id="ig-lead" className="font-headline text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
+                {lead.heading ?? 'From our latest post'}
+              </h2>
+              <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-7 lg:grid-cols-4">
+                {lead.items.map((item, i) => (
+                  <li key={item.card.id} data-ig-number={i + 1}>
+                    <p className="mb-2 font-display text-sm font-bold text-ink-600">#{i + 1}</p>
+                    <MarketEventCard card={item.card} href={item.href} />
+                  </li>
+                ))}
+              </ol>
+              {items.length > 0 ? (
+                <h2 className="mt-10 font-headline text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">More from our posts</h2>
+              ) : null}
+            </section>
+          ) : null}
+
           {items.length > 0 ? (
             <>
               {/* The home grid's own ladder, so the card's photograph hint (sizes.ts marketCard) holds here too. */}
@@ -136,7 +162,7 @@ export default async function IgPage({ searchParams }: IgProps) {
                 </Link>
               </div>
             </>
-          ) : (
+          ) : lead ? null : (
             <div className="mt-6 max-w-xl">
               <EmptyCollectionNote
                 message={

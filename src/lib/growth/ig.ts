@@ -11,7 +11,7 @@ import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
-import { IG_DAYS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
+import { IG_DAYS, IG_SLOT_LEAD_MS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
 /**
  * The rows behind /ig (the rules and why are in ./ig-math.ts). The posts are the engine's own record of what went to
@@ -55,10 +55,29 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
       .order('posted_at', { ascending: false })
       .limit(500),
   )
-  const went = (postings ?? []).flatMap((p) => {
-    const approval = Array.isArray(p.social_piece_approvals) ? p.social_piece_approvals[0] : p.social_piece_approvals
-    return approval ? [{ pieceId: p.piece_id, revision: approval.revision, postUrl: p.post_url, postedAt: p.posted_at }] : []
-  })
+  // THE APPROVED SLOTS (car T, T1, the PM's 02:05 of 28 November 2026): every approved Instagram slot, scheduled or gone, from
+  // IG_SLOT_LEAD_MS before its time, so the bio link lists a post's nights the moment it goes, never only once its posting is
+  // read back. A held slot is never listed. Read with .lt on go_at: this reader fires nothing.
+  const slots = await readOrThrow('the approved Instagram slots for /ig', () =>
+    admin
+      .from('social_piece_schedules')
+      .select('piece_id, go_at, social_piece_approvals(revision)')
+      .eq('platform', 'instagram')
+      .in('state', ['scheduled', 'published'])
+      .gte('go_at', since)
+      .lt('go_at', new Date(now.getTime() + IG_SLOT_LEAD_MS).toISOString())
+      .limit(500),
+  )
+  const went = [
+    ...(postings ?? []).flatMap((p) => {
+      const approval = Array.isArray(p.social_piece_approvals) ? p.social_piece_approvals[0] : p.social_piece_approvals
+      return approval ? [{ pieceId: p.piece_id, revision: approval.revision, postUrl: p.post_url, postedAt: p.posted_at, slotted: false }] : []
+    }),
+    ...(slots ?? []).flatMap((s) => {
+      const approval = Array.isArray(s.social_piece_approvals) ? s.social_piece_approvals[0] : s.social_piece_approvals
+      return approval ? [{ pieceId: s.piece_id, revision: approval.revision, postUrl: '', postedAt: s.go_at, slotted: true }] : []
+    }),
+  ]
   if (went.length === 0) return []
 
   const revisions = await readOrThrow('the approved revisions for /ig', () =>
@@ -70,7 +89,7 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
   )
   const posts: IgPost[] = went.flatMap((w) => {
     const rev = (revisions ?? []).find((r) => r.piece_id === w.pieceId && r.version === w.revision)
-    return rev ? [{ postId: w.pieceId, postUrl: w.postUrl, postedAt: w.postedAt, eventIds: rev.event_ids ?? [] }] : []
+    return rev ? [{ postId: w.pieceId, postUrl: w.postUrl, postedAt: w.postedAt, eventIds: rev.event_ids ?? [], slotted: w.slotted }] : []
   })
 
   const named = [...new Set(posts.flatMap((p) => p.eventIds))]
@@ -115,6 +134,53 @@ async function cardsOf(picks: readonly IgPick[], rows: readonly RawRow[], now: D
     const card = marketCard({ row, more: p.more, every: null }, shaped.days.todayKey)
     return [{ card, href: igHref(card.href, p.postId, source), postId: p.postId }]
   })
+}
+
+/** The post that leads the bio link now: its piece, its heading and its nights in the post's own order. */
+export type IgLead = { readonly pieceId: string; readonly heading: string | null; readonly items: IgItem[] }
+
+/**
+ * THE POST THAT LEADS (car U, U1, the PM's 02:12 of 28 November 2026): the newest approved Instagram slot whose time has
+ * come, from IG_SLOT_LEAD_MS before it (social_piece_schedules, scheduled or published, never held). Its nights are its own
+ * page's (readIgPiecePage: still public, still ahead), put in the order its slides name them, the post's order, a night no
+ * slide names after them in date order. None when no slot has come or none of its nights is still ahead. Read with .lt on
+ * go_at: this reader fires nothing.
+ */
+export async function readIgLead(now: Date = new Date()): Promise<IgLead | null> {
+  if (!getSupabaseServiceRoleKey()) return null
+  const admin = createAdminClient()
+  const since = new Date(now.getTime() - IG_DAYS * DAY_MS).toISOString()
+  const slots = await readOrThrow('the newest approved Instagram slot for /ig', () =>
+    admin
+      .from('social_piece_schedules')
+      .select('piece_id, go_at')
+      .eq('platform', 'instagram')
+      .in('state', ['scheduled', 'published'])
+      .gte('go_at', since)
+      .lt('go_at', new Date(now.getTime() + IG_SLOT_LEAD_MS).toISOString())
+      .order('go_at', { ascending: false })
+      .limit(1),
+  )
+  const slot = (slots ?? [])[0] as { piece_id: string } | undefined
+  if (!slot) return null
+  const page = await readIgPiecePage(slot.piece_id, 'instagram', now)
+  if (page.items.length === 0) return null
+  const newest = await readOrThrow("the leading post's slides for /ig", () =>
+    admin.from('social_piece_revisions').select('slides').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
+  )
+  const slides = ((newest ?? [])[0] as { slides?: unknown } | undefined)?.slides
+  return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, Array.isArray(slides) ? slides : []) }
+}
+
+/** Items in the order a post's slides name their nights; a night no slide names after them, in its own order. Pure. */
+export function inPostOrder(items: readonly IgItem[], slides: readonly unknown[]): IgItem[] {
+  const order: string[] = []
+  for (const s of slides) {
+    const id = s !== null && typeof s === 'object' ? (s as { eventId?: unknown }).eventId : null
+    if (typeof id === 'string' && !order.includes(id)) order.push(id)
+  }
+  const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length)
+  return [...items].map((item, i) => ({ item, i })).sort((a, b) => rank(a.item.card.id) - rank(b.item.card.id) || a.i - b.i).map((x) => x.item)
 }
 
 /** One piece's own page: its heading from its own hook, and exactly its nights (ig-math.ts igPiecePicks). */
