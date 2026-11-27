@@ -2589,6 +2589,7 @@ export type Database = {
           ends_at: string | null
           id: string
           instagram_post_url: string | null
+          is_test: boolean
           last_checked_on: string | null
           listing_source: string
           name: string
@@ -2613,6 +2614,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           instagram_post_url?: string | null
+          is_test?: boolean
           last_checked_on?: string | null
           listing_source?: string
           name: string
@@ -2637,6 +2639,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           instagram_post_url?: string | null
+          is_test?: boolean
           last_checked_on?: string | null
           listing_source?: string
           name?: string
