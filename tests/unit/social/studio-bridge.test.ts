@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { byteaBytes, moveStudioPieces, studioIntake, studioPath } from '@/lib/social/studio-move'
+import { isCreativeFileUrl } from '@/lib/social/campaign'
 
 /*
  * THE STUDIO BRIDGE (the PM's 14:12 and 14:20 of 27 November 2026, car N step 2b). Red on main, where the cloud studio had
@@ -52,7 +53,9 @@ function fakeDb(uploads: { id: string; slide_no: number; png: string; rests_on: 
 describe('the pure parts', () => {
   it('reads a bytea as bytes, names the path, and builds the intake with the slides in order', () => {
     expect([...byteaBytes(PNG_HEX).slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47])
-    expect(studioPath('b1', 'mel-weekend-28nov', 2, 'feed')).toBe('studio/b1/mel-weekend-28nov/2-feed.png')
+    expect(studioPath(piece.id, 2, 'feed')).toBe(`creative/${piece.id}/2-feed.jpg`)
+    // The one place the creative intake takes a finished design (car R1: it held both pieces at 19:30 for studio/...png).
+    expect(isCreativeFileUrl(`https://store.example/storage/v1/object/public/event-images/${studioPath(piece.id, 2, 'feed')}`, 'https://store.example')).toBe(true)
     const record = studioIntake(piece, [{ url: 'https://x/1.png', restsOn: { kind: 'own_design' } }])
     expect(record).toMatchObject({ briefId: piece.id, format: 'feed', link: piece.link, preferredAt: piece.preferred_at, destinations: ['instagram', 'facebook'] })
     expect(record.captions).toEqual({ instagram: 'This weekend in Melbourne.', facebook: 'This weekend in Melbourne, on EventLinqs.' })
@@ -76,7 +79,7 @@ describe('the move', () => {
       store: async (path) => (stored.push(path), `https://store/${path}`),
       receive: async (input) => ((received = input), { state: 'handed_off', id: 'intake-1' }),
     }, NOW)
-    expect(stored).toEqual([`studio/${piece.brief_id}/mel-weekend-28nov/1-feed.png`, `studio/${piece.brief_id}/mel-weekend-28nov/2-feed.png`])
+    expect(stored).toEqual([`creative/${piece.id}/1-feed.jpg`, `creative/${piece.id}/2-feed.jpg`])
     expect((received as { images: { url: string }[] }).images.map((i) => i.url)).toEqual(stored.map((p) => `https://store/${p}`))
     expect(updates.filter((u) => u.table === 'studio_uploads')).toHaveLength(2)
     expect(updates.find((u) => u.table === 'studio_pieces')?.values).toMatchObject({ intake_id: 'intake-1' })

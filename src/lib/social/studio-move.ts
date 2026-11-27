@@ -5,7 +5,8 @@ import type { IntakeInput, Network, RestsOn, StatedFact } from '@/lib/creative/i
  * THE STUDIO BRIDGE'S MOVE (the PM's 14:12 and 14:20 of 27 November 2026, car N step 2b (c); migration 20261127140001).
  * The social studio, a scheduled cloud Claude session, writes its rendered slides into studio_uploads and its pieces into
  * studio_pieces through SQL, the only road it has. This moves each piece whose every slide has arrived: each PNG stored
- * once under event-images/studio/<brief>/<piece>/<slide>-<format>.png, then the piece handed to the creative intake with
+ * once as JPEG under event-images/creative/<piece id>/<slide>-<format>.jpg (car R1: the one place the creative intake
+ * takes a finished design, and the format Instagram's publishing takes), then the piece handed to the creative intake with
  * its slides in order, captions, nights, facts, link and slot, where every existing check runs as now (facts, rights, the
  * founder's approval). A refusal is written on the piece, never a silent drop; nothing is published here.
  */
@@ -42,9 +43,9 @@ export function byteaBytes(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(hex, 'hex'))
 }
 
-/** Where a slide is stored. Pure. */
-export function studioPath(briefId: string, pieceKey: string, slideNo: number, format: string): string {
-  return `studio/${briefId}/${pieceKey}/${slideNo}-${format}.png`
+/** Where a slide is stored, as JPEG: the creative intake's own place (campaign.ts isCreativeFileUrl). Pure. */
+export function studioPath(pieceId: string, slideNo: number, format: string): string {
+  return `creative/${pieceId}/${slideNo}-${format}.jpg`
 }
 
 /** The intake record of a piece and its stored slides, in order. Pure. */
@@ -91,7 +92,7 @@ export async function moveStudioPieces(db: Db, deps: StudioMoveDeps, now: Date):
       }
       const images: { url: string; restsOn: RestsOn }[] = []
       for (const up of uploads.slice(0, piece.slides)) {
-        const path = studioPath(piece.brief_id, piece.piece_key, up.slide_no, piece.format)
+        const path = studioPath(piece.id, up.slide_no, piece.format)
         const url = await deps.store(path, byteaBytes(up.png))
         await db.from('studio_uploads').update({ moved_at: now.toISOString(), moved_to: url }).eq('id', up.id)
         images.push({ url, restsOn: up.rests_on })

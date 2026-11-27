@@ -4,6 +4,7 @@ import { renderCampaignSlide } from '@/lib/broadcast/campaign-slides'
 import { makeDailyStories, makeWeeklyCarousels, type CarouselDeps, type CarouselMade } from './carousel-make'
 import { readCampaignCities, readCampaignNights, receiveIntake, slideImagesNow, type UsableImage } from './store'
 import { moveStudioPieces } from './studio-move'
+import { pngToJpeg } from './studio-jpeg'
 
 type Db = SupabaseClient
 
@@ -36,7 +37,8 @@ export function carouselDepsFor(db: Db, opts: { readonly now: Date; readonly sit
 
 /**
  * THE STUDIO BRIDGE'S MOVE, WIRED (the PM's 14:12 and 14:20 of 27 November 2026; ./studio-move.ts): each studio slide
- * stored as a PNG under event-images/studio/ (the same path again overwrites the same file, so a retried move is safe),
+ * re-encoded as JPEG and stored under event-images/creative/<piece id>/ (car R1; the same path again overwrites the same
+ * file, so a retried move is safe),
  * and each piece handed to the creative intake (store.ts receiveIntake), whose gates leave it unapproved for Lawal.
  */
 export function moveStudioNow(db: Db, input: { readonly now: Date; readonly siteOrigin: string }): Promise<string[]> {
@@ -45,7 +47,7 @@ export function moveStudioNow(db: Db, input: { readonly now: Date; readonly site
     {
       store: async (path, bytes) => {
         const bucket = db.storage.from('event-images')
-        const up = await bucket.upload(path, bytes, { contentType: 'image/png', upsert: true, cacheControl: '31536000' })
+        const up = await bucket.upload(path, await pngToJpeg(bytes), { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' })
         if (up.error) throw new Error(`the slide ${path} could not be stored: ${up.error.message}`)
         return bucket.getPublicUrl(path).data.publicUrl
       },
