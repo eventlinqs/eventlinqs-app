@@ -142,8 +142,8 @@ export type IgLead = { readonly pieceId: string; readonly heading: string | null
 /**
  * THE POST THAT LEADS (car U, U1, the PM's 02:12 of 28 November 2026): the newest approved Instagram slot whose time has
  * come, from IG_SLOT_LEAD_MS before it (social_piece_schedules, scheduled or published, never held). Its nights are its own
- * page's (readIgPiecePage: still public, still ahead), put in the order its slides name them, the post's order, a night no
- * slide names after them in date order. None when no slot has come or none of its nights is still ahead. Read with .lt on
+ * page's (readIgPiecePage: still public, still ahead), put in the post's own order (the order its piece names them), a night
+ * it does not name after them in date order. None when no slot has come or none of its nights is still ahead. Read with .lt on
  * go_at: this reader fires nothing.
  */
 export async function readIgLead(now: Date = new Date()): Promise<IgLead | null> {
@@ -165,20 +165,17 @@ export async function readIgLead(now: Date = new Date()): Promise<IgLead | null>
   if (!slot) return null
   const page = await readIgPiecePage(slot.piece_id, 'instagram', now)
   if (page.items.length === 0) return null
-  const newest = await readOrThrow("the leading post's slides for /ig", () =>
-    admin.from('social_piece_revisions').select('slides').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
+  // THE POST'S OWN ORDER (scorecard point 3: '#3 on the slide is #3 on the bio page'): the order its piece names its nights
+  // (the revision's event_ids, copied by the intake from the studio's piece), never the slide ties the intake assigns.
+  const newest = await readOrThrow("the leading post's order for /ig", () =>
+    admin.from('social_piece_revisions').select('event_ids').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
   )
-  const slides = ((newest ?? [])[0] as { slides?: unknown } | undefined)?.slides
-  return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, Array.isArray(slides) ? slides : []) }
+  const order = ((newest ?? [])[0] as { event_ids?: string[] | null } | undefined)?.event_ids ?? []
+  return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, order) }
 }
 
-/** Items in the order a post's slides name their nights; a night no slide names after them, in its own order. Pure. */
-export function inPostOrder(items: readonly IgItem[], slides: readonly unknown[]): IgItem[] {
-  const order: string[] = []
-  for (const s of slides) {
-    const id = s !== null && typeof s === 'object' ? (s as { eventId?: unknown }).eventId : null
-    if (typeof id === 'string' && !order.includes(id)) order.push(id)
-  }
+/** Items in the post's own order (its nights' ids, in order); a night it does not name after them, in its own order. Pure. */
+export function inPostOrder(items: readonly IgItem[], order: readonly string[]): IgItem[] {
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length)
   return [...items].map((item, i) => ({ item, i })).sort((a, b) => rank(a.item.card.id) - rank(b.item.card.id) || a.i - b.i).map((x) => x.item)
 }
