@@ -379,6 +379,29 @@ export function momentsDue(run: Run, now: Date, h: RunHistory): Moment[] {
   return out
 }
 
+/**
+ * NEVER A FIRST EXPOSURE ON THE EVENT'S OWN DAY (the social operating model of 27 November 2026, version 2 item 2; car
+ * O): on a day of the run itself, a run that had no feed post or story before today (under its own key, any key it was
+ * drawn under, or an earlier run of its season) gets nothing that day, unless a verified late breaking exception is
+ * flagged for it today (event_promotions.exception, with its reason). Pure.
+ */
+export function firstExposureGate(run: Run, now: Date, moments: readonly Moment[], h: RunHistory, seasonDays: readonly string[], exception: boolean): Moment[] {
+  const today = dayIn(now, run.zone)
+  if (exception || !run.days.includes(today)) return [...moments]
+  return [...h.feedDays, ...h.storyDays, ...seasonDays].some((d) => d < today) ? [...moments] : []
+}
+
+/** The days an earlier or later run of the same season was posted or scheduled on, by the run key's season prefix. Pure. */
+export function seasonDaysOf(run: Run, byRun: ReadonlyMap<string, { readonly feedDays: readonly string[]; readonly storyDays: readonly string[] }>): string[] {
+  const cut = run.key.lastIndexOf('|')
+  if (cut <= 0) return []
+  const prefix = `${run.key.slice(0, cut)}|`
+  const own = new Set([run.key, ...(run.aliases ?? [])].map(runRef))
+  const out: string[] = []
+  for (const [k, h] of byRun) if (k.startsWith(prefix) && !own.has(k)) out.push(...h.feedDays, ...h.storyDays)
+  return out
+}
+
 /** A run's moment that has a photograph to carry it (law 37 (h): no permitted photograph, no post). */
 export type Candidate = { readonly run: Run; readonly moment: Moment; readonly hasPhoto: boolean }
 

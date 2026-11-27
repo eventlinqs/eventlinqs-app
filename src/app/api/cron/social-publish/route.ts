@@ -7,6 +7,9 @@ import { publishedCheck, readRemindersDue, readTodaySchedule } from '@/lib/socia
 /** The hour of the daily published check (M6, item 6): 21:00 in Melbourne. */
 const PUBLISHED_CHECK_HOUR = 21
 import { readReliability, reliabilityLine } from '@/lib/social/scorecard'
+/** The promotion calendar's daily run (car O, the PM's 15:58 of 27 November 2026): the prepare hour's run. */
+const PROMOTION_CALENDAR_HOUR = 22
+import { planPromotions } from '@/lib/social/promotion-calendar'
 import { sendEmail } from '@/lib/email/send'
 import { PLATFORM_INBOX } from '@/lib/env/destinations'
 import { midnightIn } from '@/lib/dates/zone-midnight'
@@ -216,6 +219,18 @@ export async function GET(request: NextRequest) {
       for (const line of await preflightStudioNow(db, { now, siteOrigin: getSiteUrl() })) console.log(`[cron/social-publish] studio preflight: ${line}`)
     } catch (err) {
       console.error('[cron/social-publish] the studio preflight could not run:', err instanceof Error ? err.message : err)
+    }
+    /* THE PROMOTION CALENDAR (car O; src/lib/social/promotion-calendar.ts): once a day, at the prepare hour, every event
+       ahead gets its type and its stage days from promotion_lead_times, written to event_promotions for the studio. Its
+       line is its own prepare row; a fault is that row, failed, and never stops the run. */
+    if (hourRun && melbourneHour(now) === PROMOTION_CALENDAR_HOUR) {
+      const began = new Date()
+      try {
+        const cal = await planPromotions(db, now)
+        await recordPhaseRun(db, { phase: 'prepare', ride: 'social', startedAt: began, endedAt: new Date(), units: cal.written, result: cal.line })
+      } catch (err) {
+        await recordPhaseRun(db, { phase: 'prepare', ride: 'social', startedAt: began, endedAt: new Date(), units: 0, result: `promotion calendar: could not run: ${err instanceof Error ? err.message : String(err)}`, failed: true })
+      }
     }
     /* THE PRE FLIGHT (AV (c), the PM's 16:30 of 21 November 2026): at the 04:40 run, before 05:00 and before the 06:40
        run, every piece due today meets its checks; a refused one is rejected and held so the planner draws the next best

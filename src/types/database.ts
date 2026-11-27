@@ -2322,6 +2322,84 @@ export type Database = {
           },
         ]
       }
+      event_promotions: {
+        Row: {
+          created_at: string
+          due_on: string
+          event_id: string
+          event_type: string
+          exception: boolean
+          exception_reason: string | null
+          excluded_reason: string | null
+          id: string
+          late_listing: boolean
+          lead_version: number
+          piece_id: string | null
+          posted_at: string | null
+          results: Json
+          stage: string
+          state: string
+          story_only: boolean
+          type_basis: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_on: string
+          event_id: string
+          event_type: string
+          exception?: boolean
+          exception_reason?: string | null
+          excluded_reason?: string | null
+          id?: string
+          late_listing?: boolean
+          lead_version: number
+          piece_id?: string | null
+          posted_at?: string | null
+          results?: Json
+          stage: string
+          state?: string
+          story_only?: boolean
+          type_basis: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_on?: string
+          event_id?: string
+          event_type?: string
+          exception?: boolean
+          exception_reason?: string | null
+          excluded_reason?: string | null
+          id?: string
+          late_listing?: boolean
+          lead_version?: number
+          piece_id?: string | null
+          posted_at?: string | null
+          results?: Json
+          stage?: string
+          state?: string
+          story_only?: boolean
+          type_basis?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_promotions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_promotions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminder_sends: {
         Row: {
           claimed_at: string
@@ -9112,6 +9190,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      promotion_lead_times: {
+        Row: {
+          days_before: number | null
+          event_type: string
+          id: string
+          reason: string
+          rule: string | null
+          set_at: string
+          set_by: string
+          stage: string
+          story_only: boolean
+          version: number
+        }
+        Insert: {
+          days_before?: number | null
+          event_type: string
+          id?: string
+          reason: string
+          rule?: string | null
+          set_at?: string
+          set_by: string
+          stage: string
+          story_only?: boolean
+          version?: number
+        }
+        Update: {
+          days_before?: number | null
+          event_type?: string
+          id?: string
+          reason?: string
+          rule?: string | null
+          set_at?: string
+          set_by?: string
+          stage?: string
+          story_only?: boolean
+          version?: number
+        }
+        Relationships: []
       }
       promotion_offers: {
         Row: {
