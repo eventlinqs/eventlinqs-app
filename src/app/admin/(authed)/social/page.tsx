@@ -181,7 +181,7 @@ function StudioProofView({ proof }: { proof: StudioProof }) {
   return (
     <div data-phone-check={proof.passed ? 'passed' : 'not-passed'} className="mt-3">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--admin-muted)]">What the phone shows, 390 px wide</p>
-      <ol className="mt-1 flex gap-3 overflow-x-auto pb-2" aria-label="Phone views">
+      <ol className="relative mt-1 flex gap-3 overflow-x-auto pb-2" aria-label="Phone views">
         {proof.phoneViews.map((url, i) => (
           <li key={i} data-phone-view={i + 1} className="w-[390px] max-w-full shrink-0">
             {url ? (
