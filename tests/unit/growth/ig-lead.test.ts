@@ -5,17 +5,16 @@ import { inPostOrder, type IgItem } from '@/lib/growth/ig'
 /*
  * CAR U, U1 (the PM's 02:12 of 28 November 2026; car T's T1 folded in). Red on main, where the bio link listed every posted
  * night newest post first and nothing about the post a visitor came from: now the newest approved Instagram slot whose time
- * has come leads, under its own heading, its nights in the order its slides name them and numbered, the other posted
+ * has come leads, under its own heading, its nights in the post's own order (its piece's list) and numbered, the other posted
  * nights after it once each.
  */
 const read = (f: string) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n')
 const item = (id: string) => ({ card: { id }, href: `/events/${id}`, postId: 'p' }) as unknown as IgItem
 
 describe("the leading post's nights in the post's own order", () => {
-  it('follows the order its slides name them, a night no slide names after them in its own order', () => {
+  it("follows the post's own order of its nights, a night it does not name after them in its own order", () => {
     const items = [item('a'), item('b'), item('c'), item('d')]
-    const slides = [{ t: 'file', eventId: 'c' }, { t: 'file', eventId: 'a' }, { t: 'file', eventId: 'c' }, { t: 'file' }]
-    expect(inPostOrder(items, slides).map((i) => i.card.id)).toEqual(['c', 'a', 'b', 'd'])
+    expect(inPostOrder(items, ['c', 'a']).map((i) => i.card.id)).toEqual(['c', 'a', 'b', 'd'])
     expect(inPostOrder(items, []).map((i) => i.card.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 })

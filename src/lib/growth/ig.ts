@@ -10,6 +10,9 @@ import type { LedgerRow } from '@/lib/events/ledger-data'
 import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
+import { ticketPanelOf } from '@/lib/listings/ticket-panel'
+import { toBookingLink } from '@/lib/events/booking-links'
+import { ctaFor } from '@/lib/events/cta'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
 import { IG_DAYS, IG_SLOT_LEAD_MS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
@@ -32,6 +35,30 @@ export type IgItem = {
   /** The card's link: its listing, tagged source instagram and the post's id. */
   readonly href: string
   readonly postId: string
+  /** One tap to its tickets or booking (car U, U2). */
+  readonly action?: IgAction
+}
+
+/** One tap to the night's tickets or booking (car U, U2): its words and where it goes. */
+export type IgAction = { readonly label: string; readonly href: string }
+
+/**
+ * THE ONE TAP (car U, U2, the PM's 02:12 of 28 November 2026; the scorecard's conversion point 9), in the platform's own
+ * words and never its own (the release checklist's section E; the cta-five-states guard): a night sold elsewhere takes the
+ * event page's own ticket panel button (ticketPanelOf: "View tickets at Humanitix" or "Register free on Humanitix", through
+ * the counted /out redirect, WI3's buttonOf choosing the link, a sold out or dead one never a button); every other night
+ * asks ctaFor: our own tickets (E3, or E2 for free ones) go to the event page's ticket panel (#tickets),
+ * a free walk in or a night of unknown price to its own page ("View event details"). Pure.
+ */
+export function igAction(row: Pick<RawRow, 'slug' | 'is_free' | 'entry_mode' | 'ticket_tiers' | 'booking_links'>, eventHref: string, now: Date): IgAction {
+  const tiers = (row.ticket_tiers ?? []).map((t) => ({ price: t.price }))
+  if (tiers.length === 0) {
+    const button = ticketPanelOf(row.slug, (row.booking_links ?? []).map(toBookingLink), now).button
+    if (button) return { label: button.label, href: button.href }
+  }
+  const cta = ctaFor({ entryMode: row.entry_mode, tiers, isFree: row.is_free })
+  const panel = cta.state === 'paid_native' || cta.state === 'free_registration'
+  return { label: cta.action, href: panel ? `${eventHref}#tickets` : eventHref }
 }
 
 export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
@@ -132,7 +159,9 @@ async function cardsOf(picks: readonly IgPick[], rows: readonly RawRow[], now: D
     const row = byId.get(p.eventId)
     if (!row) return []
     const card = marketCard({ row, more: p.more, every: null }, shaped.days.todayKey)
-    return [{ card, href: igHref(card.href, p.postId, source), postId: p.postId }]
+    const href = igHref(card.href, p.postId, source)
+    const raw = rows.find((r) => r.id === p.eventId)
+    return [{ card, href, postId: p.postId, ...(raw ? { action: igAction(raw, href, now) } : {}) }]
   })
 }
 
@@ -142,8 +171,8 @@ export type IgLead = { readonly pieceId: string; readonly heading: string | null
 /**
  * THE POST THAT LEADS (car U, U1, the PM's 02:12 of 28 November 2026): the newest approved Instagram slot whose time has
  * come, from IG_SLOT_LEAD_MS before it (social_piece_schedules, scheduled or published, never held). Its nights are its own
- * page's (readIgPiecePage: still public, still ahead), put in the order its slides name them, the post's order, a night no
- * slide names after them in date order. None when no slot has come or none of its nights is still ahead. Read with .lt on
+ * page's (readIgPiecePage: still public, still ahead), put in the post's own order (the order its piece names them), a night
+ * it does not name after them in date order. None when no slot has come or none of its nights is still ahead. Read with .lt on
  * go_at: this reader fires nothing.
  */
 export async function readIgLead(now: Date = new Date()): Promise<IgLead | null> {
@@ -165,20 +194,17 @@ export async function readIgLead(now: Date = new Date()): Promise<IgLead | null>
   if (!slot) return null
   const page = await readIgPiecePage(slot.piece_id, 'instagram', now)
   if (page.items.length === 0) return null
-  const newest = await readOrThrow("the leading post's slides for /ig", () =>
-    admin.from('social_piece_revisions').select('slides').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
+  // THE POST'S OWN ORDER (scorecard point 3: '#3 on the slide is #3 on the bio page'): the order its piece names its nights
+  // (the revision's event_ids, copied by the intake from the studio's piece), never the slide ties the intake assigns.
+  const newest = await readOrThrow("the leading post's order for /ig", () =>
+    admin.from('social_piece_revisions').select('event_ids').eq('piece_id', slot.piece_id).order('version', { ascending: false }).limit(1),
   )
-  const slides = ((newest ?? [])[0] as { slides?: unknown } | undefined)?.slides
-  return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, Array.isArray(slides) ? slides : []) }
+  const order = ((newest ?? [])[0] as { event_ids?: string[] | null } | undefined)?.event_ids ?? []
+  return { pieceId: slot.piece_id, heading: page.heading, items: inPostOrder(page.items, order) }
 }
 
-/** Items in the order a post's slides name their nights; a night no slide names after them, in its own order. Pure. */
-export function inPostOrder(items: readonly IgItem[], slides: readonly unknown[]): IgItem[] {
-  const order: string[] = []
-  for (const s of slides) {
-    const id = s !== null && typeof s === 'object' ? (s as { eventId?: unknown }).eventId : null
-    if (typeof id === 'string' && !order.includes(id)) order.push(id)
-  }
+/** Items in the post's own order (its nights' ids, in order); a night it does not name after them, in its own order. Pure. */
+export function inPostOrder(items: readonly IgItem[], order: readonly string[]): IgItem[] {
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length)
   return [...items].map((item, i) => ({ item, i })).sort((a, b) => rank(a.item.card.id) - rank(b.item.card.id) || a.i - b.i).map((x) => x.item)
 }

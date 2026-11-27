@@ -11,6 +11,7 @@ import { imageRightsLine, readImageRights, type ImageRightsReport } from '@/lib/
 import { readBlotatoTargets, type BlotatoTargets } from '@/lib/social/blotato-targets'
 import { CHECK_ITEMS } from '@/lib/social/studio-check'
 import { readStudioProofs, type StudioProof, type StudioProofs } from '@/lib/social/studio-proof'
+import { readReliability, reliabilityLine, type Reliability } from '@/lib/social/scorecard'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { FORMAT_NAME, cadenceLine, nextAllowed, type CadenceRule, type SocialFormat } from '@/lib/social/cadence'
 import {
@@ -196,6 +197,19 @@ function StudioProofView({ proof }: { proof: StudioProof }) {
       <p data-check-line className="mt-2 text-sm text-[var(--admin-ink)]">
         {proof.line}
       </p>
+      {proof.scores.some((s) => s.engine !== null || s.pm !== null) ? (
+        <div data-scorecard className="mt-3 text-sm text-[var(--admin-ink)]">
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--admin-muted)]">The scorecard, out of 10 (the floor is 9)</p>
+          <ul className="mt-1 space-y-1">
+            {proof.scores.map((s) => (
+              <li key={s.key} data-measure={s.key} data-below={s.below ? 'yes' : 'no'}>
+                <span className="font-semibold">{s.name}</span>
+                {`: engine ${s.engine ?? 'not scored'}, PM ${s.pm ?? 'not scored'}${s.below ? ' (under the floor)' : ''}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {proof.rows.length === 0 ? null : (
         <details className="mt-1 text-sm text-[var(--admin-soft)]">
           <summary className="flex min-h-[44px] cursor-pointer items-center text-[var(--admin-ink)] underline">The ten items, slide by slide</summary>
@@ -759,7 +773,7 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
   const now = new Date()
   // EVERY READ AT ONCE (law 41, the speed train of 20 November 2026): the posts, the five reads and the two cadence
   // rules were awaited in turn, and each rule's two reads one after the other; none depends on another.
-  const [posts, [campaign, requests, assets, imageRights, targets, studio], rules] = await Promise.all([
+  const [posts, [campaign, requests, assets, imageRights, targets, studio, reliability], rules] = await Promise.all([
     readPosts(db, now),
     Promise.all([
       readCampaign(db, now),
@@ -769,6 +783,8 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
       readBlotatoTargets(process.env),
       // The studio's phone checks (car Q): contained, so a failed read is said on the page and never breaks it.
       readStudioProofs(db, now).catch((e: unknown): StudioProofs & { readonly unread: string } => ({ byPiece: new Map(), held: [], unread: e instanceof Error ? e.message : String(e) })),
+      // The publishing reliability count (car U, U4): contained, a failed read said on the page.
+      readReliability(db, now).catch((e: unknown): Reliability | string => (e instanceof Error ? e.message : String(e))),
     ]),
     Promise.all(
       (['feed', 'story'] as const).map(async (format) => {
@@ -802,6 +818,10 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
           {said}
         </p>
       )}
+
+      <p data-reliability className="mb-6 max-w-2xl text-sm text-[var(--admin-ink)]">
+        {typeof reliability === 'string' ? `The publishing reliability count could not be read: ${reliability}` : reliabilityLine(reliability)}
+      </p>
 
       <TargetsSection targets={targets} />
 

@@ -86,6 +86,9 @@ export async function generateMetadata({ searchParams }: IgProps): Promise<Metad
 }
 
 const CONTAINER = 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'
+/** The one tap under each card (car U, U2): the page's own outlined button, at a 44px target. */
+const ACTION =
+  'mt-3 inline-flex min-h-11 items-center rounded-full border-2 border-ink-900 px-5 font-display text-sm font-extrabold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2'
 const SEE_MORE =
   'inline-flex min-h-12 items-center rounded-full border-2 border-ink-900 px-8 font-display text-base font-extrabold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2'
 
@@ -137,6 +140,11 @@ export default async function IgPage({ searchParams }: IgProps) {
                   <li key={item.card.id} data-ig-number={i + 1}>
                     <p className="mb-2 font-display text-sm font-bold text-ink-600">#{i + 1}</p>
                     <MarketEventCard card={item.card} href={item.href} />
+                    {item.action ? (
+                      <a href={item.action.href} data-ig-action={item.action.label} className={ACTION}>
+                        {item.action.label}
+                      </a>
+                    ) : null}
                   </li>
                 ))}
               </ol>
@@ -153,6 +161,11 @@ export default async function IgPage({ searchParams }: IgProps) {
                 {items.map((item) => (
                   <li key={item.card.id}>
                     <MarketEventCard card={item.card} href={item.href} />
+                    {item.action ? (
+                      <a href={item.action.href} data-ig-action={item.action.label} className={ACTION}>
+                        {item.action.label}
+                      </a>
+                    ) : null}
                   </li>
                 ))}
               </ul>
