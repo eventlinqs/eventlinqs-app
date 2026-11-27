@@ -55,6 +55,7 @@ vi.mock('@/lib/outreach/planner', () => ({
   planRelationship: async () => (h.calls.push('partners'), []),
   // Each play's decisions said in the log (the PM's 23:56): none to say here.
   playDecisionLines: () => [],
+  queueLine: () => '',
 }))
 vi.mock('@/lib/outreach/sender', () => ({
   runOutreachSender: async () => (h.calls.push('sender'), { mode: 'live', sent: [], failed: [], refused: [], outsideHours: 0 }),
@@ -83,6 +84,9 @@ vi.mock('@/lib/outreach/basis-pool', () => ({
   POOL_HOUR: 23,
   POOL_MINUTE_FROM: 30,
   poolCapFor: () => 12,
+  poolCapForNeed: () => 12,
+  poolLine: () => 'pool: read',
+  POOL_TARGET: 20,
   runBasisPool: async () => ({}),
   weekFirstLetters: async () => 0,
 }))

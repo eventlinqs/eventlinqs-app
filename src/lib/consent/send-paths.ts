@@ -230,6 +230,12 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'The health heartbeat and fault alerts, to the platform alert address.',
   },
   {
+    file: 'src/app/api/cron/social-publish/route.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason: "The social run's lines to EventLinqs' own hello@ inbox: the pieces a person must approve (the 05:40 run, and 24 and 3 hours before a slot) and the 21:00 FAILURE line (the PM's 12:18 and 12:55 of 27 November 2026, M4 and M6).",
+  },
+  {
     file: 'src/app/api/cron/health-heartbeat/route.ts',
     kind: 'operations',
     purpose: 'platform_operations',
