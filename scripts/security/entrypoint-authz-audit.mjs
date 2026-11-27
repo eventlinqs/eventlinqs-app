@@ -96,6 +96,10 @@ const AUTH = [
   // or wrongly signed request. Named for the one function, so no other signature
   // check is credited by its name.
   { re: /verifyBookedproofSignature\s*\(/, how: 'Bookedproof request signature (HMAC-SHA256, 300 s, constant time)' },
+  // Car T, T4, 28 November 2026, READ in src/lib/social/studio-upload.ts: the cloud studio's bearer token
+  // (STUDIO_UPLOAD_TOKEN) compared in constant time over both values' SHA-256; src/app/api/studio/uploads/route.ts
+  // refuses 503 while it is unset (fail closed) and 401 before the body is read. Named for the one function.
+  { re: /requireStudioToken\s*\(/, how: 'studio upload token (bearer, constant time, scoped to the one route)' },
   // 29 October 2026, window 6: Resend's delivery webhook, verified on the raw body by the installed SDK
   // (src/app/api/webhooks/resend/route.ts; https://resend.com/docs/webhooks/verify-webhooks-requests). Named for the
   // one method, as the two signatures above are.
@@ -124,6 +128,9 @@ const AUTHZ = [
   // addresses it asks, through the service role in src/lib/connect/bookedproof/read.ts,
   // with counts only and nothing about any buyer; no user's own data is scoped.
   { re: /verifyBookedproofSignature\s*\(/, how: 'machine caller (signed partner read), no user data scoping needed' },
+  // Car T, T4 (read 28 November 2026): the studio writes its own rendered slides for its own pieces into
+  // studio_uploads through the service role; nothing is read back but the row's id and hash, no user's data scoped.
+  { re: /requireStudioToken\s*\(/, how: 'machine caller (the cloud studio), no user data scoping needed' },
   // 29 October 2026, window 6, READ in src/app/api/webhooks/resend/route.ts: the signed caller is Resend, writing the
   // delivery facts of messages this platform sent (one row per event and address) and, for a complaint, the recipient's
   // own marketing stop; nothing is read back to the caller and no user's data is scoped.

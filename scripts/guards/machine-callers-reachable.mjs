@@ -133,6 +133,8 @@ const RECORD = {
 const EXCLUDED = {
   'src/app/api/health/sentry-error/route.ts':
     'a synthetic error probe run by hand during an investigation, not by any scheduler or vendor. Its rate limit is deliberate: every successful call bills a Sentry event, so 5 per minute is the point of the route rather than a risk to it.',
+  'src/app/api/studio/uploads/route.ts':
+    'the cloud studio\'s rendered slides (car T, T4, the PM\'s 02:05 of 28 November 2026). The platform does not depend on it: a refused or dropped upload loses no order and no money, nothing posts without it (the move waits for every slide), and the studio sends again; the laptop inbox stays the route until Lawal allows the domain. Its fail-closed limit is deliberate: the route writes into the database for whoever holds the token.',
   'src/app/api/connect/bookedproof/organisers/route.ts':
     'Bookedproof\'s signed read of the organisers it found (E51). The platform does not depend on it: a refused or dropped request loses no order and no money on the EventLinqs ledger, and Bookedproof reads again on its next run. Its fail-closed limit is deliberate (docs/RATE-LIMIT-DOCTRINE.md): the route answers business data to whoever holds the secret, so it has no reason to stay open when the limiter cannot be reached.',
 }
