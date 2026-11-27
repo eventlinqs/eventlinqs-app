@@ -36,7 +36,11 @@ const night = (over: Partial<CampaignNight>): CampaignNight => ({
   ...over,
 })
 
-type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; described?: unknown[]; organisers?: unknown[]; past?: unknown[]; failHistory?: boolean; failPast?: boolean }
+type Rows = { history?: unknown[]; postings?: unknown[]; schedules?: unknown[]; assets?: unknown[]; described?: unknown[]; organisers?: unknown[]; past?: unknown[]; failHistory?: boolean; failPast?: boolean; exceptions?: unknown[] }
+// Car O's gate: never a first exposure on an event's own day. The fixtures' nights stand as flagged exceptions on their own
+// day (event_promotions.exception) unless a test says otherwise, so the day-of behaviours below are judged; the gate
+// itself is held by its own test at the end.
+const FLAGGED = [{ event_id: 'e-fest' }, { event_id: 'e-sun' }, { event_id: 'e-other' }]
 function fakeDb(rows: Rows): SupabaseClient {
   // readPlatformOrganiserIds (the one rule) reads the listings organisation by slug and the test organisers by is_test;
   // here there are neither, so those reads answer empty and the Collab read answers the fixture's organisers.
@@ -58,6 +62,7 @@ function fakeDb(rows: Rows): SupabaseClient {
       if (table === 'organisations') return chain([])
       if (table === 'social_piece_postings') return chain(rows.postings ?? [])
       if (table === 'social_piece_schedules') return chain(rows.schedules ?? [])
+      if (table === 'event_promotions') return chain(rows.exceptions ?? FLAGGED)
       // What each photograph shows, as a person recorded it (social_assets.shows); none described unless a test says so.
       if (table === 'social_assets') return chain(rows.described ?? [])
       // The season's ended nights (lifecycle-plan.ts readSeasonPast); the fixture holds only those it means as ended.
@@ -316,5 +321,17 @@ describe('a weekly repeat is never an opening, never still on, never a last day 
     }
     // Each Tuesday is still posted: the repeat reads neutral, it is never dropped.
     expect(drawn).toBeGreaterThanOrEqual(TUESDAYS.length)
+  })
+})
+
+describe("never a first exposure on the event's own day (car O)", () => {
+  it('a night never shown before draws nothing on its own day, unless an exception is flagged or the owner asks', async () => {
+    const assets = [asset('a1', 'https://x/lead.jpg', 1)]
+    const gated = await planLifecyclePieces(fakeDb({ assets, exceptions: [] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    expect(gated.pieces).toEqual([])
+    const flagged = await planLifecyclePieces(fakeDb({ assets }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au' })
+    expect(flagged.pieces.length).toBeGreaterThan(0)
+    const asked = await planLifecyclePieces(fakeDb({ assets, exceptions: [] }), { now: NOW, nights: [night({})], origin: 'https://www.eventlinqs.com.au', ownerAsked: { eventId: 'e-fest' } })
+    expect(asked.pieces.length).toBeGreaterThan(0)
   })
 })

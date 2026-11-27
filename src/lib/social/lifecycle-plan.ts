@@ -424,7 +424,9 @@ export async function planLifecyclePieces(
     }
     const runHistory: RunHistory = had.length === 0 ? none : { feedDays: had.flatMap((h) => h.feedDays), storyDays: had.flatMap((h) => h.storyDays), had: had.flatMap((h) => h.had) }
     // Never a first exposure on the event's own day (car O): the gate after the stage rules, a flagged exception aside.
-    const gated = firstExposureGate(run, input.now, momentsDue(run, input.now, runHistory), runHistory, seasonDaysOf(run, history.byRun), run.nights.some((n) => exceptions.has(n.eventId)))
+    // The owner's own Post now (ownerAsked) is a person's recorded decision on this night, as a flagged exception is.
+    const excepted = input.ownerAsked !== undefined || run.nights.some((n) => exceptions.has(n.eventId))
+    const gated = firstExposureGate(run, input.now, momentsDue(run, input.now, runHistory), runHistory, seasonDaysOf(run, history.byRun), excepted)
     const moments = gated.filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
       due += 1

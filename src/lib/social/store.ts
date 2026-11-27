@@ -824,12 +824,15 @@ export function remindersFrom(rows: readonly { event_id: string; stage: string; 
 export async function remindersOn(db: Db, eventIds: readonly string[], at: Date): Promise<Set<string>> {
   if (eventIds.length === 0) return new Set()
   const day = dayIn(at, LIFECYCLE_ZONE)
-  const { data, error } = await db.from('event_promotions').select('event_id, stage, due_on, exception, state').in('event_id', [...eventIds]).lte('due_on', day)
-  if (error) {
-    console.error(`[social/timing] the nights' promotion stages could not be read (${error.message}); each is judged ahead of itself`)
+  try {
+    const { data, error } = await db.from('event_promotions').select('event_id, stage, due_on, exception, state').in('event_id', [...eventIds]).lte('due_on', day)
+    if (error) throw new Error(error.message)
+    return remindersFrom((data ?? []) as { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day)
+  } catch (err) {
+    // An answered error or a thrown one alike: no reminder, so the stricter rule holds, and the piece is never held for it.
+    console.error(`[social/timing] the nights' promotion stages could not be read (${err instanceof Error ? err.message : String(err)}); each is judged ahead of itself`)
     return new Set()
   }
-  return remindersFrom((data ?? []) as { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day)
 }
 
 /** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now, each night's stage on
