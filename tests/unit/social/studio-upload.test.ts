@@ -34,7 +34,8 @@ vi.mock('@/lib/supabase/admin', () => ({
 const { POST } = await import('@/app/api/studio/uploads/route')
 const { parseStudioUpload, requireStudioToken } = await import('@/lib/social/studio-upload')
 
-const form = (over: Record<string, string | null> = {}, bytes: Uint8Array = PNG) => {
+// A file part is a byte array over its own ArrayBuffer (lib.dom BlobPart), as the studio's rendered PNG is.
+const form = (over: Record<string, string | null> = {}, bytes: Uint8Array<ArrayBuffer> = PNG) => {
   const f = new FormData()
   const fields: Record<string, string | null> = { piece_key: 'mel-comingsoon-2026-12-01', slide_no: '2', format: 'feed', view: 'phone', sha256: SHA, ...over }
   for (const [k, v] of Object.entries(fields)) if (v !== null) f.set(k, v)
