@@ -65,6 +65,7 @@ describe("the stage, from car O's event_promotions", () => {
     expect(store).toContain('  const reminders = await remindersOn(db, ids, preferredAt ?? now)\n')
     expect(store).toContain("  const reminders = await remindersOn(db, r.eventIds, opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.preferredAt))\n")
     expect(store).toContain('    const timing = timingOfRows(d.momentKey, pieceNights, at, now, await remindersOn(db, d.rev.eventIds, at))\n')
-    expect(store).toMatch(/if \(error\) \{\n    console\.error\(`\[social\/timing\] the nights' promotion stages could not be read[^\n]*\n    return new Set\(\)\n/)
+    expect(store).toContain('    if (error) throw new Error(error.message)\n')
+    expect(store).toMatch(/\} catch \(err\) \{\n[^\n]*\n    console\.error\(`\[social\/timing\] the nights' promotion stages could not be read[^\n]*\n    return new Set\(\)\n/)
   })
 })

@@ -122,6 +122,8 @@ describe('the database and the run', () => {
     expect(route).toContain("await recordPhaseRun(db, { phase: 'prepare', ride: 'social', startedAt: began, endedAt: new Date(), units: cal.written, result: cal.line })")
   })
   it('the planner applies the gate after the stage rules', () => {
-    expect(read('src/lib/social/lifecycle-plan.ts')).toContain('const gated = firstExposureGate(run, input.now, momentsDue(run, input.now, runHistory), runHistory, seasonDaysOf(run, history.byRun), run.nights.some((n) => exceptions.has(n.eventId)))')
+    const plan = read('src/lib/social/lifecycle-plan.ts')
+    expect(plan).toContain('const excepted = input.ownerAsked !== undefined || run.nights.some((n) => exceptions.has(n.eventId))')
+    expect(plan).toContain('const gated = firstExposureGate(run, input.now, momentsDue(run, input.now, runHistory), runHistory, seasonDaysOf(run, history.byRun), excepted)')
   })
 })

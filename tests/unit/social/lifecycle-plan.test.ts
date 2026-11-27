@@ -264,7 +264,8 @@ describe('the season, whole (5C 03:12, the PM 03:39)', () => {
     const now = new Date(`2026-11-${day}T01:00:00Z`) // noon in Melbourne
     const open = rows.filter((n) => Date.parse(n.endDate as string) > now.getTime())
     const ended = rows.filter((n) => Date.parse(n.endDate as string) <= now.getTime()).map(asPast)
-    return planLifecyclePieces(fakeDb({ assets, past: ended }), { now, nights: open, origin: 'https://www.eventlinqs.com.au' })
+    // Each day of the season stands as a flagged exception on its own day (car O's gate), as the fixtures above do.
+    return planLifecyclePieces(fakeDb({ assets, past: ended, exceptions: DAYS.map((d) => ({ event_id: `coa-${d}` })) }), { now, nights: open, origin: 'https://www.eventlinqs.com.au' })
   }
 
   it('a festival of 13, 14, 15, 20, 21, 22 November reads final_day on the 22nd and never Opening today after the 13th', async () => {
