@@ -62,7 +62,7 @@ export const SKIP = {
   organisationTaken: 'its organisation has its letter this run',
   platform: "the platform's own or a test organiser",
   named: 'named by another approved play',
-  noCity: 'no city found (no linked venue, no EventLinqs page it was found on, no night of its own)',
+  noCity: 'no city found (no linked venue, EventLinqs page, own night or listing, and no city its own page prints with the page and quote recorded)',
   otherCity: "outside the play's cities",
   cap: "the play's cap for today is used",
 } as const

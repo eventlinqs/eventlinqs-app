@@ -115,8 +115,10 @@ describe("roads 4 and 5 of an organiser's city", () => {
   it('road 5: the city its own pages print, read only when no earlier road placed it', async () => {
     const tables: Record<string, Record<string, unknown>[]> = {
       organisers: [
-        { id: 'printed', name: 'Printed', city_slug: 'bendigo' },
-        { id: 'blank', name: 'Blank', city_slug: null },
+        { id: 'printed', name: 'Printed', city_slug: 'bendigo', city_source_url: 'https://printed.example/contact', city_quote: '12 Mitchell St, Bendigo VIC 3550' },
+        { id: 'blank', name: 'Blank', city_slug: null, city_source_url: null, city_quote: null },
+        // M2 (Lawal's 12:35 of 27 November 2026): a city with no page or no quote recorded is no road.
+        { id: 'unevidenced', name: 'Unevidenced', city_slug: 'geelong', city_source_url: null, city_quote: null },
       ],
     }
     const chainFor = (table: string) => {
@@ -135,7 +137,7 @@ describe("roads 4 and 5 of an organiser's city", () => {
       }
       return chain
     }
-    const out = await organiserCitySlugs({ from: chainFor } as never, [{ id: 'printed', found_on: null, organisation_id: null }, { id: 'blank', found_on: null, organisation_id: null }], new Date('2026-11-22T00:00:00Z'))
+    const out = await organiserCitySlugs({ from: chainFor } as never, [{ id: 'printed', found_on: null, organisation_id: null }, { id: 'blank', found_on: null, organisation_id: null }, { id: 'unevidenced', found_on: null, organisation_id: null }], new Date('2026-11-22T00:00:00Z'))
     expect(Object.fromEntries(out)).toEqual({ printed: 'bendigo' })
   })
 })
