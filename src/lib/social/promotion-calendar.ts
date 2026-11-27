@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { soldOut } from './store'
+import { listingWindowOrPredicate, localDayOfWeek } from '@/lib/events/listing-window'
 
 /**
  * THE PROMOTION CALENDAR (the PM's 15:58 and 16:05 of 27 November 2026, car O; the social operating model of 27 November,
@@ -67,7 +68,6 @@ export function melbourneDay(at: string | Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at))
 }
 const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10)
-const weekday = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay()
 
 export type StageDue = { readonly stage: PromoStage; readonly dueOn: string; readonly storyOnly: boolean; readonly lateListing: boolean; readonly version: number }
 
@@ -81,6 +81,8 @@ export function stageDays(e: { readonly startDate: string; readonly endDate: str
   const end = e.endDate ? melbourneDay(e.endDate) : start
   const listed = melbourneDay(e.createdAt)
   const late24 = Date.parse(e.startDate) - Date.parse(e.createdAt) < DAY
+  // The weekday of its start in Melbourne, from the one weekend definition (src/lib/events/listing-window.ts).
+  const startDow = localDayOfWeek(new Date(e.startDate), 'Australia/Melbourne')
   const out: StageDue[] = []
   for (const stage of STAGES) {
     const l = leads.get(`${e.type}|${stage}`)
@@ -90,7 +92,7 @@ export function stageDays(e: { readonly startDate: string; readonly endDate: str
     else if (l.rule === 'opening_week' || l.rule === 'fortnightly_discovery') due = addDays(start, -7)
     else if (l.rule === 'mid_run') due = addDays(start, Math.floor((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / DAY / 2))
     else if (l.rule === 'final_week') due = addDays(end, -7)
-    else if (l.rule === 'weekend_preview') due = [5, 6, 0].includes(weekday(start)) ? addDays(start, -((weekday(start) + 7 - 3) % 7)) : null
+    else if (l.rule === 'weekend_preview') due = [5, 6, 0].includes(startDow) ? addDays(start, -((startDow + 7 - 3) % 7)) : null
     else if (l.rule === 'event_day') due = start
     else due = null
     if (due === null) continue
@@ -147,7 +149,8 @@ export async function planPromotions(db: Db, now: Date): Promise<{ readonly writ
     .select('id, start_date, end_date, created_at, is_free, is_recurring, status, category_id, venue_id, listing_series_id')
     .eq('status', 'published')
     .eq('is_test', false)
-    .gt('start_date', now.toISOString())
+    // Published means visible until it has ended (the one listing window), so a running season keeps its stages.
+    .or(listingWindowOrPredicate(now))
     .lt('start_date', new Date(now.getTime() + PLAN_AHEAD_DAYS * DAY).toISOString())
     .limit(5000)
   if (ev.error) throw new Error(`the events ahead could not be read: ${ev.error.message}`)
