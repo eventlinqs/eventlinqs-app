@@ -29,6 +29,13 @@ import { isStillListed } from '@/lib/events/listing-window'
 
 export const IG_DAYS = 14
 
+/**
+ * THE SLOT'S LEAD (car T, T1, the PM's 02:05 of 28 November 2026): an approved Instagram slot's nights are listed from
+ * this long before its time, the page's own cache window (src/app/ig/page.tsx revalidate, 300 seconds), so the page a
+ * visitor reaches the moment the post goes already holds them. Never longer: nothing is listed for a post not yet near.
+ */
+export const IG_SLOT_LEAD_MS = 5 * 60 * 1000
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** A post's address on Instagram: the only posts this page lists. */
@@ -41,6 +48,8 @@ export interface IgPost {
   readonly postUrl: string
   readonly postedAt: string
   readonly eventIds: readonly string[]
+  /** An approved slot not yet read back as posted (car T, T1): its postedAt is its slot time, listed from IG_SLOT_LEAD_MS before. */
+  readonly slotted?: boolean
 }
 
 /** A night a post named, as the public visibility read returned it; a night missing from the map is not public. */
@@ -68,7 +77,7 @@ export function igPicks(posts: readonly IgPost[], nights: ReadonlyMap<string, Ig
   const newestFirst = posts
     .filter((p) => {
       const at = Date.parse(p.postedAt)
-      return INSTAGRAM_POST.test(p.postUrl) && Number.isFinite(at) && at <= t && at >= from
+      return (p.slotted === true || INSTAGRAM_POST.test(p.postUrl)) && Number.isFinite(at) && at <= t + (p.slotted === true ? IG_SLOT_LEAD_MS : 0) && at >= from
     })
     .sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt) || a.postId.localeCompare(b.postId))
 

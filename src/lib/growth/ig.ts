@@ -11,7 +11,7 @@ import { discoveryData } from '@/lib/events/discovery-data'
 import { listingKey } from '@/lib/events/guide-sections'
 import { withVenuePhotos } from '@/lib/images/venue-photo-chain'
 import { marketCard, type MarketCard } from '@/lib/home/market-cards'
-import { IG_DAYS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
+import { IG_DAYS, IG_SLOT_LEAD_MS, igHref, igPieceHeading, igPiecePicks, igPicks, type IgNight, type IgPick, type IgPost } from './ig-math'
 
 /**
  * The rows behind /ig (the rules and why are in ./ig-math.ts). The posts are the engine's own record of what went to
@@ -55,10 +55,29 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
       .order('posted_at', { ascending: false })
       .limit(500),
   )
-  const went = (postings ?? []).flatMap((p) => {
-    const approval = Array.isArray(p.social_piece_approvals) ? p.social_piece_approvals[0] : p.social_piece_approvals
-    return approval ? [{ pieceId: p.piece_id, revision: approval.revision, postUrl: p.post_url, postedAt: p.posted_at }] : []
-  })
+  // THE APPROVED SLOTS (car T, T1, the PM's 02:05 of 28 November 2026): every approved Instagram slot, scheduled or gone, from
+  // IG_SLOT_LEAD_MS before its time, so the bio link lists a post's nights the moment it goes, never only once its posting is
+  // read back. A held slot is never listed. Read with .lt on go_at: this reader fires nothing.
+  const slots = await readOrThrow('the approved Instagram slots for /ig', () =>
+    admin
+      .from('social_piece_schedules')
+      .select('piece_id, go_at, social_piece_approvals(revision)')
+      .eq('platform', 'instagram')
+      .in('state', ['scheduled', 'published'])
+      .gte('go_at', since)
+      .lt('go_at', new Date(now.getTime() + IG_SLOT_LEAD_MS).toISOString())
+      .limit(500),
+  )
+  const went = [
+    ...(postings ?? []).flatMap((p) => {
+      const approval = Array.isArray(p.social_piece_approvals) ? p.social_piece_approvals[0] : p.social_piece_approvals
+      return approval ? [{ pieceId: p.piece_id, revision: approval.revision, postUrl: p.post_url, postedAt: p.posted_at, slotted: false }] : []
+    }),
+    ...(slots ?? []).flatMap((s) => {
+      const approval = Array.isArray(s.social_piece_approvals) ? s.social_piece_approvals[0] : s.social_piece_approvals
+      return approval ? [{ pieceId: s.piece_id, revision: approval.revision, postUrl: '', postedAt: s.go_at, slotted: true }] : []
+    }),
+  ]
   if (went.length === 0) return []
 
   const revisions = await readOrThrow('the approved revisions for /ig', () =>
@@ -70,7 +89,7 @@ export async function readIgItems(now: Date = new Date()): Promise<IgItem[]> {
   )
   const posts: IgPost[] = went.flatMap((w) => {
     const rev = (revisions ?? []).find((r) => r.piece_id === w.pieceId && r.version === w.revision)
-    return rev ? [{ postId: w.pieceId, postUrl: w.postUrl, postedAt: w.postedAt, eventIds: rev.event_ids ?? [] }] : []
+    return rev ? [{ postId: w.pieceId, postUrl: w.postUrl, postedAt: w.postedAt, eventIds: rev.event_ids ?? [], slotted: w.slotted }] : []
   })
 
   const named = [...new Set(posts.flatMap((p) => p.eventIds))]
