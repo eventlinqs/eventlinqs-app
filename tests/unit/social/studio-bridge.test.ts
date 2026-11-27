@@ -23,13 +23,17 @@ const piece = {
   captions: { instagram: 'This weekend in Melbourne.', facebook: 'This weekend in Melbourne, on EventLinqs.' },
   destinations: ['instagram', 'facebook'],
   event_ids: ['33333333-3333-4333-8333-333333333333'],
-  facts: [],
+  facts: [{ event_id: '33333333-3333-4333-8333-333333333333', start: '2026-11-28T09:00:00Z' }],
   link: 'https://www.eventlinqs.com.au/city/melbourne',
   objective: 'discovery' as const,
   preferred_at: '2026-11-27T22:00:00Z',
   latest_at: '2026-11-28T02:00:00Z',
   expires_at: '2026-11-28T12:00:00Z',
 }
+
+// The night as the engine reads it (car S): the intake's facts come from here, never from the studio's text.
+const LISTED = { eventId: '33333333-3333-4333-8333-333333333333', title: 'Night Market', startDate: '2026-11-28T09:00:00Z', endDate: null, venue: 'Queen Victoria Market', organiser: null }
+const facts = async () => new Map([[LISTED.eventId, LISTED]])
 
 function fakeDb(uploads: { id: string; slide_no: number; png: string; rests_on: unknown }[]) {
   const updates: { table: string; values: Record<string, unknown> }[] = []
@@ -56,7 +60,7 @@ describe('the pure parts', () => {
     expect(studioPath(piece.id, 2, 'feed')).toBe(`creative/${piece.id}/2-feed.jpg`)
     // The one place the creative intake takes a finished design (car R1: it held both pieces at 19:30 for studio/...png).
     expect(isCreativeFileUrl(`https://store.example/storage/v1/object/public/event-images/${studioPath(piece.id, 2, 'feed')}`, 'https://store.example')).toBe(true)
-    const record = studioIntake(piece, [{ url: 'https://x/1.png', restsOn: { kind: 'own_design' } }])
+    const record = studioIntake(piece, [{ url: 'https://x/1.png', restsOn: { kind: 'own_design' } }], [LISTED])
     expect(record).toMatchObject({ briefId: piece.id, format: 'feed', link: piece.link, preferredAt: piece.preferred_at, destinations: ['instagram', 'facebook'] })
     expect(record.captions).toEqual({ instagram: 'This weekend in Melbourne.', facebook: 'This weekend in Melbourne, on EventLinqs.' })
   })
@@ -65,7 +69,7 @@ describe('the pure parts', () => {
 describe('the move', () => {
   it('waits while a slide is still to arrive', async () => {
     const { db } = fakeDb([{ id: 'u1', slide_no: 1, png: PNG_HEX, rests_on: { kind: 'own_design' } }])
-    const lines = await moveStudioPieces(db, { store: async () => 'unused', receive: async () => ({ state: 'handed_off' }) }, NOW)
+    const lines = await moveStudioPieces(db, { store: async () => 'unused', receive: async () => ({ state: 'handed_off' }), facts }, NOW)
     expect(lines).toEqual(['mel-weekend-28nov: waiting, 1 of 2 slides arrived'])
   })
   it('stores each slide, hands the piece to the intake and marks it moved', async () => {
@@ -78,6 +82,7 @@ describe('the move', () => {
     const lines = await moveStudioPieces(db, {
       store: async (path) => (stored.push(path), `https://store/${path}`),
       receive: async (input) => ((received = input), { state: 'handed_off', id: 'intake-1' }),
+      facts,
     }, NOW)
     expect(stored).toEqual([`creative/${piece.id}/1-feed.jpg`, `creative/${piece.id}/2-feed.jpg`])
     expect((received as { images: { url: string }[] }).images.map((i) => i.url)).toEqual(stored.map((p) => `https://store/${p}`))
@@ -90,7 +95,7 @@ describe('the move', () => {
       { id: 'u1', slide_no: 1, png: PNG_HEX, rests_on: { kind: 'own_design' } },
       { id: 'u2', slide_no: 2, png: PNG_HEX, rests_on: { kind: 'own_design' } },
     ])
-    const lines = await moveStudioPieces(db, { store: async (p) => p, receive: async () => ({ state: 'refused', reason: 'a stated fact differs from the listing' }) }, NOW)
+    const lines = await moveStudioPieces(db, { store: async (p) => p, receive: async () => ({ state: 'refused', reason: 'a stated fact differs from the listing' }), facts }, NOW)
     expect(updates.find((u) => u.table === 'studio_pieces')?.values).toEqual({ error: 'the creative intake refused it: a stated fact differs from the listing' })
     expect(lines[0]).toContain('NOT MOVED')
   })

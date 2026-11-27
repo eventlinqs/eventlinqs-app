@@ -3,7 +3,7 @@
 // F1). Planted failures: one mailbox's read throws, the plays throw, the judging throws. Each time the run answers 200,
 // names the fault in its answer and in the phase record, and the sender and every other step still run.
 
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { NextRequest } from 'next/server'
 
 const h = vi.hoisted(() => ({
@@ -105,6 +105,16 @@ beforeEach(() => {
 })
 
 describe('one failure is contained; the outreach run goes on', () => {
+  // THE CLOCK PINNED (car S's gate at 23:43 on 27 November 2026): the run reads Melbourne's clock, and from 23:30 to 23:45
+  // its pool turn writes a phase row of its own (car M, M3), so an unpinned run is red in that quarter hour only. A
+  // Friday at 5pm in Melbourne is outside every turn. Only Date is faked; the run's timers stay real.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T06:00:00Z'))
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
   test("one mailbox's read throws: the other mailbox is read, the plays are planned and the sender sends", async () => {
     h.throwInboxOf = 'lawal@eventlinqs.com'
     const res = await GET(req)

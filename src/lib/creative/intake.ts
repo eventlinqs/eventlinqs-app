@@ -372,6 +372,9 @@ export function timingFaults(r: IntakeInput, timing: Timing, now: Date, at: Date
   return out
 }
 
+/** The Instagram page, the profile's one link and each piece's own page (src/app/ig/page.tsx). */
+export const IG_PAGE = '/ig'
+
 /** The booking destination through the /go hop, and each network's one action. Pure. */
 export function destinationFaults(
   r: IntakeInput,
@@ -392,6 +395,13 @@ export function destinationFaults(
     if (!read.page.ok) out.push(`[destination] Its page ${path} answers ${read.page.status ?? 'nothing'}.`)
     else for (const id of r.eventIds) {
       const n = read.nights.get(id)
+      // /ig IS THE PIECE'S OWN PAGE (car S, the PM's 19:40 of 27 November 2026): /ig?piece=<id> lists exactly the piece's
+      // nights still ahead and public (src/lib/growth/ig.ts readIgPiecePage), and the profile's /ig lists them from the
+      // minute the post goes; before the post exists the profile's list cannot, so a night read public now is one it lists.
+      if (path === IG_PAGE) {
+        if (!n) out.push(`[destination] /ig would not list the night ${id}: it is not public now.`)
+        continue
+      }
       if (n && path !== `/events/${n.slug}` && !read.page.body.includes(`/events/${n.slug}`)) out.push(`[destination] ${path} does not list ${n.title}, so the post would send people to a page without it.`)
     }
   }
