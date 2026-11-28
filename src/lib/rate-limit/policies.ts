@@ -63,6 +63,7 @@ export type PolicyName =
   | 'api-v1-read'
   | 'bookedproof-organiser-read'
   | 'bookedproof-platform-read'
+  | 'studio-upload'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -481,6 +482,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Bookedproof\'s signed, read only read of EventLinqs as its customer one (trial gate T3, POST /api/connect/bookedproof/platform/<scope>, the project manager\'s 22:35 (3) and 22:45 (3) of 26 October 2026). ONE caller, so ONE bucket across the four scopes: keyed by the fact of a valid signature (the constant "bookedproof"), applied AFTER that scope\'s signature is verified, so an unsigned caller is refused by the signature and can never empty the real caller\'s window. A page is at most 500 rows, so 120 a minute reads 60,000 rows a minute, enough for the first day\'s whole read of the platform in a few minutes and its later daily reads in seconds, and low enough that a leaked scope secret cannot page the platform out unnoticed between two log reads. FAIL-CLOSED: this endpoint hands business data and consented buyers to whoever holds a secret, so a missing limiter store blocks rather than opening it.',
+    failClosed: true,
+  },
+  'studio-upload': {
+    keyPrefix: 'studio-up',
+    limit: 120,
+    windowSec: 60,
+    rationale:
+      'The cloud studio\'s rendered slides (car T, T4, POST /api/studio/uploads, the PM\'s 02:05 of 28 November 2026). ONE caller, so ONE bucket: keyed by the fact of a valid token (the constant "studio"), applied AFTER the token is proved, so an unauthorised caller is refused by the token and can never empty the studio\'s window. A piece is at most 20 slides in four views, 80 uploads, so 120 a minute sends a whole piece in one minute with room to resend, and is low enough that a leaked token cannot fill the table quickly. FAIL-CLOSED: the route writes into the database, so a missing limiter store blocks rather than opening it.',
     failClosed: true,
   },
 }

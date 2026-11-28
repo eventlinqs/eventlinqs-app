@@ -33,6 +33,11 @@ export type TimingNight = {
   readonly isFree?: boolean | null
   /** No places left to buy (store.ts soldOut), or a free night's registration closed. */
   readonly soldOut?: boolean
+  /**
+   * Its promotion stage on the day the piece goes is a reminder (car T, T2; car O's event_promotions: its newest stage
+   * due by that day a follow-up or a final one, or a flagged same day exception), so its own day may carry it.
+   */
+  readonly reminder?: boolean
 }
 
 export type TimingInput = {
@@ -183,12 +188,49 @@ export function timingOf(input: TimingInput, now: Date): Timing {
     if (derived) basis = `${basis}; its end DERIVED as ${DERIVED_SESSION_MINUTES / 60} hours after its start, none on record`
     expires = sEnd
   } else {
-    latest = Math.min(dayEnd, start - AHEAD_LEAD_MINUTES * MIN)
-    expires = Math.min(dayEnd, start)
+    // THE STAGE (car T, T2, the PM's 02:05 of 28 November 2026: "A reminder may go out on or near the day; a first exposure
+    // may not. Never take a night out of a piece to pass a rule."): each night is judged by its own stage on the day the
+    // piece goes. A reminder on its own day (event_promotions, read by the caller: reminder) by the day-of rules, a long
+    // day while two hours of it remain, a short session until two hours before its doors; every other night ahead of
+    // itself, as before. The piece's window is the narrowest of its nights'.
+    latest = Infinity
+    expires = Infinity
+    const reminded: string[] = []
+    for (const n of input.nights) {
+      const w = n.reminder === true ? reminderWindow(n, zone, day) : null
+      if (w) {
+        latest = Math.min(latest, w.latest)
+        expires = Math.min(expires, w.expires)
+        reminded.push(`${n.title}, ${w.basis}`)
+        continue
+      }
+      const s = Date.parse(n.startDate as string)
+      latest = Math.min(latest, dayEnd, s - AHEAD_LEAD_MINUTES * MIN)
+      expires = Math.min(expires, dayEnd, s)
+    }
     basis = `ahead of the night: until ${AHEAD_LEAD_MINUTES / 60} hours before it begins and within the day its words name (initial hypothesis, UNSOURCED)`
+    if (reminded.length > 0) basis = `${basis}; a reminder on its own day (its promotion stage): ${reminded.join('; ')}`
   }
   if (expires < latest) expires = latest
   return { kind: 'window', objective, preferredAt: input.preferredAt ? input.preferredAt.toISOString() : null, latestAt: iso(latest), expiresAt: iso(expires), recovery: 'within_window', basis }
+}
+
+/**
+ * A REMINDER'S WINDOW ON ITS OWN DAY (car T, T2): the night's session that day, by the day-of rules (a long day useful
+ * while DAY_LEFT_MINUTES remain, a short session until AHEAD_LEAD_MINUTES before its doors, its end DERIVED when none is
+ * on record, the conservative side); null when the day is not one of its own, so it is judged ahead of itself. Pure.
+ */
+function reminderWindow(n: TimingNight, zone: string, day: string): { readonly latest: number; readonly expires: number; readonly basis: string } | null {
+  const start = Date.parse(n.startDate as string)
+  const endIso = n.endDate ?? iso(start + DERIVED_SESSION_MINUTES * MIN)
+  if (day < dayIn(new Date(start), zone) || day > dayIn(new Date(Math.max(start, Date.parse(endIso) - 1)), zone)) return null
+  const s = sessionOfDay({ startDate: n.startDate as string, endDate: endIso }, zone, day)
+  const sStart = Date.parse(s.start)
+  const sEnd = Date.parse(s.end)
+  const derived = n.endDate ? '' : `, its end DERIVED as ${DERIVED_SESSION_MINUTES / 60} hours after its start`
+  return sEnd - sStart >= LONG_SESSION_MINUTES * MIN
+    ? { latest: sEnd - DAY_LEFT_MINUTES * MIN, expires: sEnd, basis: `a long day, useful while ${DAY_LEFT_MINUTES / 60} hours remain${derived}` }
+    : { latest: sStart - AHEAD_LEAD_MINUTES * MIN, expires: sEnd, basis: `a short session, until ${AHEAD_LEAD_MINUTES / 60} hours before its doors${derived}` }
 }
 
 /** Why a piece may not go at `at` under its window: past its latest acceptable time. Null while it may. Pure. */

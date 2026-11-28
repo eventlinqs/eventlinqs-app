@@ -726,6 +726,28 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'STUDIO_UPLOAD_TOKEN',
+    describe: 'Proves the cloud studio sending a rendered slide to POST /api/studio/uploads (car T, T4), FAIL CLOSED',
+    // The route compares "Authorization: Bearer <token>" in constant time and
+    // answers 503 not-configured while it is unset, so the upload is OFF
+    // wherever the token is absent. Minted by
+    // scripts/ops/mint-studio-upload-token.mjs; Lawal holds the studio's copy
+    // and sets it in the cloud environment (the PM's 02:05 of 28 November 2026).
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the studio upload is switched on by setting this and off by leaving it unset: the route answers ' +
+      '503 not-configured without it, and the laptop inbox stays the route until Lawal has allowed the ' +
+      'domain in the studio\'s cloud environment and holds the token (the PM\'s 02:05 of 28 November 2026, T4)',
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'BOOKEDPROOF_PLATFORM_SECRET_ORGANISATIONS',
     describe: 'Signs the Bookedproof read only platform read of the organisers (trial gate T3), FAIL CLOSED',
     // POST /api/connect/bookedproof/platform/<scope> verifies an HMAC-SHA256

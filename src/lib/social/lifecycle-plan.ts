@@ -35,6 +35,8 @@ import {
   practicalLine,
   storyLine,
   LIFECYCLE_ZONE,
+  firstExposureGate,
+  seasonDaysOf,
   type Candidate,
   type CollabOrganiser,
   type LifecycleNight,
@@ -148,6 +150,23 @@ type History = {
  * The history, leaving out the pieces the sweep is drawing again (`redrawing`): their moments are due again and their
  * photographs theirs to keep, so the redraw is the same moment with the code in force, never a different one.
  */
+/**
+ * The events flagged today as a verified late breaking exception (event_promotions.exception, car O): the only ones a
+ * first exposure may fall on their own day. A read that fails is said and none is excepted.
+ */
+async function readSameDayExceptions(db: Db, now: Date): Promise<Set<string>> {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  try {
+    const r = await db.from('event_promotions').select('event_id').eq('exception', true).eq('due_on', today)
+    if (r.error) throw new Error(r.error.message)
+    return new Set(((r.data ?? []) as { event_id: string }[]).map((x) => x.event_id))
+  } catch (err) {
+    // Failing closed: no exception read means none, so the stricter rule holds; the run goes on.
+    console.error(`[social/lifecycle-plan] the same day exceptions could not be read: ${err instanceof Error ? err.message : String(err)}`)
+    return new Set()
+  }
+}
+
 async function readHistory(db: Db, now: Date, redrawing: ReadonlySet<string> = new Set()): Promise<History> {
   const { data, error } = await db
     .from('social_pieces')
@@ -383,6 +402,7 @@ export async function planLifecyclePieces(
   const past = (await readSeasonPast(db, input.now)).filter((p) => !byId.has(p.eventId))
   const runs = runsOf([...input.nights.map(toLifecycleNight), ...past])
   const history = await readHistory(db, input.now, input.redrawing)
+  const exceptions = await readSameDayExceptions(db, input.now)
   const photos = await readPhotos(db, input.nights.map((n) => n.eventId), input.now)
   const used = new Set(history.usedPhotos)
 
@@ -403,7 +423,11 @@ export async function planLifecyclePieces(
       if (h) had.push(h)
     }
     const runHistory: RunHistory = had.length === 0 ? none : { feedDays: had.flatMap((h) => h.feedDays), storyDays: had.flatMap((h) => h.storyDays), had: had.flatMap((h) => h.had) }
-    const moments = momentsDue(run, input.now, runHistory).filter((m) => !input.ownerAsked || m.format === 'feed')
+    // Never a first exposure on the event's own day (car O): the gate after the stage rules, a flagged exception aside.
+    // The owner's own Post now (ownerAsked) is a person's recorded decision on this night, as a flagged exception is.
+    const excepted = input.ownerAsked !== undefined || run.nights.some((n) => exceptions.has(n.eventId))
+    const gated = firstExposureGate(run, input.now, momentsDue(run, input.now, runHistory), runHistory, seasonDaysOf(run, history.byRun), excepted)
+    const moments = gated.filter((m) => !input.ownerAsked || m.format === 'feed')
     if (moments.length > 0) {
       due += 1
       const own = photos.get(night.eventId) ?? []

@@ -2322,6 +2322,84 @@ export type Database = {
           },
         ]
       }
+      event_promotions: {
+        Row: {
+          created_at: string
+          due_on: string
+          event_id: string
+          event_type: string
+          exception: boolean
+          exception_reason: string | null
+          excluded_reason: string | null
+          id: string
+          late_listing: boolean
+          lead_version: number
+          piece_id: string | null
+          posted_at: string | null
+          results: Json
+          stage: string
+          state: string
+          story_only: boolean
+          type_basis: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_on: string
+          event_id: string
+          event_type: string
+          exception?: boolean
+          exception_reason?: string | null
+          excluded_reason?: string | null
+          id?: string
+          late_listing?: boolean
+          lead_version: number
+          piece_id?: string | null
+          posted_at?: string | null
+          results?: Json
+          stage: string
+          state?: string
+          story_only?: boolean
+          type_basis: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_on?: string
+          event_id?: string
+          event_type?: string
+          exception?: boolean
+          exception_reason?: string | null
+          excluded_reason?: string | null
+          id?: string
+          late_listing?: boolean
+          lead_version?: number
+          piece_id?: string | null
+          posted_at?: string | null
+          results?: Json
+          stage?: string
+          state?: string
+          story_only?: boolean
+          type_basis?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_promotions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_promotions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminder_sends: {
         Row: {
           claimed_at: string
@@ -2511,6 +2589,7 @@ export type Database = {
           ends_at: string | null
           id: string
           instagram_post_url: string | null
+          is_test: boolean
           last_checked_on: string | null
           listing_source: string
           name: string
@@ -2535,6 +2614,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           instagram_post_url?: string | null
+          is_test?: boolean
           last_checked_on?: string | null
           listing_source?: string
           name: string
@@ -2559,6 +2639,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           instagram_post_url?: string | null
+          is_test?: boolean
           last_checked_on?: string | null
           listing_source?: string
           name?: string
@@ -9113,6 +9194,45 @@ export type Database = {
           },
         ]
       }
+      promotion_lead_times: {
+        Row: {
+          days_before: number | null
+          event_type: string
+          id: string
+          reason: string
+          rule: string | null
+          set_at: string
+          set_by: string
+          stage: string
+          story_only: boolean
+          version: number
+        }
+        Insert: {
+          days_before?: number | null
+          event_type: string
+          id?: string
+          reason: string
+          rule?: string | null
+          set_at?: string
+          set_by: string
+          stage: string
+          story_only?: boolean
+          version?: number
+        }
+        Update: {
+          days_before?: number | null
+          event_type?: string
+          id?: string
+          reason?: string
+          rule?: string | null
+          set_at?: string
+          set_by?: string
+          stage?: string
+          story_only?: boolean
+          version?: number
+        }
+        Relationships: []
+      }
       promotion_offers: {
         Row: {
           currency: string
@@ -10794,6 +10914,56 @@ export type Database = {
           },
         ]
       }
+      social_dry_runs: {
+        Row: {
+          asked_at: string
+          asked_by: string
+          done_at: string | null
+          error: string | null
+          go_at: string
+          id: string
+          payload: Json
+          piece_id: string
+          schedule: Json
+          stages: Json
+          state: string
+        }
+        Insert: {
+          asked_at?: string
+          asked_by: string
+          done_at?: string | null
+          error?: string | null
+          go_at: string
+          id?: string
+          payload?: Json
+          piece_id: string
+          schedule?: Json
+          stages?: Json
+          state?: string
+        }
+        Update: {
+          asked_at?: string
+          asked_by?: string
+          done_at?: string | null
+          error?: string | null
+          go_at?: string
+          id?: string
+          payload?: Json
+          piece_id?: string
+          schedule?: Json
+          stages?: Json
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_dry_runs_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "social_pieces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_image_requests: {
         Row: {
           campaign_id: string
@@ -11817,6 +11987,11 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          preflight: boolean
+          preflight_at: string | null
+          preflight_of: string | null
+          preflight_passed: boolean | null
+          preflight_reasons: string[] | null
           qa_checklist: Json | null
           scorecard: Json | null
           slides: number
@@ -11842,6 +12017,11 @@ export type Database = {
           objective: string
           piece_key: string
           preferred_at: string
+          preflight?: boolean
+          preflight_at?: string | null
+          preflight_of?: string | null
+          preflight_passed?: boolean | null
+          preflight_reasons?: string[] | null
           qa_checklist?: Json | null
           scorecard?: Json | null
           slides: number
@@ -11867,6 +12047,11 @@ export type Database = {
           objective?: string
           piece_key?: string
           preferred_at?: string
+          preflight?: boolean
+          preflight_at?: string | null
+          preflight_of?: string | null
+          preflight_passed?: boolean | null
+          preflight_reasons?: string[] | null
           qa_checklist?: Json | null
           scorecard?: Json | null
           slides?: number

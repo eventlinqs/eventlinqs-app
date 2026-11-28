@@ -150,7 +150,7 @@ export function occurrenceStore(): OccurrenceStore {
         const { data } = await reread('event_series', () =>
           admin
             .from('event_series')
-            .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status, booking_links')
+            .select('id, organisation_id, venue_id, name, rule, anchor_date, starts_at, ends_at, timezone, category_id, age_restriction_min, summary, skip_dates, status, booking_links, is_test')
             .order('id')
             .range(from, from + PAGE - 1),
         )
@@ -171,6 +171,7 @@ export function occurrenceStore(): OccurrenceStore {
             timezone: r.timezone,
             skipDates: r.skip_dates ?? [],
             bookingLinks: (r.booking_links ?? []) as SeriesBookingLink[],
+            isTest: r.is_test === true,
           })
         }
         if ((data ?? []).length < PAGE) break
@@ -297,6 +298,8 @@ export function occurrenceStore(): OccurrenceStore {
           ...(soldElsewhere ? { is_free: links.every((l) => l.kind === 'free_register') } : {}),
           listing_source: 'eventlinqs',
           listing_series_id: night.id,
+          // A test submission's night is a test from birth (car W): never a figure, a guide, the sitemap or IndexNow.
+          ...(night.isTest === true ? { is_test: true } : {}),
           occurrence_date: date,
           venue_id: venue.id,
           venue_name: venue.name,

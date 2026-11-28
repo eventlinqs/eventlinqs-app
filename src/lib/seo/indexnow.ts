@@ -91,6 +91,8 @@ export function indexNowDeps(): IndexNowDeps {
         .select('slug, venue_city')
         .gte('updated_at', since.toISOString())
         .eq('visibility', 'public')
+        // A test night is never named to the engines (car W), as the guides and the sitemap leave it out.
+        .eq('is_test', false)
         .in('status', [...SENT_STATUSES])
         .limit(INDEXNOW_MAX_URLS)
       if (error) throw new Error(`the changed events could not be read: ${error.message}`)
@@ -101,7 +103,7 @@ export function indexNowDeps(): IndexNowDeps {
       const db = createAdminClient()
       const read = (column: 'end_date' | 'start_date', noEnd: boolean) => {
         let q = db.from('events').select('slug, venue_city').gte(column, since.toISOString()).lte(column, now.toISOString())
-          .eq('visibility', 'public').in('status', [...SENT_STATUSES])
+          .eq('visibility', 'public').eq('is_test', false).in('status', [...SENT_STATUSES])
         if (noEnd) q = q.is('end_date', null)
         return q.limit(INDEXNOW_MAX_URLS)
       }

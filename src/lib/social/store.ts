@@ -20,7 +20,7 @@ import { correctPlaceLines, knownVenueIndex, type KnownVenues } from './venue-id
 import { pastLatest, timingOf, type Timing, type TimingNight } from './timing'
 import { law37Refusal } from './law37'
 import { LIFECYCLE_AHEAD_DAYS, LIFECYCLE_ON, parseMomentKey, planLifecyclePieces } from './lifecycle-plan'
-import { LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
+import { dayIn, LIFECYCLE_ZONE, lifecycleWindow, nightOnDay } from './lifecycle'
 import { scopeToRecord } from './grant-scope'
 import type { SniffedFormat } from '@/lib/launch/sniff-image'
 import { readPlatformOrganiserIds } from '@/lib/growth/platform-organiser'
@@ -37,7 +37,7 @@ import { visualFaults } from '@/lib/broadcast/campaign-slides'
 import { distributionDeps, nightsLeftOut, venuesOff } from '@/lib/venues/venue-distribution'
 import { STAND_INS_IN_PLAN, standInOf } from './stand-ins'
 import { slidesMisfit } from './destination-check'
-import type { BlotatoPostReader } from './blotato-publisher'
+import { blotatoMediaType, type BlotatoPostReader } from './blotato-publisher'
 import { creativeRefusals, hostOf, lockRefusal, nightWords, planApprovedSet, planCampaign, venueOf, pieceRefusal, spotlightsFromDay, weekStartOf, whenOf, OLDER_LOOK_IN_PLAN, type Audience, type CampaignCity, type CampaignNight, type NightPick, type Objective, type PiecePlan, type Slide } from './campaign'
 import { APPROVED_SETS, approvedSetFileUrl, approvedSetNamed, approvedSetOfSlides } from './approved-sets'
 import { intakeFaults, intakeOfRow, intakeRow, planIntakePiece, slidesOf as slidesOfIntake, stateAfter, type GateStage, type IntakeInput, type IntakeRead, type IntakeRecord, type IntakeState, type Network, type RegisterAsset } from '@/lib/creative/intake'
@@ -802,10 +802,44 @@ export function timingNightOf(e: Record<string, unknown>): TimingNight {
   }
 }
 
-/** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now. */
-export function timingOfRows(momentKey: string | null, nights: readonly Record<string, unknown>[], preferredAt: Date | null, now: Date): Timing {
+/**
+ * THE NIGHTS WHOSE STAGE ON A DAY IS A REMINDER (car T, T2; car O's event_promotions): for each night, its newest stage
+ * due by the Melbourne day the piece goes (an excluded row never counts); a follow-up or a final stage, or a flagged same
+ * day exception, is a reminder, an initial stage or none a first exposure. Pure.
+ */
+export function remindersFrom(rows: readonly { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day: string): Set<string> {
+  const newest = new Map<string, { stage: string; due_on: string; exception: boolean | null }>()
+  for (const r of rows) {
+    if (r.state === 'excluded' || r.due_on > day) continue
+    const held = newest.get(r.event_id)
+    if (!held || r.due_on > held.due_on) newest.set(r.event_id, r)
+  }
+  return new Set([...newest].filter(([, r]) => r.stage !== 'initial' || r.exception === true).map(([id]) => id))
+}
+
+/**
+ * Each night's stage on the day a piece goes, read now (remindersFrom). A failed read is no reminder: the stricter rule
+ * ahead of the night stands, never a pass on a guess, and the read is said.
+ */
+export async function remindersOn(db: Db, eventIds: readonly string[], at: Date): Promise<Set<string>> {
+  if (eventIds.length === 0) return new Set()
+  const day = dayIn(at, LIFECYCLE_ZONE)
+  try {
+    const { data, error } = await db.from('event_promotions').select('event_id, stage, due_on, exception, state').in('event_id', [...eventIds]).lte('due_on', day)
+    if (error) throw new Error(error.message)
+    return remindersFrom((data ?? []) as { event_id: string; stage: string; due_on: string; exception: boolean | null; state: string }[], day)
+  } catch (err) {
+    // An answered error or a thrown one alike: no reminder, so the stricter rule holds, and the piece is never held for it.
+    console.error(`[social/timing] the nights' promotion stages could not be read (${err instanceof Error ? err.message : String(err)}); each is judged ahead of itself`)
+    return new Set()
+  }
+}
+
+/** A piece's timing from its own facts (timing.ts): its moment from its key, its nights as they stand now, each night's stage on
+ * its day (reminders, remindersOn). */
+export function timingOfRows(momentKey: string | null, nights: readonly Record<string, unknown>[], preferredAt: Date | null, now: Date, reminders: ReadonlySet<string> = new Set()): Timing {
   const m = parseMomentKey(momentKey)
-  const rows = nights.map(timingNightOf)
+  const rows = nights.map((e) => ({ ...timingNightOf(e), reminder: reminders.has(String(e.id)) }))
   const multiDay = nights.some((e) => e.end_date && Date.parse(String(e.end_date)) - Date.parse(String(e.start_date)) >= 24 * 3_600_000)
   return timingOf({ moment: m?.kind ?? null, day: m?.day ?? null, nights: rows, preferredAt, multiDay }, now)
 }
@@ -842,7 +876,8 @@ async function timingOfPiece(db: Db, pieceId: string, preferredAt: Date | null, 
   const ids = rev?.eventIds ?? []
   const { data: nights, error: nerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (nerr) return { kind: 'held', reason: `its nights could not be read (${nerr.message}); it waits for the next run` }
-  return timingOfRows((piece as { moment_key?: string | null } | null)?.moment_key ?? null, (nights ?? []) as Record<string, unknown>[], preferredAt, now)
+  const reminders = await remindersOn(db, ids, preferredAt ?? now)
+  return timingOfRows((piece as { moment_key?: string | null } | null)?.moment_key ?? null, (nights ?? []) as Record<string, unknown>[], preferredAt, now, reminders)
 }
 
 /**
@@ -914,7 +949,7 @@ export async function pieceDependencies(
   db: Db,
   pieceId: string,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform; readonly keep?: boolean },
 ): Promise<string[]> {
   const fetcher = opts.fetcher ?? fetch
   const issues: string[] = []
@@ -925,7 +960,7 @@ export async function pieceDependencies(
   const ids = rev.eventIds
   /* THE CREATIVE INTAKE'S GATES, AGAIN, at approval and immediately before publishing (creative/intake.ts): a creative
      piece is held by any reason its record now has, and on a network its record does not name. */
-  if (String(piece.kind) === 'creative') issues.push(...(await intakeIssuesAtPublish(db, pieceId, rev, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: opts.goesAt, platform: opts.platform })))
+  if (String(piece.kind) === 'creative') issues.push(...(await intakeIssuesAtPublish(db, pieceId, rev, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: opts.goesAt, platform: opts.platform, keep: opts.keep })))
 
   const { data: events, error: eerr } = ids.length > 0 ? await db.from('events').select(NIGHT_COLUMNS).in('id', ids) : { data: [], error: null }
   if (eerr) return [`The nights could not be read again: ${eerr.message}.`]
@@ -1677,7 +1712,7 @@ export async function readIntakeFacts(
   db: Db,
   r: IntakeInput,
   now: Date,
-  opts: { readonly stage: GateStage; readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date },
+  opts: { readonly stage: GateStage; readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly measureFit?: boolean },
 ): Promise<{ readonly read: IntakeRead; readonly slides: readonly Slide[] | null; readonly slideRefusal: string | null }> {
   const fetcher = opts.fetcher ?? fetch
   const nights = await readCampaignNights(db, await readCampaignCities(db), weekStartOf(now), now, { ids: r.eventIds })
@@ -1686,7 +1721,9 @@ export async function readIntakeFacts(
   if (error) throw new Error(`the nights could not be read again: ${error.message}`)
   // At intake the window is read for the record's own expiry, so the record's timeline is judged whole; before publishing,
   // for the minute it goes (timing.ts: a piece's window is its own day's, never later than two hours before the doors).
-  const timing = timingOfRows(null, (rows ?? []) as Record<string, unknown>[], opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.expiresAt), now)
+  // Each night's promotion stage on the day the piece goes (car T, T2): its slot at intake, the minute it goes before publishing.
+  const reminders = await remindersOn(db, r.eventIds, opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.preferredAt))
+  const timing = timingOfRows(null, (rows ?? []) as Record<string, unknown>[], opts.stage === 'publish' ? (opts.goesAt ?? now) : new Date(r.expiresAt), now, reminders)
   const aliases = await venueAliasesOf(db, [...new Set(nights.map((n) => n.venueId).filter((v): v is string => typeof v === 'string'))])
   const assets = await intakeAssetsOf(db, r, now)
   const grants = await intakeGrantsOf(db, r)
@@ -1695,7 +1732,8 @@ export async function readIntakeFacts(
   const misfits = new Map<Network, string | null>()
   for (const net of r.destinations) {
     try {
-      misfits.set(net, slides ? await slidesMisfit(slides, net, r.format, fetcher) : null)
+      // A preflight's slides are not stored yet, so their fit is measured when they travel (measureFit false).
+      misfits.set(net, slides && opts.measureFit !== false ? await slidesMisfit(slides, net, r.format, fetcher) : null)
     } catch (e) {
       misfits.set(net, `its fit for ${net} could not be read (${e instanceof Error ? e.message : String(e)})`)
     }
@@ -1729,6 +1767,23 @@ export async function receiveIntake(
   const { data, error } = await db.from('creative_intake').insert(intakeRow(input)).select('id').single()
   if (error || !data) return { state: 'refused', reason: `Not received: ${refusalOf(error?.message ?? '') ?? error?.message ?? 'no row'}.` }
   return checkIntake(db, String((data as { id: string }).id), opts)
+}
+
+/**
+ * THE INTAKE'S GATES, CHECK ONLY (car T, T3, the PM's 02:05 of 28 November 2026): every gate the intake runs at intake
+ * (intakeFaults on what is read that minute) and the handoff's own refusals (pieceRefusal, law37Refusal on the piece it
+ * would draw), on a record that is never kept: nothing is inserted, drawn or written. Its slides' fit is measured when
+ * they travel. Every reason comes back; none means it would pass. A read that fails throws, and the caller says so.
+ */
+export async function preflightIntake(db: Db, r: IntakeInput, opts: { readonly now: Date; readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<string[]> {
+  const facts = await readIntakeFacts(db, r, opts.now, { stage: 'intake', siteOrigin: opts.siteOrigin, fetcher: opts.fetcher, measureFit: false })
+  const faults = [...intakeFaults(r, facts.read, { stage: 'intake', now: opts.now, origin: ORIGIN, pieceId: null }), ...(facts.slideRefusal ? [`[rights] ${facts.slideRefusal}.`] : [])]
+  if (facts.slides) {
+    const p = planIntakePiece({ ...r, id: 'preflight', state: 'received', pieceId: null }, facts.slides, facts.read.nights, ORIGIN)
+    const refused = pieceRefusal(p) ?? law37Refusal(p.slides)
+    if (refused) faults.push(`[handoff] ${refused}`)
+  }
+  return faults
 }
 
 /** One intake record by its id, or null. */
@@ -1829,7 +1884,7 @@ async function intakeIssuesAtPublish(
   pieceId: string,
   rev: Revision,
   now: Date,
-  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform },
+  opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher; readonly goesAt?: Date; readonly platform?: SocialPlatform; readonly keep?: boolean },
 ): Promise<string[]> {
   const { data, error } = await db.from('creative_intake').select('*').eq('piece_id', pieceId).maybeSingle()
   if (error) return [`[intake] Its intake record could not be read (${error.message}).`]
@@ -1844,7 +1899,8 @@ async function intakeIssuesAtPublish(
     faults = [`[read] The checks could not read what they need (${e instanceof Error ? e.message : String(e)}).`]
   }
   const state = stateAfter(faults)
-  const kept = await keepIntakeCheck(db, r.id, { stage: 'publish', faults, state: state === 'passed' ? 'handed_off' : state, now })
+  // A dry run (car T, T5) keeps nothing: its result lives on its own row.
+  const kept = opts.keep === false ? null : await keepIntakeCheck(db, r.id, { stage: 'publish', faults, state: state === 'passed' ? 'handed_off' : state, now })
   if (kept) console.error('[creative] the check before publishing could not be kept', kept)
   const out = faults.map((f) => `[intake] ${f}`)
   if (opts.platform && !r.destinations.includes(opts.platform)) out.push(`[intake] ${opts.platform} is not a destination of its intake record (${r.destinations.join(', ')}); it is skipped there.`)
@@ -2927,7 +2983,7 @@ export async function scheduleApprovedPieces(
     // THE TIMING ENGINE AT SCHEDULING (timing.ts; Lawal's 19:13, section 4, point 2): the piece's window from its own
     // facts, stored on both rows; a slot past its latest acceptable time is recorded EXPIRED at once, never published.
     const pieceNights = ((nights ?? []) as Record<string, unknown>[]).filter((e) => d.rev.eventIds.includes(e.id as string))
-    const timing = timingOfRows(d.momentKey, pieceNights, at, now)
+    const timing = timingOfRows(d.momentKey, pieceNights, at, now, await remindersOn(db, d.rev.eventIds, at))
     const windowCols = timing.kind === 'window' ? { objective: timing.objective, latest_at: timing.latestAt, expires_at: timing.expiresAt, recovery: timing.recovery, timing_basis: timing.basis.slice(0, 500) } : {}
     const rows = (['instagram', 'facebook'] as const).map((platform) => ({ piece_id: d.id, approval_id: d.approvalId, platform, go_at: goAt, ...windowCols }))
     const { error: ierr } = await db.from('social_piece_schedules').insert(rows)
@@ -3581,4 +3637,128 @@ async function publishPassedPiece(
     }
   }
   return { state: mine(published.published).length > 0 ? 'posted' : 'held', pieceId, lines }
+}
+
+/* ------------------------------------------------------------------ the dry run of a piece (car T, T5) */
+
+const DRY_PLATFORMS = ['instagram', 'facebook'] as const
+
+export type DryStage = { readonly stage: 'render' | 'intake' | 'approval' | 'validation' | 'schedule' | 'payload'; readonly ok: boolean; readonly detail: string }
+export type DryRun = { readonly stages: readonly DryStage[]; readonly schedule: readonly Record<string, unknown>[]; readonly payload: readonly Record<string, unknown>[] }
+
+/** Where a slide's image is: a finished design's file, a whole photograph, or drawn at publishing. Pure. */
+function slideAddress(s: Slide): string {
+  if (s.t === 'file') return s.url
+  if (s.t === 'photo') return s.photo
+  return `drawn as a JPEG at publishing (a ${s.t} slide)`
+}
+
+/**
+ * THE DRY RUN OF A PIECE (car T, T5 and car U, U5, the PM's 02:05 and 02:12 of 28 November 2026: "through scheduling
+ * preparation in a dry mode up to the Blotato call ... a test approval in a test campaign, never Lawal's, the schedule
+ * prepared and not sent"). Every stage the real path runs, in its order, on what is read now: RENDER (each slide measured
+ * against each destination, as publishing measures it), INTAKE (a creative piece's record as the handoff left it),
+ * APPROVAL (the checks a press runs; the test approval is the dry run's own row, by its asker, never Lawal's), VALIDATION
+ * (each network's checks at the slot), SCHEDULE (the rows the scheduler would insert, its window from the timing engine
+ * with each night's stage) and PAYLOAD (what would go to Blotato: the caption as it would post, its media, its target;
+ * the account is read from Blotato only at publishing). Nothing is written anywhere: the checks run with keep false, no
+ * approval, no schedule, no provider call. The caller keeps the result on the dry run's own row.
+ */
+export async function dryRunPiece(db: Db, run: { readonly pieceId: string; readonly goAt: Date }, now: Date, opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<DryRun> {
+  const fetcher = opts.fetcher ?? fetch
+  const stages: DryStage[] = []
+  const say = (stage: DryStage['stage'], ok: boolean, detail: string) => stages.push({ stage, ok, detail: detail.slice(0, 2000) })
+  const { data: piece, error: perr } = await db.from('social_pieces').select('kind').eq('id', run.pieceId).maybeSingle()
+  if (perr) throw new Error(`the piece could not be read: ${perr.message}`)
+  const rev = piece ? await newestRevision(db, run.pieceId) : null
+  if (!piece || rev === null) {
+    say('render', false, piece ? 'the piece has no version' : `no piece ${run.pieceId}`)
+    return { stages, schedule: [], payload: [] }
+  }
+  const format = await ownFormatOf(db, run.pieceId)
+  const misfits: string[] = []
+  for (const platform of DRY_PLATFORMS) {
+    const m = await slidesMisfit(rev.slides, platform, format, fetcher)
+    if (m) misfits.push(`${platform}: ${m}`)
+  }
+  say('render', misfits.length === 0, misfits.length > 0 ? misfits.join(' ') : `version ${rev.version}: ${rev.slides.length} ${format} slide(s), each measured against Instagram and Facebook`)
+
+  if (String(piece.kind) === 'creative') {
+    const { data: intake, error: ierr } = await db.from('creative_intake').select('id, state, checked_at, checked_stage, check_reasons').eq('piece_id', run.pieceId).maybeSingle()
+    if (ierr) say('intake', false, `its intake record could not be read: ${ierr.message}`)
+    else if (!intake) say('intake', false, 'a creative piece with no intake record never posts')
+    else {
+      const i = intake as { id: string; state: string; checked_at: string | null; checked_stage: string | null; check_reasons: string[] | null }
+      say('intake', i.state === 'handed_off', `record ${i.id}: ${i.state}, checked ${i.checked_at ?? 'never'} at ${i.checked_stage ?? 'no stage'}${i.check_reasons?.length ? `: ${i.check_reasons.join(' ')}` : ''}`)
+    }
+  } else {
+    say('intake', true, `a ${String(piece.kind)} piece: no intake record is asked of it`)
+  }
+
+  const atApproval = await pieceDependencies(db, run.pieceId, now, { siteOrigin: opts.siteOrigin, fetcher, keep: false })
+  say('approval', atApproval.length === 0, atApproval.length > 0
+    ? `a test approval would be refused: ${atApproval.join(' ')}`
+    : `a test approval of version ${rev.version} would be taken, by the dry run's asker, never Lawal's; nothing written to social_piece_approvals`)
+
+  const atSlot: string[] = []
+  for (const platform of DRY_PLATFORMS) {
+    for (const issue of await pieceDependencies(db, run.pieceId, now, { siteOrigin: opts.siteOrigin, fetcher, goesAt: run.goAt, platform, keep: false })) atSlot.push(`${platform}: ${issue}`)
+  }
+  say('validation', atSlot.length === 0, atSlot.length > 0 ? atSlot.join(' ') : `every check on Instagram and Facebook passes for ${run.goAt.toISOString()}`)
+
+  const timing = await timingOfPiece(db, run.pieceId, run.goAt, now)
+  const schedule: Record<string, unknown>[] = []
+  if (timing.kind === 'window') {
+    for (const platform of DRY_PLATFORMS) {
+      schedule.push({ piece_id: run.pieceId, approval_id: null, platform, go_at: run.goAt.toISOString(), objective: timing.objective, latest_at: timing.latestAt, expires_at: timing.expiresAt, recovery: timing.recovery, timing_basis: timing.basis.slice(0, 500), state: 'prepared, not inserted' })
+    }
+    const lapse = pastLatest(timing.latestAt, run.goAt)
+    say('schedule', lapse === null, lapse ?? `two rows prepared and not inserted: ${timing.objective}, latest ${timing.latestAt}, expires ${timing.expiresAt} (${timing.basis})`)
+  } else {
+    say('schedule', false, `${timing.kind}: ${timing.reason}`)
+  }
+
+  const payload: Record<string, unknown>[] = []
+  for (const platform of DRY_PLATFORMS) {
+    const corrected = await placeCorrectionFor(db, rev.eventIds, rev.versions[platform].caption ?? '')
+    const collaborators = platform === 'instagram' ? (rev.versions[platform].collaborators ?? []) : []
+    const mediaType = blotatoMediaType(format)
+    payload.push({
+      platform,
+      format,
+      account: 'the connected account, read from Blotato only at publishing',
+      content: { text: onItsDay(corrected.caption, rev.slides, run.goAt), mediaUrls: rev.slides.map(slideAddress), platform },
+      target: { targetType: platform, ...(mediaType ? { mediaType } : {}), ...(collaborators.length > 0 ? { collaborators } : {}) },
+      sent: false,
+    })
+  }
+  const empty = payload.filter((p) => String((p.content as { text: string }).text).trim() === '').map((p) => p.platform)
+  say('payload', empty.length === 0, empty.length > 0 ? `no caption for ${empty.join(' and ')}` : `the Instagram and Facebook payloads, ${rev.slides.length} media each, prepared and never sent`)
+  return { stages, schedule, payload }
+}
+
+/**
+ * EACH ASKED DRY RUN, TAKEN (car T, T5): a row in social_dry_runs whose state is asked is run (dryRunPiece) and its result
+ * kept on it, done with every stage, its schedule and its payload, a failing stage named in its error; a run that throws
+ * is failed with its reason. Two a run. A failed write is said.
+ */
+export async function runAskedDryRuns(db: Db, now: Date, opts: { readonly siteOrigin: string; readonly fetcher?: Fetcher }): Promise<string[]> {
+  const { data, error } = await db.from('social_dry_runs').select('id, piece_id, go_at').eq('state', 'asked').order('asked_at').limit(2)
+  if (error) return [`the asked dry runs could not be read: ${error.message}`]
+  const lines: string[] = []
+  for (const r of (data ?? []) as { id: string; piece_id: string; go_at: string }[]) {
+    let values: Record<string, unknown>
+    try {
+      const out = await dryRunPiece(db, { pieceId: r.piece_id, goAt: new Date(r.go_at) }, now, opts)
+      const failed = out.stages.filter((s) => !s.ok)
+      values = { state: 'done', stages: out.stages, schedule: out.schedule, payload: out.payload, done_at: new Date().toISOString(), error: failed.length > 0 ? failed.map((s) => `${s.stage}: ${s.detail}`).join(' | ').slice(0, 2000) : null }
+      lines.push(`${r.id} (${r.piece_id}): ${failed.length === 0 ? `every stage passed, ${out.schedule.length} schedule rows prepared and not inserted, nothing sent` : `held at ${failed.map((s) => s.stage).join(', ')}`}`)
+    } catch (e) {
+      values = { state: 'failed', done_at: new Date().toISOString(), error: (e instanceof Error ? e.message : String(e)).slice(0, 2000) }
+      lines.push(`${r.id} (${r.piece_id}): FAILED, ${String(values.error)}`)
+    }
+    const w = await db.from('social_dry_runs').update(values).eq('id', r.id).eq('state', 'asked')
+    if (w.error) lines.push(`${r.id}: its result could not be kept: ${w.error.message}`)
+  }
+  return lines
 }

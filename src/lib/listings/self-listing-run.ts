@@ -74,6 +74,14 @@ const STALE_CLAIM_MS = 10 * 60_000
 /** Who takes a night away when its organiser's photo could not go on: the self-listing run, recorded in the audit. */
 const RUN_ACTOR = { id: null, email: null, role: 'self-listing-run' } as const
 
+/**
+ * A TEST SUBMITTER (car W, the P0 audit's item 8): the database's own rule for a test account's address
+ * (migration 20261121140001, organisation_is_test_from_address): hello+qa, hello+test or hello+acceptance at
+ * eventlinqs.com. A submission from one lists a test night, so the end to end test can run on production. Pure.
+ */
+export const TEST_SUBMITTER = /^hello\+(qa|test|acceptance)[^@]*@eventlinqs\.com$/
+export const isTestSubmitter = (email: string | null | undefined): boolean => TEST_SUBMITTER.test((email ?? '').trim().toLowerCase())
+
 /** A title as the listing shows it: no leading '#' or other marks, one space at a time. Pure. */
 /**
  * The series' end from the organiser's stated times (16 November 2026, H2o New Year's Eve: Joe stated 8 pm to 2:30 am and
@@ -344,6 +352,8 @@ export async function selfListSubmission(id: string, now: Date = new Date(), opt
       // EventLinqs lists it for them, in the listings organisation, until the organiser claims it (the claim flow then
       // makes it their own, listing_source 'organiser'), the same as an imported night.
       listing_source: 'eventlinqs',
+      // A test submitter's night is a test night (car W): the occurrence run makes its event is_test from birth.
+      is_test: isTestSubmitter(sub.email),
       status: 'active',
       last_checked_on: today,
     })

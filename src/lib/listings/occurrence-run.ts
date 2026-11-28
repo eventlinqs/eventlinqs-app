@@ -31,6 +31,8 @@ export type ListingNight = NightForOccurrences & {
   venueId: string
   /** Where the night sells (WI3, event_series.booking_links); empty or absent for a free walk-in night. */
   bookingLinks?: SeriesBookingLink[]
+  /** A test submission's night (car W, event_series.is_test): its events are born is_test, never a guide, sitemap or IndexNow entry. */
+  isTest?: boolean
 }
 
 export type CreateOccurrence = {
