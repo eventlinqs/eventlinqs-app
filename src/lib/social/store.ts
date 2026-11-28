@@ -15,7 +15,7 @@ import { eventCoversFor } from '@/lib/venues/venue-photos-read'
 import { CANONICAL_HOST } from '@/lib/site-url'
 import { learn, planMoments, scheduleWindowOf, weekendDaysOf, withStartingCalendar, type CadenceRule, type PostOutcome, type SocialFormat, type SocialPlatform } from './cadence'
 import { applyDailyFloor, rhythmDays, type FloorPiece } from './daily-rhythm'
-import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, type QualityNight } from './piece-quality'
+import { languageFaults, ON_NOW, PIECE_RULES_SINCE, pieceCorrections, pieceQuality, printsADayOver, type QualityNight } from './piece-quality'
 import { correctPlaceLines, knownVenueIndex, type KnownVenues } from './venue-identity'
 import { pastLatest, timingOf, type Timing, type TimingNight } from './timing'
 import { law37Refusal } from './law37'
@@ -3020,8 +3020,10 @@ export async function scheduleApprovedPieces(
       knownVenues: known,
     })
     if (quality.length > 0) {
-      const reason = `Not scheduled, held by the publish gate: ${quality.join(' ')}`
-      await db.from('social_piece_schedules').update({ state: 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
+      // A day already over is withdrawn with its reason, never held (fix (b) of the PM's 22:50 of 28 November 2026).
+      const over = quality.some(printsADayOver)
+      const reason = `${over ? 'Withdrawn, never scheduled' : 'Not scheduled, held by the publish gate'}: ${quality.join(' ')}`
+      await db.from('social_piece_schedules').update({ state: over ? 'expired' : 'held', held_reason: reason.slice(0, 500) }).eq('piece_id', d.id).eq('approval_id', d.approvalId).eq('state', 'scheduled')
       held.push(`${d.id}: ${reason}`)
       continue
     }
@@ -3369,7 +3371,11 @@ export async function publishDuePieces(db: Db, now: Date, opts: { readonly siteO
       continue
     }
     if (issues.length > 0) {
-      await hold(id, `Not published: ${issues.join(' ')}`)
+      // A DAY ALREADY OVER NEVER COMES TRUE AGAIN (the PM's 22:50 of 28 November 2026, fix (b)): a piece printing one is
+      // withdrawn with its reason, never left held for a person and never published stale. A finished studio file has no
+      // engine drawing to become, and a held schedule is never read again (expireLapsedSchedules reads scheduled rows).
+      if (issues.some(printsADayOver)) await expire(id, `Withdrawn, never published: ${issues.join(' ')}`)
+      else await hold(id, `Not published: ${issues.join(' ')}`)
       continue
     }
     if (opts.publisher === null) {

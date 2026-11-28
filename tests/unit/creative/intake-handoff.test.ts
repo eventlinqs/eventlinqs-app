@@ -318,6 +318,33 @@ describe("a studio piece's link is its own page", () => {
 })
 
 /*
+ * A PIECE THAT PRINTS A DAY ALREADY OVER IS WITHDRAWN WITH ITS REASON (the PM's 22:50 of 28 November 2026, fix (b);
+ * C:\dev\EVIDENCE\EL-28NOV\incident\V2-sat-7.md). A finished studio file has no engine drawing to become, and the only
+ * redraw takes unapproved drafts; so an approved piece held for a past day stayed held, its schedule never revisited (the
+ * expiry reads only scheduled rows). A day already over never comes true again: the schedule is withdrawn (expired) with
+ * its reason, never left held and never published. Red on main: it was left 'held'.
+ */
+describe('a piece that prints a day already over', () => {
+  it('is withdrawn at publishing with its reason, and the publisher is never called', async () => {
+    const store = await import('@/lib/social/store')
+    const w = world()
+    const out = await store.receiveIntake(w.db, input({ destinations: ['facebook'] }), { now: RECEIVED, siteOrigin: ORIGIN, fetcher })
+    if (out.state !== 'handed_off' || !out.pieceId) throw new Error(`not handed off: ${JSON.stringify(out)}`)
+    const rev = w.tables.social_piece_revisions[0] as { caption: string; versions: { facebook: { caption: string } } }
+    rev.caption = `${rev.caption}\n📅 Fri 20 Nov, 7pm`
+    rev.versions.facebook.caption = `${rev.versions.facebook.caption}\n📅 Fri 20 Nov, 7pm`
+    w.tables.social_piece_approvals.push({ id: 'a0000000-0000-4000-8000-000000000001', piece_id: out.pieceId, revision: 1, approved_by: 'pm', approved_at: RECEIVED.toISOString() })
+    w.tables.social_piece_schedules.push({ id: '5c000000-0000-4000-8000-000000000002', piece_id: out.pieceId, approval_id: 'a0000000-0000-4000-8000-000000000001', platform: 'facebook', go_at: '2026-11-24T06:30:00.000Z', latest_at: null, objective: null, state: 'scheduled', submission_ref: null, created_at: RECEIVED.toISOString() })
+    const publisher = vi.fn(async () => ({ ref: 'https://www.facebook.com/1/posts/2' }))
+    await store.publishDuePieces(w.db, new Date('2026-11-24T06:31:00.000Z'), { siteOrigin: ORIGIN, publisher, fetcher })
+    const fb = w.tables.social_piece_schedules.find((s) => s.platform === 'facebook')
+    expect(publisher).not.toHaveBeenCalled()
+    expect(fb?.state).toBe('expired')
+    expect(String(fb?.held_reason)).toMatch(/^Withdrawn, never published: .*It prints "Fri 20", a day already over/)
+  })
+})
+
+/*
  * THE HANDOFF WRITES ITS PIECE AND ITS FIRST WORDS TOGETHER (the coordinator's (a) of 24 November 2026; the class of the
  * PM's intake of 23 and 24 November: the comedy set's piece 28e4096c kept while its words were refused, its removal refused
  * by a missing grant and never read). drawIntakePiece wrote its own piece and ignored its removal's answer, so a passed
