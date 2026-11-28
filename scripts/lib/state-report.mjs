@@ -300,6 +300,11 @@ export function headlineFor(state) {
   // THE DAILY READ OF PRODUCTION'S SUBMISSIONS (the PM's 15:00 of 8 November 2026): an organiser's event not live an hour
   // after it was sent in is a missed organiser, so the day cannot read ALL GREEN while one sits. Target 0.
   if ((state.business?.submissionsNotLive ?? 0) > 0) return { word: 'AN ORGANISER EVENT IS NOT LIVE', colour: CORAL_600, urgent: true }
+  // A POST HELD, WITHDRAWN OR MISSED IS NEVER ALL GREEN (the PM's 22:50 of 28 November 2026, fix (c)): the 13:58 email of
+  // 28 November led with ALL GREEN beside four held. The morning report names each in its Social row
+  // (src/lib/admin/morning-report.ts postsNotPublished); the headline says how many.
+  const posts = state.business?.areas?.postsNotPublished ?? []
+  if (posts.length > 0) return { word: `${posts.length} POST${posts.length === 1 ? '' : 'S'} NOT PUBLISHED`, colour: CORAL_600, urgent: false }
   // A blind spot outranks a red branch, because the branch is a known finding
   // and the blind spot may be hiding a worse one. It can never read ALL GREEN.
   if ((state.unreadable ?? []).length > 0) {

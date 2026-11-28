@@ -38,7 +38,14 @@ export type MorningFacts = {
   /** Each area is null when its read failed: that row says so, and never prints a calm zero. */
   readonly marketing: null | { readonly firstLettersSent: number; readonly positiveReplies: number; readonly readyToday: number; readonly poolToday?: number | null; readonly businessDay?: boolean }
   readonly permissions: null | { readonly requestsSent: number; readonly photosReceived: number; readonly photosApproved: number; readonly requestsDueToday: number }
-  readonly social: null | { readonly published: readonly { readonly platform: string; readonly ref: string | null }[]; readonly scheduledToday: number; readonly held: number; readonly preflight?: { readonly line: string; readonly nothingCanPost: string | null } | null }
+  readonly social: null | {
+    readonly published: readonly { readonly platform: string; readonly ref: string | null }[]
+    readonly scheduledToday: number
+    readonly held: number
+    readonly preflight?: { readonly line: string; readonly nothingCanPost: string | null } | null
+    /** Yesterday's and today's posts held, withdrawn or past their slot unpublished, by name (published-check.ts notPublishedNames). */
+    readonly notPublished?: readonly string[]
+  }
   readonly listings: null | { readonly published: number; readonly ended: number; readonly onToday: number }
   readonly relationships: null | { readonly repliesReceived: number; readonly waitingForLawal: number }
   readonly ticketing: null | { readonly ordersConfirmed: number; readonly feeRevenueCents: number; readonly activations: number }
@@ -94,7 +101,9 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
           (f.social.held > 0 ? ` ${countOf(f.social.held, 'post')} held back with ${f.social.held === 1 ? 'its reason' : 'their reasons'}.` : '') +
           // The pre-flight's one line, and only on a day with nothing that can post, that and why (AV (c) and (g)).
           (f.social.preflight ? ` Pre-flight, ${f.social.preflight.line}.` : '') +
-          (f.social.preflight?.nothingCanPost ? ` Nothing can post today: ${f.social.preflight.nothingCanPost}.` : ''),
+          (f.social.preflight?.nothingCanPost ? ` Nothing can post today: ${f.social.preflight.nothingCanPost}.` : '') +
+          // Each post that did not publish, by name (the PM's 22:50 of 28 November 2026, fix (c)).
+          ((f.social.notPublished ?? []).length > 0 ? ` Not published: ${(f.social.notPublished ?? []).join('; ')}.` : ''),
       }
     }
     case 'Event Listings':
@@ -128,15 +137,26 @@ function rowOf(area: BusinessArea, f: MorningFacts): MorningRow | null {
                 failed.length > 0 ? `Not recovered: ${failed.map((x) => x.title).join(', ')}.` : '',
                 recovered.length > 0 ? `Failed and recovered by itself: ${recovered.map((x) => x.title).join(', ')}.` : '',
               ].filter(Boolean).join(' '),
-        today: failed.length > 0 ? `${countOf(failed.length, 'automation')} to look at; the engine page names each one.` : 'Nothing needs you.',
+        // A post that did not publish is never "Nothing needs you" (fix (c)): the automation recovered, the post did not.
+        today:
+          failed.length > 0
+            ? `${countOf(failed.length, 'automation')} to look at; the engine page names each one.`
+            : postsNotPublished(f) > 0
+              ? `${countOf(postsNotPublished(f), 'post')} not published; Social Media Marketing names each.`
+              : 'Nothing needs you.',
       }
     }
   }
 }
 
-/** Every area working and nothing waiting for Lawal: the report says so and asks nothing. */
+/** How many posts did not publish, yesterday and today (fix (c) of the PM's 22:50 of 28 November 2026). */
+function postsNotPublished(f: MorningFacts): number {
+  return f.social?.notPublished?.length ?? 0
+}
+
+/** Every area working and nothing waiting for Lawal: the report says so and asks nothing. Never while a post did not publish. */
 export function allWell(f: MorningFacts): boolean {
   const areas = [f.marketing, f.permissions, f.social, f.listings, f.relationships, f.ticketing, f.system]
   if (areas.some((a) => a === null)) return false
-  return (f.system?.failures ?? []).every((x) => x.recovered === true) && (f.relationships?.waitingForLawal ?? 0) === 0 && (f.system?.unreadable.length ?? 0) === 0 && !f.social?.preflight?.nothingCanPost
+  return (f.system?.failures ?? []).every((x) => x.recovered === true) && (f.relationships?.waitingForLawal ?? 0) === 0 && (f.system?.unreadable.length ?? 0) === 0 && !f.social?.preflight?.nothingCanPost && postsNotPublished(f) === 0
 }

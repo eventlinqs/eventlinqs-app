@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readEngine } from './engine'
 import { PREFLIGHT_ACTION } from '@/lib/social/preflight-line'
+import { notPublishedNames, readTodaySchedule } from '@/lib/social/published-check'
 import { readAcqPool } from '@/lib/outreach/acq-pool'
 import { readPageChecks } from '@/lib/outreach/page-checks'
 import { allWell, areaOfPlay, morningRows, type MorningFacts, type MorningRow } from './morning-report-math'
@@ -28,6 +29,8 @@ export type MorningReport = {
   readonly engine: string
   /** Every organiser page the engine checked since yesterday began, newest first (law 43). */
   readonly pageChecks?: readonly ReportPageCheck[]
+  /** Yesterday's and today's posts that did not publish, by name; the daily email's headline reads them (fix (c)). */
+  readonly postsNotPublished: readonly string[]
 }
 
 type Window = { readonly from: string; readonly to: string }
@@ -107,6 +110,9 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
         const meta = ((pre.data ?? [])[0]?.metadata ?? null) as { line?: unknown; nothingCanPost?: unknown } | null
         return meta && typeof meta.line === 'string' ? { line: meta.line, nothingCanPost: typeof meta.nothingCanPost === 'string' ? meta.nothingCanPost : null } : null
       })(),
+      // Yesterday's and today's posts that did not publish, by name: the daily state never reads ALL GREEN beside one
+      // (the PM's 22:50 of 28 November 2026, fix (c); src/lib/social/published-check.ts).
+      notPublished: notPublishedNames([...(await readTodaySchedule(db, new Date(w.yesterday.from))), ...(await readTodaySchedule(db, new Date(w.today.from)))], now),
     }
   })
   const listings = await safely('Event Listings', async () => ({
@@ -154,5 +160,6 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
     unreadable,
     engine: '/admin/engine',
     pageChecks: (pageChecks ?? []).map((c) => ({ id: c.id, organiser: c.organiser, pageUrl: c.pageUrl, stopped: c.stoppedAt !== null })),
+    postsNotPublished: social?.notPublished ?? [],
   }
 }
