@@ -29,8 +29,11 @@ export type MorningReport = {
   readonly engine: string
   /** Every organiser page the engine checked since yesterday began, newest first (law 43). */
   readonly pageChecks?: readonly ReportPageCheck[]
-  /** Yesterday's and today's posts that did not publish, by name; the daily email's headline reads them (fix (c)). */
-  readonly postsNotPublished: readonly string[]
+  /**
+   * Yesterday's and today's posts that did not publish, by name; the daily email's headline reads them (fix (c)). Optional
+   * as pageChecks is: readMorningReport always writes it, and every reader takes a missing list as none.
+   */
+  readonly postsNotPublished?: readonly string[]
 }
 
 type Window = { readonly from: string; readonly to: string }
