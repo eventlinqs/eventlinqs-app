@@ -1,6 +1,6 @@
 import { SOCIAL_SLOT_ZONE, slotDay, slotFromEarlierDay } from '@/lib/ops/stale-slot'
 import { LOST_ID } from './post-state'
-import { withPieceId } from './go-hop'
+import { ownPageLink, withPieceId } from './go-hop'
 import { randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadArtefactContext, toCaptionInput, type ArtefactContext } from '@/lib/broadcast/kit-artefacts'
@@ -1180,8 +1180,10 @@ export async function pieceDependencies(
   )
 
   /* The piece's own page answers on this deployment and lists every night it advertises. Its query is part of the page:
-     a set piece's own page is /ig?piece=<its id> (the PM's RETURN of 04:05 on 24 November 2026). */
-  const target = new URL(String(piece.link))
+     a set piece's own page is /ig?piece=<its id> (the PM's RETURN of 04:05 on 24 November 2026). A studio piece stored
+     before its writer named it (/ig?utm_..., the PM's 22:50 of 28 November 2026, fix (a)) is judged on its own page too,
+     the page /go lands it on (ownPageLink), never the profile's list. */
+  const target = new URL(ownPageLink(String(piece.link), pieceId))
   const path = `${target.pathname}${target.search}`
   const page = await answers(fetcher, `${opts.siteOrigin.replace(/\/$/, '')}${path}`)
   if (!page.ok) issues.push(`Its page ${path} answers ${page.status ?? 'nothing'}.`)
@@ -1862,10 +1864,13 @@ async function drawIntakePiece(
   const campaignId = await campaignIdFor(db, weekStart)
   if (campaignId === null) return { state: 'refused', reason: "the week's campaign could not be read" }
   // The piece and its first revision through the one writer: a piece whose words are refused is removed, and a removal
-  // the database refuses is said (writePieceWithFirstRevision).
+  // the database refuses is said (writePieceWithFirstRevision). Its id is made here, as drawApprovedSet makes a set's, so
+  // its link names it from the first write: the studio's /ig link becomes /ig?piece=<its id> (the PM's 22:50 of 28 November
+  // 2026, fix (a): c6bdc9da was stored with the studio's /ig?utm_... and held twice at publishing).
+  const ownId = randomUUID()
   const written = await writePieceWithFirstRevision(
     db,
-    { campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: p.link, format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
+    { id: ownId, campaign_id: campaignId, kind: p.kind, city: p.city, audience: p.audience, objective: p.objective, purpose: p.purpose, next_step: p.nextStep, outcome: p.outcome, link: ownPageLink(withPieceId(p.link, ownId), ownId), format: p.format, partner_name: null, share_link_id: null, poster_day: null, moment_key: null, planned_at: input.now.toISOString() },
     (pieceId) => revisionRow(pieceId, 1, p, null, 'planner', null, input.now),
   )
   if ('refused' in written) return { state: 'refused', reason: written.at === 'piece' ? `its piece was not kept (${written.refused})` : written.refused }
