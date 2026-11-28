@@ -38,13 +38,14 @@ export const maxDuration = 30
  * definition drifts the first time somebody else needs one:
  *   eventsLive        events whose status is `published`. That is the platform's
  *                     own definition of a live listing; a draft is not live and
- *                     an archived one is not either.
- *   ticketsSold       every ticket row that has not been refunded, ever.
+ *                     an archived one is not either. Never a test night.
+ *   ticketsSold       every ticket row that has not been refunded, ever, of an
+ *                     order that is not a test order.
  *   ticketsSold24h    the same, created in the last 24 hours.
- *   ordersPaid24h     orders that reached `confirmed` in the last 24 hours.
- *                     `confirmed` is the status the Stripe webhook sets when the
- *                     money has actually been taken.
- *   newOrganisers24h  organisations created in the last 24 hours.
+ *   ordersPaid24h     orders that reached `confirmed` in the last 24 hours with
+ *                     money in them (total over $0), never a test order. A free
+ *                     registration is confirmed too, and is not a paid order.
+ *   newOrganisers24h  organisations created in the last 24 hours, never a test one.
  *   submissionsNotLive  organiser submissions neither live nor refused an hour after
  *                     they arrived (src/lib/listings/submission-watch-rule.ts). The
  *                     target is 0; the daily email marks any other number (the PM's
@@ -59,12 +60,15 @@ export async function GET(request: NextRequest) {
 
   try {
     const hourAgo = new Date(Date.now() - SUBMISSION_LIVE_WITHIN_MINUTES * 60_000).toISOString()
+    // A TEST ACCOUNT'S BUSINESS IS NEVER A FIGURE (migration 20261121140001; the PM's 22:50 of 28 November 2026, fix (d)):
+    // the 13:58 email of 28 November counted six QA journey orders, $0 each, as "6 paid orders" and their tickets as sold.
+    // Every count leaves is_test out (a ticket through its order), and a paid order is one that took money.
     const [live, tickets, tickets24, orders24, organisations24, notLive, stoppedDead, ruled, notEvents] = await Promise.all([
-      admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-      admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null),
-      admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null).gte('created_at', since),
-      admin.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').gte('confirmed_at', since),
-      admin.from('organisations').select('id', { count: 'exact', head: true }).gte('created_at', since),
+      admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_test', false),
+      admin.from('tickets').select('id, orders!inner(is_test)', { count: 'exact', head: true }).is('refunded_at', null).eq('orders.is_test', false),
+      admin.from('tickets').select('id, orders!inner(is_test)', { count: 'exact', head: true }).is('refunded_at', null).eq('orders.is_test', false).gte('created_at', since),
+      admin.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'confirmed').eq('is_test', false).gt('total_cents', 0).gte('confirmed_at', since),
+      admin.from('organisations').select('id', { count: 'exact', head: true }).eq('is_test', false).gte('created_at', since),
       admin.from('listing_submissions').select('id', { count: 'exact', head: true }).or(NOT_LIVE_FILTER).lt('created_at', hourAgo),
       // The sources the visitor sentinel switched off for dead booking links in the last day (law 19 (d); the PM's 12:25
       // item 3 of 16 November 2026: 'Lawal's daily email says so in one line').

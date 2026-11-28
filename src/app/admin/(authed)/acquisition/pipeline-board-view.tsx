@@ -24,7 +24,7 @@ export async function PipelineBoardView() {
 
   // Paid orders (confirmed or partially refunded, above $0), the scorecard's own reading (migration 20261101044501),
   // matched to each organisation through its events.
-  const orders = await db.from('orders').select('event_id, confirmed_at').in('status', ['confirmed', 'partially_refunded']).gt('total_cents', 0)
+  const orders = await db.from('orders').select('event_id, confirmed_at').in('status', ['confirmed', 'partially_refunded']).eq('is_test', false).gt('total_cents', 0)
   if (orders.error) throw new Error(`orders: ${orders.error.message}`)
   const paid = (orders.data ?? []) as { event_id: string; confirmed_at: string | null }[]
   const eventIds = [...new Set(paid.map((o) => o.event_id))]

@@ -104,6 +104,7 @@ export async function readThreeNumbers(db: Db, now: Date): Promise<ThreeNumbers>
     .from('orders')
     .select('organisation_id, confirmed_at, created_at, tickets(id)')
     .in('status', ['confirmed', 'partially_refunded'])
+    .eq('is_test', false)
     .gt('total_cents', 0)
     .gte('created_at', lastStart)
   if (error) throw new Error(`orders: ${error.message}`)

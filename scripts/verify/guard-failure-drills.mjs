@@ -366,6 +366,18 @@ const DRILLS = [
     expect: 'counts organisations with no is_test',
   },
   /*
+   * test-accounts-left-out clause 5 (WINDOW 5A, 28 November 2026; the PM's 22:50, fix (d)): the daily state counted six
+   * QA journey orders' tickets as sold. The regression is the ticket count losing its order's TEST filter again.
+   */
+  {
+    name: "the daily state's ticket count takes a test order's tickets in again",
+    guard: `${GUARDS}/test-accounts-left-out.mjs`,
+    file: 'src/app/api/ops/state/route.ts',
+    find: "admin.from('tickets').select('id, orders!inner(is_test)', { count: 'exact', head: true }).is('refunded_at', null).eq('orders.is_test', false),\n",
+    replace: "admin.from('tickets').select('id', { count: 'exact', head: true }).is('refunded_at', null),\n",
+    expect: 'reads tickets for a figure with no is_test',
+  },
+  /*
    * a-prerendered-page-asks-for-the-key (WINDOW 5A, 21 November 2026): /weekend made an admin client while it
    * prerendered, and the CI build, which holds no service-role key, failed. The regression is the page reading as admin
    * without asking for the key again.

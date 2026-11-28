@@ -210,6 +210,7 @@ export async function readFounderDashboard(now: Date = new Date()): Promise<Dash
           .from('orders')
           .select('total_cents, platform_fee_cents, status, created_at, organisation_id, event_id, platform_fee_retained_cents, stripe_processing_estimate_cents, refunds(amount_cents, status)')
           .eq('currency', 'AUD')
+          .eq('is_test', false)
           .gte('created_at', since)
           .order('id', { ascending: true })
           .range(from, to),

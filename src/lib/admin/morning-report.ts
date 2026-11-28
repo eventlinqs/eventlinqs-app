@@ -122,14 +122,14 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
   }))
   const ticketing = await safely('Ticketing & Revenue', async () => {
     // Revenue truth (law 2 of 31 October): EventLinqs' own retained fee, never the gross ticket sales.
-    const orders = await db.from('orders').select('organisation_id, platform_fee_retained_cents').eq('status', 'confirmed').gte('confirmed_at', w.yesterday.from).lt('confirmed_at', w.yesterday.to).limit(1000)
+    const orders = await db.from('orders').select('organisation_id, platform_fee_retained_cents').eq('status', 'confirmed').eq('is_test', false).gte('confirmed_at', w.yesterday.from).lt('confirmed_at', w.yesterday.to).limit(1000)
     if (orders.error) throw new Error(`orders: ${orders.error.message}`)
     if ((orders.data ?? []).length === 1000) throw new Error('a thousand or more orders in a day: the report reads them in full before it counts them')
     const rows = orders.data ?? []
     const orgs = [...new Set(rows.map((o) => o.organisation_id as string))]
     let activations = 0
     for (const org of orgs) {
-      const before = await counted(db.from('orders').select('id', { count: 'exact', head: true }).eq('organisation_id', org).eq('status', 'confirmed').lt('confirmed_at', w.yesterday.from), 'earlier orders')
+      const before = await counted(db.from('orders').select('id', { count: 'exact', head: true }).eq('organisation_id', org).eq('status', 'confirmed').eq('is_test', false).lt('confirmed_at', w.yesterday.from), 'earlier orders')
       if (before === 0) activations += 1
     }
     return { ordersConfirmed: rows.length, feeRevenueCents: rows.reduce((n, o) => n + ((o.platform_fee_retained_cents as number | null) ?? 0), 0), activations }
