@@ -13,6 +13,26 @@ export function goHop(origin: string, platform: 'instagram' | 'facebook'): strin
   return `${origin}/go/${PIECE_MARK}?via=${platform}`
 }
 
+/**
+ * A PIECE'S OWN PAGE (the PM's 22:50 of 28 November 2026, fix (a)): a link to /ig names its piece, /ig?piece=<its id>,
+ * so the visitor and the publish gate meet exactly that piece's nights (src/lib/growth/ig.ts readIgPiecePage), never the
+ * profile's list, which lists a night only while its slot is listed and is cached five minutes (the Melbourne weekend
+ * piece c6bdc9da, held twice on 28 November). The id goes first and every tag is kept; a link that already names a
+ * piece, any other page and anything that is not an address are returned as they are. Pure.
+ */
+export function ownPageLink(link: string, pieceId: string): string {
+  let url: URL
+  try {
+    url = new URL(link)
+  } catch {
+    return link
+  }
+  if (url.pathname !== '/ig' || url.searchParams.has('piece')) return link
+  if (!/^[0-9a-f-]{36}$/i.test(pieceId)) throw new Error(`not a piece id: ${pieceId}`)
+  const tags = url.search.replace(/^\?/, '')
+  return `${url.origin}/ig?piece=${pieceId.toLowerCase()}${tags ? `&${tags}` : ''}${url.hash}`
+}
+
 /** Every string inside a value, with the mark replaced by the piece's id (caption and both networks' versions). */
 export function withPieceId<T>(value: T, pieceId: string): T {
   const text = JSON.stringify(value)

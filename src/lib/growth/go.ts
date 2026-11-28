@@ -6,6 +6,7 @@ import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 import { visitorHash } from '@/lib/broadcast/share-links'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { liveGoLinks, pressDay, type GoLink, type GoNight, type GoPieceRow, type GoVia } from './go-math'
+import { ownPageLink } from '@/lib/social/go-hop'
 
 /**
  * The rows behind /go and its hop (the rules and why are in ./go-math.ts). Read live on every request: an event row is
@@ -88,7 +89,9 @@ export async function readGoPieceLink(pieceId: string): Promise<string | null> {
       .maybeSingle(),
   )
   const sp = row ? (Array.isArray(row.social_pieces) ? row.social_pieces[0] : row.social_pieces) : null
-  return sp && sp.kind !== 'partner_kit' ? sp.link : null
+  // An /ig link lands on the piece's own nights, /ig?piece=<id>, even where it was stored without its id (the PM's 22:50
+  // of 28 November 2026, fix (a): four studio pieces on production carry the studio's /ig?utm_...).
+  return sp && sp.kind !== 'partner_kit' ? ownPageLink(sp.link, pieceId) : null
 }
 
 /** One press per visitor per piece per Melbourne day, never a crawler; a lost count never strands the visitor. */

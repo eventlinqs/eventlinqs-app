@@ -125,6 +125,7 @@ export async function getAnalyticsDashboard(): Promise<AnalyticsDashboard> {
       .from('orders')
       .select('total_cents, platform_fee_cents, status, created_at, organisation_id')
       .eq('currency', ANALYTICS_CURRENCY)
+      .eq('is_test', false)
       .order('id', { ascending: true })
       .range(from, to),
   )

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { midnightIn } from '@/lib/dates/zone-midnight'
 import { readEngine } from './engine'
 import { PREFLIGHT_ACTION } from '@/lib/social/preflight-line'
+import { notPublishedNames, readTodaySchedule } from '@/lib/social/published-check'
 import { readAcqPool } from '@/lib/outreach/acq-pool'
 import { readPageChecks } from '@/lib/outreach/page-checks'
 import { allWell, areaOfPlay, morningRows, type MorningFacts, type MorningRow } from './morning-report-math'
@@ -28,6 +29,11 @@ export type MorningReport = {
   readonly engine: string
   /** Every organiser page the engine checked since yesterday began, newest first (law 43). */
   readonly pageChecks?: readonly ReportPageCheck[]
+  /**
+   * Yesterday's and today's posts that did not publish, by name; the daily email's headline reads them (fix (c)). Optional
+   * as pageChecks is: readMorningReport always writes it, and every reader takes a missing list as none.
+   */
+  readonly postsNotPublished?: readonly string[]
 }
 
 type Window = { readonly from: string; readonly to: string }
@@ -107,6 +113,9 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
         const meta = ((pre.data ?? [])[0]?.metadata ?? null) as { line?: unknown; nothingCanPost?: unknown } | null
         return meta && typeof meta.line === 'string' ? { line: meta.line, nothingCanPost: typeof meta.nothingCanPost === 'string' ? meta.nothingCanPost : null } : null
       })(),
+      // Yesterday's and today's posts that did not publish, by name: the daily state never reads ALL GREEN beside one
+      // (the PM's 22:50 of 28 November 2026, fix (c); src/lib/social/published-check.ts).
+      notPublished: notPublishedNames([...(await readTodaySchedule(db, new Date(w.yesterday.from))), ...(await readTodaySchedule(db, new Date(w.today.from)))], now),
     }
   })
   const listings = await safely('Event Listings', async () => ({
@@ -116,14 +125,14 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
   }))
   const ticketing = await safely('Ticketing & Revenue', async () => {
     // Revenue truth (law 2 of 31 October): EventLinqs' own retained fee, never the gross ticket sales.
-    const orders = await db.from('orders').select('organisation_id, platform_fee_retained_cents').eq('status', 'confirmed').gte('confirmed_at', w.yesterday.from).lt('confirmed_at', w.yesterday.to).limit(1000)
+    const orders = await db.from('orders').select('organisation_id, platform_fee_retained_cents').eq('status', 'confirmed').eq('is_test', false).gte('confirmed_at', w.yesterday.from).lt('confirmed_at', w.yesterday.to).limit(1000)
     if (orders.error) throw new Error(`orders: ${orders.error.message}`)
     if ((orders.data ?? []).length === 1000) throw new Error('a thousand or more orders in a day: the report reads them in full before it counts them')
     const rows = orders.data ?? []
     const orgs = [...new Set(rows.map((o) => o.organisation_id as string))]
     let activations = 0
     for (const org of orgs) {
-      const before = await counted(db.from('orders').select('id', { count: 'exact', head: true }).eq('organisation_id', org).eq('status', 'confirmed').lt('confirmed_at', w.yesterday.from), 'earlier orders')
+      const before = await counted(db.from('orders').select('id', { count: 'exact', head: true }).eq('organisation_id', org).eq('status', 'confirmed').eq('is_test', false).lt('confirmed_at', w.yesterday.from), 'earlier orders')
       if (before === 0) activations += 1
     }
     return { ordersConfirmed: rows.length, feeRevenueCents: rows.reduce((n, o) => n + ((o.platform_fee_retained_cents as number | null) ?? 0), 0), activations }
@@ -154,5 +163,6 @@ export async function readMorningReport(now: Date = new Date()): Promise<Morning
     unreadable,
     engine: '/admin/engine',
     pageChecks: (pageChecks ?? []).map((c) => ({ id: c.id, organiser: c.organiser, pageUrl: c.pageUrl, stopped: c.stoppedAt !== null })),
+    postsNotPublished: social?.notPublished ?? [],
   }
 }

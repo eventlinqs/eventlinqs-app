@@ -135,6 +135,7 @@ async function countEventsAndVolume(
           .select('organisation_id, total_cents')
           .in('organisation_id', orgIds)
           .eq('status', 'confirmed')
+          .eq('is_test', false)
           .order('id', { ascending: true })
           .range(from, to),
     ),

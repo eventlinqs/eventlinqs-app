@@ -243,6 +243,14 @@ function dayOn(now: Date, zone: string): { y: number; m: number; d: number } {
   return { y: n('year'), m: n('month'), d: n('day') }
 }
 
+/**
+ * Whether a reason is pastDaysPrinted's: the piece prints a day already over, which never comes true again, so its
+ * schedule is withdrawn rather than held (the PM's 22:50 of 28 November 2026, fix (b)). Pure.
+ */
+export function printsADayOver(reason: string): boolean {
+  return /\[night\] It prints "[^"]+", a day already over/.test(reason)
+}
+
 export function pastDaysPrinted(texts: readonly string[], now: Date, zone = 'Australia/Melbourne'): string[] {
   const today = dayOn(now, zone)
   const todayKey = Date.UTC(today.y, today.m - 1, today.d)
@@ -252,7 +260,9 @@ export function pastDaysPrinted(texts: readonly string[], now: Date, zone = 'Aus
     if (!out.includes(r)) out.push(r)
   }
   for (const text of texts) {
-    for (const m of text.matchAll(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+(\d{1,2})\b/gi)) {
+    // A weekday followed by a clock time ('SAT 7.30pm', 'Sun 7:30', 'Sun 8 pm') prints a time, never the 7th or the 8th
+    // (the PM's 22:50 of 28 November 2026, fix (b): the studio's 'SAT 7.30pm' on Sat 28 Nov was read as Sat 7 Nov).
+    for (const m of text.matchAll(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+(\d{1,2})\b(?![.:]\d|\s*[ap]\.?m\b)/gi)) {
       const wd = WEEKDAYS.indexOf(m[1].slice(0, 3).toLowerCase())
       const d = Number(m[2])
       for (const back of [0, 1]) {

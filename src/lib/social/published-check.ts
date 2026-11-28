@@ -31,6 +31,21 @@ export function publishedCheck(rows: readonly ScheduleRow[], now: Date): { reado
   return { line, failures, failed: failures.length > 0 }
 }
 
+/**
+ * EVERY POST THAT DID NOT PUBLISH, BY NAME (the PM's 22:50 of 28 November 2026, fix (c)): one held or withdrawn at any
+ * hour, and one past its slot that did not go, each as "<label> on <network>, due <day> <time>: <state>" in slot order;
+ * a post that went, and one still to come, is none. The daily state names these and never reads ALL GREEN beside one
+ * (the 13:58 email of 28 November led with ALL GREEN beside four held). Pure.
+ */
+export function notPublishedNames(rows: readonly ScheduleRow[], now: Date): string[] {
+  const day = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short' })
+  const clock = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return rows
+    .filter((r) => r.state !== 'published' && (Date.parse(r.goAt) <= now.getTime() || r.state === 'held' || r.state === 'expired'))
+    .sort((a, b) => Date.parse(a.goAt) - Date.parse(b.goAt))
+    .map((r) => `${r.label} on ${r.platform}, due ${day.format(new Date(r.goAt))} ${clock.format(new Date(r.goAt))}: ${r.state}`)
+}
+
 const LABEL = (p: { kind: string; city: string; partner_name: string | null }) => `${p.kind.replace(/_/g, ' ')}${p.partner_name ? `, ${p.partner_name}` : ''}, ${p.city}`
 
 /**
